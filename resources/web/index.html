@@ -214,6 +214,16 @@ html, body {
     font-size: 18px;
     margin-bottom: 24px;
 }
+#powerConfirm .dialog-note {
+    display: none;
+    max-width: 360px;
+    margin: -12px auto 22px;
+    font-size: 13px;
+    line-height: 1.45;
+    color: #d8a23a;
+    text-align: left;
+}
+#powerConfirm .dialog-note.visible { display: block; }
 #powerConfirm .dialog-btns {
     display: flex;
     gap: 16px;
@@ -1934,6 +1944,7 @@ body.digi-open #bottomBar { grid-row: 5; }
 <div id="powerConfirm">
     <div class="dialog">
         <div class="dialog-title">Power off the radio?</div>
+        <div id="powerConfirmNote" class="dialog-note"></div>
         <div class="dialog-btns">
             <button class="btn-cancel" onclick="cancelPowerOff()">Cancel</button>
             <button class="btn-confirm" onclick="confirmPowerOff()">Power Off</button>
@@ -2453,6 +2464,10 @@ var transport = null;         // alias to wsTransport
 var ws = null;                // alias to wsTransport.ws — legacy readyState checks
 var serverVersion = '';  // set from rigInfo message
 var rigModelName = '';   // set from rigInfo/rigConnected
+// Rigs that only accept the CI-V power-on command on a connector wfweb may not
+// be using (the IC-7600's [REMOTE] jack — its USB dies in standby).  Server
+// sets this per rig; it turns the power-off confirm into a warning (#104).
+var powerOnNeedsRemoteJack = false;
 // Shared app-wide callsign (CW, FT8/FT4, FreeDV reporter, APRS, Terminal,
 // logbook).  Single source of truth backed by localStorage with a change
 // event so each panel can keep its own widgets in sync without polling.
@@ -2865,6 +2880,7 @@ function handleMessage(msg) {
                 if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner);
                 if (msg.hasMemoryMode !== undefined) hasMemoryMode = !!msg.hasMemoryMode;
                 if (msg.memGroups !== undefined) setupMemoryGroups(msg.memGroups, msg.memStart || 0);
+                if (msg.powerOnNeedsRemoteJack !== undefined) powerOnNeedsRemoteJack = !!msg.powerOnNeedsRemoteJack;
 
                 updateWarningVisibility();
                 applyUrlTune();
@@ -2895,6 +2911,7 @@ function handleMessage(msg) {
             if (msg.hasMemoryMode !== undefined) hasMemoryMode = !!msg.hasMemoryMode;
             if (msg.memGroups !== undefined) setupMemoryGroups(msg.memGroups, msg.memStart || 0);
             if (msg.hasPowerControl) document.getElementById('powerBtn').style.display = 'flex';
+            if (msg.powerOnNeedsRemoteJack !== undefined) powerOnNeedsRemoteJack = !!msg.powerOnNeedsRemoteJack;
             if (msg.freedvModes) freedvModes = msg.freedvModes;
             updateWarningVisibility();
             applyUrlTune();
@@ -5596,6 +5613,18 @@ function equalizeVFO() { send({ cmd: 'equalizeVFO' }); }
 function toggleSplit() { send({ cmd: 'setSplit', value: !isSplit }); }
 function togglePower() {
     if (rigPoweredOn) {
+        var note = document.getElementById('powerConfirmNote');
+        if (note) {
+            if (powerOnNeedsRemoteJack) {
+                note.textContent = 'The ' + (rigModelName || 'radio') + ' only accepts the power-on '
+                    + 'command on its [REMOTE] jack, and its USB port goes dead in standby. '
+                    + 'Unless wfweb is wired to [REMOTE], you will not be able to switch the radio '
+                    + 'back on from here \u2014 you will have to press POWER on the radio itself.';
+                note.classList.add('visible');
+            } else {
+                note.classList.remove('visible');
+            }
+        }
         document.getElementById('powerConfirm').classList.add('visible');
     } else {
         doPowerOn();

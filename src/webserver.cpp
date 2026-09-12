@@ -474,6 +474,18 @@ void webServer::init(quint16 httpPort, quint16 wsPort)
     }
 }
 
+// Icom documents the IC-7600's power-on command (18 01) as accepted only at
+// the [REMOTE] jack, and the rig leaves its USB interface unpowered in
+// standby.  A wfweb session on the USB port can therefore switch that radio
+// off but can never switch it back on — the user has to walk over and press
+// POWER (issue #104).  Wired through [REMOTE] instead, power control works
+// normally, and nothing on the wire tells the two cable paths apart, so this
+// is a warning for the confirm dialog rather than a lost capability.
+static bool powerOnNeedsRemoteJack(const rigCapabilities *caps)
+{
+    return caps != Q_NULLPTR && caps->modelName == QLatin1String("IC-7600");
+}
+
 void webServer::receiveRigCaps(rigCapabilities *caps)
 {
     rigCaps = caps;
@@ -492,6 +504,8 @@ void webServer::receiveRigCaps(rigCapabilities *caps)
         // something to tune, so the TUNE tile and the FUNC TUNER button
         // follow that capability instead of appearing on every rig.
         obj["hasTuner"] = rigCaps->commands.contains(funcTunerStatus);
+        obj["hasPowerControl"] = rigCaps->commands.contains(funcPowerControl);
+        obj["powerOnNeedsRemoteJack"] = powerOnNeedsRemoteJack(rigCaps);
         addToneCaps(obj);
         addBandCaps(obj);
 
@@ -3098,6 +3112,7 @@ QJsonObject webServer::buildInfoJson() const
         info["txAudioAvailable"] = txAudioConfigured;
         info["hasFilterSettings"] = rigCaps->commands.contains(funcPBTInner);
         info["hasPowerControl"] = rigCaps->commands.contains(funcPowerControl);
+        info["powerOnNeedsRemoteJack"] = powerOnNeedsRemoteJack(rigCaps);
         info["hasMainSub"] = rigCaps->hasCommand29;
         // Repeater duplex: only the rigs whose .rig declares the offset
         // command (IC-705/9700/905/785x) can shift the TX frequency, so the
