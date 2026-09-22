@@ -1679,6 +1679,14 @@ void icomCommander::determineRigCaps()
     rigCaps.periodic.clear();
     rigCaps.roofing.clear();
     rigCaps.scopeModes.clear();
+    // Reloaded from the rig file below like every other table. Leaving these
+    // behind only bit on reconnect: openRig() reuses the same rigCommander and
+    // commonSetup() zeroes modelID, so this function runs again and appends a
+    // second copy of every tone. The memory-write encoder emits one value per
+    // matching entry, so each reconnect grew a 1A 00 frame by 8 bytes until the
+    // radio NGed it (#111).
+    rigCaps.ctcss.clear();
+    rigCaps.dtcs.clear();
 
     for (int i = meterNone; i < meterUnknown; i++)
     {
@@ -3429,28 +3437,39 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                         break;
                     case 'n':
                         payload.append(nul);
-                        for (const auto &tn: rigCaps.ctcss)
-                            if (tn.name == mem.tone)
+                        for (const auto &tn: rigCaps.ctcss) {
+                            if (tn.name == mem.tone) {
                                 payload.append(bcdEncodeInt(tn.tone));
-                        break;
+                                break;
+                            }
+                        }
                         break;
                     case 'N':
                         payload.append(nul);
-                        for (const auto &tn: rigCaps.ctcss)
-                            if (tn.name == mem.toneB)
+                        for (const auto &tn: rigCaps.ctcss) {
+                            if (tn.name == mem.toneB) {
                                 payload.append(bcdEncodeInt(tn.tone));
+                                break;
+                            }
+                        }
                         break;
                     case 'o':
                         payload.append(nul);
-                        for (const auto &tn: rigCaps.ctcss)
-                            if (tn.name == mem.tsql)
+                        for (const auto &tn: rigCaps.ctcss) {
+                            if (tn.name == mem.tsql) {
                                 payload.append(bcdEncodeInt(tn.tone));
+                                break;
+                            }
+                        }
                         break;
                     case 'O':
                         payload.append(nul);
-                        for (const auto &tn: rigCaps.ctcss)
-                            if (tn.name == mem.tsqlB)
+                        for (const auto &tn: rigCaps.ctcss) {
+                            if (tn.name == mem.tsqlB) {
                                 payload.append(bcdEncodeInt(tn.tone));
+                                break;
+                            }
+                        }
                         break;
                     case 'p':
                         payload.append((mem.dtcsp << 3 & 0x10) |  (mem.dtcsp & 0x01));
@@ -3529,9 +3548,12 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                                     if (mem.tonemode) {
                                         payload.append(bcdEncodeChar(mem.tonemode));
                                         payload.append(nul);
-                                        for (const auto &tn: rigCaps.ctcss)
-                                            if (tn.name == mem.tsql)
+                                        for (const auto &tn: rigCaps.ctcss) {
+                                            if (tn.name == mem.tsql) {
                                                 payload.append(bcdEncodeInt(tn.tone));
+                                                break;
+                                            }
+                                        }
                                         payload.append(bcdEncodeChar(mem.dtcsp));
                                         payload.append(bcdEncodeInt(mem.dtcs));
                                     }

@@ -1081,6 +1081,11 @@ void kenwoodCommander::determineRigCaps()
     rigCaps.periodic.clear();
     rigCaps.roofing.clear();
     rigCaps.scopeModes.clear();
+    // Same reconnect leak the Icom path hit -- these are reloaded below, so
+    // they have to be emptied here or every reconnect appends another copy of
+    // the tone tables and lengthens the memory-write frame (#111).
+    rigCaps.ctcss.clear();
+    rigCaps.dtcs.clear();
 
     for (int i = meterNone; i < meterUnknown; i++)
     {
@@ -1894,25 +1899,37 @@ void kenwoodCommander::receiveCommand(funcs func, QVariant value, uchar receiver
                         break;
                     case 'n':
                     {
-                        for (const auto &tn: rigCaps.ctcss)
-                            if (tn.name == mem.tone)
+                        for (const auto &tn: rigCaps.ctcss) {
+                            if (tn.name == mem.tone) {
                                 payload.append(QString::number(tn.tone).rightJustified(parse.len, QChar('0'),true).toLatin1());
+                                break;
+                            }
+                        }
                         break;
                     }
                     case 'N':
-                        for (const auto &tn: rigCaps.ctcss)
-                            if (tn.name == mem.toneB)
+                        for (const auto &tn: rigCaps.ctcss) {
+                            if (tn.name == mem.toneB) {
                                 payload.append(QString::number(tn.tone).rightJustified(parse.len, QChar('0'),true).toLatin1());
+                                break;
+                            }
+                        }
                         break;
                     case 'o':
-                        for (const auto &tn: rigCaps.ctcss)
-                            if (tn.name == mem.tsql)
+                        for (const auto &tn: rigCaps.ctcss) {
+                            if (tn.name == mem.tsql) {
                                 payload.append(QString::number(tn.tone).rightJustified(parse.len, QChar('0'),true).toLatin1());
+                                break;
+                            }
+                        }
                         break;
                     case 'O':
-                        for (const auto &tn: rigCaps.ctcss)
-                            if (tn.name == mem.tsqlB)
+                        for (const auto &tn: rigCaps.ctcss) {
+                            if (tn.name == mem.tsqlB) {
                                 payload.append(QString::number(tn.tone).rightJustified(parse.len, QChar('0'),true).toLatin1());
+                                break;
+                            }
+                        }
                         break;
                     case 'q':
                         payload.append(QString::number(mem.dtcs).rightJustified(parse.len, QChar('0'),true).toLatin1());
