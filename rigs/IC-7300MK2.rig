@@ -1,5 +1,5 @@
 [General]
-Version=2.12
+Version=2.13
 
 [Rig]
 Manufacturer=0
@@ -21,7 +21,7 @@ HasCommand29=false
 MemGroups=0
 Memories=101
 MemStart=1
-MemFormat=%01.2b %3.1d %4.5f %9.1g %10.1h %11.1k %12.3n %15.3o %18.5F %23.1G %24.1H %25.1K %26.3N %29.3O %32.10z
+MemFormat=%01.2b %3.1d %4.5f %9.1g %10.1h %11.1k %12.3n %15.3o %18.5F %23.1G %24.1H %25.1K %26.3N %29.3O %32.16z
 SatMemories=0
 SatFormat=
 Commands\1\Type=Freq (TRX)
