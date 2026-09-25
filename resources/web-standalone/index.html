@@ -2649,6 +2649,7 @@ body.digi-open #bottomBar { grid-row: 5; }
                 <button id="digiLogQsoBtn" class="digi-action-btn wf-btn">Log QSO</button>
                 <button id="digiEraseBtn" class="digi-action-btn wf-btn">Erase</button>
                 <button id="digiHoldTxBtn" class="digi-action-btn wf-btn">Hold TX</button>
+                <button id="digiHoldRxBtn" class="digi-action-btn wf-btn">Hold RX</button>
                 <div class="digi-freq-group">
                     <span class="digi-field-label">TX:</span>
                     <input type="number" id="digiTxFreqDisplay" class="digi-tx-freq-display" min="300" max="2800" step="1" value="1000">
@@ -3291,6 +3292,7 @@ var digiCqOnly = false;
 var digiTxFreq = 1000;      // audio TX frequency (Hz) within SSB passband
 var digiRxFreq = 1000;      // audio RX frequency (Hz) — decodes here also appear in Directed
 var digiHoldTxFreq = false; // when true, clicking a row does not change TX freq
+var digiHoldRxFreq = false; // when true, clicking a row does not change RX freq
 // Waterfall renderer + circular sample buffer live in
 // resources/web-shared/wf-canvas.js (loaded above). WF_FFT_SIZE,
 // WF_DISPLAY_BINS, WF_FREQ_LOW, WF_FREQ_HIGH, wfBuf, wfBufPos,
@@ -8737,6 +8739,7 @@ function toggleDigiBar() {
         updateDigiMsgRows();
         updateDigiTxFreqDisplay(); // also draws waterfall
         updateDigiHoldTxBtn();
+        updateDigiHoldRxBtn();
     } else {
         bar.classList.add('hidden');
         document.body.classList.remove('digi-open');
@@ -8933,6 +8936,20 @@ function updateDigiHoldTxBtn() {
     var btn = document.getElementById('digiHoldTxBtn');
     if (!btn) return;
     if (digiHoldTxFreq) {
+        btn.classList.add('active');
+        btn.style.background = '#048';
+        btn.style.color = '#fff';
+    } else {
+        btn.classList.remove('active');
+        btn.style.background = '';
+        btn.style.color = '';
+    }
+}
+
+function updateDigiHoldRxBtn() {
+    var btn = document.getElementById('digiHoldRxBtn');
+    if (!btn) return;
+    if (digiHoldRxFreq) {
         btn.classList.add('active');
         btn.style.background = '#048';
         btn.style.color = '#fff';
@@ -9343,12 +9360,10 @@ function digiRowClick(el) {
     // Ignore clicks on our own transmissions (FROM = parts[1])
     var fromCall = /^CQ$/i.test(parts[0]) ? (parts.length >= 3 ? parts[parts.length - 2] : parts[1]) : parts[1];
     if (myCall && fromCall && fromCall.toUpperCase() === myCall.toUpperCase()) return;
-    // Set TX and RX frequency to match clicked station (unless Hold is enabled)
-    if (freq >= 200 && freq <= 3000 && !digiHoldTxFreq) {
-        digiTxFreq = freq;
-        digiRxFreq = freq;
-        updateDigiTxFreqDisplay();
-        updateDigiRxFreqDisplay();
+    // Set TX and RX frequency independently unless the corresponding Hold is enabled.
+    if (freq >= 200 && freq <= 3000) {
+        if (!digiHoldTxFreq) { digiTxFreq = freq; updateDigiTxFreqDisplay(); }
+        if (!digiHoldRxFreq) { digiRxFreq = freq; updateDigiRxFreqDisplay(); }
     }
     if (digiContestMode === 'FD') {
         if (!digiFdReady()) { updateDigiStatus('Set FD class/section', ''); updateDigiMsgRows(); return; }
@@ -11211,12 +11226,8 @@ function initDigiHandlers() {
             // Click position = center of signal; subtract offset to get base (tone 0) frequency
             var freq = WF_FREQ_LOW + Math.round(((clientX - rect.left) / rect.width) * (WF_FREQ_HIGH - WF_FREQ_LOW)) - Math.round(digiCenterOffset());
             freq = Math.max(200, Math.min(2700, freq));
-            if (!digiHoldTxFreq) {
-                digiTxFreq = freq;
-                digiRxFreq = freq;
-                updateDigiTxFreqDisplay();
-                updateDigiRxFreqDisplay();
-            }
+            if (!digiHoldTxFreq) { digiTxFreq = freq; updateDigiTxFreqDisplay(); }
+            if (!digiHoldRxFreq) { digiRxFreq = freq; updateDigiRxFreqDisplay(); }
         };
         wfBar.addEventListener('mousedown', handleWfPointer);
         wfBar.addEventListener('touchstart', handleWfPointer, { passive: false });
@@ -11402,6 +11413,16 @@ function initDigiHandlers() {
             digiHoldTxFreq = !digiHoldTxFreq;
             updateDigiHoldTxBtn();
             console.log('[DIGI] Hold TX Freq: ' + (digiHoldTxFreq ? 'ON' : 'OFF'));
+        });
+    }
+
+    // Hold RX Freq button
+    var holdRxBtn = document.getElementById('digiHoldRxBtn');
+    if (holdRxBtn) {
+        holdRxBtn.addEventListener('click', function() {
+            digiHoldRxFreq = !digiHoldRxFreq;
+            updateDigiHoldRxBtn();
+            console.log('[DIGI] Hold RX Freq: ' + (digiHoldRxFreq ? 'ON' : 'OFF'));
         });
     }
 
