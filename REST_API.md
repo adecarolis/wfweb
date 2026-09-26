@@ -209,6 +209,8 @@ curl -s http://localhost:8081/api/v1/radio | jq .
     "bands": [{"num": 20, "name": "160m", "start": 1800000, "end": 2000000}, {"num": 6, "name": "2m", "start": 144000000, "end": 148000000}],
     "filters": [{"num": 1, "name": "FIL1"}, {"num": 2, "name": "FIL2"}, {"num": 3, "name": "FIL3"}],
     "spans": [{"reg": 1, "name": "±2.5kHz", "freq": 5000}],
+    "scopeModes": [{"num": 0, "name": "Center Mode"}, {"num": 1, "name": "Fixed Mode"}],
+    "scopeFixedEdges": true,
     "txMeters": [{"kind": "swr", "cal": [[0, 1.0], [48, 1.5], [120, 3.0], [241, 6.0]], "red": 3.0}]
   },
   "status": {

@@ -669,7 +669,8 @@ bool cachingQueue::compare(QVariant a, QVariant b)
         } else if (!strcmp(a.typeName(),"scopeData") || !strcmp(a.typeName(),"memoryType")
                    || !strcmp(a.typeName(), "memoryTagType") || !strcmp(a.typeName(), "memorySplitType")
                    || !strcmp(a.typeName(),"bandStackType")  || !strcmp(a.typeName(),"timekind") || !strcmp(a.typeName(),"datekind")
-                   || !strcmp(a.typeName(),"meterkind") || !strcmp(a.typeName(),"udpPreferences")) {
+                   || !strcmp(a.typeName(),"meterkind") || !strcmp(a.typeName(),"udpPreferences")
+                   || !strcmp(a.typeName(),"scopeEdgeSetting")) {
             changed=true; // Always different
         } else {
             // Maybe Try simple comparison?

@@ -90,6 +90,19 @@ private:
     quint8 scopeMode = 0;            // 0x14 (0=center, 1=fixed, 2=scroll-C, 3=scroll-F)
     quint8 scopeSpanIdx = 1;         // 0x15 (index into IC-7300 spans table; 1 = ±5 kHz)
     quint8 scopeEdge = 1;            // 0x16 (1..3 in BCD)
+    // Window for the non-centre modes (0x14 = 1..3). Built from the VFO and
+    // the centre span the first time such a sweep goes out, then kept until
+    // the mode or span changes: FIXED never moves (VFO outside it = out of
+    // range), the SCROLL modes slide by half a span when the VFO crosses an
+    // edge. Close enough to the rig to exercise the browser's fixed-glass
+    // rendering; a real rig takes FIXED edges from its per-band edge sets.
+    quint64 scopeWinLo = 0;
+    quint64 scopeWinHi = 0;
+    bool scopeWinValid = false;
+    // Edge set written with 0x27 0x1E (range/edge numbers are accepted but
+    // not modelled per range): FIXED uses it instead of a VFO-centred window.
+    quint64 scopeFixedLo = 0;
+    quint64 scopeFixedHi = 0;
     bool scopeHold = false;          // 0x17
     qint16 scopeRefTenths = 0;       // 0x19 (-300..+300, in 0.1 dB units)
     quint8 scopeSpeed = 1;           // 0x1a (0=fast, 1=mid, 2=slow)

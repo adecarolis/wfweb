@@ -335,6 +335,7 @@ struct rigCapabilities {
     std::vector <toneInfo> dtcs;
     std::vector <genericType> roofing;
     std::vector <genericType> scopeModes;
+    std::vector <genericType> scopeEdgeRanges;   // 0x27 0x1E range numbers: num, minFreq..maxFreq (Hz)
     std::vector <stepType> steps;
     std::vector <widthsType> widths;
     quint8 bsr[24] = {0};

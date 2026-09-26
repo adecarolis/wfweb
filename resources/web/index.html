@@ -610,6 +610,11 @@ html, body {
     font-size: 11px; color: #0cc; font-family: var(--font-mono);
     text-align: center; white-space: nowrap;
 }
+/* A row whose setting has no effect in the current scope mode (HIST outside
+   CENTER, SPAN in FIXED) stays in place but dimmed and inert, so the sheet
+   never re-flows under a finger. */
+.scope-row.disabled { opacity: 0.35; pointer-events: none; }
+.scope-row.hidden { display: none; }
 #spanOverlay .ov-btn { min-height: 30px; font-size: 12px; }
 @media (max-width: 600px) {
     #spanOverlay .ov-btn { min-height: 28px; font-size: 11px; }
@@ -2234,12 +2239,18 @@ body.digi-open #bottomBar { grid-row: 5; }
 
         <!-- Span overlay -->
         <div id="spanOverlay" class="overlay">
-            <div class="scope-row"><span class="scope-row-label">Span</span>
+            <div class="scope-row" id="spanRow"><span class="scope-row-label">Span</span>
                 <div class="overlay-grid" id="spanGrid"></div></div>
-            <div class="scope-row"><span class="scope-row-label">Mode</span>
+            <!-- SPAN doubles as the FIXED window picker (BAND / a width) on rigs
+                 that let us write their edges. MODE is the rig's own scope mode
+                 (CENTER / FIXED / SCROLL); HIST is what this page does with the
+                 waterfall history when a CENTER-mode tune moves the window. -->
+            <div class="scope-row" id="scopeModeRow"><span class="scope-row-label">Mode</span>
+                <div class="overlay-grid" id="scopeModeGrid"></div></div>
+            <div class="scope-row" id="wfHistRow"><span class="scope-row-label">Hist</span>
                 <div class="overlay-grid">
-                    <button class="ov-btn active" id="wfTrackFixedBtn" onclick="setWfTracking('fixed')" title="Waterfall stays put on tune, like the rig's screen">FIXED</button>
-                    <button class="ov-btn" id="wfTrackTrackBtn" onclick="setWfTracking('track')" title="Waterfall history pans on tune so frequencies stay aligned">TRACK</button>
+                    <button class="ov-btn active" id="wfHistHoldBtn" onclick="setWfHistory('hold')" title="Waterfall history stays where it was painted when you tune, like the rig's screen">HOLD</button>
+                    <button class="ov-btn" id="wfHistPanBtn" onclick="setWfHistory('pan')" title="Waterfall history pans when you tune so frequencies stay aligned">PAN</button>
                 </div></div>
             <div class="scope-row"><span class="scope-row-label">Ref</span>
                 <div class="overlay-grid">
@@ -2945,7 +2956,18 @@ var wfOffCtx = null;
 var spectRenderPending = false;
 var colorTable = null;
 // Browser-side scope settings (persisted in localStorage).
-var wfTracking = 'fixed';        // 'fixed' | 'track' — waterfall scrolling on tune, see setWfTracking()
+var wfHistory = 'hold';          // 'hold' | 'pan' — what the waterfall history does on a CENTER-mode tune, see setWfHistory()
+var scopeMode = 0;               // the rig's scope mode as each sweep reports it: 0 CENTER, 1 FIXED, 2 SCROLL-C, 3 SCROLL-F (0x27 0x14)
+var scopeModePref = null;        // last mode seen or tapped (localStorage wfScopeMode); re-commanded on connect
+var SCOPE_MODE_LABELS = { 0: 'CENTER', 1: 'FIXED', 2: 'SCROLL', 3: 'SCROLL-F' };   // 2 is the rig's "SCROLL-C"; the suffix only tells it from -F, which we don't offer
+var availableScopeModes = [];    // [{num,name}] the rig offers, from rigInfo; the keys in the SPAN sheet
+var spectOor = false;            // this sweep is flagged out of range (FIXED: VFO outside the window, data blank)
+var scopeDragFreq = 0;           // frequency under the finger while dragging on fixed glass (modes != CENTER)
+var scopeDragPaged = false;      // this drag pushed the VFO past an edge (SCROLL): no more tunes until the finger comes back in
+var scopeFixedEdges = false;     // rigInfo: the rig file has the 0x27 0x1E range table, so FIXED windows can be set from here
+var fixedEdgeChoice = 'band';    // a browser-set FIXED window covers: 'band' = the ham band, or a span index = that width around the VFO
+var fixedWindowOwned = false;    // this page wrote the current FIXED window, so it may follow band changes
+var scopeFixedBand = null;       // band label that window was built for
 var wfSpeed = 'mid';             // 'slow' | 'mid' | 'fast' — waterfall rows per sweep, mirrored to the rig's scope speed
 var WF_SPEED_ROWS = { slow: 1, mid: 2, fast: 4 };
 var WF_SPEED_CIV = { fast: 0, mid: 1, slow: 2 };   // CI-V 27 1A values
@@ -3063,6 +3085,7 @@ var digiLogEditIdx = -1; // index of row currently being edited, -1 = none
 var digiHashBook = null;
 var digiQsoState = 'IDLE';
 var digiQsoPartner = '';
+var digiQsoPartnerBusyWith = ''; // third station the partner was working when we clicked (tail-end); their traffic to it must not trip the auto-desist
 var digiTheirReport = '';  // report they sent us
 var digiOurReport = '';    // report we sent them (for logging)
 // ── ARRL Field Day (#73) — opt-in contest mode; '' leaves standard FT8/FT4 unchanged ──
@@ -3212,6 +3235,8 @@ function handleMessage(msg) {
                 if (msg.audioError) showAudioError(msg.audioError);
                 updateTxAudioAvailable(msg.txAudioAvailable || false);
                 if (msg.spans) populateSpans(msg.spans);
+                if (msg.scopeModes) populateScopeModes(msg.scopeModes);
+                if (msg.scopeFixedEdges !== undefined) scopeFixedEdges = !!msg.scopeFixedEdges;
                 if (msg.preamps) populatePreamps(msg.preamps);
                 if (msg.attenuators) populateAttenuators(msg.attenuators);
             if (msg.bands) populateBands(msg.bands);
@@ -3245,6 +3270,8 @@ function handleMessage(msg) {
             if (msg.audioError) showAudioError(msg.audioError);
             updateTxAudioAvailable(msg.txAudioAvailable || false);
             if (msg.spans) populateSpans(msg.spans);
+            if (msg.scopeModes) populateScopeModes(msg.scopeModes);
+            if (msg.scopeFixedEdges !== undefined) scopeFixedEdges = !!msg.scopeFixedEdges;
             if (msg.preamps) populatePreamps(msg.preamps);
             if (msg.attenuators) populateAttenuators(msg.attenuators);
             if (msg.bands) populateBands(msg.bands);
@@ -3317,6 +3344,7 @@ function handleMessage(msg) {
             updateToneStatus(msg);
             if (msg.duplexOffset !== undefined) updateDupOffset(msg.duplexOffset);
             if (msg.spanIndex !== undefined) updateSpanIndex(msg.spanIndex);
+            if (msg.scopeMode !== undefined) scopeModeReported(msg.scopeMode);
             if (msg.nb !== undefined) updateToggle('nb', msg.nb);
             if (msg.nr !== undefined) updateToggle('nr', msg.nr);
             if (msg.autoNotch !== undefined) updateToggle('anf', msg.autoNotch);
@@ -3364,6 +3392,7 @@ function handleMessage(msg) {
             updateToneStatus(msg);
             if (msg.duplexOffset !== undefined) updateDupOffset(msg.duplexOffset);
             if (msg.spanIndex !== undefined) updateSpanIndex(msg.spanIndex);
+            if (msg.scopeMode !== undefined) scopeModeReported(msg.scopeMode);
             if (msg.nb !== undefined) updateToggle('nb', msg.nb);
             if (msg.nr !== undefined) updateToggle('nr', msg.nr);
             if (msg.autoNotch !== undefined) updateToggle('anf', msg.autoNotch);
@@ -3505,6 +3534,7 @@ function updateFrequency(hz) {
         // memory channel). Show dashes rather than drawing 0.000.000.
         currentFreq = 0;
         lastShownFreq = 0;
+        scopeRenderOnTune();
         var blank = document.getElementById('freqDisplay');
         blank.innerHTML = '';
         '---.---.---'.split('').forEach(function(ch) {
@@ -3516,6 +3546,7 @@ function updateFrequency(hz) {
         return;
     }
     currentFreq = hz;
+    scopeRenderOnTune();
 
     // Crossing a front-end boundary (IC-705: 74.8 MHz) changes which P.AMP and
     // ATT steps the rig has, and changing band changes the repeater shifts on
@@ -3538,6 +3569,9 @@ function updateFrequency(hz) {
             break;
         }
     }
+    // A window this page set follows the band: on a band change the rig
+    // switches to the new range's own edge set 3, whatever was left there.
+    if (scopeMode === 1 && fixedWindowOwned && bandLabelOf(hz) !== scopeFixedBand) applyFixedWindow();
 
     lastShownFreq = hz;
     // Store frequency for current VFO only (not in memory mode — the recalled
@@ -4214,12 +4248,20 @@ function updateAntennaState(ant, rx) {
 function updateSpanIndex(idx) {
     currentSpanIndex = idx;
     if (currentPanel === 'span') renderSpanOverlay();
-    // Update span indicator
+    // Update span indicator. On fixed glass (FIXED / SCROLL-F) the width comes
+    // from the rig's edge set, not the span setting, so show the window width.
     var spanText = 'SPAN';
-    if (idx >= 0 && idx < availableSpans.length) {
+    if ((scopeMode === 1 || scopeMode === 3) && spectEndFreq > spectStartFreq) {
+        spanText = formatSpanWidth((spectEndFreq - spectStartFreq) * 1e6);
+    } else if (idx >= 0 && idx < availableSpans.length) {
         spanText = availableSpans[idx].name;
     }
     document.getElementById('spanIndicator').textContent = spanText;
+}
+function formatSpanWidth(hz) {
+    if (hz >= 1e6) return (hz / 1e6).toFixed(hz % 1e6 ? 1 : 0) + 'M';
+    var k = hz / 1e3;
+    return (k >= 100 ? k.toFixed(0) : (k % 1 ? k.toFixed(1) : k.toFixed(0))) + 'k';
 }
 
 // ============================================================
@@ -5714,13 +5756,39 @@ function cycleAntenna() {
 function renderSpanOverlay() {
     var grid = document.getElementById('spanGrid');
     grid.innerHTML = '';
+    // In FIXED, on a rig whose edges we can write, this row picks the window
+    // instead of the span: BAND = the whole ham band, a span key = that width
+    // around the VFO (see applyFixedWindow).
+    var pickWindow = scopeMode === 1 && scopeFixedEdges;
+    if (pickWindow) {
+        var bb = document.createElement('button');
+        bb.className = 'ov-btn' + (fixedEdgeChoice === 'band' ? ' active' : '');
+        bb.textContent = 'BAND';
+        bb.onclick = function() { setFixedWindow('band'); };
+        grid.appendChild(bb);
+    }
     for (var i = 0; i < availableSpans.length; i++) {
         var btn = document.createElement('button');
-        btn.className = 'ov-btn' + (i === currentSpanIndex ? ' active' : '');
+        var active = pickWindow ? (fixedEdgeChoice === i) : (i === currentSpanIndex);
+        btn.className = 'ov-btn' + (active ? ' active' : '');
         btn.textContent = availableSpans[i].name;
-        btn.onclick = (function(idx) { return function() { setSpan(idx); }; })(i);
+        btn.onclick = (function(idx) { return function() {
+            if (scopeMode === 1 && scopeFixedEdges) setFixedWindow(idx); else setSpan(idx);
+        }; })(i);
         grid.appendChild(btn);
     }
+    var mg = document.getElementById('scopeModeGrid');
+    mg.innerHTML = '';
+    for (var m = 0; m < availableScopeModes.length; m++) {
+        var num = availableScopeModes[m].num;
+        var mb = document.createElement('button');
+        mb.className = 'ov-btn';
+        mb.textContent = SCOPE_MODE_LABELS[num] || availableScopeModes[m].name;
+        mb.onclick = (function(n) { return function() { setScopeMode(n); }; })(num);
+        mg.appendChild(mb);
+    }
+    document.getElementById('scopeModeRow').classList.toggle('hidden', availableScopeModes.length === 0);
+    updateScopeModeUi();
     document.getElementById('spanOverlay').classList.add('visible');
 }
 
@@ -5841,6 +5909,14 @@ function renderMemoryList() {
         row.className = 'memory-row' + (isCurrent ? ' current' : '');
         row.setAttribute('data-key', keys[i]);
         var name = (mem.name || '').trim();
+        // "+ Save" labels a channel with its own frequency and mode
+        // ("14.200 USB"), and the rig may truncate that to its name field.
+        // Shown as a name it just restates the line below it, and reads like
+        // a second, differently formatted frequency — so drop it and let the
+        // row show the frequency alone. A name the operator typed is kept
+        // (#108).
+        var autoLabel = ((mem.frequency || 0) / 1e6).toFixed(3) + ' ' + (mem.mode || '');
+        if (name.length >= 8 && autoLabel.indexOf(name) === 0) name = '';
         var sub = formatMemFreq(mem.frequency) + ' \u00b7 ' + (mem.mode || '?');
         var toneBadge = memToneBadge(mem);
         if (toneBadge) sub += ' \u00b7 ' + toneBadge;
@@ -6005,6 +6081,7 @@ function startMemoryRename(row, m) {
     input.type = 'text';
     input.maxLength = 16;
     input.className = 'mem-rename-input';
+    input.placeholder = 'channel name';
     input.value = (m.name || '').trim();
     main.innerHTML = '';
     main.appendChild(input);
@@ -6228,6 +6305,12 @@ function updateMemPanelVfoRow() {
         var el = document.getElementById(segs[k]);
         if (el) el.classList.toggle('active', currentVfo === k);
     }
+    // A Main/Sub rig (IC-7600/7610/785x/7760) has no VFO A/B at all, so name
+    // the two bands the way the radio and the VFO tile do (#108).
+    var segA = document.getElementById('memVfoA');
+    var segB = document.getElementById('memVfoB');
+    if (segA) segA.textContent = hasMainSub ? 'MAIN' : 'VFO A';
+    if (segB) segB.textContent = hasMainSub ? 'SUB'  : 'VFO B';
     var memBtn = document.getElementById('memVfoMem');
     if (memBtn) {
         memBtn.style.display = hasMemoryMode ? '' : 'none';
@@ -6847,8 +6930,17 @@ function wfFillBlank(d, from, to) {
 
 function loadScopeSettings() {
     try {
-        var t = localStorage.getItem('wfTracking');
-        if (t === 'track' || t === 'fixed') wfTracking = t;
+        var hs = localStorage.getItem('wfHistory');
+        if (hs === null) {
+            // Before #113 this setting was called FIXED / TRACK under 'wfTracking';
+            // FIXED now names the rig's scope mode, so carry the old pick over once.
+            var t = localStorage.getItem('wfTracking');
+            if (t === 'track') hs = 'pan'; else if (t === 'fixed') hs = 'hold';
+            if (hs) { localStorage.setItem('wfHistory', hs); localStorage.removeItem('wfTracking'); }
+        }
+        if (hs === 'hold' || hs === 'pan') wfHistory = hs;
+        var sm = parseInt(localStorage.getItem('wfScopeMode'), 10);
+        if (sm >= 0 && sm <= 3) scopeModePref = sm;
         var r = localStorage.getItem('wfScopeRef');
         if (r !== null && r !== '') {
             var v = parseFloat(r);
@@ -6857,7 +6949,7 @@ function loadScopeSettings() {
         var sp = localStorage.getItem('wfSpeed');
         if (WF_SPEED_ROWS[sp]) wfSpeed = sp;
     } catch (e) {}
-    setWfTracking(wfTracking, true);
+    setWfHistory(wfHistory, true);
     setWfSpeed(wfSpeed, true);
     updateScopeRefUi();
 }
@@ -6873,14 +6965,110 @@ function setWfSpeed(sp, quiet) {
     send({ cmd: 'setScopeSpeed', value: WF_SPEED_CIV[wfSpeed] });
 }
 
-function setWfTracking(mode, quiet) {
-    wfTracking = mode === 'track' ? 'track' : 'fixed';
-    var fb = document.getElementById('wfTrackFixedBtn'), tb = document.getElementById('wfTrackTrackBtn');
-    if (fb) fb.classList.toggle('active', wfTracking === 'fixed');
-    if (tb) tb.classList.toggle('active', wfTracking === 'track');
-    // FIXED: nothing slides and nothing pauses, even mid-drag.
-    if (wfTracking === 'fixed') { scopeSetVisualPan(0); scopeFreezeDuringDrag = false; }
-    if (!quiet) { try { localStorage.setItem('wfTracking', wfTracking); } catch (e) {} }
+// Waterfall history on a CENTER-mode tune: HOLD leaves it where it was
+// painted (the rig's own screen), PAN slides it so frequencies stay aligned.
+// Meaningless on fixed glass, where the window only moves when the rig
+// scrolls it (see shiftWaterfallForFreqChange).
+function setWfHistory(mode, quiet) {
+    wfHistory = mode === 'pan' ? 'pan' : 'hold';
+    var hb = document.getElementById('wfHistHoldBtn'), pb = document.getElementById('wfHistPanBtn');
+    if (hb) hb.classList.toggle('active', wfHistory === 'hold');
+    if (pb) pb.classList.toggle('active', wfHistory === 'pan');
+    // HOLD: nothing slides and nothing pauses, even mid-drag.
+    if (wfHistory === 'hold') { scopeSetVisualPan(0); scopeFreezeDuringDrag = false; }
+    if (!quiet) { try { localStorage.setItem('wfHistory', wfHistory); } catch (e) {} }
+}
+
+// The rig's scope mode (0x27 0x14). CENTER keeps the VFO mid-screen and
+// moves the band under it; FIXED and the SCROLL modes keep the window's
+// edges still and move the marker. We only offer CENTER / FIXED / SCROLL-C
+// (SCROLL-F needs an edge picker we don't have), but any mode the rig
+// reports is rendered: everything other than CENTER is drawn edge-based.
+function populateScopeModes(modes) {
+    availableScopeModes = (modes || []).filter(function(m) { return m.num >= 0 && m.num <= 2; });
+    if (currentPanel === 'span') renderSpanOverlay();
+}
+function setScopeMode(n) {
+    n = n | 0;
+    scopeModePref = n;
+    try { localStorage.setItem('wfScopeMode', String(n)); } catch (e) {}
+    send({ cmd: 'setScopeMode', value: n });
+    if (n === 1) applyFixedWindow();
+}
+
+// Browser-set FIXED window, on rigs whose rig file carries the fixed-edge
+// range table. 'band' covers the ham band the VFO is in; a span index is that
+// width around the VFO. The rig stores it as edge set 3 and switches to it
+// (setScopeEdges), so its own sets 1 and 2 stay as the operator left them.
+function setFixedWindow(choice) {
+    fixedEdgeChoice = choice;
+    applyFixedWindow();
+    if (currentPanel === 'span') renderSpanOverlay();
+}
+function bandLabelOf(hz) {
+    for (var b in BAND_RANGES) { var r = BAND_RANGES[b]; if (hz >= r[0] && hz < r[1]) return b; }
+    return null;
+}
+function applyFixedWindow() {
+    if (!scopeFixedEdges || !(currentFreq > 0)) return;
+    var lower, upper, band = bandLabelOf(currentFreq);
+    if (fixedEdgeChoice === 'band' && band) {
+        lower = BAND_RANGES[band][0]; upper = BAND_RANGES[band][1];
+    } else {
+        // Outside every ham band a BAND pick falls back to the current span's width.
+        var idx = fixedEdgeChoice === 'band' ? currentSpanIndex : fixedEdgeChoice;
+        var half = (idx >= 0 && idx < availableSpans.length) ? availableSpans[idx].freq : 0;
+        if (!(half > 0)) return;
+        lower = Math.max(0, currentFreq - half); upper = currentFreq + half;
+    }
+    fixedWindowOwned = true;
+    scopeFixedBand = band;
+    send({ cmd: 'setScopeEdges', lower: lower, upper: upper });
+}
+// The mode the rig reports, from every sweep's header (and the server's
+// cache). The rig is the truth: a tap here, its own MENU, another browser
+// all land through this path, and the last mode seen is what
+// scopeRigAssert() re-commands on the next connect, so browsers converge
+// instead of fighting over a stale tap.
+function scopeModeReported(m) {
+    m = m & 0xFF;
+    if (m === scopeMode) return;
+    scopeMode = m;
+    scopeModePref = m;
+    try { localStorage.setItem('wfScopeMode', String(m)); } catch (e) {}
+    // New glass: history painted for the old window is meaningless (a CENTER
+    // span can be as wide as the FIXED edges, so the span-change blank would
+    // not fire), the trace snaps, and nothing stays sliding or paused.
+    if (wfImageData) { wfFillBlank(wfImageData.data, 0, wfImageData.data.length); wfBufDirty = true; }
+    spectHold.length = 0;
+    spectShown = null;
+    scopeSetVisualPan(0);
+    scopeFreezeDuringDrag = false;
+    if (m !== 1) { fixedWindowOwned = false; scopeFixedBand = null; }
+    updateScopeModeUi();
+    updateSpanIndex(currentSpanIndex);
+    if (currentPanel === 'span') renderSpanOverlay();
+    if (!spectRenderPending) { spectRenderPending = true; requestAnimationFrame(renderScope); }
+}
+function updateScopeModeUi() {
+    var mg = document.getElementById('scopeModeGrid');
+    if (mg) {
+        for (var i = 0; i < mg.children.length && i < availableScopeModes.length; i++)
+            mg.children[i].classList.toggle('active', availableScopeModes[i].num === scopeMode);
+    }
+    // HIST only matters while the window follows the VFO (CENTER). SPAN picks
+    // the span in CENTER / SCROLL and the window in FIXED (where the rig lets
+    // us write its edges); SCROLL-F and a FIXED we can't set leave it inert.
+    var hr = document.getElementById('wfHistRow'), sr = document.getElementById('spanRow');
+    if (hr) hr.classList.toggle('disabled', scopeMode !== 0);
+    if (sr) sr.classList.toggle('disabled', (scopeMode === 1 && !scopeFixedEdges) || scopeMode === 3);
+}
+// On fixed glass the marker sits at the VFO, so it has to move on every
+// tune, not only when the next sweep lands.
+function scopeRenderOnTune() {
+    if (scopeMode === 0 || spectRenderPending) return;
+    spectRenderPending = true;
+    requestAnimationFrame(renderScope);
 }
 
 // REF: null = AUTO (the rig sits at 0.0 dB and the browser dials the
@@ -6901,6 +7089,9 @@ function stepScopeRef(dir) { setScopeRef((scopeRefDb || 0) + dir * 2.5); }
 function scopeRigAssert() {
     if (scopeRefDb !== null) send({ cmd: 'setScopeRef', value: Math.round(scopeRefDb * 10) });
     send({ cmd: 'setScopeSpeed', value: WF_SPEED_CIV[wfSpeed] });
+    // No pick stored yet: adopt whatever the rig is in (it is reported with
+    // the first sweep and remembered from then on).
+    if (scopeModePref !== null) send({ cmd: 'setScopeMode', value: scopeModePref });
 }
 function updateScopeRefUi() {
     var val = document.getElementById('scopeRefValue');
@@ -6990,10 +7181,13 @@ function handleBinaryMessage(buffer) {
         }
         return;
     }
+    // [0x01][scopeMode][outOfRange][pad][startMHz f32][endMHz f32][pixels]
     if (msgType !== 0x01 || buffer.byteLength < 13) return;
     if (scopeFreezeDuringDrag) return;
     if (scopeDragPendingReset) { scopeDragPendingReset = false; scopeSetVisualPan(0); }
 
+    scopeModeReported(view.getUint8(1));
+    spectOor = view.getUint8(2) === 1;
     prevSpectStartFreq = spectStartFreq;
     prevSpectEndFreq = spectEndFreq;
     spectStartFreq = view.getFloat32(4, true);
@@ -7001,16 +7195,27 @@ function handleBinaryMessage(buffer) {
     spectData = new Uint8Array(buffer, 12);
     if (spectData.length !== spectDataLen) { spectDataLen = spectData.length; initWaterfallBuffer(spectDataLen); }
 
-    // Update scope edge labels
+    // Update scope edge labels: offsets from the VFO in CENTER, the window's
+    // own edges once the glass is fixed.
     if (spectStartFreq > 0 && spectEndFreq > spectStartFreq) {
-        var halfSpan = (spectEndFreq - spectStartFreq) / 2;
-        document.getElementById('spanEdgeLeft').textContent = '-' + (halfSpan * 1000).toFixed(0);
-        document.getElementById('spanEdgeRight').textContent = '+' + (halfSpan * 1000).toFixed(0);
+        var seL = document.getElementById('spanEdgeLeft'), seR = document.getElementById('spanEdgeRight');
+        if (scopeMode === 0) {
+            var halfSpan = (spectEndFreq - spectStartFreq) / 2;
+            seL.textContent = '-' + (halfSpan * 1000).toFixed(0);
+            seR.textContent = '+' + (halfSpan * 1000).toFixed(0);
+        } else {
+            seL.textContent = spectStartFreq.toFixed(3);
+            seR.textContent = spectEndFreq.toFixed(3);
+        }
+        if ((scopeMode === 1 || scopeMode === 3) &&
+            (spectStartFreq !== prevSpectStartFreq || spectEndFreq !== prevSpectEndFreq)) updateSpanIndex(currentSpanIndex);
     }
 
     shiftWaterfallForFreqChange();
     updateWaterfallRow();
-    spectUpdateHold();
+    // Out of range carries no signal: paint the blank rows, but don't let a
+    // zero floor drive AUTO REF or the peak hold, and don't ease into it.
+    if (spectOor) spectHold.length = 0; else spectUpdateHold();
     spectBeginTween();
     if (!spectRenderPending) { spectRenderPending = true; requestAnimationFrame(renderScope); }
 }
@@ -7026,9 +7231,12 @@ function shiftWaterfallForFreqChange() {
         wfFillBlank(d, 0, d.length);
         return;
     }
-    // FIXED leaves the history where it was painted (the rig's own behaviour);
-    // only TRACK pans it so the frequencies still in view stay aligned.
-    if (wfTracking !== 'track') return;
+    // CENTER: the window follows the VFO, so a tune moves the band under the
+    // marker. HOLD leaves the history where it was painted (the rig's own
+    // behaviour); PAN slides it so the frequencies still in view stay
+    // aligned. On fixed glass the edges only move when the rig scrolls the
+    // window (SCROLL modes), and then the history has to come along.
+    if (scopeMode === 0 && wfHistory !== 'pan') return;
     var shiftPixels = Math.round((prevSpectStartFreq - spectStartFreq) / curSpan * w);
     if (shiftPixels === 0) return;
     var absShift = Math.min(Math.abs(shiftPixels), w);
@@ -7076,7 +7284,7 @@ function wfUpdateAutoRef() {
 
 function updateWaterfallRow() {
     if (!wfImageData || !spectData) return;
-    wfUpdateAutoRef();
+    if (!spectOor) wfUpdateAutoRef();
     var w = wfImageData.width, d = wfImageData.data, len = spectData.length;
     // SPEED: n rows per sweep. Row 0 is the new sweep; the rows under it
     // blend toward the previous sweep so the scroll stays smooth.
@@ -7123,7 +7331,7 @@ function spectBeginTween() {
     }
     spectTweenMs = Math.max(60, Math.min(300, scopeSweepGapMs * 0.85));
     spectLastSweepAt = now;
-    var jump = !spectShown || spectShown.length !== len ||
+    var jump = !spectShown || spectShown.length !== len || spectOor ||
         spectStartFreq !== prevSpectStartFreq || spectEndFreq !== prevSpectEndFreq;
     if (jump) {
         spectShown = Float32Array.from(spectData);
@@ -7230,11 +7438,11 @@ function drawSpectrum() {
     }
     ctx.fill();
 
-    // Passband indicator bar (anchored to spectrum center, independent of currentFreq)
-    if (currentFilterWidth > 0 && spectStartFreq > 0 && spectEndFreq > spectStartFreq) {
+    // Passband indicator bar, hung off the VFO marker
+    var cx = scopeIndicatorX(w);
+    if (currentFilterWidth > 0 && spectStartFreq > 0 && spectEndFreq > spectStartFreq && isFinite(cx)) {
         var spanHz = (spectEndFreq - spectStartFreq) * 1e6;
         var bwPx = (currentFilterWidth / spanHz) * w;
-        var cx = scopeIndicatorCenterX(w);
         var pbLeft, pbRight;
         if (currentMode === 'USB' || currentMode === 'RTTY') {
             pbLeft = cx; pbRight = cx + bwPx;
@@ -7255,21 +7463,34 @@ function drawSpectrum() {
         }
     }
 
-    // Frequency marker (IC-7300 style: white triangle + vertical line, anchored to center)
-    if (spectStartFreq > 0 && spectEndFreq > spectStartFreq) {
-        var fxPos = scopeIndicatorCenterX(w);
-        // Vertical line
-        ctx.strokeStyle = 'rgba(255,255,255,0.3)';
-        ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(fxPos, 0); ctx.lineTo(fxPos, plotH); ctx.stroke();
-        // White triangle at bottom
-        ctx.fillStyle = '#fff';
-        ctx.beginPath();
-        ctx.moveTo(fxPos - 5, plotH);
-        ctx.lineTo(fxPos + 5, plotH);
-        ctx.lineTo(fxPos, plotH - 7);
-        ctx.closePath();
-        ctx.fill();
+    // Frequency marker (IC-7300 style: white triangle + vertical line at the VFO;
+    // mid-screen in CENTER, wherever the VFO sits inside a fixed window otherwise)
+    if (spectStartFreq > 0 && spectEndFreq > spectStartFreq && isFinite(cx)) {
+        var fxPos = cx;
+        if (fxPos >= 0 && fxPos <= w) {
+            // Vertical line
+            ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(fxPos, 0); ctx.lineTo(fxPos, plotH); ctx.stroke();
+            // White triangle at bottom
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.moveTo(fxPos - 5, plotH);
+            ctx.lineTo(fxPos + 5, plotH);
+            ctx.lineTo(fxPos, plotH - 7);
+            ctx.closePath();
+            ctx.fill();
+        } else {
+            // The VFO left a FIXED window: a chevron on the side it went to.
+            var dir = fxPos < 0 ? -1 : 1, ex = dir < 0 ? 2 : w - 2, ey = plotH - 4;
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.moveTo(ex - dir * 8, ey - 6);
+            ctx.lineTo(ex, ey);
+            ctx.lineTo(ex - dir * 8, ey + 6);
+            ctx.closePath();
+            ctx.fill();
+        }
     }
 
     // Freq labels
@@ -7278,6 +7499,9 @@ function drawSpectrum() {
         ctx.font = '9px sans-serif';
         ctx.textAlign = 'center'; ctx.textBaseline = 'top';
         for (var li = 0; li <= 5; li++) {
+            // On fixed glass the corner labels would sit under the edge
+            // readouts (spanEdgeLeft/Right show the exact edges there).
+            if (scopeMode !== 0 && (li === 0 || li === 5)) continue;
             var frac = li / 5;
             var freq = spectStartFreq + (spectEndFreq - spectStartFreq) * frac;
             var label = freq >= 1000 ? freq.toFixed(1) : freq >= 100 ? freq.toFixed(2) : freq.toFixed(3);
@@ -7305,11 +7529,11 @@ function drawWaterfall() {
     // until the next sweep's rows replace it in place.
     if (offset > 0) ctx.drawImage(wfOffCanvas, 0, 0, wfImageData.width, 1, 0, 0, w, offset + 0.5);
 
-    // Passband indicator bar (anchored to spectrum center)
-    if (currentFilterWidth > 0 && spectStartFreq > 0 && spectEndFreq > spectStartFreq) {
+    // Passband indicator bar, hung off the VFO marker
+    var cx = scopeIndicatorX(w);
+    if (currentFilterWidth > 0 && spectStartFreq > 0 && spectEndFreq > spectStartFreq && isFinite(cx)) {
         var spanHz = (spectEndFreq - spectStartFreq) * 1e6;
         var bwPx = (currentFilterWidth / spanHz) * w;
-        var cx = scopeIndicatorCenterX(w);
         var pbL, pbR;
         if (currentMode === 'USB' || currentMode === 'RTTY') {
             pbL = cx; pbR = cx + bwPx;
@@ -7330,12 +7554,11 @@ function drawWaterfall() {
         }
     }
 
-    // Frequency indicator (anchored to center)
-    if (spectStartFreq > 0 && spectEndFreq > spectStartFreq) {
-        var xPos = scopeIndicatorCenterX(w);
+    // Frequency indicator (at the VFO, see scopeIndicatorX)
+    if (spectStartFreq > 0 && spectEndFreq > spectStartFreq && cx >= 0 && cx <= w) {
         ctx.strokeStyle = 'rgba(255,255,255,0.25)';
         ctx.lineWidth = 1;
-        ctx.beginPath(); ctx.moveTo(xPos, 0); ctx.lineTo(xPos, h); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, h); ctx.stroke();
     }
     return p < 1;
 }
@@ -7369,9 +7592,51 @@ function scopeFreqFromDragDeltaX(deltaX) {
     return Math.max(100, Math.round((scopeDragStartFreq - deltaX * hzPerPx) / 100) * 100);
 }
 
-function scopeIndicatorCenterX(w) {
-    // Canvases are translated while dragging; compensate so center indicators stay fixed.
-    return w / 2 - scopeDragVisualOffsetX;
+// X of the VFO on the glass. CENTER pins it mid-screen (compensating the
+// canvas translate of a PAN drag); the other modes place it inside the
+// window's fixed edges, following the finger during a drag so it doesn't
+// trail the polled frequency. NaN when there is no VFO to place.
+function scopeIndicatorX(w) {
+    if (scopeMode === 0) return w / 2 - scopeDragVisualOffsetX;
+    var f = (scopeDragActive && scopeDragFreq > 0) ? scopeDragFreq : currentFreq;
+    if (!(f > 0) || !(spectEndFreq > spectStartFreq)) return NaN;
+    return (f / 1e6 - spectStartFreq) / (spectEndFreq - spectStartFreq) * w;
+}
+
+// Frequency a drag position means. CENTER: the band slides under the fixed
+// marker, so a left pull raises the frequency by the pixels moved. On fixed
+// glass the finger drags the marker itself, so whatever is under it is the
+// frequency, like a continuous tap.
+function scopeDragTuneFreq(clientX, deltaX, release) {
+    if (scopeMode === 0) return scopeFreqFromDragDeltaX(deltaX);
+    if (scopeDragRectWidth <= 0 || !(spectEndFreq > spectStartFreq)) return 0;
+    var frac = (clientX - scopeDragRectLeft) / scopeDragRectWidth;
+    if (scopeMode === 2 || scopeMode === 3) {
+        // The rig only scrolls once the VFO is past an edge, and a finger can't
+        // leave the glass: pulling the marker into the last 1.5% pushes it 2%
+        // over and the rig pages the window. That is one page per touch of
+        // the edge: until the finger comes back inside, nothing more is sent,
+        // not on later moves (a parked finger would page again and again) and
+        // not on release (the new edges arrive with the next sweep, so the
+        // release position would still map into the OLD window and tune the
+        // VFO straight back, scrolling the rig back where it came from).
+        if (scopeDragPaged) {
+            if (frac > 0.05 && frac < 0.95) scopeDragPaged = false;
+            else return 0;
+        }
+        if (release) {
+            frac = Math.max(0, Math.min(1, frac));
+        } else if (frac >= 0.985) {
+            frac = Math.max(frac, 1.02); scopeDragPaged = true;
+        } else if (frac <= 0.015) {
+            frac = Math.min(frac, -0.02); scopeDragPaged = true;
+        }
+    } else {
+        frac = Math.max(0, Math.min(1, frac));
+    }
+    var f = Math.round((spectStartFreq + (spectEndFreq - spectStartFreq) * frac) * 1e6);
+    if (f > 0) scopeDragFreq = f;
+    return f;
 }
 
 function scopeClick(e) {
@@ -7397,6 +7662,8 @@ function scopePointerDown(e) {
     scopeDragCanvas = e.currentTarget;
     scopeDragStartX = e.clientX;
     scopeDragStartFreq = currentFreq;
+    scopeDragFreq = 0;
+    scopeDragPaged = false;
     scopeDragLastTuneTime = 0;
     scopeDragMoveHistory = [];
 
@@ -7404,10 +7671,10 @@ function scopePointerDown(e) {
     scopeDragRectLeft = rect.left;
     scopeDragRectWidth = rect.width;
     scopeSetVisualPan(0);
-    // TRACK grabs the band: the canvases slide under the finger and the
-    // sweeps pause until release. FIXED is the rig's glass — it never moves
-    // and never stops, the drag only turns the dial.
-    scopeFreezeDuringDrag = (wfTracking === 'track');
+    // CENTER + PAN grabs the band: the canvases slide under the finger and
+    // the sweeps pause until release. Otherwise this is the rig's glass — it
+    // never moves and never stops, the drag only turns the dial.
+    scopeFreezeDuringDrag = (scopeMode === 0 && wfHistory === 'pan');
 
     if (scopeDragCanvas.setPointerCapture) {
         try { scopeDragCanvas.setPointerCapture(e.pointerId); } catch (err) {}
@@ -7431,11 +7698,11 @@ function scopePointerMove(e) {
         scopeDragMoved = true;
     }
 
-    if (wfTracking === 'track') scopeSetVisualPan(deltaX);
+    if (scopeMode === 0 && wfHistory === 'pan') scopeSetVisualPan(deltaX);
 
     if (scopeDragMoved) {
         if (now - scopeDragLastTuneTime >= 35) {
-            var dragFreq = scopeFreqFromDragDeltaX(deltaX);
+            var dragFreq = scopeDragTuneFreq(e.clientX, deltaX);
             if (dragFreq > 0) send({ cmd: 'setFrequency', value: dragFreq });
             scopeDragLastTuneTime = now;
         }
@@ -7465,7 +7732,7 @@ function scopePointerEnd(e, commitTune) {
             if (scopeDragMoveHistory[i].t <= wobbleCutoff) { finalDeltaX = scopeDragMoveHistory[i].dx; break; }
         }
     }
-    var finalDragFreq = scopeFreqFromDragDeltaX(finalDeltaX);
+    var finalDragFreq = scopeDragTuneFreq(scopeDragStartX + finalDeltaX, finalDeltaX, true);
     var finalClickFreq = scopeFreqFromClientX(targetCanvas, e.clientX);
 
     scopeDragActive = false;
@@ -7473,6 +7740,8 @@ function scopePointerEnd(e, commitTune) {
     scopeDragPointerId = null;
     scopeDragCanvas = null;
     scopeDragStartFreq = 0;
+    scopeDragFreq = 0;
+    scopeDragPaged = false;
     scopeDragMoveHistory = [];
     scopeDragRectLeft = 0;
     scopeDragRectWidth = 0;
@@ -9101,7 +9370,8 @@ function digiRowClick(el) {
             var dxCall73 = parts[1].toUpperCase();
             if (dxEl) dxEl.value = dxCall73;
             digiQsoPartner = dxCall73;
-            digiQsoState = 'IDLE';
+            digiQsoPartnerBusyWith = '';
+            digiQsoState = 'CALLING';
             digiTheirReport = '';
             armMessageForQsoState(slotIndex);
             updateDigiMsgRows();
@@ -9115,6 +9385,7 @@ function digiRowClick(el) {
         // Message is addressed to us when parts[0] matches MY CALL
         var msgToMe = myCall && parts[0].toUpperCase() === myCall.toUpperCase();
         if (msgToMe) {
+            digiQsoPartnerBusyWith = '';
             var roundedSnr = Math.round(snr);
             var ourSnrStr = (roundedSnr >= 0 ? '+' : '') + roundedSnr;
             if (/\bRR73\b/i.test(msg) || /\bRRR\b/i.test(msg)) {
@@ -9139,8 +9410,10 @@ function digiRowClick(el) {
                 digiOurReport = ourSnrStr;  // our SNR of them → Tx2 plain report
             }
         } else {
-            // Message not to us — just target that station from IDLE
-            digiQsoState = 'IDLE';
+            // Message not to us (tail-end): call them, and remember who they are
+            // working so the CALLING auto-desist lets them finish that QSO (#115).
+            digiQsoState = 'CALLING';
+            digiQsoPartnerBusyWith = parts[0].toUpperCase();
             digiTheirReport = '';
         }
         // Arm appropriate message based on state
@@ -9460,6 +9733,12 @@ function digiMsgArm(step, enableTx) {
     digiTxQueued = msg;
     digiTxAttempts = 0;
     digiTxArmed = true;
+    if (step === 0 && digiQsoState === 'IDLE' && getDxCall()) {
+        // Arming the initial call by hand is starting a QSO: enter CALLING so the
+        // auto-sequencer advances on the reply instead of resending the grid (#115).
+        digiQsoPartner = getDxCall(); digiQsoPartnerBusyWith = ''; digiTheirReport = '';
+        digiQsoState = 'CALLING';
+    }
     // All manual sends go out on the operator's chosen TX even/odd parity — one
     // slot per cycle (never -1 / "every slot", which keys both halves).
     digiTxSlotParity = digiCqParity;
@@ -9550,6 +9829,7 @@ function queueDigiCqReply(dxCall, decodedSlotIndex) {
     digiTxAttempts = 0;
     digiQsoState = 'CALLING';
     digiQsoPartner = dxCall.toUpperCase();
+    digiQsoPartnerBusyWith = '';
     // Use the slot index of when the CQ was DECODED (captured before the blocking
     // decode call, before JS thread advanced into the next slot). We TX on the slot
     // OPPOSITE to the CQ sender's slot.
@@ -9588,6 +9868,7 @@ function handleDigiAutoQso(decodes, decodedSlotIndex) {
                 if (cqCall && cqCall !== myCall && userDx && userDx === cqCall) {
                     console.log('[DIGI QSO] IDLE→CALLING: targeted station ' + cqCall + ' sent CQ');
                     digiQsoPartner = cqCall;
+                    digiQsoPartnerBusyWith = '';
                     digiTxAttempts = 0;
                     digiTxQueued = cqCall + ' ' + myCall + ' ' + myGrid;
                     digiTxSlotParity = (dSlot + 1) % 2; // TX on slot OPPOSITE to CQ slot
@@ -9613,8 +9894,11 @@ function handleDigiAutoQso(decodes, decodedSlotIndex) {
                 else { console.log('[DIGI QSO] TX disabled — queued but not armed: ' + digiTxQueued); }
                 digiQsoState = 'EXCHANGE';
                 break;
-            } else if (parts.length >= 2 && parts[1] === digiQsoPartner && parts[0] !== myCall && parts[0] !== 'CQ') {
-                // DX station (parts[1] = FROM) sent to someone who is not us (parts[0] = TO ≠ myCall)
+            } else if (parts.length >= 2 && parts[1] === digiQsoPartner && parts[0] !== myCall && parts[0] !== 'CQ' &&
+                       parts[0] !== digiQsoPartnerBusyWith) {
+                // DX station (parts[1] = FROM) sent to someone who is not us (parts[0] = TO ≠ myCall).
+                // Traffic to the station they were already working when we clicked is not a
+                // new QSO — keep calling until they answer someone else or us.
                 console.log('[DIGI QSO] CALLING→IDLE: ' + digiQsoPartner + ' replied to ' + parts[0] + ', not us — disabling TX');
                 digiReArmPending = false;
                 digiTxArmed = false;
@@ -9781,7 +10065,7 @@ function digiFdRowClick(parts, slotIndex, dxEl) {
         // "CQ [FD] <call> <grid>" → open with our exchange
         var cqCall = parts.length >= 3 ? parts[parts.length - 2] : parts[1];
         if (dxEl) dxEl.value = cqCall;
-        digiQsoPartner = cqCall; digiFdLogged = false; digiTheirReport = '';
+        digiQsoPartner = cqCall; digiQsoPartnerBusyWith = ''; digiFdLogged = false; digiTheirReport = '';
         digiTxQueued = cqCall + ' ' + myCall + ' ' + digiFdExch();
         digiQsoState = 'CALLING';
     } else if (parts.length >= 2) {
@@ -9790,6 +10074,7 @@ function digiFdRowClick(parts, slotIndex, dxEl) {
         digiQsoPartner = dxCall;
         if (dxCall !== prevPartner) digiFdLogged = false;
         var toMe = myCall && parts[0] === myCall;
+        digiQsoPartnerBusyWith = toMe ? '' : parts[0];
         var theirExch = digiFdParseExch(parts.slice(2));
         if (toMe && (parts[2] === 'RR73' || parts[2] === 'RRR' || parts[2] === '73')) {
             digiTheirReport = digiTheirReport || '';
@@ -9837,7 +10122,7 @@ function handleDigiFdAutoQso(decodes, decodedSlotIndex) {
                 var cqCall = parts[parts.length - 2];
                 var userDx = getDxCall();
                 if (cqCall && cqCall !== myCall && userDx && userDx === cqCall) {
-                    digiQsoPartner = cqCall; digiFdLogged = false; digiTheirReport = '';
+                    digiQsoPartner = cqCall; digiQsoPartnerBusyWith = ''; digiFdLogged = false; digiTheirReport = '';
                     digiTxQueued = cqCall + ' ' + myCall + ' ' + myExch;
                     digiTxAttempts = 0; digiTxSlotParity = txParity;
                     if (digiTxEnabled) digiTxArmed = true;
@@ -9858,8 +10143,9 @@ function handleDigiFdAutoQso(decodes, decodedSlotIndex) {
                     digiQsoState = 'EXCHANGE';
                     break;
                 }
-            } else if (parts.length >= 2 && parts[1] === digiQsoPartner && parts[0] !== myCall && parts[0] !== 'CQ') {
-                // partner answered someone else → abort
+            } else if (parts.length >= 2 && parts[1] === digiQsoPartner && parts[0] !== myCall && parts[0] !== 'CQ' &&
+                       parts[0] !== digiQsoPartnerBusyWith) {
+                // partner answered someone else (not the station they were already working) → abort
                 console.log('[DIGI FD] ' + digiQsoPartner + ' replied to ' + parts[0] + ', not us — aborting');
                 digiFdResetToIdle();
                 break;
@@ -11331,6 +11617,10 @@ function initDigiHandlers() {
     if (haltBtn) {
         haltBtn.addEventListener('click', function() {
             console.log('[DIGI] Halt TX clicked');
+            // Abort the in-flight audio pacer first (same as the dblclick target
+            // switch) — clearing the flags alone leaves the worklet streaming, so a
+            // TX started before the slot ends would overlap the halted one (#118).
+            haltDigiTx();
             if (digiMonitorSrc) { try { digiMonitorSrc.stop(); } catch(e) {} digiMonitorSrc = null; }
             digiTxArmed = false;
             digiTxActive = false;
@@ -11347,6 +11637,7 @@ function initDigiHandlers() {
             if (etb) etb.classList.remove('active');
             stopDigiTune();
             send({ cmd: 'setPTT', value: false });
+            if (!micEnabled) send({ cmd: 'enableMic', value: false });
             updateDigiStatus('HALT', '');
             updateDigiMsgRows();
             drawDigiWaterfall();

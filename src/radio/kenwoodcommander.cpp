@@ -1109,13 +1109,21 @@ void kenwoodCommander::determineRigCaps()
         qWarning(logRig()) << rigCaps.filename << "Cannot be loaded!";
         return;
     }
+    // Qt folds the INI [General] section into the root, so this key has no
+    // group prefix -- same read as servermain's rig-file scan.
+    float rigVersion = settings->value("Version","0.0").toString().toFloat();
     settings->beginGroup("Rig");
     // Populate rigcaps
 
     rigCaps.manufacturer = manufKenwood;
     rigCaps.modelName = settings->value("Model", "").toString();
     rigCaps.rigctlModel = settings->value("RigCtlDModel", 0).toInt();
-    qInfo(logRig()) << QString("Loading Rig: %0 from %1").arg(rigCaps.modelName,rigCaps.filename);
+    // Version comes from the file's [General] group, read before the Rig
+    // group is opened. It is on this line because this is the one the log
+    // shows at default verbosity: the per-file scan in servermain is qDebug,
+    // so a tester asked to confirm which rig file is live sees nothing (#108).
+    qInfo(logRig()) << QString("Loading Rig: %0 version %1 from %2")
+                           .arg(rigCaps.modelName).arg(rigVersion,0,'f',2).arg(rigCaps.filename);
 
     rigCaps.numReceiver = settings->value("NumberOfReceivers",1).toUInt();
     rigCaps.numVFO = settings->value("NumberOfVFOs",1).toUInt();

@@ -180,6 +180,15 @@ struct antennaInfo {
     bool rx;
 };
 
+// One fixed-edge set of the scope (0x27 0x1E): which frequency range, which
+// edge number inside it, and the window it spans.
+struct scopeEdgeSetting {
+    uchar range = 0;
+    uchar edge = 0;
+    quint64 lower = 0;
+    quint64 upper = 0;
+};
+
 struct scopeData {
     bool valid=false;
     QByteArray data;
@@ -817,6 +826,7 @@ Q_DECLARE_METATYPE(memoryTagType)
 Q_DECLARE_METATYPE(memorySplitType)
 Q_DECLARE_METATYPE(antennaInfo)
 Q_DECLARE_METATYPE(scopeData)
+Q_DECLARE_METATYPE(scopeEdgeSetting)
 Q_DECLARE_METATYPE(timekind)
 Q_DECLARE_METATYPE(datekind)
 Q_DECLARE_METATYPE(toneInfo)

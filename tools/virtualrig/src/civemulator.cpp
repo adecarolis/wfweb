@@ -535,6 +535,7 @@ void civEmulator::handleScopeCommand(const QByteArray& body)
             echoVfo(vfo, v);
         } else if (rest.size() >= 2) {
             scopeMode = (quint8)rest[1];
+            scopeWinValid = false;   // re-centre the fixed/scroll window
             emit replyFrame(ack(true));
         } else {
             emit replyFrame(ack(false));
@@ -556,7 +557,36 @@ void civEmulator::handleScopeCommand(const QByteArray& body)
                 if (err < bestErr) { bestErr = err; best = i; }
             }
             scopeSpanIdx = best;
+            scopeWinValid = false;   // new width: rebuild the fixed/scroll window
             emit replyFrame(ack(true));
+        } else {
+            emit replyFrame(ack(false));
+        }
+        break;
+    }
+    case 0x1E: { // fixed edges: range BCD + edge BCD + lower(5) + upper(5). A global
+                 // setting like 0x1C: NO scope byte, and like the rig we refuse
+                 // the prefixed form (a 0x00 range) instead of skipping it.
+        const quint8 range = rest.size() >= 1 ? (quint8)rest[0] : 0;
+        if (range == 0 || range > 0x13) {
+            emit replyFrame(ack(false));
+        } else if (rest.size() >= 12) {
+            quint64 lo = bcd5ToFreq(rest.mid(2, 5));
+            quint64 hi = bcd5ToFreq(rest.mid(7, 5));
+            if (hi > lo) {
+                scopeFixedLo = lo;
+                scopeFixedHi = hi;
+                scopeWinValid = false;
+                emit replyFrame(ack(true));
+            } else {
+                emit replyFrame(ack(false));
+            }
+        } else if (rest.size() >= 2) {
+            QByteArray v;
+            v.append(rest[0]); v.append(rest[1]);
+            v.append(freqToBcd5(scopeFixedLo));
+            v.append(freqToBcd5(scopeFixedHi));
+            echoSimple(v);
         } else {
             emit replyFrame(ack(false));
         }
@@ -683,16 +713,50 @@ void civEmulator::emitScopeWaveData()
     // Build a 475-pixel waveform (matches IC-7300 SpectrumLenMax). Pixel scale
     // is 0..160 (SpectrumAmpMax). Strategy:
     //   - Noise floor: log-mapped from the rig's mixer noise RMS.
-    //   - Activity:    Gaussian-shaped peak at the center pixel scaled by the
+    //   - Activity:    Gaussian-shaped peak at the VFO's pixel scaled by the
     //                  current RX audio peak. So when something is being
-    //                  received, the waterfall shows a centered "blob"; when
-    //                  nothing is, only the noise floor wiggles.
+    //                  received, the waterfall shows a "blob" under the
+    //                  marker; when nothing is, only the noise floor wiggles.
     // This is intentionally synthetic — virtualrig has demodulated audio, not
-    // an RF spectrum, but a centered peak is enough to exercise wfweb's
-    // entire waterfall pipeline (parser, JSON, canvas paint).
+    // an RF spectrum, but a peak that follows the VFO is enough to exercise
+    // wfweb's entire waterfall pipeline (parser, JSON, canvas paint) in every
+    // scope mode.
 
     constexpr int kPixels = 475;
     constexpr int kAmpMax = 160;
+
+    // Window edges for this sweep. Center mode follows the VFO; the other
+    // modes keep the window built on first use (see scopeWin* in the header).
+    const quint64 halfSpan = spanHzForIndex(scopeSpanIdx);
+    quint64 lower, upper;
+    bool oor = false;
+    if (scopeMode == 0) {
+        lower = (freq > halfSpan) ? (freq - halfSpan) : 0ULL;
+        upper = freq + halfSpan;
+    } else {
+        if (!scopeWinValid) {
+            if (scopeMode == 1 && scopeFixedHi > scopeFixedLo) {
+                scopeWinLo = scopeFixedLo;
+                scopeWinHi = scopeFixedHi;
+            } else {
+                scopeWinLo = (freq > halfSpan) ? (freq - halfSpan) : 0ULL;
+                scopeWinHi = freq + halfSpan;
+            }
+            scopeWinValid = true;
+        }
+        if (freq < scopeWinLo || freq > scopeWinHi) {
+            if (scopeMode == 1) {
+                oor = true;             // FIXED: the glass stays, the VFO left it
+            } else {
+                // SCROLL-C / SCROLL-F: slide by half a span towards the VFO.
+                const quint64 step = (scopeWinHi - scopeWinLo) / 2;
+                while (freq < scopeWinLo && scopeWinLo >= step) { scopeWinLo -= step; scopeWinHi -= step; }
+                while (freq > scopeWinHi) { scopeWinLo += step; scopeWinHi += step; }
+            }
+        }
+        lower = scopeWinLo;
+        upper = scopeWinHi;
+    }
 
     QByteArray pixels(kPixels, '\0');
 
@@ -739,7 +803,8 @@ void civEmulator::emitScopeWaveData()
     const double sigma = (mode == 0x03 || mode == 0x07) ? 4.0  // CW: narrow
                        : (mode == 0x05) ? 30.0                  // FM: wide
                        : 12.0;                                  // SSB/AM/data
-    const double center = (kPixels - 1) / 2.0;
+    const double center = (scopeMode == 0 || upper <= lower) ? (kPixels - 1) / 2.0
+        : (double)(freq - lower) / (double)(upper - lower) * (kPixels - 1);
     const double twoSigma2 = 2.0 * sigma * sigma;
     for (int i = 0; i < kPixels; ++i) {
         double dx = i - center;
@@ -758,7 +823,8 @@ void civEmulator::emitScopeWaveData()
     //   seq=2..N-1: BCD seq, BCD seqMax, 50 pixel bytes
     //   seq=N:     BCD seq, BCD seqMax, remaining pixel bytes
     // For IC-7300: N=11, divisions 2..10 carry 50 px each, division 11 carries 25.
-    const quint8 seqMax = 11;
+    // Out of range: the header alone, seqMax=1, no pixel divisions.
+    const quint8 seqMax = oor ? 1 : 11;
     auto seqByte = [](quint8 n) -> char {
         return (char)(((n / 10) << 4) | (n % 10));
     };
@@ -773,8 +839,7 @@ void civEmulator::emitScopeWaveData()
         emit replyFrame(buildFrame(ctlCiv, pl));
     };
 
-    // Header (sequence 1). Decide edges from current mode/span/freq.
-    quint64 halfSpan = spanHzForIndex(scopeSpanIdx);
+    // Header (sequence 1).
     QByteArray header;
     header.append((char)scopeMode);
     if (scopeMode == 0) {
@@ -783,13 +848,12 @@ void civEmulator::emitScopeWaveData()
         header.append(freqToBcd5(halfSpan));
     } else {
         // Fixed/scroll: rig sends [lower, upper].
-        quint64 lower = (freq > halfSpan) ? (freq - halfSpan) : 0ULL;
-        quint64 upper = freq + halfSpan;
         header.append(freqToBcd5(lower));
         header.append(freqToBcd5(upper));
     }
-    header.append((char)0x00); // in-range
+    header.append((char)(oor ? 0x01 : 0x00));
     sendDivision(1, header);
+    if (oor) return;
 
     // Pixel divisions 2..10 (50 px each = 450 px), then 11 (25 px) = 475 px total.
     int offset = 0;
