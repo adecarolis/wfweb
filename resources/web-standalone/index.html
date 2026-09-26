@@ -3179,6 +3179,7 @@ var spectData = null;
 var spectDataLen = 0;
 var wfImageData = null;
 var wfOffCanvas = null;
+var scopeDpr = 1;                // devicePixelRatio the scope canvases were last sized for (resizeCanvases)
 var wfOffCtx = null;
 var spectRenderPending = false;
 var colorTable = null;
@@ -7511,10 +7512,14 @@ function resizeCanvases() {
     var seL = document.getElementById('spanEdgeLeft'), seR = document.getElementById('spanEdgeRight');
     if (seL) seL.style.top = spectH + 'px';
     if (seR) seR.style.top = spectH + 'px';
-    spectCanvas.width = Math.round(areaRect.width);
-    spectCanvas.height = spectH;
-    wfCanvas.width = Math.round(areaRect.width);
-    wfCanvas.height = wfH;
+    // Backing stores at device resolution — drawSpectrum / drawWaterfall
+    // keep drawing in CSS px through a setTransform — so a HiDPI screen
+    // doesn't upscale the trace into blocks.
+    scopeDpr = window.devicePixelRatio || 1;
+    spectCanvas.width = Math.round(areaRect.width * scopeDpr);
+    spectCanvas.height = Math.round(spectH * scopeDpr);
+    wfCanvas.width = Math.round(areaRect.width * scopeDpr);
+    wfCanvas.height = Math.round(wfH * scopeDpr);
     if (spectDataLen > 0) initWaterfallBuffer(spectDataLen);
     // Redraw meter for new DPI
     drawMeter();
@@ -7531,7 +7536,9 @@ function resizeCanvases() {
 
 function initWaterfallBuffer(dataLen) {
     var wfCanvas = document.getElementById('waterfallCanvas');
-    var h = wfCanvas.height || 200;
+    // One buffer row per CSS px, not per device px: the scroll speed is
+    // rows per sweep, and a HiDPI canvas must not halve it.
+    var h = Math.round(wfCanvas.height / scopeDpr) || 200;
     var prevImage = wfImageData;
     wfOffCanvas = document.createElement('canvas');
     wfOffCanvas.width = dataLen; wfOffCanvas.height = h;
@@ -7767,9 +7774,10 @@ function renderScope() {
 function drawSpectrum() {
     var canvas = document.getElementById('spectrumCanvas');
     var ctx = canvas.getContext('2d');
-    var w = canvas.width, h = canvas.height, len = spectData.length;
+    var w = canvas.width / scopeDpr, h = canvas.height / scopeDpr, len = spectData.length;
     var labelH = 14, plotH = h - labelH;
 
+    ctx.setTransform(scopeDpr, 0, 0, scopeDpr, 0, 0);
     ctx.clearRect(0, 0, w, h);
     ctx.fillStyle = '#05070c';
     ctx.fillRect(0, 0, w, h);
@@ -7786,8 +7794,8 @@ function drawSpectrum() {
     // the tracked noise floor seated AT the axis like the rig's own trace:
     // the lower half of the band noise sits below it, only the noise peaks
     // poke up as grass with dark gaps between them, and a manual REF
-    // nudges the whole thing (see spectRefShiftDb). Bars rise from the
-    // axis — nothing solid is painted under the grass.
+    // nudges the whole thing (see spectRefShiftDb). The trace rises from
+    // the axis — nothing solid is painted under the grass.
     var floor = wfEmaFloor + 2 - spectRefShiftDb() * spectCountsPerDb();
     var stepX = w / len;
     function barY(amp) {
@@ -7796,33 +7804,39 @@ function drawSpectrum() {
         return plotH * (1 - 0.94 * t);
     }
 
-    // Grey peak-hold afterglow behind the trace
-    if (spectHold.length > 1) {
-        ctx.fillStyle = 'rgba(102,112,122,0.55)';
+    // Filled outline through the bin centres. The rig sends one value per
+    // bin, so straight segments between neighbours are the honest picture
+    // at any canvas width; flat per-bin bars turn into a staircase (and
+    // ragged half-pixel edges) as soon as a bin is wider than a pixel.
+    function fillTrace(vals) {
         ctx.beginPath();
-        for (var hi = 0; hi < len; hi++) {
-            var peak = 0;
-            for (var hs = 0; hs < spectHold.length; hs++) {
-                var hd = spectHold[hs].data;
-                if (hd.length === len && hd[hi] > peak) peak = hd[hi];
-            }
-            var hy = barY(peak);
-            ctx.rect(hi * stepX, hy, stepX, plotH - hy);
-        }
+        ctx.moveTo(0, plotH);
+        ctx.lineTo(0, barY(vals[0]));
+        for (var i = 0; i < len; i++) ctx.lineTo((i + 0.5) * stepX, barY(vals[i]));
+        ctx.lineTo(w, barY(vals[len - 1]));
+        ctx.lineTo(w, plotH);
+        ctx.closePath();
         ctx.fill();
     }
 
-    // The live sweep, one solid bar per bin like the rig's own trace — the
-    // bar texture IS the per-bin grass. Eased toward the newest sweep
-    // between arrivals (spectAdvanceTween); no smoothing across bins.
+    // Grey peak-hold afterglow behind the trace: per-bin maxima of the held sweeps
+    if (spectHold.length > 1) {
+        var peak = new Uint8Array(len);
+        for (var hs = 0; hs < spectHold.length; hs++) {
+            var hd = spectHold[hs].data;
+            if (hd.length !== len) continue;
+            for (var hi = 0; hi < len; hi++) if (hd[hi] > peak[hi]) peak[hi] = hd[hi];
+        }
+        ctx.fillStyle = 'rgba(102,112,122,0.55)';
+        fillTrace(peak);
+    }
+
+    // The live sweep, eased toward the newest sweep between arrivals
+    // (spectAdvanceTween). The per-bin zigzag IS the grass: nothing is
+    // smoothed across bins, only drawn between them.
     var easing = spectAdvanceTween();
     ctx.fillStyle = 'rgb(237,242,247)';
-    ctx.beginPath();
-    for (var i = 0; i < len; i++) {
-        var by = barY(spectShown[i]);
-        ctx.rect(i * stepX, by, stepX, plotH - by);
-    }
-    ctx.fill();
+    fillTrace(spectShown);
 
     // Passband indicator bar, hung off the VFO marker
     var cx = scopeIndicatorX(w);
@@ -7901,7 +7915,8 @@ function drawWaterfall() {
     if (!wfImageData || !wfOffCtx) return false;
     var canvas = document.getElementById('waterfallCanvas');
     var ctx = canvas.getContext('2d');
-    var w = canvas.width, h = canvas.height;
+    var w = canvas.width / scopeDpr, h = canvas.height / scopeDpr;
+    ctx.setTransform(scopeDpr, 0, 0, scopeDpr, 0, 0);
     if (wfBufDirty) { wfOffCtx.putImageData(wfImageData, 0, 0); wfBufDirty = false; }
     // Slide: how far into the current sweep interval we are decides how far
     // down the picture has drifted (0 .. rows-per-sweep). Bilinear so the
