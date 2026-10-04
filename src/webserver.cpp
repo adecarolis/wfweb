@@ -4050,6 +4050,10 @@ void webServer::receiveCache(cacheItem item)
         break;
     }
     case funcSMeter:
+        // A dual-receiver rig reports Main and Sub in turn. The page has one
+        // meter and the periodic "meters" message reads receiver 0, so push
+        // only that one — otherwise the reading flips between the two.
+        if (item.receiver != 0) return;
         update["sMeter"] = item.value.toDouble();
         break;
     case funcPowerMeter:
@@ -4889,6 +4893,18 @@ void webServer::addTxMeterCaps(QJsonObject &o) const
         list.append(m);
     }
     o["txMeters"] = list;
+
+    // The Power table, so the page can tell this rig's 100 % from watts (the
+    // reading it gets is in watts, and a 10 W rig's full scale is not 100).
+    QJsonArray poCal;
+    const QMap<int, double> &po = rigCaps->meters[meterPower];
+    for (auto it = po.constBegin(); it != po.constEnd(); ++it) {
+        QJsonArray pt;
+        pt.append(it.key());
+        pt.append(it.value());
+        poCal.append(pt);
+    }
+    o["poCal"] = poCal;
 }
 
 // The cached reading of whichever optional meter is currently polled. Only

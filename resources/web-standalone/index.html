@@ -271,6 +271,12 @@ html, body {
     -webkit-user-select: none; user-select: none;
     -webkit-tap-highlight-color: transparent;
 }
+/* Needle face (needle-meter.js): its shape is fixed, so the canvas takes its
+   width from its height, the row grows to hold it and the frequency gets the
+   rest of the width. */
+body.meter-needle #radio { grid-template-rows: 34px 136px 20px 1fr 48px; }
+body.meter-needle #meterSection { flex: 0 0 auto; }
+body.meter-needle #meterCanvas { width: auto; height: 128px; aspect-ratio: 611 / 256; }
 #freqSection {
     flex: 1;
     display: flex; flex-direction: column;
@@ -2026,6 +2032,8 @@ body.digi-open #bottomBar { grid-row: 5; }
     #freqDisplay .freq-digit.digit-9 { background-position: -292px 0; }
     #freqDisplay .freq-digit.digit-dot { width: 7px; background-position: -325px 0; }
     #meterCanvas { height: 50px; }
+    body.meter-needle #radio { grid-template-rows: 28px 92px 16px 1fr 40px; }
+    body.meter-needle #meterCanvas { height: 84px; }
     #bottomBar { padding: 2px 4px; }
     .softBtn { height: 34px; font-size: 11px; }
 }
@@ -2069,6 +2077,8 @@ body.digi-open #bottomBar { grid-row: 5; }
     #freqDisplay .freq-digit.digit-dot { width: 4px; background-position: -175px 0; }
     #meterSection { flex: 0 0 40%; }
     #meterCanvas { height: 54px; }
+    body.meter-needle #radio { grid-template-rows: 32px 84px 18px 1fr 46px; }
+    body.meter-needle #meterCanvas { height: 76px; }
 }
 
 /* Directed panel: always show only SNR + message (dt and Hz waste space in narrow column) */
@@ -2402,7 +2412,7 @@ body.digi-open #bottomBar { grid-row: 5; }
     <div id="meterFreqRow">
         <div id="meterSection">
             <canvas id="meterCanvas" width="500" height="128"
-                    title="Tap to change the bottom meter"></canvas>
+                    title="Tap to change the TX meter"></canvas>
         </div>
         <div id="freqSection">
             <div id="vfoLine">
@@ -2959,6 +2969,7 @@ body.digi-open #bottomBar { grid-row: 5; }
 <script src="urltune.js"></script>
 <script src="reporters.js"></script>
 <script src="wf-canvas.js"></script>
+<script src="needle-meter.js"></script>
 <script src="recorder.js"></script>
 <script>
 // ============================================================
@@ -3526,7 +3537,7 @@ function handleMessage(msg) {
                 if (msg.hasDuplex !== undefined) hasDuplex = !!msg.hasDuplex;
                 updateToneCaps(msg);
                 if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner);
-                if (msg.txMeters !== undefined) setTxMeterCaps(msg.txMeters);
+                if (msg.txMeters !== undefined) setTxMeterCaps(msg.txMeters, msg.poCal);
                 if (msg.hasMemoryMode !== undefined) hasMemoryMode = !!msg.hasMemoryMode;
                 if (msg.memoriesLocal !== undefined) setMemoriesLocal(!!msg.memoriesLocal);
                 if (msg.memGroups !== undefined) setupMemoryGroups(msg.memGroups, msg.memStart || 0);
@@ -3560,7 +3571,7 @@ function handleMessage(msg) {
             if (msg.hasDuplex !== undefined) hasDuplex = !!msg.hasDuplex;
             updateToneCaps(msg);
             if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner);
-            if (msg.txMeters !== undefined) setTxMeterCaps(msg.txMeters);
+            if (msg.txMeters !== undefined) setTxMeterCaps(msg.txMeters, msg.poCal);
             if (msg.hasMemoryMode !== undefined) hasMemoryMode = !!msg.hasMemoryMode;
             if (msg.memoriesLocal !== undefined) setMemoriesLocal(!!msg.memoriesLocal);
             if (msg.memGroups !== undefined) setupMemoryGroups(msg.memGroups, msg.memStart || 0);
@@ -4534,9 +4545,55 @@ function updateSwrMeter(val) { swrVal = val; if (isTransmitting) drawMeter(); }
 // Only readings this radio can actually produce are offered: the rig
 // capabilities carry one descriptor per available meter, each with the
 // radio's own calibration table so the face can be drawn to match.
+//
+// The needle face has one pointer for everything, so there Po joins the cycle
+// (and is where it starts, as on the radio) instead of owning a row.
 var txMeterKind = 'swr';
-try { txMeterKind = localStorage.getItem('wfTxMeter') || 'swr'; } catch (e) {}
+var txMeterChosen = false;   // the operator picked one; don't apply a default
+try {
+    var storedTxMeter = localStorage.getItem('wfTxMeter');
+    if (storedTxMeter) { txMeterKind = storedTxMeter; txMeterChosen = true; }
+} catch (e) {}
 var txMeterCaps = [];        // [{kind, cal: [[rigVal, reading], ...], red}]
+var poFullScale = 100;       // watts at the 100 % mark of the Po scale
+
+// ---- Meter face -----------------------------------------------------------
+// 'auto' follows the radio: the needle face (needle-meter.js) on the rigs
+// that draw one on their own screen, the tile bar on the rest. FUNC > METER
+// overrides it either way.
+var meterStyle = 'auto';
+try { meterStyle = localStorage.getItem('wfMeterStyle') || 'auto'; } catch (e) {}
+
+function needleActive() {
+    return meterStyle === 'needle' ||
+           (meterStyle === 'auto' && NeedleMeter.isNeedleRig(rigModelName));
+}
+
+function txMeterKinds() {
+    var kinds = needleActive() ? ['po'] : [];
+    for (var i = 0; i < txMeterCaps.length; i++) kinds.push(txMeterCaps[i].kind);
+    return kinds;
+}
+
+function applyMeterStyle() {
+    var needle = needleActive();
+    if (!needle && txMeterKind === 'po') txMeterKind = 'swr';
+    if (needle && !txMeterChosen) txMeterKind = 'po';
+    var canvas = document.getElementById('meterCanvas');
+    canvas.style.cursor = txMeterKinds().length > 1 ? 'pointer' : '';
+    if (document.body.classList.contains('meter-needle') !== needle) {
+        document.body.classList.toggle('meter-needle', needle);
+        resizeCanvases();        // the meter row changed height
+    }
+    drawMeter();
+}
+
+function cycleMeterStyle() {
+    meterStyle = (meterStyle === 'auto') ? 'bar' : (meterStyle === 'bar') ? 'needle' : 'auto';
+    try { localStorage.setItem('wfMeterStyle', meterStyle); } catch (e) {}
+    applyMeterStyle();
+    sendTxMeterSelection();
+}
 var compVal = 0, vdVal = 0, idVal = 0;
 var TX_METER_LABELS = { swr: 'SWR', alc: 'ALC', comp: 'COMP', vd: 'Vd', id: 'Id' };
 var TX_METER_UNITS  = { swr: '', alc: '', comp: 'dB', vd: 'V', id: 'A' };
@@ -4560,13 +4617,12 @@ function txMeterDesc(kind) {
 
 // Called when the rig identifies itself. A radio that can't produce the
 // remembered reading falls back to SWR rather than showing a dead bar.
-function setTxMeterCaps(list) {
+function setTxMeterCaps(list, poCal) {
     txMeterCaps = Array.isArray(list) ? list : [];
-    if (!txMeterDesc(txMeterKind)) txMeterKind = 'swr';
-    var canvas = document.getElementById('meterCanvas');
-    if (canvas) canvas.style.cursor = txMeterCaps.length > 1 ? 'pointer' : '';
+    poFullScale = NeedleMeter.ratedPower(poCal);
+    if (txMeterKind !== 'po' && !txMeterDesc(txMeterKind)) txMeterKind = 'swr';
+    applyMeterStyle();
     sendTxMeterSelection();
-    drawMeter();
 }
 
 // Comp/Vd/Id each cost the radio an extra poll, so the backend only reads
@@ -4574,11 +4630,10 @@ function setTxMeterCaps(list) {
 function sendTxMeterSelection() { send({ cmd: 'setTxMeter', value: txMeterKind }); }
 
 function cycleTxMeter() {
-    if (txMeterCaps.length < 2) return;
-    var i = 0;
-    for (var n = 0; n < txMeterCaps.length; n++)
-        if (txMeterCaps[n].kind === txMeterKind) { i = n; break; }
-    txMeterKind = txMeterCaps[(i + 1) % txMeterCaps.length].kind;
+    var kinds = txMeterKinds();
+    if (kinds.length < 2) return;
+    txMeterKind = kinds[(kinds.indexOf(txMeterKind) + 1) % kinds.length];
+    txMeterChosen = true;
     try { localStorage.setItem('wfTxMeter', txMeterKind); } catch (e) {}
     txAuxPeakCount = 0;
     sendTxMeterSelection();
@@ -4744,6 +4799,15 @@ function updateALCMeter(val) {
 
 function drawMeter() {
     var canvas = document.getElementById('meterCanvas');
+    if (needleActive()) {
+        NeedleMeter.draw(canvas, {
+            tx: isTransmitting, kind: txMeterKind, s: meterVal,
+            value: (txMeterKind === 'po') ? powerVal : txMeterValue(txMeterKind),
+            poFull: poFullScale
+        });
+        return;
+    }
+    NeedleMeter.stop();
     var dpr = window.devicePixelRatio || 1;
     var cssW = canvas.clientWidth;
     var cssH = canvas.clientHeight;
@@ -4946,7 +5010,7 @@ function drawTxMeters(ctx, cw, ch, barX, barW) {
     var now = performance.now();
 
     // --- Po tile bar (all blue; the scale tops out at 100%) ---
-    var poFill = Math.round(Math.min(1, Math.max(0, powerVal / 100)) * tiles);
+    var poFill = Math.round(Math.min(1, Math.max(0, powerVal / poFullScale)) * tiles);
     if (poFill >= txPoPeakCount || now - txPoPeakTs > METER_PEAK_HOLD_MS) {
         txPoPeakCount = poFill;
         txPoPeakTs = now;
@@ -5394,6 +5458,12 @@ function renderFuncOverlay() {
     grid.appendChild(makeFuncBtn('MON', monitorEnabled ? toPercent(monitorLevel, 255) : 'OFF', monitorEnabled, function() {
         monitorEnabled = !monitorEnabled;
         send({ cmd: 'setMonitor', value: monitorEnabled });
+        renderFuncOverlay();
+    }));
+
+    // Meter face: follow the radio, or force the tile bar / the needle
+    grid.appendChild(makeFuncBtn('METER', meterStyle.toUpperCase(), meterStyle !== 'auto', function() {
+        cycleMeterStyle();
         renderFuncOverlay();
     }));
 
@@ -11978,6 +12048,7 @@ Recorder.init({
             vfo: document.getElementById('vfoLabel').textContent,
             split: isSplit,
             tx: isTransmitting,
+            meterNeedle: needleActive(),
             rig: rigTagName || rigModelName,
             call: getMyCall()
         };
@@ -11991,7 +12062,7 @@ Recorder.init({
     }
 });
 renderBottomBar();
-drawMeter();
+applyMeterStyle();
 updateClock();
 setInterval(updateClock, 10000);
 

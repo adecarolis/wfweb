@@ -2528,6 +2528,8 @@
                 // rig can actually produce, carrying the rig's own calibration
                 // table so the SPA can draw the matching face.
                 txMeters: txMeterDescriptors(entry),
+                // The Power table, so the meter can tell this rig's 100 % from watts.
+                poCal: (entry && entry.meters && entry.meters.power) || [],
                 // Repeater access tone. canSet* is separate from hasCTCSS
                 // because a rig can engage a tone without exposing the 0x1B
                 // frequency register (IC-905), and tone scan additionally

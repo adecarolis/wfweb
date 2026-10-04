@@ -17,6 +17,7 @@
         <file alias="reporters.js">web-shared/reporters.js</file>
         <file alias="urltune.js">web-shared/urltune.js</file>
         <file alias="wf-canvas.js">web-shared/wf-canvas.js</file>
+        <file alias="needle-meter.js">web-shared/needle-meter.js</file>
         <file alias="recorder.js">web-shared/recorder.js</file>
         <file alias="lamejs/lame.min.js">web-shared/lamejs/lame.min.js</file>
         <file alias="theme.css">web-shared/theme.css</file>

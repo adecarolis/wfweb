@@ -1079,17 +1079,28 @@ function drawFrame(r) {
     var st = host.getState(), cv = host.getCanvases();
     var x, text;
 
+    // The needle face (needle-meter.js) is as tall as it is readable, so it
+    // gets the whole header height and the top strip starts to its right.
+    // The bar face is a low strip and sits in the row under the top strip.
+    var m = cv.meter, mw = 0, mh = 0, left = 0;
+    var needle = !!(st.meterNeedle && m && m.width && m.height);
+    if (needle) {
+        mh = HEADER_H - 8;
+        mw = Math.round(m.width * mh / m.height);
+        left = mw + 32;
+    }
+
     g.fillStyle = T.bg; g.fillRect(0, 0, W, H);
-    g.fillStyle = T.bar; g.fillRect(0, 0, W, 36);
+    g.fillStyle = T.bar; g.fillRect(left, 0, W - left, 36);
     g.textBaseline = 'middle';
     g.textAlign = 'left';
 
     // Top strip: RX/TX tile, mode, bandwidth, split — rig, callsign, UTC on the right.
     g.font = 'bold 15px ' + T.mono;
-    tile(g, 12, 6, 48, 24, st.tx ? '#c00' : '#3a0a0a', st.tx ? '#fff' : '#e77', st.tx ? 'TX' : 'RX');
+    tile(g, left + 12, 6, 48, 24, st.tx ? '#c00' : '#3a0a0a', st.tx ? '#fff' : '#e77', st.tx ? 'TX' : 'RX');
 
     g.font = 'bold 18px ' + T.mono;
-    x = 76;
+    x = left + 76;
     g.fillStyle = T.text; g.fillText(st.mode || '', x, 19);
     x += g.measureText(st.mode || '').width + 18;
     text = bwLabel(st.filter);
@@ -1108,12 +1119,14 @@ function drawFrame(r) {
     // row, never enlarged (the page's meter is wide on a desktop, narrow on a
     // phone). The frequency sits to its right at exactly twice the sprite's
     // size — the same scale the page uses, and the sharpest it can be drawn.
-    var rowY = 36, rowH = HEADER_H - rowY, mw = 0, m = cv.meter;
-    if (m && m.width && m.height) {
+    var rowY = 36, rowH = HEADER_H - rowY;
+    g.imageSmoothingQuality = 'high';
+    if (needle) {
+        g.drawImage(m, 12, 4, mw, mh);
+    } else if (m && m.width && m.height) {
         var k = Math.min(METER_MAX_W / m.width, (rowH - 8) / m.height, 1);
-        var mh = Math.round(m.height * k);
+        mh = Math.round(m.height * k);
         mw = Math.round(m.width * k);
-        g.imageSmoothingQuality = 'high';
         g.drawImage(m, 12, rowY + Math.round((rowH - mh) / 2), mw, mh);
     }
     x = 12 + mw + 32;
@@ -1368,7 +1381,7 @@ function onButton() {
 }
 
 // opts: { button, isTx(), getState(), getCanvases() }
-//   getState()    → { freq, mode, filter, vfo, split, tx, rig, call }
+//   getState()    → { freq, mode, filter, vfo, split, tx, meterNeedle, rig, call }
 //   getCanvases() → { meter, spectrum, waterfall }
 function init(opts) {
     host = opts;
