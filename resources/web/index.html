@@ -2717,7 +2717,7 @@ body.digi-open #bottomBar { grid-row: 5; }
         </div>
 
         <!-- Warning overlays on spectrum -->
-        <div id="audioOffWarning" class="spectrum-warning" onclick="showAudioMicMenu()" style="display: none;">AUDIO OFF</div>
+        <div id="audioOffWarning" class="spectrum-warning" onclick="onAudioWarningClick()" style="display: none;">AUDIO OFF</div>
         <div id="micOffWarning" class="spectrum-warning" onclick="toggleMic()" style="display: none;">MIC OFF</div>
         <div id="preampAttIndicator" class="spectrum-warning" style="display: none;"></div>
         <div id="dupIndicator" class="spectrum-warning" style="display: none;" onclick="openDupModal()"></div>
@@ -3277,7 +3277,7 @@ function handleMessage(msg) {
             if (msg.connected) {
                 if (msg.modes) populateModes(msg.modes);
                 if (msg.hasSpectrum) { hasSpectrum = true; spectAmpMax = msg.spectAmpMax || 160; scopeRigAssert(); }
-                if (msg.audioAvailable) { audioAvailable = true; audioSampleRate = msg.audioSampleRate || 48000; }
+                if (msg.audioAvailable) { audioAvailable = true; audioSampleRate = msg.audioSampleRate || 48000; startPendingAudio(); }
                 if (msg.audioError) showAudioError(msg.audioError);
                 updateTxAudioAvailable(msg.txAudioAvailable || false);
                 if (msg.spans) populateSpans(msg.spans);
@@ -3313,7 +3313,7 @@ function handleMessage(msg) {
             updateRigTag();
             if (msg.modes) populateModes(msg.modes);
             if (msg.hasSpectrum) { hasSpectrum = true; spectAmpMax = msg.spectAmpMax || 160; scopeRigAssert(); }
-            if (msg.audioAvailable) { audioAvailable = true; audioSampleRate = msg.audioSampleRate || 48000; }
+            if (msg.audioAvailable) { audioAvailable = true; audioSampleRate = msg.audioSampleRate || 48000; startPendingAudio(); }
             if (msg.audioError) showAudioError(msg.audioError);
             updateTxAudioAvailable(msg.txAudioAvailable || false);
             if (msg.spans) populateSpans(msg.spans);
@@ -3345,7 +3345,7 @@ function handleMessage(msg) {
             setTimeout(function() { send({ cmd: 'getStatus' }); }, 1500);
             break;
         case 'audioAvailable':
-            if (msg.available) { audioAvailable = true; audioSampleRate = msg.sampleRate || 48000; }
+            if (msg.available) { audioAvailable = true; audioSampleRate = msg.sampleRate || 48000; startPendingAudio(); }
             else { audioAvailable = false; if (audioEnabled) stopAudio(); }
             if (msg.txAudioAvailable !== undefined) updateTxAudioAvailable(msg.txAudioAvailable);
             updateWarningVisibility();
@@ -6245,8 +6245,11 @@ function updateWarningVisibility() {
     var audioWarning = document.getElementById('audioOffWarning');
     var micWarning = document.getElementById('micOffWarning');
 
-    // Show audio warning if audio is available but not enabled
-    audioWarning.style.display = (audioAvailable && !audioEnabled) ? 'block' : 'none';
+    // Show audio warning if audio is available but not enabled, or enabled
+    // but not rendering (see createRxAudioCtx)
+    var stalled = rxAudioStalled();
+    audioWarning.textContent = stalled ? 'AUDIO PAUSED' : 'AUDIO OFF';
+    audioWarning.style.display = ((audioAvailable && !audioEnabled) || stalled) ? 'block' : 'none';
 
     // Show mic indicator permanently when TX audio is available; reflect current state
     if (txAudioAvailable && window.isSecureContext) {
@@ -6752,9 +6755,58 @@ function toggleAudio() {
 
 var audioGainNode = null; // Global gain node for muting RX audio during CW
 
+// Safari can leave an AudioContext suspended even though it was created in a
+// click (seen with a Bluetooth output that was slow to start) and never
+// retries by itself: RX frames keep arriving and nothing is rendered. So ask
+// for resume() explicitly, retry while frames arrive and on every later
+// gesture, and show AUDIO PAUSED for as long as the context is not running.
+function createRxAudioCtx() {
+    var ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: audioSampleRate });
+    ctx.onstatechange = function() {
+        console.log('[Audio] RX AudioContext ' + ctx.state);
+        updateWarningVisibility();
+    };
+    var p = ctx.resume();
+    if (p && p.catch) p.catch(function() {});
+    return ctx;
+}
+
+function rxAudioStalled() {
+    return !!(audioEnabled && audioCtx && audioCtx.state !== 'running');
+}
+
+var audioResumeAt = 0;
+function resumeRxAudio(fromGesture) {
+    if (!audioCtx || audioCtx.state === 'running' || audioCtx.state === 'closed') return;
+    var now = Date.now();
+    if (!fromGesture && now - audioResumeAt < 1000) return;
+    audioResumeAt = now;
+    var p = audioCtx.resume();
+    if (p && p.catch) p.catch(function() {});
+}
+['click', 'touchend', 'keydown'].forEach(function(ev) {
+    document.addEventListener(ev, function() { resumeRxAudio(true); }, true);
+});
+
+function onAudioWarningClick() {
+    // A paused context only needs the gesture (the listener above took it).
+    if (!rxAudioStalled()) showAudioMicMenu();
+}
+
+// The splash can be clicked before the first status says the rig has audio.
+// The click still creates the context (it needs the gesture); the rest of
+// startAudio() runs when audio turns out to be available.
+var audioStartPending = false;
+function startPendingAudio() {
+    if (audioStartPending && !audioEnabled) startAudio();
+}
+
 function startAudio() {
-    if (audioCtx) stopAudio();
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: audioSampleRate });
+    audioStartPending = false;
+    var primed = audioCtx && !audioGainNode && audioCtx.state !== 'closed'
+        && audioCtx.sampleRate === audioSampleRate;
+    if (audioCtx && !primed) stopAudio();
+    if (!audioCtx) audioCtx = createRxAudioCtx();
     var bufSize = audioCtx.sampleRate * 1.5; // 1.5s buffer for low-latency LAN
     audioRingBuf = new Float32Array(bufSize);
 
@@ -6925,6 +6977,7 @@ function stopMic() {
 function handleAudioData(buffer) {
     if (!audioEnabled) return;
     if (buffer.byteLength < 8) return;
+    if (audioCtx && audioCtx.state !== 'running') resumeRxAudio(false);
     var pcmData = new Int16Array(buffer, 6);
     var floatData = new Float32Array(pcmData.length);
     for (var i = 0; i < pcmData.length; i++) floatData[i] = pcmData[i] / 32768.0;
@@ -11975,7 +12028,9 @@ connect();
 // from the click handler.
 document.getElementById('startBtn').addEventListener('click', function() {
     document.getElementById('startupOverlay').style.display = 'none';
-    if (audioAvailable && !audioEnabled) startAudio();
+    if (audioEnabled) return;
+    if (audioAvailable) startAudio();
+    else if (!audioCtx) { audioCtx = createRxAudioCtx(); audioStartPending = true; }
 });
 
 // Initialize CW Decoder
