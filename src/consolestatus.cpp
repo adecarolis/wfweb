@@ -176,7 +176,8 @@ QStringList ConsoleStatus::render(const ConsoleSnapshot &snap, int cols, int row
     add(Blank, QString());
 
     const QString rig = snap.model.isEmpty() ? snap.transport : snap.model + " on " + snap.transport;
-    field(Rig, "Rig", rig + (snap.rigConnected ? "  CONNECTED" : "  waiting for the rig"));
+    if (!rig.isEmpty())
+        field(Rig, "Rig", rig + (snap.rigConnected ? "  CONNECTED" : "  waiting for the rig"));
     if (snap.rigConnected && !snap.frequency.isEmpty())
         field(Frequency, "Frequency", snap.frequency + " " + snap.mode + (snap.transmitting ? "  TX" : "  RX"));
     if (snap.web == ConsoleSnapshot::WebListening)

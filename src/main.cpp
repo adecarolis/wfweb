@@ -670,7 +670,9 @@ int main(int argc, char *argv[])
 #ifdef BUILD_WFSERVER
     // The 'q' key ends the event loop without the signal handlers'
     // deleteLater(): stop the server and its threads here, or the process
-    // crashes while tearing down underneath them.
+    // crashes while tearing down underneath them. The status page must not
+    // query a server that is being destroyed, hence the null first.
+    w = Q_NULLPTR;
     delete server.data();
     if (console != Q_NULLPTR) {
         ConsoleStatus::restoreTerminal();

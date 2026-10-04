@@ -38,6 +38,11 @@ cachingQueue::~cachingQueue()
         qWarning(logRig()) << "Failed to delete cachingQueue() after" << CACHE_LOCK_TIME << "ms, mutex locked";
     }
     qInfo() << "Destroying caching queue (parent closing)";
+    // Let run() return before ~QThread: it aborts the process ("Destroyed
+    // while thread is still running") if it gets there before the woken
+    // thread has left, which is only a matter of scheduling.
+    if (!wait(2000))
+        qWarning(logRig()) << "cachingQueue() thread did not stop";
 }
 
 void cachingQueue::run()

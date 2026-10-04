@@ -36,6 +36,10 @@ PAGE_ON = b"\x1b[?1049h"
 PAGE_OFF = b"\x1b[?1049l"
 LOG_LINE = re.compile(rb"\d{4}-\d\d-\d\d \d\d:\d\d:\d\d\.\d{3} \S")
 LFLAG = 3
+# The two line-discipline bits the page turns off. Other bits are the kernel's
+# business: BSD/macOS sets PENDIN when canonical mode comes back and leaves it
+# until the next read.
+RAW_BITS = termios.ICANON | termios.ECHO
 
 
 class Terminal:
@@ -95,13 +99,20 @@ class Terminal:
         while self.proc.poll() is None and time.monotonic() < deadline:
             self.read(0.1)
         if self.proc.poll() is None:
-            pytest.fail("wfweb did not exit")
+            pytest.fail("wfweb did not exit\n" + self.diagnostics())
         self.read(0.3)
         return self.proc.returncode
 
+    def diagnostics(self):
+        """What the server printed and logged last, for a failure message."""
+        log = self.log.read_text(errors="replace") if self.log.exists() else ""
+        return ("exit code: %r\n--- terminal tail ---\n%r\n--- log tail ---\n%s"
+                % (self.proc.poll(), self.output[-600:], "\n".join(log.splitlines()[-25:])))
+
     def restored(self):
-        """The terminal line settings are back to what they were before."""
-        return termios.tcgetattr(self.slave)[LFLAG] == self.before[LFLAG]
+        """Canonical mode and echo are back to what they were before."""
+        now = termios.tcgetattr(self.slave)[LFLAG]
+        return now & RAW_BITS == self.before[LFLAG] & RAW_BITS
 
     def close(self):
         if self.proc.poll() is None:
@@ -130,7 +141,7 @@ def painted_rows(frame):
 
 
 def test_page_shows_url_and_rig(terminal):
-    term = terminal()
+    term = terminal(cols=200)           # room for a long temp-dir log path
     url = re.compile(rb"https?://[^\s\x1b]+:%d/" % term.port)
     seen = term.wait_for(url)
     assert PAGE_ON in term.output
@@ -189,18 +200,21 @@ def test_q_quits_and_restores_terminal(terminal, when):
     assert not term.restored(), "single-key mode while the page is up"
 
     term.type(b"q")
-    assert term.wait_exit() == 0
+    assert term.wait_exit() == 0, term.diagnostics()
     assert PAGE_OFF in term.output
     assert term.output.rstrip().endswith(b"wfweb stopped. Log: " + str(term.log).encode())
     assert term.restored()
 
 
+@pytest.mark.parametrize("when", ["starting", "running"])
 @pytest.mark.parametrize("sig", [signal.SIGINT, signal.SIGTERM, signal.SIGHUP])
-def test_signal_restores_terminal(terminal, sig):
+def test_signal_restores_terminal(terminal, sig, when):
     term = terminal()
-    term.wait_for(b"[l] live log")
+    term.wait_for(b"[l] live log" if when == "starting" else b"Open in a browser:")
     term.proc.send_signal(sig)
-    term.wait_exit()
+    code = term.wait_exit()
+    if sig != signal.SIGHUP:            # a hangup is fatal by design
+        assert code == 0, term.diagnostics()
     assert PAGE_OFF in term.output
     assert term.output.rfind(PAGE_OFF) > term.output.rfind(PAGE_ON)
     assert term.restored()

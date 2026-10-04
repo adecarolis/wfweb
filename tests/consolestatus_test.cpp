@@ -118,6 +118,7 @@ int main()
         s.version = "9.9.9";
         lines = ConsoleStatus::render(s, 80, 24);
         require(contains(lines, "Starting..."), "placeholder before the server exists");
+        require(!contains(lines, "Rig"), "no rig line before the server exists");
     }
 
     // --- rig not there yet, transmitting, hostile text ---
