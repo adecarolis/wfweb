@@ -1305,10 +1305,12 @@ function tick() {
 function render() {
     if (!btn) return;
     btn.classList.toggle('recording', !!rec);
+    // Lets theme.css make room for the elapsed time on phones.
+    document.body.classList.toggle('rec-on', !!rec);
     btn.disabled = busy;
     if (rec) {
         var s = Math.floor((Date.now() - rec.t0) / 1000);
-        timeEl.textContent = '● ' + Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2);
+        timeEl.textContent = Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2);
         btn.title = 'Stop recording and save';
     } else {
         btn.title = 'Record';
@@ -1373,8 +1375,8 @@ function init(opts) {
     if (!btn) return;
     // AudioWorklet needs a secure context; without it there is nothing to offer.
     if (!supported()) { btn.style.display = 'none'; return; }
-    // Two labels, switched by theme.css: "REC" when idle, the elapsed time
-    // while recording (phones keep "REC" — their top bar has no room to grow).
+    // Two labels, switched by theme.css: "REC" when idle; while recording, a
+    // stop square (drawn by the stylesheet) and the elapsed time.
     var idle = document.createElement('span');
     idle.className = 'rec-idle';
     idle.textContent = btn.textContent;
