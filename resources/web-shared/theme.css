@@ -294,11 +294,20 @@
 .rec-btn .rec-time,
 .rec-btn.recording .rec-idle { display: none; }
 .rec-btn.recording .rec-time { display: inline; }
+/* While recording the button is the stop control: a stop square, then the
+   elapsed time. */
+.rec-btn .rec-time::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-right: 5px;
+    background: currentColor;
+}
 @media (orientation: portrait), (max-width: 600px) {
-    /* The phone top bar has no room to grow: keep the idle width while
-       recording — the red fill is the indicator. */
-    .rec-btn.recording .rec-idle { display: inline; }
-    .rec-btn.recording .rec-time { display: none; }
+    /* The phone top bar has no spare room, so while recording the elapsed
+       time takes the clock's place. */
+    body.rec-on #clock { display: none; }
 }
 @media (max-width: 340px) {
     .rec-btn { display: none; }         /* no room at all on 320 px screens */

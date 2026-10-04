@@ -381,29 +381,34 @@ function tile(g, x, y, w, h, fill, color, label) {
     g.textAlign = 'left';
 }
 
-// Word-wrap text to at most n characters per line; returns [start, end) offsets.
-function wrap(text, n) {
-    var lines = [], start = 0;
-    while (text.length - start > n) {
-        var cut = text.lastIndexOf(' ', start + n);
-        if (cut <= start) cut = start + n;              // one very long word
+// Word-wrap text to at most n characters per line (the first line to `first`,
+// when given); returns [start, end) offsets.
+function wrap(text, n, first) {
+    var lines = [], start = 0, w = first || n;
+    while (text.length - start > w) {
+        var cut = text.lastIndexOf(' ', start + w);
+        if (cut <= start) cut = start + w;              // one very long word
         lines.push([start, cut]);
         start = text.charAt(cut) === ' ' ? cut + 1 : cut;
+        w = n;
     }
     lines.push([start, text.length]);
     return lines;
 }
 
 // ---------------------------------------------------------------------------
-// Mode views. The page's CW and FT8 code is not modular, so — as js8-panel.mjs
-// does with its host helpers — these two readers take what they need straight
-// from page globals and from the rows the page has already rendered. All page
-// access for the mode views is in cwView() and ft8View(); each returns null
-// when its mode is not in use.
+// Mode views. The page's mode code is not modular, so — as js8-panel.mjs does
+// with its host helpers — these readers take what they need straight from
+// page globals and from what the page has already rendered. All page access
+// for the mode views is in cwView(), ft8View(), js8View(), packetView() and
+// freedvView(); each returns null when its mode is not in use.
 // ---------------------------------------------------------------------------
 var CW_PANEL_H = 250;
 var CW_SEED_CHARS = 100;         // decoded text carried in when recording starts mid-QSO
 var FT8_ROWS = 16;               // list rows that fit under the FT8 waterfall
+var FDV_PANEL_H = 160;
+var FDV_SPAN_MS = 60000;         // FreeDV timeline length
+var FDV_SNR = [-5, 25];          // dB range of the FreeDV SNR trace
 
 function cwView() {
     var mode = global.currentMode;
@@ -430,12 +435,6 @@ function ft8View() {
     if (!global.digiBarVisible || typeof global.getDigiSlotInfo !== 'function') return null;
     var status = byId('digiStatus'), dx = byId('digiDxCall');
     var band = typeof global.getCurrentDigiBand === 'function' ? global.getCurrentDigiBand() : null;
-    function marker(id) {                                // DOM overlays, positioned in percent
-        var el = byId(id);
-        if (!el || !el.style.left) return null;
-        return { left: parseFloat(el.style.left) / 100, width: parseFloat(el.style.width) / 100,
-                 armed: el.classList.contains('armed') };
-    }
     return {
         mode: global.digiMode || 'FT8',
         band: band ? band.label : '',
@@ -446,7 +445,7 @@ function ft8View() {
         txFreq: global.digiTxFreq, rxFreq: global.digiRxFreq,
         lo: global.WF_FREQ_LOW || 300, hi: global.WF_FREQ_HIGH || 2800,
         waterfall: byId('digiWfCanvas'), labels: byId('digiWfLabelCanvas'),
-        txMarker: marker('digiWfTxMarker'), rxMarker: marker('digiWfRxMarker'),
+        txMarker: markerOf('digiWfTxMarker'), rxMarker: markerOf('digiWfRxMarker'),
         activity: ft8Rows(byId('digiRxPanel')),
         mine: ft8Rows(byId('digiDirectedPanel'))
     };
@@ -477,6 +476,81 @@ function ft8Rows(panel) {
         });
     }
     return out;
+}
+
+// JS8 keeps its state private to its module, but everything a frame needs is
+// on the page: the status strip, the waterfall, the heard list and the feed.
+// #js8Feed is always the full monitor feed, even while a QSO tab is selected.
+function js8View() {
+    if (!document.body.classList.contains('js8-open')) return null;
+    function txt(el, sel) { var n = el.querySelector(sel); return n ? n.textContent.trim() : ''; }
+    function picked(id) { var el = byId(id); return el && el.selectedOptions[0] ? el.selectedOptions[0].textContent.trim() : ''; }
+    function label(id) { var el = byId(id); return el ? el.textContent.trim() : ''; }
+    var bar = byId('js8ProgressBar'), freq = byId('js8TxFreq'), i, el;
+    var heard = [], rows = document.querySelectorAll('#js8Stations .js8-station');
+    for (i = 0; i < rows.length && i < 20; i++) {
+        heard.push({ call: txt(rows[i], '.js8-station-call'), age: txt(rows[i], '.js8-station-age'),
+                     snr: txt(rows[i], '.js8-station-dbm') });
+    }
+    var feed = [];
+    rows = document.querySelectorAll('#js8Feed .js8-feed-row');
+    for (i = 0; i < rows.length && i < 24; i++) {            // newest first, as rendered
+        el = rows[i];
+        var badge = el.querySelector('.js8-tx-badge');
+        var to = txt(el, '.to'), msg = clean(txt(el, '.msg'));
+        // The wire text of a directed message starts with the callsign it is
+        // addressed to; the "from → to" column already says that.
+        if (to && msg.indexOf(to) === 0) msg = msg.slice(to.length).replace(/^[\s:]+/, '');
+        feed.push({
+            mine: el.classList.contains('from-me'), toMe: el.classList.contains('to-me'),
+            ts: txt(el, '.ts'), from: txt(el, '.from'), to: to,
+            msg: msg, snr: txt(el, '.snr'),
+            badge: badge ? badge.textContent.trim() : '',
+            badgeKind: badge ? badge.className.replace('js8-tx-badge', '').trim() : ''
+        });
+    }
+    return {
+        submode: picked('js8SubmodeSel'), band: picked('js8BandSel'),
+        frac: bar ? (parseFloat(bar.style.width) || 0) / 100 : 0,
+        tx: !!(bar && bar.classList.contains('tx')),
+        clock: label('js8Clock'), status: label('js8Status'),
+        txFreq: freq ? freq.value : '',
+        lo: global.WF_FREQ_LOW || 300, hi: global.WF_FREQ_HIGH || 2800,
+        waterfall: byId('js8WfCanvas'), txMarker: markerOf('js8WfTxMarker'),
+        heard: heard, feed: feed
+    };
+}
+
+// Packet exposes its whole state (Packet.state); the page's own renderers add
+// nothing to it, so the state is read directly.
+function packetView() {
+    var s = global.Packet && global.Packet.state;
+    if (!s || !s.visible) return null;
+    var term = s.terminal || {}, aprs = s.aprs || {}, stations = [], k;
+    for (k in (aprs.stations || {})) stations.push(aprs.stations[k]);
+    stations.sort(function (a, b) { return (b.lastHeard || 0) - (a.lastHeard || 0); });
+    return {
+        baud: s.mode,
+        own: term.compose ? term.compose.ownCall || '' : '',
+        tx: !!s.txBusy || Date.now() < (s.txActiveUntilMs || 0),
+        scope: byId('packetScopeCanvas'),
+        frames: s.frames || [],                          // {ts, src, dst, path[], ftype, info, tx}
+        tab: s.activeTab,                                // 'aprs' | 'term'
+        session: term.sessions && term.activeSid ? term.sessions[term.activeSid] || null : null,
+        stations: stations
+    };
+}
+
+// FreeDV / RADE has no panel on the page, only an indicator chip over the scope.
+function freedvView() {
+    if (!global.freedvEnabled) return null;
+    return {
+        mode: global.freedvModeName || '',
+        sync: !!global.freedvSync,
+        snr: +global.freedvSNR || 0,
+        fo: +global.freedvFreqOffset || 0,               // RADE only
+        call: global.radeRxCallsign || ''                // latest received callsign, or ''
+    };
 }
 
 // --- CW transcript ----------------------------------------------------------
@@ -603,6 +677,62 @@ function drawCwPanel(r, v, top, st) {
     }
 }
 
+// --- Shared pieces of the mode views -----------------------------------------
+
+function clean(s) {                                      // one printable line
+    return String(s == null ? '' : s).replace(/[\x00-\x1f\x7f]/g, '·');
+}
+
+function hhmmss(ms) { return new Date(ms).toISOString().substr(11, 8); }
+
+// Slot / progress bar of a status strip.
+function drawProgress(g, x, y, w, frac, tx) {
+    g.fillStyle = '#1c2530'; g.fillRect(x, y, w, 10);
+    g.fillStyle = tx ? '#d22' : '#28f';
+    g.fillRect(x, y, Math.round(w * Math.max(0, Math.min(1, frac || 0))), 10);
+}
+
+// Title of a list column, with its rule; returns the y of the first row.
+function listHeader(r, title, x, y, w, rule) {
+    var g = r.g;
+    g.font = 'bold 14px ' + r.theme.mono;
+    g.fillStyle = r.theme.dim; g.fillText(title, x + 8, y + 12);
+    g.fillStyle = rule; g.fillRect(x, y + 24, w, 2);
+    return y + 28;
+}
+
+// The FT8 / JS8 audio waterfall: the page's canvas (plus its label canvas),
+// then what the page shows as DOM overlays and so is not in the canvas — the
+// translucent RX/TX marker bands and the frequency scale. Returns the y below.
+function drawAudioWaterfall(r, y, h, canvas, labels, markers, lo, hi) {
+    var g = r.g, W = VIDEO.w, i;
+    drawSource(g, canvas, 0, y, W, h);
+    if (labels && canvas && labels.width === canvas.width) drawSource(g, labels, 0, y, W, h);
+    for (i = 0; i < markers.length; i++) {
+        if (!markers[i].at) continue;
+        g.fillStyle = markers[i].fill;
+        g.fillRect(markers[i].at.left * W, y, Math.max(2, markers[i].at.width * W), h);
+    }
+    y += h;
+    g.font = '13px ' + r.theme.mono;
+    g.fillStyle = r.theme.dim;
+    for (var f = lo; f <= hi; f += 500) {
+        g.textAlign = f === lo ? 'left' : f + 500 > hi ? 'right' : 'center';
+        g.fillText(f >= 1000 ? (f / 1000) + 'k' : String(f),
+                   Math.max(4, Math.min(W - 4, (f - lo) / (hi - lo) * W)), y + 10);
+    }
+    g.textAlign = 'left';
+    return y + 24;
+}
+
+// A DOM marker band positioned in percent (FT8 RX/TX, JS8 TX).
+function markerOf(id) {
+    var el = byId(id);
+    if (!el || !el.style.left) return null;
+    return { left: parseFloat(el.style.left) / 100, width: parseFloat(el.style.width) / 100,
+             armed: el.classList.contains('armed') };
+}
+
 // --- FT8 / FT4 --------------------------------------------------------------
 
 var FT8_ROW = {      // [row background, message colour] per kind of row
@@ -617,10 +747,7 @@ var FT8_ROW = {      // [row background, message colour] per kind of row
 
 function drawFt8List(r, title, rows, x, y, w, wide) {
     var g = r.g, T = r.theme, rowH = 22, i;
-    g.font = 'bold 14px ' + T.mono;
-    g.fillStyle = T.dim; g.fillText(title, x + 8, y + 12);
-    g.fillStyle = '#048'; g.fillRect(x, y + 24, w, 2);
-    y += 28;
+    y = listHeader(r, title, x, y, w, '#048');
     g.save();
     g.beginPath(); g.rect(x, y, w, FT8_ROWS * rowH); g.clip();
     g.font = 'bold 16px ' + T.mono;
@@ -665,9 +792,7 @@ function drawFt8Body(r, v) {
     g.font = 'bold 15px ' + T.mono;
     tile(g, 12, y + 5, 48, 22, '#06c', '#fff', v.mode);
     g.fillStyle = T.text; g.fillText(v.band, 72, y + 17);
-    var frac = v.slot.period ? Math.max(0, Math.min(1, v.slot.slotPhase / v.slot.period)) : 0;
-    g.fillStyle = '#1c2530'; g.fillRect(130, y + 11, 240, 10);
-    g.fillStyle = v.tx ? '#d22' : '#28f'; g.fillRect(130, y + 11, Math.round(240 * frac), 10);
+    drawProgress(g, 130, y + 11, 240, v.slot.period ? v.slot.slotPhase / v.slot.period : 0, v.tx);
     g.fillStyle = T.dim; g.fillText(Math.ceil(v.slot.remaining) + ' s', 380, y + 17);
     g.fillStyle = v.tx ? '#ff8a8a' : T.text; g.fillText(v.status, 440, y + 17);
     g.textAlign = 'right';
@@ -678,34 +803,266 @@ function drawFt8Body(r, v) {
     x -= 150;
     if (v.dx) { g.fillStyle = T.text; g.fillText('DX ' + v.dx, x, y + 17); }
     g.textAlign = 'left';
-    y += 36;
 
-    // Audio waterfall with the page's callsign labels; the RX/TX markers and
-    // the frequency scale are DOM on the page, so they are drawn here.
-    var wfH = 132;
-    drawSource(g, v.waterfall, 0, y, W, wfH);
-    if (v.labels && v.waterfall && v.labels.width === v.waterfall.width) drawSource(g, v.labels, 0, y, W, wfH);
-    if (v.rxMarker) {
-        g.fillStyle = 'rgba(0,200,100,0.28)';
-        g.fillRect(v.rxMarker.left * W, y, Math.max(2, v.rxMarker.width * W), wfH);
-    }
-    if (v.txMarker) {
-        g.fillStyle = v.txMarker.armed ? 'rgba(255,60,0,0.34)' : 'rgba(255,136,0,0.3)';
-        g.fillRect(v.txMarker.left * W, y, Math.max(2, v.txMarker.width * W), wfH);
-    }
-    y += wfH;
-    g.font = '13px ' + T.mono;
-    g.fillStyle = T.dim;
-    for (var f = v.lo; f <= v.hi; f += 500) {
-        var fx = (f - v.lo) / (v.hi - v.lo) * W;
-        g.textAlign = f === v.lo ? 'left' : f + 500 > v.hi ? 'right' : 'center';
-        g.fillText(f >= 1000 ? (f / 1000) + 'k' : String(f), Math.max(4, Math.min(W - 4, fx)), y + 10);
-    }
-    g.textAlign = 'left';
-    y += 24;
+    y = drawAudioWaterfall(r, y + 36, 132, v.waterfall, v.labels, [
+        { at: v.rxMarker, fill: 'rgba(0,200,100,0.28)' },
+        { at: v.txMarker, fill: v.txMarker && v.txMarker.armed ? 'rgba(255,60,0,0.34)' : 'rgba(255,136,0,0.3)' }
+    ], v.lo, v.hi);
 
     drawFt8List(r, 'Band activity', v.activity, 0, y, 736, true);
     drawFt8List(r, 'My QSO', v.mine, 752, y, W - 752, false);
+}
+
+// --- JS8 --------------------------------------------------------------------
+
+function drawJs8Body(r, v) {
+    var g = r.g, W = VIDEO.w, H = VIDEO.h, T = r.theme, y = HEADER_H, i;
+
+    // Status strip: submode, slot progress, status, band — TX audio frequency.
+    g.fillStyle = T.bar; g.fillRect(0, y, W, 32);
+    g.font = 'bold 15px ' + T.mono;
+    tile(g, 12, y + 5, 48, 22, '#c80', '#000', 'JS8');
+    g.fillStyle = T.text; g.fillText(v.submode, 72, y + 17);
+    var px = Math.max(250, 72 + g.measureText(v.submode).width + 20);
+    drawProgress(g, px, y + 11, 200, v.frac, v.tx);
+    g.fillStyle = T.dim; g.fillText(v.clock + ' s', px + 210, y + 17);
+    g.fillStyle = v.tx ? '#ff8a8a' : T.text; g.fillText(v.status, px + 270, y + 17);
+    g.fillStyle = T.dim; g.fillText(v.band, px + 340, y + 17);
+    g.textAlign = 'right';
+    g.fillStyle = '#ffb060'; g.fillText('TX ' + v.txFreq + ' Hz', W - 12, y + 17);
+    g.textAlign = 'left';
+
+    y = drawAudioWaterfall(r, y + 36, 110, v.waterfall, null, [
+        { at: v.txMarker, fill: v.txMarker && v.txMarker.armed ? 'rgba(255,60,0,0.34)' : 'rgba(255,170,0,0.3)' }
+    ], v.lo, v.hi);
+
+    // Heard stations, most recent first.
+    var rowH = 22, heardW = 250, hy = listHeader(r, 'Heard', 0, y, heardW, '#850');
+    g.font = 'bold 16px ' + T.mono;
+    for (i = 0; i < v.heard.length && hy + (i + 1) * rowH <= H; i++) {
+        var s = v.heard[i], cy = hy + i * rowH + rowH / 2;
+        g.fillStyle = '#ffe9c4'; g.fillText(s.call, 8, cy);
+        g.textAlign = 'right';
+        g.fillStyle = '#b89a66'; g.fillText(s.age, heardW - 84, cy);
+        g.fillStyle = '#ffcf80'; g.fillText(s.snr, heardW - 8, cy);
+        g.textAlign = 'left';
+    }
+
+    // Messages, newest at the top as on the page: time, from → to, then the
+    // text, which wraps under itself for up to three lines.
+    var mx = heardW + 16, mw = W - mx, my = listHeader(r, 'Messages', mx, y, mw, '#850');
+    g.font = 'bold 16px ' + T.mono;
+    var charW = g.measureText('M').width, perLine = Math.floor((mw - 16) / charW), line = 0;
+    var maxLines = Math.floor((H - my) / rowH);
+    for (i = 0; i < v.feed.length && line < maxLines; i++) {
+        var m = v.feed[i];
+        var addr = m.from + (m.to ? ' → ' + m.to : '');
+        var head = 10 + (addr ? addr.length + 2 : 0);                // "HH:MM:SS  " + address
+        var tail = m.badge ? m.badge.length + 2 : m.snr ? m.snr.length + 2 : 0;
+        var spans = wrap(m.msg, perLine - 10 - tail, Math.max(8, perLine - head - tail)).slice(0, 3);
+        var n = Math.min(spans.length, maxLines - line), top = my + line * rowH;
+        if (m.mine || m.toMe) {
+            g.fillStyle = m.mine ? '#2a0808' : '#062a10';
+            g.fillRect(mx, top, mw, n * rowH - 2);
+        }
+        var ty = top + rowH / 2;
+        g.fillStyle = '#b89a66'; g.fillText(m.ts, mx + 8, ty);
+        var ax = mx + 8 + 10 * charW;
+        g.fillStyle = '#ffcf80'; g.fillText(m.from, ax, ty);
+        if (m.to) {
+            g.fillStyle = '#b89a66'; g.fillText(' → ', ax + m.from.length * charW, ty);
+            g.fillStyle = '#ffe14d'; g.fillText(m.to, ax + (m.from.length + 3) * charW, ty);
+        }
+        g.fillStyle = m.mine ? '#ffeaea' : m.toMe ? '#e6ffe6' : '#f2f2f2';
+        for (var k = 0; k < n; k++) {
+            g.fillText(m.msg.slice(spans[k][0], spans[k][1]),
+                       mx + 8 + (k === 0 ? head : 10) * charW, ty + k * rowH);
+        }
+        g.textAlign = 'right';
+        if (m.badge) {
+            g.fillStyle = m.badgeKind === 'aborted' ? '#ff9a9a' : m.badgeKind === 'tx' ? '#ffb040' : '#c9a86a';
+            g.fillText(m.badge, W - 8, ty);
+        } else if (m.snr) {
+            g.fillStyle = '#b89a66'; g.fillText(m.snr, W - 8, ty);
+        }
+        g.textAlign = 'left';
+        line += n;
+    }
+}
+
+// --- Packet -----------------------------------------------------------------
+
+var PKT_COLORS = { rx: '#c8f5c8', tx: '#ffdf9e', pending: '#8a8168', info: '#8f9aa6' };
+
+// A terminal scrollback as display lines. Entries are chunks of a byte stream:
+// text carries its own line endings, so a chunk may continue the line the
+// previous chunk of the same direction left open.
+function termLines(entries) {
+    var lines = [], open = null, i, j;
+    for (i = 0; i < entries.length; i++) {
+        var e = entries[i], dir = e.dir === 'tx' || e.dir === 'info' ? e.dir : 'rx';
+        if (dir === 'info') { lines.push({ dir: dir, text: clean(e.data) }); open = null; continue; }
+        var parts = String(e.data == null ? '' : e.data).split(/\r\n|\r|\n/);
+        for (j = 0; j < parts.length; j++) {
+            var lastPart = j === parts.length - 1;
+            if (lastPart && parts[j] === '') { if (parts.length > 1) open = null; continue; }
+            if (j === 0 && open && open.dir === dir) open.text += clean(parts[j]);
+            else { open = { dir: dir, text: clean(parts[j]), pending: !!e.pending }; lines.push(open); }
+            if (!lastPart) open = null;
+        }
+    }
+    return lines;
+}
+
+function aprsAge(ms) {
+    var s = Math.max(0, Math.round(ms / 1000));
+    return s < 60 ? s + 's' : s < 3600 ? Math.floor(s / 60) + 'm' : s < 86400 ? Math.floor(s / 3600) + 'h' : Math.floor(s / 86400) + 'd';
+}
+
+function drawPacketBody(r, v) {
+    var g = r.g, W = VIDEO.w, H = VIDEO.h, T = r.theme, y = HEADER_H, i, x;
+
+    // Status strip: baud, own call, the active session — TX mark on the right.
+    g.fillStyle = T.bar; g.fillRect(0, y, W, 32);
+    g.font = 'bold 15px ' + T.mono;
+    tile(g, 12, y + 5, 76, 22, '#0a0', '#000', 'PACKET');
+    g.fillStyle = T.text; g.fillText(v.baud + ' bd', 100, y + 17);
+    g.fillStyle = '#ffe98a'; g.fillText(v.own, 190, y + 17);
+    if (v.session) {
+        var st = v.session.state, up = st === 'connected';
+        x = 190 + g.measureText(v.own).width + 24;
+        var label = st.toUpperCase(), tw = Math.ceil(g.measureText(label).width) + 20;
+        tile(g, x, y + 5, tw, 22, up ? '#075' : st === 'disconnected' ? '#333' : '#850', '#fff', label);
+        g.fillStyle = T.text; g.fillText(v.session.peerCall || '', x + tw + 10, y + 17);
+    }
+    if (v.tx) tile(g, W - 60, y + 5, 48, 22, '#c00', '#fff', 'TX');
+    y += 36;
+
+    drawSource(g, v.scope, 0, y, W, 96);                 // the panel's modem spectrogram
+    y += 104;
+
+    // Monitor: every frame heard or sent, newest at the bottom.
+    var rowH = 20, colW = 632, my = listHeader(r, 'Monitor', 0, y, colW, '#0a0');
+    var rows = Math.floor((H - my) / rowH), frames = v.frames.slice(-rows);
+    g.save();
+    g.beginPath(); g.rect(0, my, colW, H - my); g.clip();
+    g.font = 'bold 14px ' + T.mono;
+    for (i = 0; i < frames.length; i++) {
+        var f = frames[i], cy = my + i * rowH + rowH / 2;
+        if (f.tx) { g.fillStyle = '#241200'; g.fillRect(0, my + i * rowH, colW, rowH - 2); }
+        x = 8;
+        var seg = function (text, color) { g.fillStyle = color; g.fillText(text, x, cy); x += g.measureText(text).width; };
+        seg(hhmmss(f.ts) + ' ', '#8a94a0');
+        seg(f.tx ? 'TX ' : '   ', '#ffa040');
+        seg(clean(f.src), '#ffe98a'); seg('>', '#8a94a0'); seg(clean(f.dst), '#9fe8ff');
+        if (f.path && f.path.length) seg(' via ' + clean(f.path.join(',')), '#8a94a0');
+        seg(' [' + clean(f.ftype) + '] ', f.tx ? '#ffcf90' : '#9cd0ff');
+        if (f.info) seg(clean(String(f.info).replace(/[\r\n]+$/, '')), PKT_COLORS.rx);
+    }
+    g.restore();
+
+    // Right pane follows the page's tab: the terminal conversation, or APRS.
+    var px = colW + 16, pw = W - px, py;
+    g.save();
+    g.beginPath(); g.rect(px, y, pw, H - y); g.clip();
+    if (v.tab === 'term') {
+        py = listHeader(r, 'Terminal' + (v.session ? ' · ' + (v.session.peerCall || '') : ''), px, y, pw, '#0a0');
+        g.font = 'bold 15px ' + T.mono;
+        var charW = g.measureText('M').width, perLine = Math.floor((pw - 16) / charW), out = [];
+        var src = v.session ? termLines(v.session.scrollback.slice(-80)) : [];
+        for (i = 0; i < src.length; i++) {
+            var text = (src[i].dir === 'tx' ? '> ' : '') + src[i].text, spans = wrap(text, perLine);
+            for (var k = 0; k < spans.length; k++) out.push({ line: src[i], text: text.slice(spans[k][0], spans[k][1]) });
+        }
+        out = out.slice(-Math.floor((H - py) / rowH));
+        for (i = 0; i < out.length; i++) {
+            var ln = out[i].line;
+            g.fillStyle = ln.dir === 'info' ? PKT_COLORS.info
+                : ln.dir === 'tx' ? (ln.pending ? PKT_COLORS.pending : PKT_COLORS.tx) : PKT_COLORS.rx;
+            g.fillText(out[i].text, px + 8, py + i * rowH + rowH / 2);
+        }
+    } else {
+        py = listHeader(r, 'APRS · ' + v.stations.length + ' heard', px, y, pw, '#0a0');
+        g.font = 'bold 14px ' + T.mono;
+        var now = Date.now(), fit = Math.floor((H - py) / rowH);
+        for (i = 0; i < v.stations.length && i < fit; i++) {
+            var s = v.stations[i], sy = py + i * rowH + rowH / 2;
+            g.fillStyle = '#ffe98a'; g.fillText(clean(s.src), px + 8, sy);
+            if (typeof s.lat === 'number' && typeof s.lon === 'number') {
+                g.fillStyle = PKT_COLORS.rx;
+                g.fillText(Math.abs(s.lat).toFixed(3) + (s.lat < 0 ? 'S' : 'N') + ' ' +
+                           Math.abs(s.lon).toFixed(3) + (s.lon < 0 ? 'W' : 'E'), px + 104, sy);
+            }
+            g.fillStyle = '#b9c7d6'; g.fillText(clean(s.comment).slice(0, 34), px + 268, sy);
+            g.textAlign = 'right';
+            g.fillStyle = '#8fd48f'; g.fillText(aprsAge(now - s.lastHeard), px + pw - 8, sy);
+            g.textAlign = 'left';
+        }
+    }
+    g.restore();
+}
+
+// --- FreeDV / RADE ----------------------------------------------------------
+
+// The page keeps only the latest received callsign (and the server clears it
+// after a few seconds), so the recording keeps its own list: a callsign is
+// logged when it appears or changes. Never gated on sync — the callsign
+// arrives with the end-of-over frame, after sync is lost.
+function freedvHeard(log, call, nowMs) {
+    if (call && call !== log.lastCall) {
+        log.heard.unshift({ t: hhmmss(nowMs), call: call });
+        if (log.heard.length > 6) log.heard.pop();
+    }
+    log.lastCall = call;
+}
+
+function drawFreedvPanel(r, v, top, st) {
+    var g = r.g, W = VIDEO.w, T = r.theme, y = top, now = Date.now(), i, x;
+    var log = r.fdv || (r.fdv = { samples: [], heard: [], lastCall: '' });
+    freedvHeard(log, v.call, now);
+    var last = log.samples[log.samples.length - 1];
+    if (!last || now - last.t >= 200) log.samples.push({ t: now, sync: v.sync, snr: v.snr, tx: st.tx });
+    while (log.samples.length && now - log.samples[0].t > FDV_SPAN_MS) log.samples.shift();
+
+    // Title strip: mode, sync, SNR, frequency offset (RADE only).
+    g.fillStyle = T.bar; g.fillRect(0, y, W, 30);
+    g.font = 'bold 15px ' + T.mono;
+    tile(g, 12, y + 4, 76, 22, '#08a', '#fff', 'FreeDV');
+    g.fillStyle = T.text; g.fillText(v.mode, 100, y + 16);
+    x = 100 + g.measureText(v.mode).width + 20;
+    tile(g, x, y + 4, v.sync ? 56 : 84, 22, v.sync ? '#075' : '#611', '#fff', v.sync ? 'SYNC' : 'NO SYNC');
+    x += (v.sync ? 56 : 84) + 20;
+    // Out of sync the modem reports a placeholder SNR, not a measurement.
+    g.fillStyle = T.text; g.fillText('SNR ' + (v.sync ? v.snr.toFixed(0) + ' dB' : '\u2014'), x, y + 16);
+    if (v.mode === 'RADE' && v.sync) { g.fillStyle = T.dim; g.fillText('FO ' + v.fo.toFixed(0) + ' Hz', x + 130, y + 16); }
+    y += 34;
+
+    // Last minute: SNR while in sync (green), my transmissions (red band).
+    var gx = 12, gw = W - 24, gh = 84, perMs = gw / FDV_SPAN_MS;
+    g.fillStyle = '#0a1016'; g.fillRect(gx, y, gw, gh);
+    for (i = 0; i < log.samples.length; i++) {
+        var s = log.samples[i], next = log.samples[i + 1];
+        var x0 = gx + gw - (now - s.t) * perMs, w = Math.max(2, ((next ? next.t : now) - s.t) * perMs);
+        if (s.tx) { g.fillStyle = 'rgba(210,50,50,0.45)'; g.fillRect(x0, y, w, gh); }
+        else if (s.sync) {
+            var lvl = Math.max(0.06, Math.min(1, (s.snr - FDV_SNR[0]) / (FDV_SNR[1] - FDV_SNR[0])));
+            g.fillStyle = '#3ccf8a'; g.fillRect(x0, y + gh - Math.round(lvl * gh), w, Math.round(lvl * gh));
+        }
+    }
+    g.font = '13px ' + T.mono;
+    g.fillStyle = T.dim;
+    g.fillText('SNR ' + FDV_SNR[0] + '…' + FDV_SNR[1] + ' dB while in sync · red = my transmissions · last 60 s', gx + 8, y + 12);
+    y += gh + 8;
+
+    g.font = 'bold 16px ' + T.mono;
+    g.fillStyle = T.dim; g.fillText('Heard', 12, y + 12);
+    x = 84;
+    for (i = 0; i < log.heard.length; i++) {
+        g.fillStyle = T.dim; g.fillText(log.heard[i].t, x, y + 12);
+        x += g.measureText(log.heard[i].t).width + 10;
+        g.fillStyle = '#9ff2ff'; g.fillText(log.heard[i].call, x, y + 12);
+        x += g.measureText(log.heard[i].call).width + 32;
+    }
 }
 
 function drawScopeBody(g, cv, top, bottom) {
@@ -772,15 +1129,18 @@ function drawFrame(r) {
     g.fillStyle = T.dim; g.fillText(CREDIT.url, W - 12, 104);
     g.textAlign = 'left';
 
-    // Body: the FT8 panel replaces the scope (as it does on the page); CW adds
-    // a panel under it; otherwise the scope fills the frame.
-    var ft8 = ft8View(), cw = ft8 ? null : cwView();
-    if (ft8) {
-        drawFt8Body(r, ft8);
-    } else {
-        drawScopeBody(g, cv, HEADER_H, cw ? H - CW_PANEL_H : H);
-        if (cw) drawCwPanel(r, cw, H - CW_PANEL_H, st);
-    }
+    // Body. The FT8, JS8 and packet panels replace the scope, as they do on
+    // the page; CW and FreeDV add a panel under it; otherwise the scope fills
+    // the frame. The page keeps these modes mutually exclusive.
+    var view;
+    if ((view = ft8View())) return drawFt8Body(r, view);
+    if ((view = js8View())) return drawJs8Body(r, view);
+    if ((view = packetView())) return drawPacketBody(r, view);
+    var cw = cwView(), fdv = cw ? null : freedvView();
+    var panelH = cw ? CW_PANEL_H : fdv ? FDV_PANEL_H : 0;
+    drawScopeBody(g, cv, HEADER_H, H - panelH);
+    if (cw) drawCwPanel(r, cw, H - panelH, st);
+    else if (fdv) drawFreedvPanel(r, fdv, H - panelH, st);
 }
 
 function startVideo(r) {
@@ -945,10 +1305,12 @@ function tick() {
 function render() {
     if (!btn) return;
     btn.classList.toggle('recording', !!rec);
+    // Lets theme.css make room for the elapsed time on phones.
+    document.body.classList.toggle('rec-on', !!rec);
     btn.disabled = busy;
     if (rec) {
         var s = Math.floor((Date.now() - rec.t0) / 1000);
-        timeEl.textContent = '● ' + Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2);
+        timeEl.textContent = Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2);
         btn.title = 'Stop recording and save';
     } else {
         btn.title = 'Record';
@@ -1013,8 +1375,8 @@ function init(opts) {
     if (!btn) return;
     // AudioWorklet needs a secure context; without it there is nothing to offer.
     if (!supported()) { btn.style.display = 'none'; return; }
-    // Two labels, switched by theme.css: "REC" when idle, the elapsed time
-    // while recording (phones keep "REC" — their top bar has no room to grow).
+    // Two labels, switched by theme.css: "REC" when idle; while recording, a
+    // stop square (drawn by the stylesheet) and the elapsed time.
     var idle = document.createElement('span');
     idle.className = 'rec-idle';
     idle.textContent = btn.textContent;
