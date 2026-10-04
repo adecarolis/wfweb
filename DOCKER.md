@@ -291,6 +291,8 @@ General:
                           settings file" above). Does NOT accept .rig
                           files. Most users don't need this flag.
   -l --logfile <file>     Log file path
+  --no-tui                Plain log instead of the terminal status page
+                          (already the default in this image)
   -b --background         Run as daemon
   -d --debug              Enable debug logging
   -v --version            Show version
@@ -306,6 +308,14 @@ General:
 | IC-7610      | 152     | 0x98 |
 | IC-9700      | 162     | 0xA2 |
 | IC-785x      | 142     | 0x8E |
+
+### Terminal status page
+
+Outside Docker, wfweb started from an interactive terminal shows a status page
+(URLs, rig, ports) instead of the scrolling log. The image turns it off with
+`WFWEB_NO_TUI=1`, so `docker run -it` and `docker logs` show the plain log: the
+addresses on the page would be the container's, not the host's. Add
+`-e WFWEB_NO_TUI=0` to see it anyway.
 
 ---
 

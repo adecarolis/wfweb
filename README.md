@@ -328,6 +328,17 @@ All settings can be passed as CLI flags. Run `wfweb --help` for the full list.
 | `--no-remote-log` | Disable remote logging even if enabled in settings | — |
 | `--remote-log-decodes` | Also forward FT8/FT4 decodes to the remote logger | — |
 | `--no-autoconnect` | Start without connecting to the rig (LAN only; connect via web UI Reconnect). Env: `WFWEB_NO_AUTOCONNECT=1` | autoconnect |
+| `--no-tui` | Print the plain log on an interactive terminal instead of the status page. Env: `WFWEB_NO_TUI=1` | status page on a terminal |
+
+### Terminal status page
+
+Started from an interactive terminal, wfweb shows a status page instead of the scrolling log: the URL to open for each network address, the rig and its connection, frequency and mode, connected browsers, the REST and rigctld ports, the log file and the last warning. It redraws to fit any terminal size.
+
+- **`l`** switches to the live log (same format as before, with the last 500 lines replayed) and back.
+- **`q`** or Ctrl-C quits.
+- `-d` starts in the log view.
+
+Nothing changes when wfweb is not on a terminal — systemd, `-b`, Docker, or output piped to a file or another program all get the plain log. `--no-tui` or `WFWEB_NO_TUI=1` forces the plain log on a terminal too. The full log is always written to the log file as well (`-l`).
 
 ### About `--settings`
 

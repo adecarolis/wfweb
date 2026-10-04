@@ -62,6 +62,7 @@ Standalone build:
 | `rigCommander` | CI-V command encoding/decoding |
 | `webServer` | HTTP + WebSocket server (separate QThread) |
 | `rigCtlD` | Hamlib rigctld TCP server (port 4532, lives on webThread) |
+| `ConsoleStatus` | Terminal status page (URLs, rig, ports) shown instead of the log on an interactive TTY; main thread |
 | `audioConverter` | Codec conversion (rig format <-> PCM) |
 | `icomUdpHandler` | LAN UDP transport (3 channels) |
 | `radeProcessor` | RADE V1 modem encode/decode (separate QThread) |
@@ -192,6 +193,7 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 | `include/webserver.h` | Web server header |
 | `src/rigctld.cpp` | Hamlib rigctld TCP emulation (server build) |
 | `include/rigctld.h` | rigctld header (signals: `pttRequested`) |
+| `src/consolestatus.cpp` | Terminal status page: ANSI rendering, raw-mode keys, log ring buffer |
 | `resources/web/index.html` | Server-build SPA (WebSocket transport only) |
 | `resources/web-standalone/index.html` | Standalone-build SPA (Web Serial only) |
 | `resources/web-standalone/civ/icom.js` | In-browser Icom CI-V codec (Standalone) |
@@ -227,6 +229,33 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 | `resources/direwolf/` | Vendored Direwolf subset (modem + AX.25 only — see `README-vendoring.md`) |
 | `tests/test_packet.py` | End-to-end packet self-test (wraps `--packet-self-test`) |
 | `CHANGELOG` | Release changelog |
+
+---
+
+## Terminal Status Page
+
+- `ConsoleStatus` (`src/consolestatus.cpp`) replaces the scrolling log with a
+  status page **only when stdin and stdout are a TTY**. Pipes, systemd, `-b`,
+  `TERM=dumb`, `--no-tui` and `WFWEB_NO_TUI=1` (set in the Docker image) keep
+  the plain log, byte for byte. `l` toggles page / live log, `q` quits.
+- Plain ANSI escapes, no curses — it has to build on MSVC. The Windows console
+  branch (`SetConsoleMode`) is compiled only by CI.
+- **Never write to stdout directly** (`std::cout`, `printf`) from server code:
+  it lands on top of the page. Use `qInfo`/`qWarning`; `messageHandler` in
+  `main.cpp` routes the line to the log file and to `ConsoleStatus::logLine`.
+- The class has **no `Q_OBJECT`** on purpose: `tests/consolestatus_test.cpp`
+  links it against Qt5Core alone. `render()` is pure — layout changes are
+  tested there; `tests/test_console.py` drives the real binary on a pty.
+- `servermain::consoleSnapshot()` runs on the main thread. It reads the cache
+  map directly, **not** `getCache()`, which re-requests stale values from the
+  rig — the page must not generate rig traffic. Web-server state crosses from
+  the web thread through `std::atomic` members of `webServer`.
+- `ConsoleStatus::restoreTerminal()` must stay async-signal-safe (`write` +
+  `tcsetattr` only): it runs from the signal handlers and `atexit`.
+- The POSIX SIGINT/SIGTERM handler in `main.cpp` only restores the terminal and
+  writes a byte to a pipe; a `QSocketNotifier` does the real shutdown in the
+  event loop. Do not log or call Qt from the handler — it deadlocked when the
+  signal landed while the main thread was inside `malloc`.
 
 ---
 

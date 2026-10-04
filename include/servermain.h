@@ -30,6 +30,7 @@
 #include "kenwoodserver.h"
 #include "yaesuserver.h"
 #include "webserver.h"
+#include "consolestatus.h"
 #include "signal.h"
 
 class rigCtlD;
@@ -83,6 +84,10 @@ class servermain : public QObject
 public:
     servermain(const QString settingsFile, const cmdLineOverrides& overrides = cmdLineOverrides());
     ~servermain();
+
+    // What the terminal status page shows about the rig and the servers.
+    // Main thread only.
+    ConsoleSnapshot consoleSnapshot();
 
 signals:
     // Basic to rig:
