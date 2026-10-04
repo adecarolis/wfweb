@@ -290,8 +290,11 @@ The **REC** button in the top bar records what you hear, in either build. Pick a
 - **Video** — the same audio under a 1280×720 picture: frequency, mode, filter bandwidth, VFO, RX/TX state, meter, rig name, callsign and UTC time above the live spectrum and waterfall. Saved as MP4 where the browser can write it, WebM otherwise (Firefox).
   - **CW:** with the decoder on (or once you have keyed something), a panel under the waterfall shows the decoder's tone waterfall and the contact as a conversation — what you copied and what you sent, turn by turn.
   - **FT8/FT4:** with the DIGI panel open, the picture becomes the FT8 audio waterfall with its callsign labels, the band activity list, and your own QSO (messages to you, your transmissions, logged contacts).
+  - **JS8:** with the JS8 panel open, the JS8 audio waterfall, the stations heard, and the message feed — messages to you and your own messages highlighted, with their send progress.
+  - **Packet:** with the packet panel open, the modem spectrogram, the frame monitor, and either the terminal session as a conversation or the APRS stations heard, whichever tab you have selected.
+  - **FreeDV / RADE:** a panel under the waterfall with sync state, SNR, a one-minute timeline of received overs and your own transmissions, and the callsigns heard during the recording.
 
-Recording happens entirely in the browser, so it stops if the tab is closed or the device sleeps, and the video frame rate drops while the tab is in the background. The JS8 and packet panels have no video view yet; the video shows the main spectrum and waterfall while they are open. A video stops and saves itself after 30 minutes, an audio recording after 6 hours.
+Recording happens entirely in the browser, so it stops if the tab is closed or the device sleeps, and the video frame rate drops while the tab is in the background. A video stops and saves itself after 30 minutes, an audio recording after 6 hours.
 
 ---
 

@@ -284,7 +284,9 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 - Audio → MP3 via vendored `lamejs/lame.min.js` in a Blob worker. Video → a
   composited 1280×720 canvas (header + `meterCanvas` / `spectrumCanvas` /
   `waterfallCanvas`) through `MediaRecorder`; MP4 where supported, else WebM.
-- The video body switches by mode. `cwView()` and `ft8View()` in `recorder.js`
+- The video body switches by mode: FT8, JS8 and packet replace the scope (as
+  their panels do on the page); CW and FreeDV add a panel under it. `cwView()`,
+  `ft8View()`, `js8View()`, `packetView()` and `freedvView()` in `recorder.js`
   are the only places that read page state for this (same pattern as
   `js8-panel.mjs` reading host helpers), so renaming any of these breaks the
   video view, not the page:
@@ -298,6 +300,19 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
     `#digiRxPanel` / `#digiDirectedPanel` — row kind comes from the row's CSS
     classes (`cq-row`, `directed`, `highlight`, `tx-row`, `digi-tx-pending`,
     `digi-logged-row`, `digi-slot-divider`, `worked`).
+  - JS8: all from the panel's DOM, since its state is module-private —
+    `body.js8-open`, `#js8SubmodeSel`, `#js8ProgressBar`, `#js8Clock`,
+    `#js8Status`, `#js8BandSel`, `#js8TxFreq`, `#js8WfCanvas`,
+    `#js8WfTxMarker`, `#js8Stations .js8-station`, and the rows of `#js8Feed`
+    (`.js8-feed-row` with `from-me` / `to-me`, `.ts` `.from` `.to` `.msg`
+    `.snr` `.js8-tx-badge`).
+  - Packet: `Packet.state` — `visible`, `mode`, `activeTab`, `txBusy`,
+    `txActiveUntilMs`, `frames`, `terminal.{activeSid,sessions,compose}`,
+    `aprs.stations` — plus `#packetScopeCanvas`.
+  - FreeDV/RADE: `freedvEnabled`, `freedvModeName`, `freedvSync`, `freedvSNR`,
+    `freedvFreqOffset`, `radeRxCallsign`. The page keeps only the latest
+    callsign, so the heard list and the one-minute timeline are built per
+    recording; the callsign is logged when it appears, never gated on sync.
 - Video text uses filled tiles and light, low-saturation colours: thin
   saturated outlines smear in the encoder's chroma subsampling.
 - The worker and worklet are built from Blob URLs, so the lamejs URL carries a
