@@ -606,6 +606,7 @@ function cwUpdate(r, v, tx) {
 }
 
 function isCallsign(w) {                                 // same test as cw-decoder.js
+    if (w.length === 3) return /^[KNW][0-9][A-Z]$/.test(w);
     return w.length >= 4 && w.length <= 8 && /^[A-Z0-9]{1,3}[0-9][A-Z]{1,4}$/.test(w);
 }
 
