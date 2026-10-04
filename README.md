@@ -53,6 +53,7 @@ wfweb keeps wfview's radio engine and replaces the desktop GUI with a built-in w
 | FreeDV digital voice (700D/700E/1600) | — | ✓ |
 | AX.25 packet — 300/1200/9600, APRS, terminal, YAPP | — | ✓ |
 | Server-side ADIF logbook, remote logging (GridTracker, JTAlert, Log4OM…) | — | ✓ |
+| Recording — MP3 audio, or video of the waterfall with frequency and settings | — | ✓ |
 | Mobile-responsive UI | — | ✓ |
 | Headless / no-display operation | — | ✓ |
 
@@ -278,6 +279,19 @@ Every QSO logged from FT8/FT4, JS8, CW or by hand goes into one ADIF logbook.
 - **Worked-before hints:** FT8/FT4 decodes show the sender's DXCC entity, a gold star for an entity never worked, a silver star for one not yet worked on this band, and dim stations already worked on this band. Both can be switched off in Station Settings.
 
 The logbook is also reachable over REST (paged listing, ADIF import/export, station callsign) — see [REST_API.md](REST_API.md).
+
+---
+
+## Recording
+
+The **REC** button in the top bar records what you hear, in either build. Pick a type from its menu; tap the button again to stop, and the file downloads to the device you are operating from.
+
+- **Audio** — an MP3 of the received audio, with your own transmit audio (mic, FT8/FT4, JS8, packet) in its place while you transmit.
+- **Video** — the same audio under a 1280×720 picture: frequency, mode, filter bandwidth, VFO, RX/TX state, meter, rig name, callsign and UTC time above the live spectrum and waterfall. Saved as MP4 where the browser can write it, WebM otherwise (Firefox).
+  - **CW:** with the decoder on (or once you have keyed something), a panel under the waterfall shows the decoder's tone waterfall and the contact as a conversation — what you copied and what you sent, turn by turn.
+  - **FT8/FT4:** with the DIGI panel open, the picture becomes the FT8 audio waterfall with its callsign labels, the band activity list, and your own QSO (messages to you, your transmissions, logged contacts).
+
+Recording happens entirely in the browser, so it stops if the tab is closed or the device sleeps, and the video frame rate drops while the tab is in the background. The JS8 and packet panels have no video view yet; the video shows the main spectrum and waterfall while they are open. A video stops and saves itself after 30 minutes, an audio recording after 6 hours.
 
 ---
 
@@ -527,6 +541,7 @@ JS8 weak-signal messaging uses a WebAssembly build of [JS8Call-improved](https:/
 The CW decoder uses [ggmorse](https://github.com/ggerganov/ggmorse) by Georgi Gerganov.
 FreeDV digital voice uses [codec2](https://github.com/drowe67/codec2) by David Rowe VK5DGR and contributors, and [radae_nopy](https://github.com/peterbmarks/radae_nopy) by Peter Marks VK5APM (a standalone C implementation of the RADE Radio Autoencoder).
 AX.25 packet — modems, framing, link control, APRS, and YAPP — is powered by [Direwolf](https://github.com/wb2osz/direwolf) by John Langner WB2OSZ.
+MP3 recording uses [lamejs](https://github.com/zhuker/lamejs), a JavaScript port of the [LAME](https://lame.sourceforge.io) encoder (LGPL).
 
 ---
 

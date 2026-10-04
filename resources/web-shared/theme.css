@@ -267,3 +267,58 @@
     color: var(--field-text);
     font-family: var(--font-mono);
 }
+
+/* -- Recorder --------------------------------------------------------------- *
+ * Top-bar REC button and the popover recorder.js anchors under it (recording
+ * type menu, or a failure note). Red is the universal "record" colour, so
+ * this uses the error state tone rather than a mode accent.                  */
+.rec-btn {
+    padding: 2px 8px;
+    background: #1a0000;
+    border: var(--border-w) solid #a00;
+    color: var(--state-error);
+    font-family: var(--font-mono);
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-bold);
+    letter-spacing: 0.5px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    white-space: nowrap;
+}
+.rec-btn.recording {
+    background: var(--state-error);
+    border-color: var(--state-error);
+    color: #fff;
+}
+.rec-btn:disabled { opacity: 0.5; cursor: default; }
+.rec-btn .rec-time,
+.rec-btn.recording .rec-idle { display: none; }
+.rec-btn.recording .rec-time { display: inline; }
+@media (orientation: portrait), (max-width: 600px) {
+    /* The phone top bar has no room to grow: keep the idle width while
+       recording — the red fill is the indicator. */
+    .rec-btn.recording .rec-idle { display: inline; }
+    .rec-btn.recording .rec-time { display: none; }
+}
+@media (max-width: 340px) {
+    .rec-btn { display: none; }         /* no room at all on 320 px screens */
+}
+.rec-menu {
+    position: fixed;
+    z-index: 9000;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-2);
+    background: var(--bg-bar);
+    border: var(--border-w) solid var(--border-col);
+    border-radius: var(--radius);
+}
+.rec-menu .wf-btn { padding: var(--space-2) var(--space-3); text-align: left; }
+.rec-note {
+    max-width: 240px;
+    overflow-wrap: anywhere;
+    color: var(--state-error);
+    font-family: var(--font-mono);
+    font-size: var(--fs-sm);
+}

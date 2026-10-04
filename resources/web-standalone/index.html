@@ -2390,6 +2390,7 @@ body.digi-open #bottomBar { grid-row: 5; }
         <span id="dspIndicators"></span>
         <span class="flex-space"></span>
         <span id="rigTag" title="Rig"></span>
+        <button id="recBtn" class="rec-btn" title="Record">REC</button>
         <button id="qsoLogBtn" class="qso-log-btn" title="Log QSO">LOG</button>
         <span id="clock">--:--</span>
         <button id="fullscreenBtn" title="Full Screen" onclick="toggleFullscreen()">&#x26F6;</button>
@@ -2958,6 +2959,7 @@ body.digi-open #bottomBar { grid-row: 5; }
 <script src="urltune.js"></script>
 <script src="reporters.js"></script>
 <script src="wf-canvas.js"></script>
+<script src="recorder.js"></script>
 <script>
 // ============================================================
 // STATE
@@ -3466,7 +3468,10 @@ function txAudioReady() {
     return !!(serialTransport && serialTransport.isOpen());
 }
 function sendTxAudio(frame) {
-    if (serialTransport && serialTransport.isOpen()) serialTransport.sendAudioFrame(frame);
+    if (serialTransport && serialTransport.isOpen()) {
+        serialTransport.sendAudioFrame(frame);
+        Recorder.feedTx(frame, digiTxCtx ? digiTxCtx.sampleRate : 48000);
+    }
 }
 
 function updateConnIndicator() {
@@ -7248,6 +7253,7 @@ function handleAudioData(buffer) {
     // once the module finishes booting.
     if (typeof window._js8ProcessAudioChunk === 'function') window._js8ProcessAudioChunk(pcmData);
     if (toneScanDetector) feedToneScan(pcmData);
+    Recorder.feedRx(pcmData, audioSampleRate);
 
     if (audioUseWorklet && audioWorkletNode) {
         audioWorkletNode.port.postMessage(floatData);
@@ -7600,6 +7606,10 @@ function handleBinaryMessage(buffer) {
         // packet waterfall can show the outgoing signal while the radio is keyed.
         if (window.Packet && typeof window.Packet.onTxAudio === 'function') {
             window.Packet.onTxAudio(buffer);
+        }
+        if (buffer.byteLength >= 8) {
+            Recorder.feedTxPcm(new Int16Array(buffer, 6, (buffer.byteLength - 6) >> 1),
+                               view.getUint16(4, true) * 1000);
         }
         return;
     }
@@ -11955,6 +11965,31 @@ var fullscreenBtn = document.getElementById('fullscreenBtn');
 if (fullscreenBtn && !document.documentElement.requestFullscreen) {
     fullscreenBtn.style.display = 'none';
 }
+// Top bar REC button → audio/video recording (recorder.js). The video header
+// reuses the labels already rendered in the top bar.
+Recorder.init({
+    button: document.getElementById('recBtn'),
+    isTx: function() { return isTransmitting; },
+    getState: function() {
+        return {
+            freq: currentFreq,
+            mode: document.getElementById('modeBtn').textContent,
+            filter: filterFuncState(),
+            vfo: document.getElementById('vfoLabel').textContent,
+            split: isSplit,
+            tx: isTransmitting,
+            rig: rigTagName || rigModelName,
+            call: getMyCall()
+        };
+    },
+    getCanvases: function() {
+        return {
+            meter: document.getElementById('meterCanvas'),
+            spectrum: document.getElementById('spectrumCanvas'),
+            waterfall: document.getElementById('waterfallCanvas')
+        };
+    }
+});
 renderBottomBar();
 drawMeter();
 updateClock();

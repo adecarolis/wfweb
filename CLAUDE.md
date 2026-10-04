@@ -88,7 +88,7 @@ other.** No Direct/Server runtime gates: each `index.html` is single-purpose.
 |-----|---------|----------|
 | `resources/web/` | C++ server build (`wfweb.pro`) | Server-only `index.html`, `transport/websocket-transport.js`, `debug.html` |
 | `resources/web-standalone/` | Static bundle (`tools/build-static.sh`) | Standalone `index.html`, `transport/serial-transport.js`, `civ/`, `wasm/` |
-| `resources/web-shared/` | Both | `index.html`-side modules and pure assets: `theme.css` (design tokens + `.wf-*` kit), `packet.js`, `transport/rig-transport.js` (base class), CW decoder JS family, `ggmorse-wasm.js`, JS8 family (`js8.mjs`, `js8-panel.mjs`, `js8-panel.css`), `models/`, `digits/`, `digits-sprite.png` |
+| `resources/web-shared/` | Both | `index.html`-side modules and pure assets: `theme.css` (design tokens + `.wf-*` kit), `packet.js`, `recorder.js` (+ vendored `lamejs/`), `transport/rig-transport.js` (base class), CW decoder JS family, `ggmorse-wasm.js`, JS8 family (`js8.mjs`, `js8-panel.mjs`, `js8-panel.css`), `models/`, `digits/`, `digits-sprite.png` |
 
 Build inputs for `ggmorse-wasm.js` (the `.cpp` wrapper + license) live in
 `resources/ggmorse-src/`, alongside `resources/build-ggmorse-wasm.sh`. The
@@ -108,7 +108,7 @@ When you want to share a file between both builds:
 1. `git mv resources/web/<file> resources/web-shared/<file>`
 2. Delete the duplicate from `resources/web-standalone/`
 3. Update its `web.qrc` `<file alias=...>` line so the source path is `web-shared/<file>` (the alias stays the same — no C++ code changes)
-4. `tools/build-static.sh` already copies `web-shared/`, so the standalone build picks it up automatically
+4. Add it to the explicit file list in `tools/build-static.sh` — top-level `web-shared/` files are copied by name, not by glob (only its subdirectories are copied wholesale)
 
 ### Shared theme + component kit (`theme.css`)
 `resources/web-shared/theme.css` is the single source of UI styling for both
@@ -202,6 +202,7 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 | `resources/web-shared/transport/rig-transport.js` | Transport base class (both builds) |
 | `resources/web-shared/airbus.js` | Browser-side BroadcastChannel "air" for Standalone virtual rigs |
 | `resources/web-shared/packet.js` | Browser-side AX.25 / APRS / YAPP stack (both builds) |
+| `resources/web-shared/recorder.js` | Audio (MP3) / video recorder behind the top-bar REC button (both builds) |
 | `resources/web-shared/js8-panel.mjs` | JS8 messenger panel — markup + state machine, QSO tabs, RX/TX, CMD palette (both builds) |
 | `resources/web-shared/js8.mjs` | JS8 WASM codec bridge — 8-FSK synth + encode/decode wrapper (both builds) |
 | `resources/web-shared/` | Files shared by both builds (CW decoder, ggmorse, sprites, models) |
@@ -265,6 +266,42 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 - FreeDV indicator spans use stable IDs (`freedvSyncEl`, `freedvSnrEl`, `freedvCallsign`, `freedvFoEl`)
 - The meters fast-path updates individual spans by ID — do NOT use `nth-child` selectors
   (the callsign span shifts all positions when present/absent)
+
+---
+
+## Recording Architecture
+
+- Entirely browser-side, both builds (`resources/web-shared/recorder.js`); the
+  server is not involved and stores nothing.
+- The host page feeds PCM at three points, identical in both `index.html`:
+  `Recorder.feedRx` in `handleAudioData`, `Recorder.feedTx` in `sendTxAudio`
+  (every 0x03 frame actually sent), `Recorder.feedTxPcm` on the 0x04 packet-TX
+  tee. New audio paths must pass through one of these to be recorded.
+- A mixer AudioWorklet in its own 48 kHz context builds one mono timeline.
+  **TX replaces RX while TX audio is queued** — a rig with MONITOR on loops TX
+  back into the RX stream, and summing would record it twice. Mic frames are
+  only kept while `isTransmitting` (the mic streams whenever it is enabled).
+- Audio → MP3 via vendored `lamejs/lame.min.js` in a Blob worker. Video → a
+  composited 1280×720 canvas (header + `meterCanvas` / `spectrumCanvas` /
+  `waterfallCanvas`) through `MediaRecorder`; MP4 where supported, else WebM.
+- The video body switches by mode. `cwView()` and `ft8View()` in `recorder.js`
+  are the only places that read page state for this (same pattern as
+  `js8-panel.mjs` reading host helpers), so renaming any of these breaks the
+  video view, not the page:
+  - CW: `currentMode`, `CWDecoder.state.{enabled,textBuffer}`, `cwCharacters`,
+    `cwSpeed`, `#cwScopeCanvas`, `#cwFilterBand`, `#cwQsoInput`. The RX/TX
+    conversation is built per recording from the rolling decode buffer and the
+    keyer's character list; text decoded while keyed is dropped (sidetone).
+  - FT8/FT4: `digiBarVisible`, `digiMode`, `getDigiSlotInfo()`, `digiTxActive`,
+    `digiTxFreq`/`digiRxFreq`, `#digiStatus`, `#digiDxCall`, `#digiWfCanvas`,
+    `#digiWfLabelCanvas`, the two marker divs, and the **rendered rows** of
+    `#digiRxPanel` / `#digiDirectedPanel` — row kind comes from the row's CSS
+    classes (`cq-row`, `directed`, `highlight`, `tx-row`, `digi-tx-pending`,
+    `digi-logged-row`, `digi-slot-divider`, `worked`).
+- Video text uses filled tiles and light, low-saturation colours: thin
+  saturated outlines smear in the encoder's chroma subsampling.
+- The worker and worklet are built from Blob URLs, so the lamejs URL carries a
+  hand-appended `?v=` (`fingerprint-static.py` does not rewrite runtime URLs).
 
 ---
 
