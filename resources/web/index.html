@@ -8293,13 +8293,22 @@ function toggleCWBar() {
         updateCWTranscript();
         // Send current speed to backend
         send({ cmd: 'setCWSpeed', wpm: cwSpeed });
-        setTimeout(function() {
-            document.getElementById('cwInput').focus();
-        }, 100);
+        setTimeout(focusCwInput, 100);
     } else {
         // Hide CW bar
         cwBar.classList.add('hidden');
     }
+}
+
+// Nothing may hold keyboard focus under the CLICK TO START splash. In Safari
+// a click whose mouse-down takes focus away from a text field carries no user
+// activation, so the AudioContext created in the splash handler never starts.
+// A page opened with the rig already in CW gets here before the splash is
+// clicked; the splash handler focuses the input once audio is under way.
+function focusCwInput() {
+    if (document.getElementById('startupOverlay').style.display !== 'none') return;
+    if (document.getElementById('cwBar').classList.contains('hidden')) return;
+    document.getElementById('cwInput').focus();
 }
 
 function renderCWOverlay() {
@@ -8312,9 +8321,7 @@ function renderCWOverlay() {
     updateCWTranscript();
     // Send current speed to backend
     send({ cmd: 'setCWSpeed', wpm: cwSpeed });
-    setTimeout(function() {
-        document.getElementById('cwInput').focus();
-    }, 100);
+    setTimeout(focusCwInput, 100);
 }
 
 function updateCWTranscript() {
@@ -12028,6 +12035,7 @@ connect();
 // from the click handler.
 document.getElementById('startBtn').addEventListener('click', function() {
     document.getElementById('startupOverlay').style.display = 'none';
+    setTimeout(focusCwInput, 100);
     if (audioEnabled) return;
     if (audioAvailable) startAudio();
     else if (!audioCtx) { audioCtx = createRxAudioCtx(); audioStartPending = true; }
