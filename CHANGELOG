@@ -6,6 +6,88 @@ a built-in web interface. See https://gitlab.com/eliggett/wfview for the
 upstream wfview history.
 
 
+v0.9.2 (2026-10-04)
+--------------------
+
+Recording:
+- A REC button in the top bar records the session as audio (MP3) or as
+  video (MP4 where the browser can write it, WebM otherwise). It runs
+  entirely in the browser, in both builds: the server stores nothing,
+  and the finished file arrives as a download.
+- Audio is what you hear, with your own transmit audio (mic, FT8/FT4,
+  JS8, tune, packet) in its place while you transmit, so a rig with
+  MONITOR on isn't recorded twice.
+- Video is a 1280x720 frame: frequency, mode, filter, VFO, RX/TX, the
+  meter, rig name, callsign and UTC time above the live spectrum and
+  waterfall. The picture follows the mode. CW adds the decoder's tone
+  waterfall and the contact as an RX/TX conversation. FT8/FT4, JS8 and
+  packet show their own waterfall and traffic in place of the scope.
+  FreeDV / RADE adds sync, SNR, a one-minute timeline of overs and the
+  callsigns heard.
+- While recording, the button shows a stop square and the elapsed time.
+  On phones the elapsed time takes the place of the UTC clock.
+- A video stops and saves itself after 30 minutes, an audio recording
+  after 6 hours.
+
+Meter:
+- New needle meter: the multi-scale analog face the IC-7610 draws on
+  its screen, with S, Po, SWR, ALC, COMP, Vd and Id under one needle.
+  It reads S on receive and the selected reading on transmit; tap the
+  meter to change it. FUNC > METER cycles AUTO / BAR / NEEDLE. AUTO is
+  the needle on the rigs that draw this face themselves (IC-7610,
+  IC-7600, IC-7760, IC-785x, IC-756PRO series, IC-R8600) and the bar on
+  the others. Recorded video shows whichever face is active.
+- The Po scale follows the rig's rated power. It assumed 100 W, so a
+  10 W rig never filled more than a tenth of the bar.
+- On dual-receiver rigs the S-meter shows the main receiver only. It
+  used to mix in the Sub receiver's readings.
+
+Server:
+- Started from a terminal, wfweb shows a status page instead of the
+  scrolling log: one URL per network address, the rig and its
+  connection, frequency and mode, connected browsers, the REST and
+  rigctld ports, the log file and the last warning. "l" switches to the
+  live log and back, "q" quits. Nothing changes off a terminal: pipes,
+  systemd, -b, --no-tui and WFWEB_NO_TUI=1 (set in the Docker image)
+  keep the plain log.
+- Quitting with "q" no longer crashes. Ctrl+C and SIGTERM can no longer
+  hang the server on the way out, and one that arrives during startup
+  is no longer lost.
+
+FT8 / FT4:
+- DXpedition / multi-answer messages such as
+  "KF8EXX RR73; W2ERC <G3VCQ> -14", sent by Fox/Hound and MSHV
+  stations, are read as two messages from one station. Clicking the row
+  answers the real sender, the auto-sequencer picks up a report or an
+  RR73 addressed to you, and the entity shown is the sender's. Before,
+  "RR73;" was taken for the callsign, and the server build spotted it
+  to PSK Reporter. A station answering two other callers at once no
+  longer makes wfweb stop calling. (#129)
+- The band selector offers the bands the rig has, so an IC-705, IC-9700
+  or IC-7100 gets 4m (70.154), 2m (144.174, FT4 144.170) and 70cm
+  (432.174).
+
+JS8:
+- The band selector follows the rig's bands too; 2m is 144.178.
+
+CW:
+- US 1x1 special-event calls (N6O, K1W) are recognised in the decoded
+  text and can be clicked.
+
+Audio (server build):
+- Safari could open the page with no RX audio until a reload or another
+  click, most often with the rig already in CW. The page now starts the
+  audio itself, shows AUDIO PAUSED on the scope for as long as the
+  browser holds it back, and a CLICK TO START pressed before the rig's
+  status arrived no longer leaves audio off.
+
+Logbook:
+- "Add QSO" filled in FT8 whatever the rig was doing, and the top-bar
+  LOG button logged the rig's mode even with the FT8 panel open. Both
+  now use the open FT8/FT4 or JS8 panel, otherwise the rig's mode.
+  (#125)
+
+
 v0.9.1 (2026-09-27)
 --------------------
 
