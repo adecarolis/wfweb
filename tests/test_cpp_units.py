@@ -19,6 +19,8 @@ UNITS = {
     "wsjtx_protocol": ["src/wsjtxmessage.cpp"],
     # ADIF parse/append/rewrite, chronological index, paging, merge.
     "logbook": ["src/logbook.cpp"],
+    # Terminal status page layout at every terminal size.
+    "consolestatus": ["src/consolestatus.cpp"],
 }
 
 

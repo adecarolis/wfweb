@@ -71,6 +71,11 @@ ENV QT_QPA_PLATFORM=offscreen \
     XDG_CONFIG_HOME=/data \
     XDG_DATA_HOME=/data
 
+# Plain log on stdout even under `docker run -it`: the terminal status page
+# would list container-internal addresses and put escape codes in
+# `docker logs`.
+ENV WFWEB_NO_TUI=1
+
 # Remove the PulseAudio Qt plugin so Qt Multimedia uses ALSA directly.
 # No PulseAudio daemon runs inside the container; leaving the plugin causes
 # noisy "Connection refused" warnings on every audio enumeration.

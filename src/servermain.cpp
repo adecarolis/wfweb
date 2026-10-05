@@ -4,7 +4,8 @@
 #include "rigidentities.h"
 #include "logcategories.h"
 #include "rigctld.h"
-#include <iostream>
+#include <QNetworkInterface>
+#include <QHostInfo>
 
 // This code is copyright 2017-2020 Elliott H. Liggett
 // All rights reserved
@@ -355,10 +356,110 @@ void servermain::removeRig()
     }
 }
 
+// Hosts a browser on the network can use to reach this machine, best first.
+static QStringList reachableHosts()
+{
+    QStringList v4, v6;
+    for (const QNetworkInterface &iface : QNetworkInterface::allInterfaces()) {
+        const QNetworkInterface::InterfaceFlags flags = iface.flags();
+        if (!(flags & QNetworkInterface::IsUp) || !(flags & QNetworkInterface::IsRunning)
+            || (flags & QNetworkInterface::IsLoopBack))
+            continue;
+        // Container and VM bridges: addresses nothing outside this host can reach.
+        const QString name = iface.name();
+        if (name.startsWith("docker") || name.startsWith("br-") || name.startsWith("veth")
+            || name.startsWith("virbr"))
+            continue;
+        for (const QNetworkAddressEntry &entry : iface.addressEntries()) {
+            const QHostAddress ip = entry.ip();
+            if (ip.protocol() == QAbstractSocket::IPv4Protocol)
+                v4.append(ip.toString());
+            else if (ip.protocol() == QAbstractSocket::IPv6Protocol && !ip.isLinkLocal() && v6.isEmpty())
+                v6.append("[" + ip.toString() + "]");
+        }
+    }
+    QStringList hosts = v4 + v6;
+    if (hosts.isEmpty())
+        hosts.append("localhost");
+    const QString hostName = QHostInfo::localHostName();
+    if (!hostName.isEmpty() && hostName != "localhost")
+        hosts.append(hostName);
+    return hosts;
+}
+
+ConsoleSnapshot servermain::consoleSnapshot()
+{
+    ConsoleSnapshot snap;
+    snap.name = cliOverrides.name;
+    const QStringList hosts = reachableHosts();
+
+    if (web == Q_NULLPTR) {
+        snap.web = ConsoleSnapshot::WebDisabled;
+    } else {
+        snap.webPort = (cliOverrides.webPort > 0) ? cliOverrides.webPort : prefs.webPort;
+        snap.https = web->httpsActive();
+        snap.browsers = web->browserCount();
+        switch (web->webListenState()) {
+        case webServer::ListenPending: snap.web = ConsoleSnapshot::WebStarting; break;
+        case webServer::ListenOk:      snap.web = ConsoleSnapshot::WebListening; break;
+        case webServer::ListenFailed:  snap.web = ConsoleSnapshot::WebFailed; break;
+        }
+        for (const QString &host : hosts)
+            snap.urls.append(QString("%1://%2:%3/").arg(snap.https ? "https" : "http", host).arg(snap.webPort));
+        // The plain-HTTP REST port only exists next to HTTPS; without TLS the
+        // REST API is on the web port itself.
+        if (snap.https && web->restListenState() != webServer::ListenPending) {
+            snap.restUrl = QString("http://%1:%2/").arg(hosts.first()).arg(snap.webPort + 1);
+            snap.restFailed = (web->restListenState() == webServer::ListenFailed);
+        }
+    }
+
+    if (rigctl != Q_NULLPTR)
+        snap.rigctld = QString("%1:%2").arg(prefs.rigCtlBindAll ? "0.0.0.0" : "127.0.0.1").arg(prefs.rigCtlPort);
+
+    if (prefs.enableLAN)
+        snap.transport = "LAN " + udpPrefs.ipAddress;
+    if (!serverConfig.rigs.isEmpty()) {
+        RIGCONFIG* radio = serverConfig.rigs.first();
+        if (!prefs.enableLAN)
+            snap.transport = QString("%1 @ %2").arg(radio->serialPort).arg(radio->baudRate);
+        if (radio->rigAvailable && radio->rigCaps != Q_NULLPTR) {
+            snap.rigConnected = true;
+            snap.model = radio->rigCaps->modelName;
+        }
+    }
+
+    if (snap.rigConnected) {
+        // Read the cache map directly: getCache() re-requests a stale value
+        // from the rig, and the status page must not generate rig traffic.
+        vfoCommandType t = queue->getVfoCommand(vfoA, 0, false);
+        QVariant freq, mode, tx;
+        QMultiMap<funcs,cacheItem>* items = queue->getCacheItems();
+        for (auto it = items->cbegin(); it != items->cend(); ++it) {
+            if (it->receiver != 0) continue;
+            if (it->command == t.freqFunc) freq = it->value;
+            else if (it->command == t.modeFunc) mode = it->value;
+            else if (it->command == funcTransceiverStatus) tx = it->value;
+        }
+        queue->unlockMutex();
+
+        if (freq.isValid()) {
+            const quint64 hz = freq.value<freqt>().Hz;
+            snap.frequency = QString("%1.%2.%3").arg(hz / 1000000)
+                .arg((hz / 1000) % 1000, 3, 10, QLatin1Char('0'))
+                .arg(hz % 1000, 3, 10, QLatin1Char('0'));
+        }
+        if (mode.isValid())
+            snap.mode = mode.value<modeInfo>().name;
+        snap.transmitting = tx.isValid() && tx.toBool();
+    }
+    return snap;
+}
+
 void servermain::receiveStatusUpdate(networkStatus status)
 {
     if (status.message != lastMessage && !status.message.contains("rx latency")) {
-        std::cout << status.message.toLocal8Bit().toStdString() << "\n";
+        qInfo(logSystem()).noquote() << status.message;
         lastMessage = status.message;
     }
 }
@@ -1065,7 +1166,7 @@ void servermain::receivePTTstatus(bool pttOn)
 void servermain::handlePttLimit()
 {
     // ptt time exceeded!
-    std::cout << "Transmit timeout at 3 minutes. Sending PTT OFF command now.\n";
+    qWarning(logSystem()) << "Transmit timeout at 3 minutes. Sending PTT OFF command now.";
     emit setPTT(false);
     emit getPTT();
 }

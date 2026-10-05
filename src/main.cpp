@@ -1,6 +1,9 @@
 #ifdef BUILD_WFSERVER
 #include <QtCore/QCoreApplication>
+#include <QPointer>
+#include <QSocketNotifier>
 #include "keyboard.h"
+#include "consolestatus.h"
 #else
 #include <QApplication>
 #include <QTranslator>
@@ -46,6 +49,8 @@ QScopedPointer<QFile>   m_logFile;
 QMutex logMutex;
 servermain* w=Q_NULLPTR;
 keyboard* kb=Q_NULLPTR;
+// Terminal status page; null when the plain log goes to stdout instead.
+ConsoleStatus* console=Q_NULLPTR;
 
 #ifdef Q_OS_WIN
 // Set true by main() once a.exec() has returned and Qt teardown is done.
@@ -72,6 +77,7 @@ bool __stdcall cleanup(DWORD sig)
         return FALSE;
     }
 
+    ConsoleStatus::restoreTerminal();
     qInfo() << "terminate signal caught (Windows)" << sig;
     if (kb != Q_NULLPTR) kb->terminate();
     if (w != Q_NULLPTR)
@@ -89,27 +95,32 @@ bool __stdcall cleanup(DWORD sig)
     return TRUE;
 }
 #else
+// Write end is poked by the signal handler, read end wakes the event loop.
+static int quitPipe[2] = {-1, -1};
+
 static void cleanup(int sig)
 {
-    switch (sig) {
-    case SIGHUP:
-        qInfo() << "hangup signal";
-        break;
-    case SIGINT:
-    case SIGTERM:
-        qInfo() << "terminate signal caught";
-        if (kb != Q_NULLPTR) kb->terminate();
-        if (w != Q_NULLPTR) w->deleteLater();
-        QCoreApplication::quit();
-        break;
-    default:
-        break;
-    }
+    // Async-signal-safe calls only. The signal may have interrupted the main
+    // thread inside malloc or holding the log mutex, where logging or queueing
+    // a Qt call from here deadlocks; the shutdown itself runs in the event
+    // loop (see the notifier in main()).
+    ConsoleStatus::restoreTerminal();
+    const char byte = static_cast<char>(sig);
+    ssize_t ignored = write(quitPipe[1], &byte, 1);
+    (void)ignored;
 }
 #endif
 
 
  #ifndef Q_OS_WIN
+// A crash must not leave the shell on the status page with echo off.
+static void restoreTerminalAndReraise(int sig)
+{
+    ConsoleStatus::restoreTerminal();
+    signal(sig, SIG_DFL);
+    raise(sig);
+}
+
 void initDaemon()
 {
     if(getppid()==1)
@@ -198,6 +209,7 @@ int main(int argc, char *argv[])
     QString settingsFile = NULL;
     QString currentArg;
     cmdLineOverrides overrides;
+    bool noTui = false;
 
 
     const QString helpText = QString(
@@ -227,6 +239,9 @@ int main(int argc, char *argv[])
         "  --no-autoconnect        Start without connecting to the rig (LAN only; connect\n"
         "                          later with the web UI Reconnect button). Also enabled\n"
         "                          by setting WFWEB_NO_AUTOCONNECT=1 in the environment\n"
+        "  --no-tui                Print the plain log on an interactive terminal instead\n"
+        "                          of the status page. Also enabled by setting\n"
+        "                          WFWEB_NO_TUI=1 in the environment\n"
         "  --logbook <file>        QSO logbook (ADIF; default: <data dir>/logbook.adi)\n"
         "  --remote-log <host[:port]>  Send every logged QSO to an external logging\n"
         "                          program (GridTracker, JTAlert, Log4OM, ...) which\n"
@@ -567,6 +582,10 @@ int main(int argc, char *argv[])
         {
             overrides.noAutoConnect = true;
         }
+        else if (currentArg == "--no-tui")
+        {
+            noTui = true;
+        }
         else if ((currentArg == "-?") || (currentArg == "--help"))
         {
             std::cout << helpText.toStdString();
@@ -588,6 +607,8 @@ int main(int argc, char *argv[])
     // Container-friendly alternative to --no-autoconnect (issue #70)
     if (qEnvironmentVariableIntValue("WFWEB_NO_AUTOCONNECT") > 0)
         overrides.noAutoConnect = true;
+    if (qEnvironmentVariableIntValue("WFWEB_NO_TUI") > 0)
+        noTui = true;
 
 #ifdef BUILD_WFSERVER
 
@@ -595,6 +616,21 @@ int main(int argc, char *argv[])
     m_logFile.reset(new QFile(logFilename));
     // Open the file logging
     m_logFile.data()->open(QFile::WriteOnly | QFile::Truncate | QFile::Text);
+    // On an interactive terminal, show a status page (URLs, rig, ports) and
+    // keep the log one keypress away. Daemons, pipes and containers without a
+    // TTY get the plain log on stdout as before.
+    if (!noTui && ConsoleStatus::wanted()) {
+        console = new ConsoleStatus(logFilename);
+        console->setProvider([]() { return w != Q_NULLPTR ? w->consoleSnapshot() : ConsoleSnapshot(); });
+        QObject::connect(kb, &keyboard::keyPressed, console, [](char key) { console->onKey(key); });
+        console->enter(debugMode);
+ #ifndef Q_OS_WIN
+        signal(SIGSEGV, restoreTerminalAndReraise);
+        signal(SIGABRT, restoreTerminalAndReraise);
+        signal(SIGQUIT, restoreTerminalAndReraise);
+        signal(SIGHUP, restoreTerminalAndReraise);
+ #endif
+    }
     // Set handler
     qInstallMessageHandler(messageHandler);
 
@@ -606,12 +642,24 @@ int main(int argc, char *argv[])
  #ifdef Q_OS_WIN
     SetConsoleCtrlHandler((PHANDLER_ROUTINE)cleanup, TRUE);
  #else
-    signal(SIGINT, cleanup);
-    signal(SIGTERM, cleanup);
-    signal(SIGKILL, cleanup);
+    // The pipe is read once the event loop runs, so a signal that arrives
+    // while the server is still starting is not lost.
+    if (pipe(quitPipe) == 0) {
+        QSocketNotifier* quitNotifier = new QSocketNotifier(quitPipe[0], QSocketNotifier::Read, &a);
+        QObject::connect(quitNotifier, &QSocketNotifier::activated, [quitNotifier]() {
+            quitNotifier->setEnabled(false);
+            qInfo() << "terminate signal caught";
+            if (kb != Q_NULLPTR) kb->terminate();
+            if (w != Q_NULLPTR) w->deleteLater();
+            QCoreApplication::quit();
+        });
+        signal(SIGINT, cleanup);
+        signal(SIGTERM, cleanup);
+    }
  #endif
     kb->start();
     w = new servermain(settingsFile, overrides);
+    QPointer<servermain> server(w);
 #else
     a.setWheelScrollLines(1); // one line per wheel click
     wfmain w(settingsFile, logFilename, debugMode, webPort);
@@ -619,6 +667,18 @@ int main(int argc, char *argv[])
 
 #endif
     int rc = a.exec();
+#ifdef BUILD_WFSERVER
+    // The 'q' key ends the event loop without the signal handlers'
+    // deleteLater(): stop the server and its threads here, or the process
+    // crashes while tearing down underneath them. The status page must not
+    // query a server that is being destroyed, hence the null first.
+    w = Q_NULLPTR;
+    delete server.data();
+    if (console != Q_NULLPTR) {
+        ConsoleStatus::restoreTerminal();
+        std::cout << "wfweb stopped. Log: " << logFilename.toLocal8Bit().toStdString() << std::endl;
+    }
+#endif
 #if defined(BUILD_WFSERVER) && defined(Q_OS_WIN)
     // Release the console-control handler thread (if any) so Windows can
     // proceed to terminate the process now that Qt teardown has completed.
@@ -670,7 +730,10 @@ void messageHandler(QtMsgType type, const QMessageLogContext& context, const QSt
     } 
     // Write to the output category of the message and the message itself
     out << context.category << ": " << msg << "\n";
-    std::cout << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz ").toLocal8Bit().toStdString() << msg.toLocal8Bit().toStdString() << "\n";
+    if (console != Q_NULLPTR)
+        console->logLine(type, msg);
+    else
+        std::cout << QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz ").toLocal8Bit().toStdString() << msg.toLocal8Bit().toStdString() << "\n";
     out.flush();    // Clear the buffered data
 }
 #endif

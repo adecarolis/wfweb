@@ -638,8 +638,12 @@
 
     // Ham radio callsign detector
     // Covers the vast majority of ITU callsign formats:
-    // up to 3 prefix chars (letters/digits), one district digit, 1-4 suffix letters
+    // up to 3 prefix chars (letters/digits), one district digit, 1-4 suffix letters.
+    // The only three-character calls accepted are US 1x1 special events (K/N/W,
+    // digit, letter — N6O, K1W): any wider and short garbage decodes start
+    // matching.
     function isCallsign(word) {
+        if (word.length === 3) return /^[KNW][0-9][A-Z]$/.test(word);
         if (word.length < 4 || word.length > 8) return false;
         return /^[A-Z0-9]{1,3}[0-9][A-Z]{1,4}$/.test(word);
     }

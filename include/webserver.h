@@ -21,6 +21,7 @@
 #include <QUrlQuery>
 #include <QSettings>
 #include <memory>
+#include <atomic>
 #include "logbook.h"
 
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
@@ -76,6 +77,14 @@ class webServer : public QObject
 public:
     explicit webServer(QObject *parent = nullptr);
     ~webServer();
+
+    // State for the terminal status page, which reads it from the main thread
+    // while this object lives on the web thread — hence the atomics.
+    enum ListenState { ListenPending, ListenOk, ListenFailed };
+    ListenState webListenState() const { return ListenState(webListen_.load()); }
+    ListenState restListenState() const { return ListenState(restListen_.load()); }
+    bool httpsActive() const { return httpsActive_.load(); }
+    int browserCount() const { return browserCount_.load(); }
 
 signals:
     void closed();
@@ -289,6 +298,11 @@ private:
     // memory mode the frequency replies describe the recalled channel, not
     // either VFO, so they must not land in the browser's VFO A/B slots (#108).
     bool memModeLocal = false;
+
+    std::atomic<int> webListen_{ListenPending};
+    std::atomic<int> restListen_{ListenPending};
+    std::atomic<bool> httpsActive_{false};
+    std::atomic<int> browserCount_{0};
 
     // SSL
     bool sslEnabled = false;

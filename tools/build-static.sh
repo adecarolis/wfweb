@@ -47,7 +47,7 @@ cp "$SRC"/civ/*.js       "$DIST/civ/"
 cp "$SHARED/digits-sprite.png" "$DIST/"
 for f in cw-decoder.js cw-decoder-stft.js cw-decoder-utils.js cw-decoder-worker.js \
          ggmorse-wasm.js packet.js reporters.js airbus.js wf-canvas.js urltune.js \
-         ctcss.js dxcc.js \
+         ctcss.js dxcc.js recorder.js needle-meter.js \
          theme.css js8-panel.css js8-panel.mjs js8.mjs; do
     cp "$SHARED/$f" "$DIST/"
 done
@@ -59,6 +59,9 @@ cp "$SHARED"/digits/*.png   "$DIST/digits/"
 mkdir -p "$DIST/leaflet" "$DIST/aprs-symbols"
 cp "$SHARED"/leaflet/leaflet.js "$SHARED"/leaflet/leaflet.css "$SHARED"/leaflet/LICENSE "$DIST/leaflet/"
 cp "$SHARED"/aprs-symbols/*.png "$SHARED"/aprs-symbols/COPYRIGHT.md "$DIST/aprs-symbols/"
+# Recorder: vendored lamejs MP3 encoder (loaded by recorder.js in a worker).
+mkdir -p "$DIST/lamejs"
+cp "$SHARED"/lamejs/lame.min.js "$SHARED"/lamejs/LICENSE "$DIST/lamejs/"
 # WASM modem(s) — only included if already built. tools/build-direwolf-wasm.sh
 # is a separate one-off step (requires Emscripten); a missing dist/wasm/* is
 # treated as "this build doesn't include packet" rather than a hard error.

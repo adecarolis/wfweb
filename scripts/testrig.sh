@@ -22,7 +22,9 @@
 #
 # Anything after the two counts is forwarded to virtualrig.
 #
-# Scratch dir .testrig/ holds PIDs, logs, and per-instance settings files.
+# Scratch dir .testrig/ holds PIDs, logs, per-instance settings files and
+# per-instance scratch logbooks (logbook_<i>.adi) — bench QSOs never reach
+# the operator's real logbook.
 
 set -euo pipefail
 
@@ -148,14 +150,20 @@ cmd_up() {
         local web=$(( WEB_BASE + i*WEB_STEP ))
         local settings="$SCRATCH/wfweb_${i}.ini"
         local log="$SCRATCH/wfweb_${i}.log"
+        local logbook="$SCRATCH/logbook_${i}.adi"
         local pidfile="$SCRATCH/wfweb_${i}.pid"
 
         echo "testrig: starting wfweb #$i (web :$web -> rig LAN :$ctrl/$civ/$aud)"
+        # --logbook / --no-remote-log: without them wfweb falls back to the
+        # operator's real <AppData>/logbook.adi, and a QSO between the bench
+        # stations would land in the station log (and any remote logger).
         (
             cd "$REPO"
             nohup "$WFWEB" \
                 -s "$settings" \
                 -l "$log" \
+                --logbook "$logbook" \
+                --no-remote-log \
                 -p "$web" \
                 --lan 127.0.0.1 \
                 --lan-control "$ctrl" \
@@ -207,6 +215,7 @@ cmd_up() {
     echo "virtualrig log:  $SCRATCH/virtualrig.log"
     if (( n > 0 )); then
         echo "wfweb logs:      $SCRATCH/wfweb_{0..$((n-1))}.log"
+        echo "wfweb logbooks:  $SCRATCH/logbook_{0..$((n-1))}.adi (scratch)"
     fi
     echo
     echo "Stop with:       $0 down"

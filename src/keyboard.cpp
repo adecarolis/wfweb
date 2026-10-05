@@ -27,8 +27,15 @@ void keyboard::run()
             // stop the thread.
             return;
         }
+        emit keyPressed(static_cast<char>(key));
         if (key == 'q') {
-            QCoreApplication::quit();
+            // Queued, not a direct quit(): one typed while the server is
+            // still starting would be lost, the event loop not running yet.
+            QMetaObject::invokeMethod(QCoreApplication::instance(), "quit",
+                                      Qt::QueuedConnection);
+            // Stop reading: a thread still blocked in getchar() when main()
+            // returns crashes the process on its way out.
+            return;
         }
     }
     return;

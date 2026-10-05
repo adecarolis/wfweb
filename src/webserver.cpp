@@ -379,6 +379,7 @@ void webServer::init(quint16 httpPort, quint16 wsPort)
     });
 
     sslEnabled = setupSsl();
+    httpsActive_ = sslEnabled;
 
     if (sslEnabled) {
 #ifdef Q_OS_MACOS
@@ -400,9 +401,11 @@ void webServer::init(quint16 httpPort, quint16 wsPort)
             tlsProxyWorker->moveToThread(tlsProxyThread);
             connect(tlsProxyThread, &QThread::started, tlsProxyWorker, &TlsProxyWorker::start);
             connect(tlsProxyThread, &QThread::finished, tlsProxyWorker, &QObject::deleteLater);
-            connect(tlsProxyWorker, &TlsProxyWorker::error, this, [](const QString &msg) {
+            connect(tlsProxyWorker, &TlsProxyWorker::error, this, [this](const QString &msg) {
                 qWarning() << "Web: TLS proxy error:" << msg;
+                webListen_ = ListenFailed;
             });
+            webListen_ = ListenOk;
             tlsProxyThread->start();
         } else
 #endif
@@ -415,9 +418,11 @@ void webServer::init(quint16 httpPort, quint16 wsPort)
 
             if (httpServer->listen(QHostAddress::Any, httpPort)) {
                 qInfo() << "Web HTTPS server listening on port" << httpPort;
+                webListen_ = ListenOk;
                 connect(httpServer, &QTcpServer::newConnection, this, &webServer::onHttpConnection);
             } else {
                 qWarning() << "Web HTTPS server failed to listen on port" << httpPort;
+                webListen_ = ListenFailed;
             }
         }
 
@@ -430,18 +435,22 @@ void webServer::init(quint16 httpPort, quint16 wsPort)
         if (restServer->listen(QHostAddress::Any, wsPort)) {
             qInfo() << "Web plain HTTP REST server listening on port" << wsPort
                     << "(use http:// on this port for scripts/microcontrollers)";
+            restListen_ = ListenOk;
             connect(restServer, &QTcpServer::newConnection, this, &webServer::onHttpConnection);
         } else {
             qWarning() << "Web plain HTTP REST server failed to listen on port" << wsPort;
+            restListen_ = ListenFailed;
         }
     } else {
         // Plain HTTP + WS on separate ports (fallback)
         httpServer = new QTcpServer(this);
         if (httpServer->listen(QHostAddress::Any, httpPort)) {
             qInfo() << "Web HTTP server listening on port" << httpPort;
+            webListen_ = ListenOk;
             connect(httpServer, &QTcpServer::newConnection, this, &webServer::onHttpConnection);
         } else {
             qWarning() << "Web HTTP server failed to listen on port" << httpPort;
+            webListen_ = ListenFailed;
         }
 
         wsServer = new QWebSocketServer(QStringLiteral("wfweb Web"), QWebSocketServer::NonSecureMode, this);
@@ -1703,6 +1712,7 @@ void webServer::onWsNewConnection()
     connect(pSocket, &QWebSocket::disconnected, this, &webServer::onWsDisconnected);
 
     wsClients.append(pSocket);
+    browserCount_ = wsClients.size();
     qInfo() << "Web client connected:" << pSocket->peerAddress().toString();
 
     // Send current state to new client
@@ -1758,6 +1768,7 @@ void webServer::onWsDisconnected()
         packetUsbTxActive = false;
         audioClients.remove(pClient);
         wsClients.removeAll(pClient);
+        browserCount_ = wsClients.size();
         pClient->deleteLater();
     }
 }
@@ -4039,6 +4050,10 @@ void webServer::receiveCache(cacheItem item)
         break;
     }
     case funcSMeter:
+        // A dual-receiver rig reports Main and Sub in turn. The page has one
+        // meter and the periodic "meters" message reads receiver 0, so push
+        // only that one — otherwise the reading flips between the two.
+        if (item.receiver != 0) return;
         update["sMeter"] = item.value.toDouble();
         break;
     case funcPowerMeter:
@@ -4878,6 +4893,18 @@ void webServer::addTxMeterCaps(QJsonObject &o) const
         list.append(m);
     }
     o["txMeters"] = list;
+
+    // The Power table, so the page can tell this rig's 100 % from watts (the
+    // reading it gets is in watts, and a 10 W rig's full scale is not 100).
+    QJsonArray poCal;
+    const QMap<int, double> &po = rigCaps->meters[meterPower];
+    for (auto it = po.constBegin(); it != po.constEnd(); ++it) {
+        QJsonArray pt;
+        pt.append(it.key());
+        pt.append(it.value());
+        poCal.append(pt);
+    }
+    o["poCal"] = poCal;
 }
 
 // The cached reading of whichever optional meter is currently polled. Only

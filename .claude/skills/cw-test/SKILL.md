@@ -68,4 +68,5 @@ When refs go stale across snapshots, drive directly via `browser_evaluate` with 
 - **Don't skip `localStorage.clear()`** — clean-slate mirrors a fresh user and avoids stale CW speed/mode.
 - **Stale Playwright `ref=` handles** re-render constantly; drive via `browser_evaluate` + the stable IDs above.
 - **Screenshots are sandboxed** to the project dir / `.playwright-mcp/`; `/tmp` is rejected.
+- **`cwLogBtn` (LOG QSO) writes a scratch logbook, not the station log.** `testrig.sh` starts each instance with `--logbook .testrig/logbook_<i>.adi --no-remote-log`; a wfweb started by hand without `--logbook` opens the operator's real logbook — never log a bench QSO against one.
 - **Never key a physically-connected rig** — this skill is virtual-bench only (no real RF).

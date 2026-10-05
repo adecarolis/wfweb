@@ -8,4 +8,7 @@ public:
     keyboard(void);
     ~keyboard(void);
     void run();
+signals:
+    // Every key read from the terminal, for the status page ("l" etc.).
+    void keyPressed(char key);
 };

@@ -271,6 +271,12 @@ html, body {
     -webkit-user-select: none; user-select: none;
     -webkit-tap-highlight-color: transparent;
 }
+/* Needle face (needle-meter.js): its shape is fixed, so the canvas takes its
+   width from its height, the row grows to hold it and the frequency gets the
+   rest of the width. */
+body.meter-needle #radio { grid-template-rows: 34px 136px 20px 1fr 48px; }
+body.meter-needle #meterSection { flex: 0 0 auto; }
+body.meter-needle #meterCanvas { width: auto; height: 128px; aspect-ratio: 611 / 256; }
 #freqSection {
     flex: 1;
     display: flex; flex-direction: column;
@@ -2026,6 +2032,8 @@ body.digi-open #bottomBar { grid-row: 5; }
     #freqDisplay .freq-digit.digit-9 { background-position: -292px 0; }
     #freqDisplay .freq-digit.digit-dot { width: 7px; background-position: -325px 0; }
     #meterCanvas { height: 50px; }
+    body.meter-needle #radio { grid-template-rows: 28px 92px 16px 1fr 40px; }
+    body.meter-needle #meterCanvas { height: 84px; }
     #bottomBar { padding: 2px 4px; }
     .softBtn { height: 34px; font-size: 11px; }
 }
@@ -2069,6 +2077,8 @@ body.digi-open #bottomBar { grid-row: 5; }
     #freqDisplay .freq-digit.digit-dot { width: 4px; background-position: -175px 0; }
     #meterSection { flex: 0 0 40%; }
     #meterCanvas { height: 54px; }
+    body.meter-needle #radio { grid-template-rows: 32px 84px 18px 1fr 46px; }
+    body.meter-needle #meterCanvas { height: 76px; }
 }
 
 /* Directed panel: always show only SNR + message (dt and Hz waste space in narrow column) */
@@ -2390,6 +2400,7 @@ body.digi-open #bottomBar { grid-row: 5; }
         <span id="dspIndicators"></span>
         <span class="flex-space"></span>
         <span id="rigTag" title="Rig"></span>
+        <button id="recBtn" class="rec-btn" title="Record">REC</button>
         <button id="qsoLogBtn" class="qso-log-btn" title="Log QSO">LOG</button>
         <span id="clock">--:--</span>
         <button id="fullscreenBtn" title="Full Screen" onclick="toggleFullscreen()">&#x26F6;</button>
@@ -2401,7 +2412,7 @@ body.digi-open #bottomBar { grid-row: 5; }
     <div id="meterFreqRow">
         <div id="meterSection">
             <canvas id="meterCanvas" width="500" height="128"
-                    title="Tap to change the bottom meter"></canvas>
+                    title="Tap to change the TX meter"></canvas>
         </div>
         <div id="freqSection">
             <div id="vfoLine">
@@ -2958,6 +2969,8 @@ body.digi-open #bottomBar { grid-row: 5; }
 <script src="urltune.js"></script>
 <script src="reporters.js"></script>
 <script src="wf-canvas.js"></script>
+<script src="needle-meter.js"></script>
+<script src="recorder.js"></script>
 <script>
 // ============================================================
 // STATE
@@ -3344,8 +3357,41 @@ var DIGI_BANDS = [
     { label: '15m',  ft8: 21074000, ft4: 21140000 },
     { label: '12m',  ft8: 24915000, ft4: 24919000 },
     { label: '10m',  ft8: 28074000, ft4: 28180000 },
-    { label: '6m',   ft8: 50313000, ft4: 50318000 }
+    { label: '6m',   ft8: 50313000, ft4: 50318000 },
+    // WSJT-X defaults above 6 m: FT8 on 70.154 (R1) and 144.174, FT4 on
+    // 144.170. 70 cm has no WSJT-X FT8 default; 432.174 is the channel in use.
+    // Bands without an FT4 channel tune FT4 to the FT8 dial.
+    { label: '4m',   ft8: 70154000 },
+    { label: '2m',   ft8: 144174000, ft4: 144170000 },
+    { label: '70cm', ft8: 432174000 }
 ];
+// The dial for a DIGI band in the current FT8/FT4 mode.
+function digiDialHz(band) {
+    return (digiMode === 'FT4' && band.ft4) ? band.ft4 : band.ft8;
+}
+// DIGI_BANDS the connected rig can tune — the same band table that drives
+// the BAND picker (populateBands), so an IC-705 gets 2m/70cm and an HF rig
+// doesn't.
+function rigDigiBands() {
+    return DIGI_BANDS.filter(function(b) { return bandLabelOf(b.ft8) !== null; });
+}
+function populateDigiBandSel() {
+    var bandSel = document.getElementById('digiBandSel');
+    if (!bandSel || !DIGI_BANDS) return;   // populateBands(null) runs before DIGI_BANDS exists
+    var keep = bandSel.value;
+    bandSel.innerHTML = '';
+    var opt0 = document.createElement('option');
+    opt0.value = ''; opt0.textContent = 'Band';
+    bandSel.appendChild(opt0);
+    rigDigiBands().forEach(function(b) {
+        var opt = document.createElement('option');
+        opt.value = b.label;
+        opt.textContent = b.label;
+        bandSel.appendChild(opt);
+    });
+    bandSel.value = keep;
+    if (bandSel.value !== keep) bandSel.value = '';
+}
 
 // ============================================================
 // TRANSPORT
@@ -3433,7 +3479,10 @@ function txAudioReady() {
     return !!(serialTransport && serialTransport.isOpen());
 }
 function sendTxAudio(frame) {
-    if (serialTransport && serialTransport.isOpen()) serialTransport.sendAudioFrame(frame);
+    if (serialTransport && serialTransport.isOpen()) {
+        serialTransport.sendAudioFrame(frame);
+        Recorder.feedTx(frame, digiTxCtx ? digiTxCtx.sampleRate : 48000);
+    }
 }
 
 function updateConnIndicator() {
@@ -3488,7 +3537,7 @@ function handleMessage(msg) {
                 if (msg.hasDuplex !== undefined) hasDuplex = !!msg.hasDuplex;
                 updateToneCaps(msg);
                 if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner);
-                if (msg.txMeters !== undefined) setTxMeterCaps(msg.txMeters);
+                if (msg.txMeters !== undefined) setTxMeterCaps(msg.txMeters, msg.poCal);
                 if (msg.hasMemoryMode !== undefined) hasMemoryMode = !!msg.hasMemoryMode;
                 if (msg.memoriesLocal !== undefined) setMemoriesLocal(!!msg.memoriesLocal);
                 if (msg.memGroups !== undefined) setupMemoryGroups(msg.memGroups, msg.memStart || 0);
@@ -3522,7 +3571,7 @@ function handleMessage(msg) {
             if (msg.hasDuplex !== undefined) hasDuplex = !!msg.hasDuplex;
             updateToneCaps(msg);
             if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner);
-            if (msg.txMeters !== undefined) setTxMeterCaps(msg.txMeters);
+            if (msg.txMeters !== undefined) setTxMeterCaps(msg.txMeters, msg.poCal);
             if (msg.hasMemoryMode !== undefined) hasMemoryMode = !!msg.hasMemoryMode;
             if (msg.memoriesLocal !== undefined) setMemoriesLocal(!!msg.memoriesLocal);
             if (msg.memGroups !== undefined) setupMemoryGroups(msg.memGroups, msg.memStart || 0);
@@ -4496,9 +4545,55 @@ function updateSwrMeter(val) { swrVal = val; if (isTransmitting) drawMeter(); }
 // Only readings this radio can actually produce are offered: the rig
 // capabilities carry one descriptor per available meter, each with the
 // radio's own calibration table so the face can be drawn to match.
+//
+// The needle face has one pointer for everything, so there Po joins the cycle
+// (and is where it starts, as on the radio) instead of owning a row.
 var txMeterKind = 'swr';
-try { txMeterKind = localStorage.getItem('wfTxMeter') || 'swr'; } catch (e) {}
+var txMeterChosen = false;   // the operator picked one; don't apply a default
+try {
+    var storedTxMeter = localStorage.getItem('wfTxMeter');
+    if (storedTxMeter) { txMeterKind = storedTxMeter; txMeterChosen = true; }
+} catch (e) {}
 var txMeterCaps = [];        // [{kind, cal: [[rigVal, reading], ...], red}]
+var poFullScale = 100;       // watts at the 100 % mark of the Po scale
+
+// ---- Meter face -----------------------------------------------------------
+// 'auto' follows the radio: the needle face (needle-meter.js) on the rigs
+// that draw one on their own screen, the tile bar on the rest. FUNC > METER
+// overrides it either way.
+var meterStyle = 'auto';
+try { meterStyle = localStorage.getItem('wfMeterStyle') || 'auto'; } catch (e) {}
+
+function needleActive() {
+    return meterStyle === 'needle' ||
+           (meterStyle === 'auto' && NeedleMeter.isNeedleRig(rigModelName));
+}
+
+function txMeterKinds() {
+    var kinds = needleActive() ? ['po'] : [];
+    for (var i = 0; i < txMeterCaps.length; i++) kinds.push(txMeterCaps[i].kind);
+    return kinds;
+}
+
+function applyMeterStyle() {
+    var needle = needleActive();
+    if (!needle && txMeterKind === 'po') txMeterKind = 'swr';
+    if (needle && !txMeterChosen) txMeterKind = 'po';
+    var canvas = document.getElementById('meterCanvas');
+    canvas.style.cursor = txMeterKinds().length > 1 ? 'pointer' : '';
+    if (document.body.classList.contains('meter-needle') !== needle) {
+        document.body.classList.toggle('meter-needle', needle);
+        resizeCanvases();        // the meter row changed height
+    }
+    drawMeter();
+}
+
+function cycleMeterStyle() {
+    meterStyle = (meterStyle === 'auto') ? 'bar' : (meterStyle === 'bar') ? 'needle' : 'auto';
+    try { localStorage.setItem('wfMeterStyle', meterStyle); } catch (e) {}
+    applyMeterStyle();
+    sendTxMeterSelection();
+}
 var compVal = 0, vdVal = 0, idVal = 0;
 var TX_METER_LABELS = { swr: 'SWR', alc: 'ALC', comp: 'COMP', vd: 'Vd', id: 'Id' };
 var TX_METER_UNITS  = { swr: '', alc: '', comp: 'dB', vd: 'V', id: 'A' };
@@ -4522,13 +4617,12 @@ function txMeterDesc(kind) {
 
 // Called when the rig identifies itself. A radio that can't produce the
 // remembered reading falls back to SWR rather than showing a dead bar.
-function setTxMeterCaps(list) {
+function setTxMeterCaps(list, poCal) {
     txMeterCaps = Array.isArray(list) ? list : [];
-    if (!txMeterDesc(txMeterKind)) txMeterKind = 'swr';
-    var canvas = document.getElementById('meterCanvas');
-    if (canvas) canvas.style.cursor = txMeterCaps.length > 1 ? 'pointer' : '';
+    poFullScale = NeedleMeter.ratedPower(poCal);
+    if (txMeterKind !== 'po' && !txMeterDesc(txMeterKind)) txMeterKind = 'swr';
+    applyMeterStyle();
     sendTxMeterSelection();
-    drawMeter();
 }
 
 // Comp/Vd/Id each cost the radio an extra poll, so the backend only reads
@@ -4536,11 +4630,10 @@ function setTxMeterCaps(list) {
 function sendTxMeterSelection() { send({ cmd: 'setTxMeter', value: txMeterKind }); }
 
 function cycleTxMeter() {
-    if (txMeterCaps.length < 2) return;
-    var i = 0;
-    for (var n = 0; n < txMeterCaps.length; n++)
-        if (txMeterCaps[n].kind === txMeterKind) { i = n; break; }
-    txMeterKind = txMeterCaps[(i + 1) % txMeterCaps.length].kind;
+    var kinds = txMeterKinds();
+    if (kinds.length < 2) return;
+    txMeterKind = kinds[(kinds.indexOf(txMeterKind) + 1) % kinds.length];
+    txMeterChosen = true;
     try { localStorage.setItem('wfTxMeter', txMeterKind); } catch (e) {}
     txAuxPeakCount = 0;
     sendTxMeterSelection();
@@ -4706,6 +4799,15 @@ function updateALCMeter(val) {
 
 function drawMeter() {
     var canvas = document.getElementById('meterCanvas');
+    if (needleActive()) {
+        NeedleMeter.draw(canvas, {
+            tx: isTransmitting, kind: txMeterKind, s: meterVal,
+            value: (txMeterKind === 'po') ? powerVal : txMeterValue(txMeterKind),
+            poFull: poFullScale
+        });
+        return;
+    }
+    NeedleMeter.stop();
     var dpr = window.devicePixelRatio || 1;
     var cssW = canvas.clientWidth;
     var cssH = canvas.clientHeight;
@@ -4908,7 +5010,7 @@ function drawTxMeters(ctx, cw, ch, barX, barW) {
     var now = performance.now();
 
     // --- Po tile bar (all blue; the scale tops out at 100%) ---
-    var poFill = Math.round(Math.min(1, Math.max(0, powerVal / 100)) * tiles);
+    var poFill = Math.round(Math.min(1, Math.max(0, powerVal / poFullScale)) * tiles);
     if (poFill >= txPoPeakCount || now - txPoPeakTs > METER_PEAK_HOLD_MS) {
         txPoPeakCount = poFill;
         txPoPeakTs = now;
@@ -5223,6 +5325,8 @@ function populateBands(bands) {
         rigBands.push({ label: k.label, freq: Math.min(Math.max(k.home, b.start), b.end) });
         BAND_RANGES[k.label] = [b.start, b.end];
     });
+    populateDigiBandSel();
+    if (window.js8PopulateBands) window.js8PopulateBands();
     if (currentPanel === 'band') renderBandOverlay();
 }
 
@@ -5354,6 +5458,12 @@ function renderFuncOverlay() {
     grid.appendChild(makeFuncBtn('MON', monitorEnabled ? toPercent(monitorLevel, 255) : 'OFF', monitorEnabled, function() {
         monitorEnabled = !monitorEnabled;
         send({ cmd: 'setMonitor', value: monitorEnabled });
+        renderFuncOverlay();
+    }));
+
+    // Meter face: follow the radio, or force the tile bar / the needle
+    grid.appendChild(makeFuncBtn('METER', meterStyle.toUpperCase(), meterStyle !== 'auto', function() {
+        cycleMeterStyle();
         renderFuncOverlay();
     }));
 
@@ -7213,6 +7323,7 @@ function handleAudioData(buffer) {
     // once the module finishes booting.
     if (typeof window._js8ProcessAudioChunk === 'function') window._js8ProcessAudioChunk(pcmData);
     if (toneScanDetector) feedToneScan(pcmData);
+    Recorder.feedRx(pcmData, audioSampleRate);
 
     if (audioUseWorklet && audioWorkletNode) {
         audioWorkletNode.port.postMessage(floatData);
@@ -7565,6 +7676,10 @@ function handleBinaryMessage(buffer) {
         // packet waterfall can show the outgoing signal while the radio is keyed.
         if (window.Packet && typeof window.Packet.onTxAudio === 'function') {
             window.Packet.onTxAudio(buffer);
+        }
+        if (buffer.byteLength >= 8) {
+            Recorder.feedTxPcm(new Int16Array(buffer, 6, (buffer.byteLength - 6) >> 1),
+                               view.getUint16(4, true) * 1000);
         }
         return;
     }
@@ -8930,7 +9045,7 @@ function reportDigiSpot(d) {
     // PSK Reporter spots flow through the C++ backend in the server build;
     // standalone has no backend to forward them. No-op here.
     if (!window.WfwebReporters || !window.WfwebReporters.available) return;
-    var parts = (d.msg || '').trim().split(/\s+/);
+    var parts = digiSplitMulti(d.msg || '')[0].trim().split(/\s+/);
     if (parts.length < 2) return;
     var first = parts[0].toUpperCase();
     var fromCall = null, grid = '';
@@ -9019,10 +9134,11 @@ function initDigiTxCtx() {
 
 function getCurrentDigiBand() {
     if (!currentFreq) return null;
+    var bands = rigDigiBands();
     var best = null, bestDist = Infinity;
-    for (var i = 0; i < DIGI_BANDS.length; i++) {
-        var dist = Math.abs(currentFreq - DIGI_BANDS[i].ft8);
-        if (dist < bestDist) { bestDist = dist; best = DIGI_BANDS[i]; }
+    for (var i = 0; i < bands.length; i++) {
+        var dist = Math.abs(currentFreq - bands[i].ft8);
+        if (dist < bestDist) { bestDist = dist; best = bands[i]; }
     }
     return (bestDist < 500000) ? best : null;
 }
@@ -9088,8 +9204,7 @@ function toggleDigiBar() {
         var bandSel = document.getElementById('digiBandSel');
         if (band) {
             if (bandSel) bandSel.value = band.label;
-            var targetFreq = digiMode === 'FT4' ? band.ft4 : band.ft8;
-            send({ cmd: 'setFrequency', value: targetFreq });
+            send({ cmd: 'setFrequency', value: digiDialHz(band) });
         }
         digiRxEnabled = true;        // always start with RX on
         updateDigiRxToggle();
@@ -9503,10 +9618,30 @@ function digiWorkedAdd(call, band) {
     if (e) (digiWorked.ents[e.name] = digiWorked.ents[e.name] || {})[band] = 1;
 }
 
+// A DXpedition / multi-answer decode ("K1ABC RR73; W9XYZ <KH1/KH7Z> -08") is
+// one station sending two messages in a single transmission (#129). Returns
+// them in the usual "TO FROM DATA" form; anything else comes back as it is.
+function digiSplitMulti(msg) {
+    var m = /^(\S+)\s+RR73;\s+(\S+)\s+<(\S+)>\s+(\S+)$/i.exec((msg || '').trim());
+    if (!m) return [msg];
+    return [m[1] + ' ' + m[3] + ' RR73', m[2] + ' ' + m[3] + ' ' + m[4]];
+}
+
+// The form of a decode the QSO logic should read: for a multi-answer, the
+// half addressed to myCall when there is one, else the first.
+function digiStdMsg(msg, myCall) {
+    var halves = digiSplitMulti(msg);
+    var me = (myCall || '').toUpperCase();
+    for (var i = 0; me && i < halves.length; i++) {
+        if (halves[i].toUpperCase().indexOf(me + ' ') === 0) return halves[i];
+    }
+    return halves[0];
+}
+
 // The sender of a decoded FT8/FT4 message ("CQ [mod] CALL GRID", "A B rpt"),
 // or '' when the message has none we can trust (free text, telemetry).
 function digiSenderCall(msg) {
-    var parts = (msg || '').trim().toUpperCase().split(/\s+/);
+    var parts = digiSplitMulti(msg || '')[0].trim().toUpperCase().split(/\s+/);
     var tok = '';
     if (parts[0] === 'CQ' || parts[0] === 'QRZ' || parts[0] === 'DE') {
         // Skip modifiers without digits (DX, POTA, FD...) and grids (FN42).
@@ -9604,7 +9739,7 @@ function renderDigiDecodes() {
             html += '<div class="digi-slot-divider"><span class="digi-slot-time">' + escapeHtml(d.time) + '</span></div>';
         }
         lastSlotIndex = d.slotIndex;
-        var rparts = d.msg.trim().split(/\s+/);
+        var rparts = digiStdMsg(d.msg, myCall).trim().split(/\s+/);
         var isDirected = myCall && rparts.length >= 2 && rparts[0].toUpperCase() === myCall.toUpperCase();
         var isMentioned = !isDirected && myCall && d.msg.toUpperCase().indexOf(myCall) >= 0;
         var hints = digiDecodeHints(d.msg);
@@ -9680,7 +9815,7 @@ function appendDigiDirectedRow(d, isTx) {
     // Match the All Decodes panel: amber for messages addressed to us, blue for
     // other relevant (on-frequency) traffic, green for our own TX.
     var dMyCall = getMyCall();
-    var dParts = (d.msg || '').trim().toUpperCase().split(/\s+/);
+    var dParts = digiStdMsg(d.msg || '', dMyCall).trim().toUpperCase().split(/\s+/);
     var dDirected = !isTx && dMyCall && dParts.length >= 2 && dParts[0] === dMyCall.toUpperCase();
     var dHints = isTx ? { star: '', ent: null, worked: false } : digiDecodeHints(d.msg);
     var rowCls = 'digi-decode-row ' + (isTx ? 'tx-row' : (dDirected ? 'directed' : 'highlight')) + (dHints.worked ? ' worked' : '');
@@ -9707,7 +9842,7 @@ function escapeHtml(s) {
 
 function digiRowClick(el, ev) {
     if (!checkDigiCallGrid()) return;
-    var msg = decodeURIComponent(el.getAttribute('data-msg') || '');
+    var msg = digiStdMsg(decodeURIComponent(el.getAttribute('data-msg') || ''), getMyCall());
     var slotIndex = parseInt(el.getAttribute('data-slot') || '-1', 10);
     var freq = parseInt(el.getAttribute('data-freq') || '0', 10);
     var snr = parseFloat(el.getAttribute('data-snr') || '0');
@@ -10223,7 +10358,9 @@ function handleDigiAutoQso(decodes, decodedSlotIndex) {
     if (!myCall || !myGrid) return;
 
     for (var i = 0; i < decodes.length; i++) {
-        var msg = decodes[i].msg.trim().toUpperCase();
+        // Multi-answer decode (#129): read the half addressed to us.
+        var multi = digiSplitMulti(decodes[i].msg).length > 1;
+        var msg = digiStdMsg(decodes[i].msg, myCall).trim().toUpperCase();
         var parts = msg.split(/\s+/);
         // Each decode's slot index (prefer per-decode if present, fall back to argument)
         var dSlot = (decodes[i].slotIndex !== undefined) ? decodes[i].slotIndex : decodedSlotIndex;
@@ -10265,10 +10402,11 @@ function handleDigiAutoQso(decodes, decodedSlotIndex) {
                 digiQsoState = 'EXCHANGE';
                 break;
             } else if (parts.length >= 2 && parts[1] === digiQsoPartner && parts[0] !== myCall && parts[0] !== 'CQ' &&
-                       parts[0] !== digiQsoPartnerBusyWith) {
+                       parts[0] !== digiQsoPartnerBusyWith && !multi) {
                 // DX station (parts[1] = FROM) sent to someone who is not us (parts[0] = TO ≠ myCall).
                 // Traffic to the station they were already working when we clicked is not a
-                // new QSO — keep calling until they answer someone else or us.
+                // new QSO — keep calling until they answer someone else or us. A multi-answer
+                // station works several callers at once, so that is no reason to stop either.
                 console.log('[DIGI QSO] CALLING→IDLE: ' + digiQsoPartner + ' replied to ' + parts[0] + ', not us — disabling TX');
                 digiReArmPending = false;
                 digiTxArmed = false;
@@ -11247,11 +11385,19 @@ function logCWQso() {
     openLogModal();
 }
 
+// Mode for a hand-added log row: the open app-mode panel wins (the rig sits
+// in USB while FT8/FT4/JS8 run), otherwise the rig's own mode (#125).
+function defaultLogMode() {
+    if (digiBarVisible) return digiMode;
+    if (typeof window.js8MessengerVisible === 'function' && window.js8MessengerVisible()) return 'JS8';
+    return (currentMode && currentMode !== '---') ? currentMode : 'SSB';
+}
+
 function logSSBQso() {
     var now = new Date();
     var iso = now.toISOString();
     var freqHz = (vfoAFreq || currentFreq || 0);
-    var mode = currentMode || 'SSB';
+    var mode = defaultLogMode();
     var entry = {
         date: iso.substr(0, 10).replace(/-/g, ''),
         time: iso.substr(11, 8).replace(/:/g, ''),
@@ -11386,7 +11532,7 @@ function addDigiQso() {
         call: '',
         freq: freqHz,
         band: freqToBand(freqHz),
-        mode: digiMode,
+        mode: defaultLogMode(),
         df: 0,
         grid: ((document.getElementById('digiGrid') || {}).value || '').toUpperCase(),
         rstSent: '',
@@ -11475,21 +11621,12 @@ function initDigiHandlers() {
     // Populate band selector
     var bandSel = document.getElementById('digiBandSel');
     if (bandSel) {
-        var opt0 = document.createElement('option');
-        opt0.value = ''; opt0.textContent = 'Band';
-        bandSel.appendChild(opt0);
-        for (var b = 0; b < DIGI_BANDS.length; b++) {
-            var opt = document.createElement('option');
-            opt.value = DIGI_BANDS[b].label;
-            opt.textContent = DIGI_BANDS[b].label;
-            bandSel.appendChild(opt);
-        }
+        populateDigiBandSel();
         bandSel.addEventListener('change', function() {
             var sel = this.value;
             for (var bi = 0; bi < DIGI_BANDS.length; bi++) {
                 if (DIGI_BANDS[bi].label === sel) {
-                    var freq = digiMode === 'FT4' ? DIGI_BANDS[bi].ft4 : DIGI_BANDS[bi].ft8;
-                    send({ cmd: 'setFrequency', value: freq });
+                    send({ cmd: 'setFrequency', value: digiDialHz(DIGI_BANDS[bi]) });
                     wfLabels = [];
                     break;
                 }
@@ -11575,8 +11712,7 @@ function initDigiHandlers() {
                 startDigiPeriodTimer();
                 var band = getCurrentDigiBand();
                 if (band) {
-                    var targetFreq = digiMode === 'FT4' ? band.ft4 : band.ft8;
-                    send({ cmd: 'setFrequency', value: targetFreq });
+                    send({ cmd: 'setFrequency', value: digiDialHz(band) });
                 }
             }
         });
@@ -11899,8 +12035,34 @@ var fullscreenBtn = document.getElementById('fullscreenBtn');
 if (fullscreenBtn && !document.documentElement.requestFullscreen) {
     fullscreenBtn.style.display = 'none';
 }
+// Top bar REC button → audio/video recording (recorder.js). The video header
+// reuses the labels already rendered in the top bar.
+Recorder.init({
+    button: document.getElementById('recBtn'),
+    isTx: function() { return isTransmitting; },
+    getState: function() {
+        return {
+            freq: currentFreq,
+            mode: document.getElementById('modeBtn').textContent,
+            filter: filterFuncState(),
+            vfo: document.getElementById('vfoLabel').textContent,
+            split: isSplit,
+            tx: isTransmitting,
+            meterNeedle: needleActive(),
+            rig: rigTagName || rigModelName,
+            call: getMyCall()
+        };
+    },
+    getCanvases: function() {
+        return {
+            meter: document.getElementById('meterCanvas'),
+            spectrum: document.getElementById('spectrumCanvas'),
+            waterfall: document.getElementById('waterfallCanvas')
+        };
+    }
+});
 renderBottomBar();
-drawMeter();
+applyMeterStyle();
 updateClock();
 setInterval(updateClock, 10000);
 

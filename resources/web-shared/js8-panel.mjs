@@ -2180,14 +2180,22 @@ const JS8_PANEL_MARKUP = `
         { label: '15m',  hz: 21078000 },
         { label: '12m',  hz: 24922000 },
         { label: '10m',  hz: 28078000 },
-        { label: '6m',   hz: 50318000 }
+        { label: '6m',   hz: 50318000 },
+        { label: '2m',   hz: 144178000 }
     ];
+    // JS8_BANDS the connected rig can tune — the host's band table (the one
+    // behind the BAND picker), so an IC-705 gets 2m and an HF rig doesn't.
+    function rigJs8Bands() {
+        if (typeof bandLabelOf !== 'function') return JS8_BANDS;
+        return JS8_BANDS.filter(function (b) { return bandLabelOf(b.hz) !== null; });
+    }
     function getCurrentJs8Band() {
         if (typeof currentFreq !== 'number' || !currentFreq) return null;
+        var bands = rigJs8Bands();
         var best = null, bestDist = Infinity;
-        for (var i = 0; i < JS8_BANDS.length; i++) {
-            var dist = Math.abs(currentFreq - JS8_BANDS[i].hz);
-            if (dist < bestDist) { bestDist = dist; best = JS8_BANDS[i]; }
+        for (var i = 0; i < bands.length; i++) {
+            var dist = Math.abs(currentFreq - bands[i].hz);
+            if (dist < bestDist) { bestDist = dist; best = bands[i]; }
         }
         // 500 kHz tolerance — keeps a 14.345 MHz USB QSO from snapping to
         // 14.078, but does let 14.085 (chatty digital region) snap.
@@ -2293,18 +2301,29 @@ const JS8_PANEL_MARKUP = `
         setStatus(S.rxEnabled ? 'RX' : 'IDLE', S.rxEnabled ? 'rx' : '');
     });
 
-    (function initJs8BandSel() {
+    // Rebuilt by the host's populateBands() whenever the rig announces its
+    // band table.
+    window.js8PopulateBands = function () {
         var sel = document.getElementById('js8BandSel');
         if (!sel) return;
+        var keep = sel.value;
+        sel.innerHTML = '';
         var opt0 = document.createElement('option');
         opt0.value = ''; opt0.textContent = 'Band';
         sel.appendChild(opt0);
-        for (var i = 0; i < JS8_BANDS.length; i++) {
+        rigJs8Bands().forEach(function (b) {
             var o = document.createElement('option');
-            o.value = JS8_BANDS[i].label;
-            o.textContent = JS8_BANDS[i].label;
+            o.value = b.label;
+            o.textContent = b.label;
             sel.appendChild(o);
-        }
+        });
+        sel.value = keep;
+        if (sel.value !== keep) sel.value = '';
+    };
+    (function initJs8BandSel() {
+        var sel = document.getElementById('js8BandSel');
+        if (!sel) return;
+        window.js8PopulateBands();
         sel.addEventListener('change', function () {
             var v = this.value;
             for (var j = 0; j < JS8_BANDS.length; j++) {

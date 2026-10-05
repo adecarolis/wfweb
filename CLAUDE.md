@@ -62,6 +62,7 @@ Standalone build:
 | `rigCommander` | CI-V command encoding/decoding |
 | `webServer` | HTTP + WebSocket server (separate QThread) |
 | `rigCtlD` | Hamlib rigctld TCP server (port 4532, lives on webThread) |
+| `ConsoleStatus` | Terminal status page (URLs, rig, ports) shown instead of the log on an interactive TTY; main thread |
 | `audioConverter` | Codec conversion (rig format <-> PCM) |
 | `icomUdpHandler` | LAN UDP transport (3 channels) |
 | `radeProcessor` | RADE V1 modem encode/decode (separate QThread) |
@@ -88,7 +89,7 @@ other.** No Direct/Server runtime gates: each `index.html` is single-purpose.
 |-----|---------|----------|
 | `resources/web/` | C++ server build (`wfweb.pro`) | Server-only `index.html`, `transport/websocket-transport.js`, `debug.html` |
 | `resources/web-standalone/` | Static bundle (`tools/build-static.sh`) | Standalone `index.html`, `transport/serial-transport.js`, `civ/`, `wasm/` |
-| `resources/web-shared/` | Both | `index.html`-side modules and pure assets: `theme.css` (design tokens + `.wf-*` kit), `packet.js`, `transport/rig-transport.js` (base class), CW decoder JS family, `ggmorse-wasm.js`, JS8 family (`js8.mjs`, `js8-panel.mjs`, `js8-panel.css`), `models/`, `digits/`, `digits-sprite.png` |
+| `resources/web-shared/` | Both | `index.html`-side modules and pure assets: `theme.css` (design tokens + `.wf-*` kit), `packet.js`, `recorder.js` (+ vendored `lamejs/`), `needle-meter.js`, `transport/rig-transport.js` (base class), CW decoder JS family, `ggmorse-wasm.js`, JS8 family (`js8.mjs`, `js8-panel.mjs`, `js8-panel.css`), `models/`, `digits/`, `digits-sprite.png` |
 
 Build inputs for `ggmorse-wasm.js` (the `.cpp` wrapper + license) live in
 `resources/ggmorse-src/`, alongside `resources/build-ggmorse-wasm.sh`. The
@@ -108,7 +109,7 @@ When you want to share a file between both builds:
 1. `git mv resources/web/<file> resources/web-shared/<file>`
 2. Delete the duplicate from `resources/web-standalone/`
 3. Update its `web.qrc` `<file alias=...>` line so the source path is `web-shared/<file>` (the alias stays the same — no C++ code changes)
-4. `tools/build-static.sh` already copies `web-shared/`, so the standalone build picks it up automatically
+4. Add it to the explicit file list in `tools/build-static.sh` — top-level `web-shared/` files are copied by name, not by glob (only its subdirectories are copied wholesale)
 
 ### Shared theme + component kit (`theme.css`)
 `resources/web-shared/theme.css` is the single source of UI styling for both
@@ -123,6 +124,27 @@ builds (linked from each `index.html`, aliased in `web.qrc`, copied by
 
 Design intent is "one component kit, tinted per mode". Do **not** reintroduce
 per-panel button/tab/input styling — set a `--mode-accent` and reuse `.wf-*`.
+
+### Meter faces
+The top-bar meter (`#meterCanvas`) has two faces, picked in `drawMeter()`:
+- **Bar** — the IC-7300 tile bar, inline in each `index.html` (`drawSMeter` /
+  `drawTxMeters`): Po on top, a tap-to-cycle second row (SWR/ALC/COMP/Vd/Id).
+- **Needle** — `resources/web-shared/needle-meter.js`, the IC-7610 screen
+  meter. One pointer: S on RX, the selected reading on TX, so `po` joins the
+  tap cycle there. The face is vector, from geometry measured off the rig's
+  screen (scale arcs and needle have *different* centres); each scale is a
+  `[reading → needle angle]` table, so the needle points at the printed value
+  on any radio. Readings arrive ~5 Hz — the spring-damper in that file is what
+  makes the motion continuous; it runs on `requestAnimationFrame` only while
+  the needle is moving.
+
+FUNC > METER cycles `AUTO / BAR / NEEDLE` (`localStorage wfMeterStyle`). AUTO
+is the needle on the rigs in `NEEDLE_RIGS` (radios that draw this face
+themselves), the bar elsewhere. `body.meter-needle` carries the layout: the
+meter row of the `#radio` grid grows and the canvas takes the face's aspect.
+The backends send the Power calibration table as `poCal` in `rigInfo` /
+`rigConnected`; the page derives the rig's rated power from it for the Po %
+scale of both faces.
 
 ### Standalone runtime — what replaces the C++ server
 Without a server, the browser does in JS / WASM what the Server does in Qt:
@@ -192,6 +214,7 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 | `include/webserver.h` | Web server header |
 | `src/rigctld.cpp` | Hamlib rigctld TCP emulation (server build) |
 | `include/rigctld.h` | rigctld header (signals: `pttRequested`) |
+| `src/consolestatus.cpp` | Terminal status page: ANSI rendering, raw-mode keys, log ring buffer |
 | `resources/web/index.html` | Server-build SPA (WebSocket transport only) |
 | `resources/web-standalone/index.html` | Standalone-build SPA (Web Serial only) |
 | `resources/web-standalone/civ/icom.js` | In-browser Icom CI-V codec (Standalone) |
@@ -202,6 +225,8 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 | `resources/web-shared/transport/rig-transport.js` | Transport base class (both builds) |
 | `resources/web-shared/airbus.js` | Browser-side BroadcastChannel "air" for Standalone virtual rigs |
 | `resources/web-shared/packet.js` | Browser-side AX.25 / APRS / YAPP stack (both builds) |
+| `resources/web-shared/recorder.js` | Audio (MP3) / video recorder behind the top-bar REC button (both builds) |
+| `resources/web-shared/needle-meter.js` | IC-7610-style needle meter face + needle ballistics; alternative to the tile-bar meter in `index.html` (both builds) |
 | `resources/web-shared/js8-panel.mjs` | JS8 messenger panel — markup + state machine, QSO tabs, RX/TX, CMD palette (both builds) |
 | `resources/web-shared/js8.mjs` | JS8 WASM codec bridge — 8-FSK synth + encode/decode wrapper (both builds) |
 | `resources/web-shared/` | Files shared by both builds (CW decoder, ggmorse, sprites, models) |
@@ -226,6 +251,33 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 | `resources/direwolf/` | Vendored Direwolf subset (modem + AX.25 only — see `README-vendoring.md`) |
 | `tests/test_packet.py` | End-to-end packet self-test (wraps `--packet-self-test`) |
 | `CHANGELOG` | Release changelog |
+
+---
+
+## Terminal Status Page
+
+- `ConsoleStatus` (`src/consolestatus.cpp`) replaces the scrolling log with a
+  status page **only when stdin and stdout are a TTY**. Pipes, systemd, `-b`,
+  `TERM=dumb`, `--no-tui` and `WFWEB_NO_TUI=1` (set in the Docker image) keep
+  the plain log, byte for byte. `l` toggles page / live log, `q` quits.
+- Plain ANSI escapes, no curses — it has to build on MSVC. The Windows console
+  branch (`SetConsoleMode`) is compiled only by CI.
+- **Never write to stdout directly** (`std::cout`, `printf`) from server code:
+  it lands on top of the page. Use `qInfo`/`qWarning`; `messageHandler` in
+  `main.cpp` routes the line to the log file and to `ConsoleStatus::logLine`.
+- The class has **no `Q_OBJECT`** on purpose: `tests/consolestatus_test.cpp`
+  links it against Qt5Core alone. `render()` is pure — layout changes are
+  tested there; `tests/test_console.py` drives the real binary on a pty.
+- `servermain::consoleSnapshot()` runs on the main thread. It reads the cache
+  map directly, **not** `getCache()`, which re-requests stale values from the
+  rig — the page must not generate rig traffic. Web-server state crosses from
+  the web thread through `std::atomic` members of `webServer`.
+- `ConsoleStatus::restoreTerminal()` must stay async-signal-safe (`write` +
+  `tcsetattr` only): it runs from the signal handlers and `atexit`.
+- The POSIX SIGINT/SIGTERM handler in `main.cpp` only restores the terminal and
+  writes a byte to a pipe; a `QSocketNotifier` does the real shutdown in the
+  event loop. Do not log or call Qt from the handler — it deadlocked when the
+  signal landed while the main thread was inside `malloc`.
 
 ---
 
@@ -265,6 +317,61 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 - FreeDV indicator spans use stable IDs (`freedvSyncEl`, `freedvSnrEl`, `freedvCallsign`, `freedvFoEl`)
 - The meters fast-path updates individual spans by ID — do NOT use `nth-child` selectors
   (the callsign span shifts all positions when present/absent)
+
+---
+
+## Recording Architecture
+
+- Entirely browser-side, both builds (`resources/web-shared/recorder.js`); the
+  server is not involved and stores nothing.
+- The host page feeds PCM at three points, identical in both `index.html`:
+  `Recorder.feedRx` in `handleAudioData`, `Recorder.feedTx` in `sendTxAudio`
+  (every 0x03 frame actually sent), `Recorder.feedTxPcm` on the 0x04 packet-TX
+  tee. New audio paths must pass through one of these to be recorded.
+- A mixer AudioWorklet in its own 48 kHz context builds one mono timeline.
+  **TX replaces RX while TX audio is queued** — a rig with MONITOR on loops TX
+  back into the RX stream, and summing would record it twice. Mic frames are
+  only kept while `isTransmitting` (the mic streams whenever it is enabled).
+- Audio → MP3 via vendored `lamejs/lame.min.js` in a Blob worker. Video → a
+  composited 1280×720 canvas (header + `meterCanvas` / `spectrumCanvas` /
+  `waterfallCanvas`) through `MediaRecorder`; MP4 where supported, else WebM.
+- The video body switches by mode: FT8, JS8 and packet replace the scope (as
+  their panels do on the page); CW and FreeDV add a panel under it. `cwView()`,
+  `ft8View()`, `js8View()`, `packetView()` and `freedvView()` in `recorder.js`
+  are the only places that read page state for this (same pattern as
+  `js8-panel.mjs` reading host helpers), so renaming any of these breaks the
+  video view, not the page:
+  - CW: `currentMode`, `CWDecoder.state.{enabled,textBuffer}`, `cwCharacters`,
+    `cwSpeed`, `#cwScopeCanvas`, `#cwFilterBand`, `#cwQsoInput`. The RX/TX
+    conversation is built per recording from the rolling decode buffer and the
+    keyer's character list; text decoded while keyed is dropped (sidetone).
+  - FT8/FT4: `digiBarVisible`, `digiMode`, `getDigiSlotInfo()`, `digiTxActive`,
+    `digiTxFreq`/`digiRxFreq`, `#digiStatus`, `#digiDxCall`, `#digiWfCanvas`,
+    `#digiWfLabelCanvas`, the two marker divs, and the **rendered rows** of
+    `#digiRxPanel` / `#digiDirectedPanel` — row kind comes from the row's CSS
+    classes (`cq-row`, `directed`, `highlight`, `tx-row`, `digi-tx-pending`,
+    `digi-logged-row`, `digi-slot-divider`, `worked`).
+  - JS8: all from the panel's DOM, since its state is module-private —
+    `body.js8-open`, `#js8SubmodeSel`, `#js8ProgressBar`, `#js8Clock`,
+    `#js8Status`, `#js8BandSel`, `#js8TxFreq`, `#js8WfCanvas`,
+    `#js8WfTxMarker`, `#js8Stations .js8-station`, and the rows of `#js8Feed`
+    (`.js8-feed-row` with `from-me` / `to-me`, `.ts` `.from` `.to` `.msg`
+    `.snr` `.js8-tx-badge`).
+  - Packet: `Packet.state` — `visible`, `mode`, `activeTab`, `txBusy`,
+    `txActiveUntilMs`, `frames`, `terminal.{activeSid,sessions,compose}`,
+    `aprs.stations` — plus `#packetScopeCanvas`.
+  - FreeDV/RADE: `freedvEnabled`, `freedvModeName`, `freedvSync`, `freedvSNR`,
+    `freedvFreqOffset`, `radeRxCallsign`. The page keeps only the latest
+    callsign, so the heard list and the one-minute timeline are built per
+    recording; the callsign is logged when it appears, never gated on sync.
+- Video text uses filled tiles and light, low-saturation colours: thin
+  saturated outlines smear in the encoder's chroma subsampling.
+- The header meter is a copy of the page's `meterCanvas`, so the video shows
+  whichever face is active. `getState().meterNeedle` only changes the layout:
+  the needle face (`needle-meter.js`) takes the full header height and the top
+  strip starts to its right; the bar face sits in the row under the strip.
+- The worker and worklet are built from Blob URLs, so the lamejs URL carries a
+  hand-appended `?v=` (`fingerprint-static.py` does not rewrite runtime URLs).
 
 ---
 

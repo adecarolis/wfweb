@@ -53,6 +53,7 @@ wfweb keeps wfview's radio engine and replaces the desktop GUI with a built-in w
 | FreeDV digital voice (700D/700E/1600) | — | ✓ |
 | AX.25 packet — 300/1200/9600, APRS, terminal, YAPP | — | ✓ |
 | Server-side ADIF logbook, remote logging (GridTracker, JTAlert, Log4OM…) | — | ✓ |
+| Recording — MP3 audio, or video of the waterfall with frequency and settings | — | ✓ |
 | Mobile-responsive UI | — | ✓ |
 | Headless / no-display operation | — | ✓ |
 
@@ -281,6 +282,22 @@ The logbook is also reachable over REST (paged listing, ADIF import/export, stat
 
 ---
 
+## Recording
+
+The **REC** button in the top bar records what you hear, in either build. Pick a type from its menu; tap the button again to stop, and the file downloads to the device you are operating from.
+
+- **Audio** — an MP3 of the received audio, with your own transmit audio (mic, FT8/FT4, JS8, packet) in its place while you transmit.
+- **Video** — the same audio under a 1280×720 picture: frequency, mode, filter bandwidth, VFO, RX/TX state, meter, rig name, callsign and UTC time above the live spectrum and waterfall. Saved as MP4 where the browser can write it, WebM otherwise (Firefox).
+  - **CW:** with the decoder on (or once you have keyed something), a panel under the waterfall shows the decoder's tone waterfall and the contact as a conversation — what you copied and what you sent, turn by turn.
+  - **FT8/FT4:** with the DIGI panel open, the picture becomes the FT8 audio waterfall with its callsign labels, the band activity list, and your own QSO (messages to you, your transmissions, logged contacts).
+  - **JS8:** with the JS8 panel open, the JS8 audio waterfall, the stations heard, and the message feed — messages to you and your own messages highlighted, with their send progress.
+  - **Packet:** with the packet panel open, the modem spectrogram, the frame monitor, and either the terminal session as a conversation or the APRS stations heard, whichever tab you have selected.
+  - **FreeDV / RADE:** a panel under the waterfall with sync state, SNR, a one-minute timeline of received overs and your own transmissions, and the callsigns heard during the recording.
+
+Recording happens entirely in the browser, so it stops if the tab is closed or the device sleeps, and the video frame rate drops while the tab is in the background. A video stops and saves itself after 30 minutes, an audio recording after 6 hours.
+
+---
+
 ## Command-line options
 
 All settings can be passed as CLI flags. Run `wfweb --help` for the full list.
@@ -311,6 +328,17 @@ All settings can be passed as CLI flags. Run `wfweb --help` for the full list.
 | `--no-remote-log` | Disable remote logging even if enabled in settings | — |
 | `--remote-log-decodes` | Also forward FT8/FT4 decodes to the remote logger | — |
 | `--no-autoconnect` | Start without connecting to the rig (LAN only; connect via web UI Reconnect). Env: `WFWEB_NO_AUTOCONNECT=1` | autoconnect |
+| `--no-tui` | Print the plain log on an interactive terminal instead of the status page. Env: `WFWEB_NO_TUI=1` | status page on a terminal |
+
+### Terminal status page
+
+Started from an interactive terminal, wfweb shows a status page instead of the scrolling log: the URL to open for each network address, the rig and its connection, frequency and mode, connected browsers, the REST and rigctld ports, the log file and the last warning. It redraws to fit any terminal size.
+
+- **`l`** switches to the live log (same format as before, with the last 500 lines replayed) and back.
+- **`q`** or Ctrl-C quits.
+- `-d` starts in the log view.
+
+Nothing changes when wfweb is not on a terminal — systemd, `-b`, Docker, or output piped to a file or another program all get the plain log. `--no-tui` or `WFWEB_NO_TUI=1` forces the plain log on a terminal too. The full log is always written to the log file as well (`-l`).
 
 ### About `--settings`
 
@@ -527,6 +555,7 @@ JS8 weak-signal messaging uses a WebAssembly build of [JS8Call-improved](https:/
 The CW decoder uses [ggmorse](https://github.com/ggerganov/ggmorse) by Georgi Gerganov.
 FreeDV digital voice uses [codec2](https://github.com/drowe67/codec2) by David Rowe VK5DGR and contributors, and [radae_nopy](https://github.com/peterbmarks/radae_nopy) by Peter Marks VK5APM (a standalone C implementation of the RADE Radio Autoencoder).
 AX.25 packet — modems, framing, link control, APRS, and YAPP — is powered by [Direwolf](https://github.com/wb2osz/direwolf) by John Langner WB2OSZ.
+MP3 recording uses [lamejs](https://github.com/zhuker/lamejs), a JavaScript port of the [LAME](https://lame.sourceforge.io) encoder (LGPL).
 
 ---
 

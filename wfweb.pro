@@ -362,6 +362,7 @@ SOURCES += \
     src/pttyhandler.cpp \
     src/tcpserver.cpp \
     src/keyboard.cpp \
+    src/consolestatus.cpp \
     src/rigserver.cpp \
     src/rigctld.cpp \
     src/ft4222handler.cpp \
@@ -411,6 +412,7 @@ HEADERS  += \
     include/tcpserver.h \
     include/audiotaper.h \
     include/keyboard.h \
+    include/consolestatus.h \
     include/wfwebtypes.h \
     include/pttyhandler.h \
     include/icomudpaudio.h \
