@@ -89,7 +89,7 @@ other.** No Direct/Server runtime gates: each `index.html` is single-purpose.
 |-----|---------|----------|
 | `resources/web/` | C++ server build (`wfweb.pro`) | Server-only `index.html`, `transport/websocket-transport.js`, `debug.html` |
 | `resources/web-standalone/` | Static bundle (`tools/build-static.sh`) | Standalone `index.html`, `transport/serial-transport.js`, `civ/`, `wasm/` |
-| `resources/web-shared/` | Both | `index.html`-side modules and pure assets: `theme.css` (design tokens + `.wf-*` kit), `packet.js`, `recorder.js` (+ vendored `lamejs/`), `needle-meter.js`, `transport/rig-transport.js` (base class), CW decoder JS family, `ggmorse-wasm.js`, JS8 family (`js8.mjs`, `js8-panel.mjs`, `js8-panel.css`), `models/`, `digits/`, `digits-sprite.png` |
+| `resources/web-shared/` | Both | `index.html`-side modules and pure assets: `theme.css` (design tokens + `.wf-*` kit), `packet.js`, `recorder.js` (+ vendored `lamejs/`), `needle-meter.js`, `rx-jitter.js`, `transport/rig-transport.js` (base class), CW decoder JS family, `ggmorse-wasm.js`, JS8 family (`js8.mjs`, `js8-panel.mjs`, `js8-panel.css`), `models/`, `digits/`, `digits-sprite.png` |
 
 Build inputs for `ggmorse-wasm.js` (the `.cpp` wrapper + license) live in
 `resources/ggmorse-src/`, alongside `resources/build-ggmorse-wasm.sh`. The
@@ -168,6 +168,24 @@ Without a server, the browser does in JS / WASM what the Server does in Qt:
 | RX (rig->browser) | `0x02` | `[0x02][0x00][seq_u16LE][rateDiv_u16LE][PCM_Int16LE...]` |
 | TX (browser->rig) | `0x03` | `[0x03][0x00][seq_u16LE][reserved_u16LE][PCM_Int16LE...]` |
 
+### RX jitter buffer (`rx-jitter.js`)
+RX frames go from `handleAudioData` into `WfJitterBuffer`
+(`resources/web-shared/rx-jitter.js`), which runs inside the playback
+AudioWorklet (its source is shipped there as text by `wfRxWorkletUrl()`, the
+`recorder.js` pattern) or on the main thread for the ScriptProcessor fallback.
+It sizes itself to the jitter it measures: an underrun fades out, re-buffers
+and grows the target from the measured gap; every 2 s the stall budget the
+period needed is recorded and the target shrinks back to the largest one seen
+in the last `hold` periods (60 s, doubling on repeat underruns up to 10 min).
+The depth is steered onto the target by resampling (+2 % / -0.4 %, which also
+absorbs rig-vs-sound-card clock drift) and, above 250 ms excess, by a
+crossfaded skip at a quiet moment. It reports every 2 s (`onAudioJbEvent`):
+underruns and skips go to the console as `[Audio] ...`, the AUDIO / TX overlay
+has a BUFFER tile (AUTO, or pinned to 50/100/200/400 ms, `wfAudioBufLock`),
+and the learned size persists in `wfAudioBufMs`. `tests/rx_jitter_sim.mjs`
+(via `tests/test_rx_jitter.py`) drives it under node through jitter, stalls,
+drift and TX gaps — run it after any change to the class.
+
 ### Port Conventions
 - 8080: HTTPS/web browser (with audio/mic support)
 - 8081: HTTP REST API (scripts/microcontrollers)
@@ -227,6 +245,7 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 | `resources/web-shared/packet.js` | Browser-side AX.25 / APRS / YAPP stack (both builds) |
 | `resources/web-shared/recorder.js` | Audio (MP3) / video recorder behind the top-bar REC button (both builds) |
 | `resources/web-shared/needle-meter.js` | IC-7610-style needle meter face + needle ballistics; alternative to the tile-bar meter in `index.html` (both builds) |
+| `resources/web-shared/rx-jitter.js` | Adaptive RX jitter buffer (worklet + ScriptProcessor fallback, both builds); simulated by `tests/rx_jitter_sim.mjs` |
 | `resources/web-shared/js8-panel.mjs` | JS8 messenger panel — markup + state machine, QSO tabs, RX/TX, CMD palette (both builds) |
 | `resources/web-shared/js8.mjs` | JS8 WASM codec bridge — 8-FSK synth + encode/decode wrapper (both builds) |
 | `resources/web-shared/` | Files shared by both builds (CW decoder, ggmorse, sprites, models) |

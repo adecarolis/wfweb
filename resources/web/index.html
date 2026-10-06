@@ -2746,6 +2746,7 @@ body.digi-open #bottomBar { grid-row: 5; }
 <script src="wf-canvas.js"></script>
 <script src="needle-meter.js"></script>
 <script src="recorder.js"></script>
+<script src="rx-jitter.js"></script>
 <script>
 // ============================================================
 // STATE
@@ -5252,6 +5253,14 @@ function renderAudioMicOverlay() {
         }));
     }
 
+    // RX jitter buffer: adaptive by default, or pinned to a fixed size.
+    if (audioAvailable) {
+        var buf = makeFuncBtn('BUFFER', audioBufState(), !!audioBufLock, cycleAudioBuf);
+        buf.id = 'audioBufBtn';
+        buf.title = 'RX audio buffer. AUTO sizes it to the jitter it measures; tap to pin a fixed size.';
+        grid.appendChild(buf);
+    }
+
     // Fill remaining slots + back
     var total = grid.children.length;
     var cols = 5;
@@ -6813,9 +6822,11 @@ function setSpan(idx) { send({ cmd: 'setSpan', value: idx }); updateSpanIndex(id
 // ============================================================
 // AUDIO (preserved)
 // ============================================================
-var audioRingBuf = null, audioRingWrite = 0, audioRingRead = 0;
-var audioRingBuffered = 0, audioRingStarted = false, audioPrebufferSamples = 0;
 var audioScriptNode = null, audioUseWorklet = false;
+var audioJb = null;          // ScriptProcessor fallback: the jitter buffer runs on the main thread
+var audioJbStats = null;     // latest report from the jitter buffer (worklet or fallback)
+var audioBufLock = 0;        // BUFFER tile: 0 = AUTO, else the pinned buffer in ms
+try { audioBufLock = parseInt(localStorage.getItem('wfAudioBufLock'), 10) || 0; } catch (e) {}
 
 function toggleAudio() {
     if (!audioAvailable) return;
@@ -6877,59 +6888,23 @@ function startAudio() {
         && audioCtx.sampleRate === audioSampleRate;
     if (audioCtx && !primed) stopAudio();
     if (!audioCtx) audioCtx = createRxAudioCtx();
-    var bufSize = audioCtx.sampleRate * 1.5; // 1.5s buffer for low-latency LAN
-    audioRingBuf = new Float32Array(bufSize);
-
     // Create gain node for muting during CW
     audioGainNode = audioCtx.createGain();
     audioGainNode.gain.value = 1.0;
     audioGainNode.connect(audioCtx.destination);
-    audioRingWrite = 0; audioRingRead = 0; audioRingBuffered = 0;
-    audioRingStarted = false;
-    audioPrebufferSamples = Math.floor(audioCtx.sampleRate * 0.04); // 40ms pre-buffer
+    audioJbStats = null;
     if (audioCtx.audioWorklet && window.isSecureContext) startWithWorklet();
     else startWithScriptProcessor();
 }
 
+// The adaptive jitter buffer (rx-jitter.js) runs inside the worklet: RX
+// frames are posted to it and it reports its size and underruns back.
 function startWithWorklet() {
-    var processorCode = [
-        'class WfwebAudioProcessor extends AudioWorkletProcessor {',
-        '  constructor() {',
-        '    super();',
-        '    this.buffer = new Float32Array(sampleRate * 1.5);',
-        '    this.writePos = 0; this.readPos = 0; this.buffered = 0;',
-        '    this.started = false;',
-        '    this.prebufferSamples = Math.floor(sampleRate * 0.04);',
-        '    this.maxBuffered = Math.floor(sampleRate * 0.2);',
-        '    this.port.onmessage = (e) => {',
-        '      if (e.data === "flush") { this.buffered = 0; this.readPos = this.writePos; this.started = false; return; }',
-        '      var samples = e.data; var len = samples.length; var bufLen = this.buffer.length;',
-        '      for (var i = 0; i < len; i++) { this.buffer[this.writePos] = samples[i]; this.writePos = (this.writePos + 1) % bufLen; }',
-        '      this.buffered += len; if (this.buffered > bufLen) this.buffered = bufLen;',
-        '      if (this.started && this.buffered > this.maxBuffered) {',
-        '        var target = Math.floor(sampleRate * 0.08); var skip = this.buffered - target;',
-        '        this.readPos = (this.readPos + skip) % bufLen; this.buffered -= skip;',
-        '      }',
-        '    };',
-        '  }',
-        '  process(inputs, outputs) {',
-        '    var output = outputs[0][0]; if (!output) return true;',
-        '    if (!this.started && this.buffered < this.prebufferSamples) { output.fill(0); return true; }',
-        '    this.started = true; var bufLen = this.buffer.length;',
-        '    for (var i = 0; i < output.length; i++) {',
-        '      if (this.buffered > 0) { output[i] = this.buffer[this.readPos]; this.readPos = (this.readPos + 1) % bufLen; this.buffered--; }',
-        '      else { output[i] = 0; }',
-        '    }',
-        '    return true;',
-        '  }',
-        '}',
-        'registerProcessor("wfweb-audio-processor", WfwebAudioProcessor);'
-    ].join('\n');
-    var blob = new Blob([processorCode], { type: 'application/javascript' });
-    var url = URL.createObjectURL(blob);
+    var url = wfRxWorkletUrl();
     audioCtx.audioWorklet.addModule(url).then(function() {
         URL.revokeObjectURL(url);
-        audioWorkletNode = new AudioWorkletNode(audioCtx, 'wfweb-audio-processor');
+        audioWorkletNode = new AudioWorkletNode(audioCtx, 'wfweb-audio-processor', { processorOptions: audioJbOptions() });
+        audioWorkletNode.port.onmessage = function(e) { onAudioJbEvent(e.data); };
         audioWorkletNode.connect(audioGainNode); // Connect through gain node for muting
         audioUseWorklet = true;
         send({ cmd: 'enableAudio', value: true });
@@ -6941,16 +6916,10 @@ function startWithWorklet() {
 }
 
 function startWithScriptProcessor() {
+    audioJb = new WfJitterBuffer(audioCtx.sampleRate, audioJbOptions());
+    audioJb.onEvent = onAudioJbEvent;
     audioScriptNode = audioCtx.createScriptProcessor(4096, 0, 1);
-    audioScriptNode.onaudioprocess = function(e) {
-        var output = e.outputBuffer.getChannelData(0);
-        if (!audioRingStarted && audioRingBuffered < audioPrebufferSamples) { for (var i = 0; i < output.length; i++) output[i] = 0; return; }
-        audioRingStarted = true; var bufLen = audioRingBuf.length;
-        for (var i = 0; i < output.length; i++) {
-            if (audioRingBuffered > 0) { output[i] = audioRingBuf[audioRingRead]; audioRingRead = (audioRingRead + 1) % bufLen; audioRingBuffered--; }
-            else output[i] = 0;
-        }
-    };
+    audioScriptNode.onaudioprocess = function(e) { audioJb.pull(e.outputBuffer.getChannelData(0)); };
     audioScriptNode.connect(audioGainNode); // Connect through gain node for muting
     audioUseWorklet = false;
     send({ cmd: 'enableAudio', value: true });
@@ -6962,7 +6931,7 @@ function stopAudio() {
     if (audioWorkletNode) { audioWorkletNode.disconnect(); audioWorkletNode = null; }
     if (audioScriptNode) { audioScriptNode.disconnect(); audioScriptNode = null; }
     if (audioGainNode) { audioGainNode.disconnect(); audioGainNode = null; }
-    audioUseWorklet = false; audioRingBuf = null;
+    audioUseWorklet = false; audioJb = null; audioJbStats = null;
     if (audioCtx) { audioCtx.close(); audioCtx = null; }
     renderBottomBar();
     updateWarningVisibility();
@@ -7056,23 +7025,52 @@ function handleAudioData(buffer) {
     if (toneScanDetector) feedToneScan(pcmData);
     Recorder.feedRx(pcmData, audioSampleRate);
 
-    if (audioUseWorklet && audioWorkletNode) {
-        audioWorkletNode.port.postMessage(floatData);
-    } else if (audioRingBuf) {
-        var len = floatData.length, bufLen = audioRingBuf.length;
-        for (var i = 0; i < len; i++) { audioRingBuf[audioRingWrite] = floatData[i]; audioRingWrite = (audioRingWrite + 1) % bufLen; }
-        audioRingBuffered += len; if (audioRingBuffered > bufLen) audioRingBuffered = bufLen;
-        var maxBuf = Math.floor(audioSampleRate * 0.2); // 200ms max buffer
-        if (audioRingStarted && audioRingBuffered > maxBuf) {
-            var target = Math.floor(audioSampleRate * 0.08), skip = audioRingBuffered - target; // 80ms target
-            audioRingRead = (audioRingRead + skip) % bufLen; audioRingBuffered -= skip;
-        }
-    }
+    if (audioUseWorklet && audioWorkletNode) audioWorkletNode.port.postMessage(floatData, [floatData.buffer]);
+    else if (audioJb) audioJb.push(floatData);
 }
 
 function flushAudio() {
     if (audioUseWorklet && audioWorkletNode) audioWorkletNode.port.postMessage('flush');
-    else if (audioRingBuf) { audioRingBuffered = 0; audioRingRead = audioRingWrite; audioRingStarted = false; }
+    else if (audioJb) audioJb.flush();
+}
+
+// Jitter buffer reports (rx-jitter.js): every 2 s, plus the underrun it
+// faded out on and the late audio it skipped. The learned size is kept for
+// the next session; the BUFFER tile can pin a fixed size instead.
+function audioJbOptions() {
+    var o = { lockMs: audioBufLock, targetMs: 0 };
+    try { o.targetMs = Math.min(parseFloat(localStorage.getItem('wfAudioBufMs')) || 0, 300); } catch (e) {}
+    return o;
+}
+var audioJbSavedMs = -1;
+function onAudioJbEvent(ev) {
+    audioJbStats = ev;
+    if (ev.type === 'underrun')
+        console.log('[Audio] underrun #' + ev.underruns + ': ' + Math.round(ev.gapMs) + ' ms gap, buffer ' +
+            Math.round(ev.fromMs) + ' \u2192 ' + Math.round(ev.toMs) + ' ms');
+    else if (ev.type === 'skip')
+        console.log('[Audio] skipped ' + Math.round(ev.ms) + ' ms of late audio, buffer ' + Math.round(ev.bufMs) + ' ms');
+    var learned = Math.round(ev.targetMs);
+    if (!ev.locked && learned !== audioJbSavedMs) {
+        audioJbSavedMs = learned;
+        try { localStorage.setItem('wfAudioBufMs', String(learned)); } catch (e) {}
+    }
+    var btn = document.getElementById('audioBufBtn');
+    if (btn) btn.querySelector('.btn-state').textContent = audioBufState();
+}
+var AUDIO_BUF_STEPS = [0, 50, 100, 200, 400];
+function audioBufState() {
+    var s = audioBufLock ? audioBufLock + ' ms' : 'AUTO' + (audioJbStats ? ' ' + Math.round(audioJbStats.bufMs) + ' ms' : '');
+    if (audioJbStats && audioJbStats.underruns) s += ' \u00b7 ' + audioJbStats.underruns + ' gap' + (audioJbStats.underruns > 1 ? 's' : '');
+    return s;
+}
+function cycleAudioBuf() {
+    var i = AUDIO_BUF_STEPS.indexOf(audioBufLock);
+    audioBufLock = AUDIO_BUF_STEPS[(i + 1) % AUDIO_BUF_STEPS.length];
+    try { localStorage.setItem('wfAudioBufLock', String(audioBufLock)); } catch (e) {}
+    if (audioUseWorklet && audioWorkletNode) audioWorkletNode.port.postMessage({ cmd: 'lock', ms: audioBufLock });
+    else if (audioJb) audioJb.setLock(audioBufLock);
+    renderAudioMicOverlay();
 }
 
 // ============================================================
