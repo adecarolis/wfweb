@@ -2,7 +2,7 @@
 
 **Control your Icom radio from any browser — phone, tablet, or desktop.**
 
-wfweb turns your transceiver into a web-accessible station. Waterfall, SSB, CW decoding, FT8/FT4, JS8 messaging, [FreeDV digital voice](https://youtu.be/AWdHcyiOOnY), RADE, and AX.25 packet (APRS, connected QSOs, file transfer) — all in the browser, no client software required.
+wfweb turns your transceiver into a web-accessible station. Waterfall, SSB, CW decoding, FT8/FT4, JS8 messaging, FreeDV digital voice, [RADE](https://youtu.be/Rj9E1CAQ9Ls), and AX.25 packet (APRS, connected QSOs, file transfer) — all in the browser, no client software required.
 
 ![SSB mode](ssb.png)
 
@@ -61,10 +61,21 @@ wfweb keeps wfview's radio engine and replaces the desktop GUI with a built-in w
 
 ## Getting started
 
-wfweb ships in two flavours:
+wfweb ships in two flavours. Both run in the browser; they differ in what drives the rig.
 
 - **Standalone** — a pure-browser build that controls the rig directly over Web Serial. No server process at all. Easiest if you have a USB Icom and a Chromium-family browser.
-- **Server** — the native binary. Required for LAN-attached rigs, classic FreeDV (700D/700E/1600), PSK Reporter / FreeDV Reporter spotting, headless / multi-user deployments, or any non-Chromium browser.
+- **Server** — the native binary. Connects to the rig over USB or LAN and serves the UI to any browser.
+
+| | Standalone | Server |
+|---|:---:|:---:|
+| USB-attached rig | ✓ (Icom) | ✓ |
+| LAN-attached rig | — | ✓ |
+| Browser | Chromium-family only | any |
+| Headless / multi-user / unattended | — | ✓ |
+| FT8/FT4, JS8, CW, AX.25 packet | ✓ | ✓ |
+| RADE voice | ✓ | ✓ |
+| Classic FreeDV (700D/700E/1600) | — | ✓ |
+| PSK Reporter / FreeDV Reporter spotting | — | ✓ |
 
 ### Standalone — no install, no server
 
@@ -76,7 +87,7 @@ Frequency, mode, filter, audio, FT8/FT4, JS8, CW, AX.25 packet, and RADE V1 voic
 
 If you'd rather not depend on a third-party host, build the static bundle yourself and serve it from any HTTPS site — see [Self-hosting Standalone](#self-hosting-standalone) below.
 
-**Limitations.** USB rigs only — no LAN. Chromium-family browsers only (no Firefox, no Safari). Classic FreeDV (700D/700E/1600) and reporter spotting (PSK Reporter, FreeDV Reporter) are Server-only. Multi-user / unattended deployments need the Server build too.
+**Limitations.** USB Icom rigs only, and Chromium-family browsers only (no Firefox, no Safari). See the table above for the features that need the Server build.
 
 ### Server — three ways to run it
 
