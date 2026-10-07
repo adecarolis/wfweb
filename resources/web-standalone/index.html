@@ -7117,8 +7117,36 @@ function toggleAudio() {
 
 var audioGainNode = null; // Global gain node for muting RX audio during CW
 
+// iOS gives the whole browser one audio session, and WebKit moves it to
+// play-and-record (video-chat mode, speaker several times quieter) the moment
+// a page captures anything - then keeps it there for as long as any Web Audio
+// plays, across reloads, until the browser is killed. Safari 16.4+ lets the
+// page name the category (navigator.audioSession.type) and that overrides
+// the inference. In this build RX audio from a USB rig is itself a capture of
+// the rig's codec (SerialRigTransport opens it with getUserMedia), so the
+// session is play-and-record while that or the mic is open and ambient (what
+// a page with only Web Audio gets) otherwise; the virtual rig's RX arrives
+// over a BroadcastChannel and only the mic counts. A no-op everywhere else.
+function setAudioSessionType(type) {
+    var s = navigator.audioSession;
+    if (!s || !('type' in s)) return;
+    try {
+        if (s.type === type) return;
+        s.type = type;
+        console.log('[Audio] session ' + type);
+    } catch (e) { console.warn('[Audio] session ' + type + ' failed:', e); }
+}
+function rxAudioIsCapture() {
+    return typeof SerialRigTransport !== 'undefined' && serialTransport instanceof SerialRigTransport;
+}
+// The session type once the mic is closed.
+function micOffAudioSessionType() {
+    return (audioEnabled && rxAudioIsCapture()) ? 'play-and-record' : 'ambient';
+}
+
 function startAudio() {
     if (audioCtx) stopAudio();
+    if (rxAudioIsCapture()) setAudioSessionType('play-and-record');
     audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: audioSampleRate });
     // Create gain node for muting during CW
     audioGainNode = audioCtx.createGain();
@@ -7222,6 +7250,7 @@ function pickDirectMicId() {
 
 function startMic() {
     if (micEnabled) return;
+    setAudioSessionType('play-and-record');
     pickDirectMicId().then(function(preferredId) {
         var audioConstraints = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
         if (preferredId) audioConstraints.deviceId = { exact: preferredId };
@@ -7274,7 +7303,7 @@ function startMic() {
             updateWarningVisibility();
             if (currentPanel === 'audiomiс') renderAudioMicOverlay();
         }).catch(function(err) { console.error('Mic AudioWorklet failed:', err); stopMic(); });
-    }).catch(function(err) { console.error('getUserMedia failed:', err); });
+    }).catch(function(err) { console.error('getUserMedia failed:', err); setAudioSessionType(micOffAudioSessionType()); });
 }
 
 function stopMic() {
@@ -7282,6 +7311,7 @@ function stopMic() {
     if (micWorkletNode) { micWorkletNode.disconnect(); micWorkletNode = null; }
     if (micStream) { micStream.getTracks().forEach(function(t) { t.stop(); }); micStream = null; }
     if (micAudioCtx) { micAudioCtx.close(); micAudioCtx = null; }
+    setAudioSessionType(micOffAudioSessionType());
     micSeq = 0; renderBottomBar();
     updateWarningVisibility();
     if (currentPanel === 'audiomiс') renderAudioMicOverlay();
@@ -12155,6 +12185,7 @@ async function initStandaloneSplash() {
             // never appears. We grab the stream now, stop it (startMic will
             // request its own with the proper constraints), and the cached
             // permission then lets startMic succeed without a second prompt.
+            setAudioSessionType('play-and-record');
             var micPromise = navigator.mediaDevices && navigator.mediaDevices.getUserMedia
                 ? navigator.mediaDevices.getUserMedia({
                     audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
@@ -12228,6 +12259,7 @@ async function initStandaloneSplash() {
         // cached permission no matter how long connect took. (Same fix the
         // virtual-rig path above already uses.)
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            setAudioSessionType('play-and-record');
             navigator.mediaDevices.getUserMedia({
                 audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
             }).then(function (stream) {

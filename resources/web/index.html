@@ -6843,6 +6843,27 @@ function toggleAudio() {
 
 var audioGainNode = null; // Global gain node for muting RX audio during CW
 
+// iOS gives the whole browser one audio session, and the moment a page opens
+// the microphone WebKit switches it to play-and-record in its video-chat mode:
+// the speaker then plays several times quieter than for plain playback (the
+// speakerphone tuning), and the level stayed there for good, across reloads,
+// until the browser was killed, because WebKit keeps that category as long as
+// any Web Audio is playing - which our RX stream always is. Safari 16.4+ lets
+// the page name the category (navigator.audioSession.type), and a page-set
+// type overrides WebKit's inference, so claim play-and-record only while the
+// mic is open and go back to ambient (what a page with only Web Audio gets)
+// the rest of the time. The drop while the mic is open is WebKit policy and
+// stays; this ends it when the mic goes off. A no-op everywhere else.
+function setAudioSessionType(type) {
+    var s = navigator.audioSession;
+    if (!s || !('type' in s)) return;
+    try {
+        if (s.type === type) return;
+        s.type = type;
+        console.log('[Audio] session ' + type);
+    } catch (e) { console.warn('[Audio] session ' + type + ' failed:', e); }
+}
+
 // Safari can leave an AudioContext suspended even though it was created in a
 // click (seen with a Bluetooth output that was slow to start) and never
 // retries by itself: RX frames keep arriving and nothing is rendered. So ask
@@ -6891,6 +6912,7 @@ function startPendingAudio() {
 
 function startAudio() {
     audioStartPending = false;
+    if (!micEnabled) setAudioSessionType('ambient');
     var primed = audioCtx && !audioGainNode && audioCtx.state !== 'closed'
         && audioCtx.sampleRate === audioSampleRate;
     if (audioCtx && !primed) stopAudio();
@@ -6959,6 +6981,7 @@ function toggleMic() {
 
 function startMic() {
     if (micEnabled) return;
+    setAudioSessionType('play-and-record');
     navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } })
     .then(function(stream) {
         micStream = stream;
@@ -7007,7 +7030,7 @@ function startMic() {
             updateWarningVisibility();
             if (currentPanel === 'audiomiс') renderAudioMicOverlay();
         }).catch(function(err) { console.error('Mic AudioWorklet failed:', err); stopMic(); });
-    }).catch(function(err) { console.error('getUserMedia failed:', err); });
+    }).catch(function(err) { console.error('getUserMedia failed:', err); setAudioSessionType('ambient'); });
 }
 
 function stopMic() {
@@ -7015,6 +7038,7 @@ function stopMic() {
     if (micWorkletNode) { micWorkletNode.disconnect(); micWorkletNode = null; }
     if (micStream) { micStream.getTracks().forEach(function(t) { t.stop(); }); micStream = null; }
     if (micAudioCtx) { micAudioCtx.close(); micAudioCtx = null; }
+    setAudioSessionType('ambient');
     micSeq = 0; renderBottomBar();
     updateWarningVisibility();
     if (currentPanel === 'audiomiс') renderAudioMicOverlay();
