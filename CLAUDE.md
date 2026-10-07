@@ -179,10 +179,12 @@ period needed is recorded and the target shrinks back to the largest one seen
 in the last `hold` periods (60 s, doubling on repeat underruns up to 10 min).
 The depth is steered onto the target by resampling (+2 % / -0.4 %, which also
 absorbs rig-vs-sound-card clock drift) and, above 250 ms excess, by a
-crossfaded skip at a quiet moment. It reports every 2 s (`onAudioJbEvent`):
-underruns and skips go to the console as `[Audio] ...`, the AUDIO / TX overlay
-has a BUFFER tile (AUTO, or pinned to 50/100/200/400 ms, `wfAudioBufLock`),
-and the learned size persists in `wfAudioBufMs`. `tests/rx_jitter_sim.mjs`
+crossfaded skip at a quiet moment; a backlog that large already present when
+playback starts (frames queued before the AudioContext ran) is dropped at
+once. It reports every 2 s (`onAudioJbEvent`): underruns and skips go to the
+console as `[Audio] ...`, the AUDIO / TX overlay (FUNC > AUDIO, or the AUDIO
+OFF warning) has a BUFFER tile (AUTO, or pinned to 50/100/200/400 ms,
+`wfAudioBufLock`), and the learned size persists in `wfAudioBufMs`. `tests/rx_jitter_sim.mjs`
 (via `tests/test_rx_jitter.py`) drives it under node through jitter, stalls,
 drift and TX gaps — run it after any change to the class.
 

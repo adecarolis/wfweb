@@ -22,7 +22,9 @@
  *     frame-by-frame sawtooth) is steered onto the target: a small error is
  *     resampled away at up to +2 % / -0.4 % — inaudible, and it also absorbs
  *     clock drift between the rig and the sound card — and a large excess is
- *     skipped with a crossfade, at a quiet moment when one comes within 2 s.
+ *     skipped with a crossfade, at a quiet moment when one comes within 1.5 s.
+ *     A large excess already present when playback starts (frames queued
+ *     while the audio engine was not pulling) is skipped at once: it is stale.
  *
  * `push(samples)` on the producer side, `pull(out)` on the consumer side
  * (any block size: the worklet's 128, the ScriptProcessor's 4096). The class
@@ -46,6 +48,7 @@ class WfJitterBuffer {
         this.fade = Math.round(5 * ms);        // fade-in, fade-out and crossfade length
         this.reserve = this.fade;              // underrun is declared this early so the tail can fade
         this.safety = Math.round(10 * ms);     // added on top of a measured gap
+        this.skipExcess = Math.round(250 * ms); // excess above the target that is skipped, not resampled
         this.minTarget = Math.round(20 * ms);  // floor target bounds
         this.maxTarget = Math.round(1000 * ms);
         this.target = this.minTarget;
@@ -118,6 +121,10 @@ class WfJitterBuffer {
         if (!this.started) {
             if (this.avgPush && this.depth >= this.target + this.avgPush) {
                 this.started = true; this.fadeIn = this.fade; this.frac = 0;
+                // A backlog far above the target is stale audio queued before the
+                // engine began pulling: drop it now, not at the next quiet moment.
+                var excess = this.depth - (this.target + this.avgPush);
+                if (excess > this.skipExcess) { this.pendingSkip = excess; this._skip(); }
             } else { out.fill(0); this._tick(n); return; }
         }
         if (this.depth < this.periodMin) this.periodMin = this.depth;
@@ -224,7 +231,7 @@ class WfJitterBuffer {
         // Steer the floor onto the target: resample a little, skip a lot.
         if (this.started && this.periodMin !== Infinity) {
             var err = (this.periodMin - this.target) / this.ms;
-            if (err > 250) {
+            if (this.periodMin - this.target > this.skipExcess) {
                 if (!this.pendingSkip) this.skipDeadline = this.clock + Math.round(1500 * this.ms);
                 this.pendingSkip = this.periodMin - this.target;
                 this.rate = 1;

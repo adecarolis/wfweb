@@ -35,6 +35,14 @@ function simulate(opts) {
     const trace = [];
     const totalMs = opts.seconds * 1000;
     const pending = [];   // frames generated but not yet arrived: {at, data}
+    // Frames queued before the engine pulled for the first time (a late
+    // AudioContext start): pushed up front, all at once.
+    for (let b = 0; b < (opts.backlogMs || 0); b += frameMs) {
+        const data = new Float32Array(frameLen);
+        for (let i = 0; i < frameLen; i++) data[i] = 0.5 * Math.sin(2 * Math.PI * 1000 * (genSample + i) / SR);
+        genSample += frameLen;
+        jb.push(data);
+    }
     while (tMs < totalMs) {
         // generate frames whose rig time has come
         while (k * frameMs * ratio <= tMs) {
@@ -175,6 +183,15 @@ const CLICK = 0.07; // 1 kHz sine at 0.5 has a max sample step of 0.065
     const r = simulate({ seconds: 120, delay: (k, t) => (t >= 30000 && t < 33000) ? 33000 - t : 0 });
     check('3s outage: treated as a stopped stream, no growth', r.trace.every(p => p.buf <= 45), fmt(r));
     check('3s outage: late burst skipped away', r.stats.depthMs < 60, fmt(r) + ' depth=' + r.stats.depthMs.toFixed(0));
+}
+
+// 13. 3 s of frames queued before the first pull (late audio start): dropped at once.
+{
+    const r = simulate({ seconds: 60, backlogMs: 3000 });
+    const skip = r.events.find(e => e.type === 'skip');
+    check('startup backlog: skipped on the first pull', skip && skip.t < 20 && skip.ms > 2800, fmt(r) + (skip ? ' skipAt=' + skip.t.toFixed(0) + 'ms' : ''));
+    check('startup backlog: one skip, no underruns, live afterwards', r.jb.skips === 1 && r.jb.underruns === 0 && r.stats.depthMs < 60, fmt(r) + ' depth=' + r.stats.depthMs.toFixed(0));
+    check('startup backlog: no clicks', r.maxDiff < CLICK);
 }
 
 console.log(failures ? failures + ' FAILED' : 'all passed');

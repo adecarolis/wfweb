@@ -5468,6 +5468,13 @@ function renderFuncOverlay() {
         renderFuncOverlay();
     }));
 
+    // RX audio / TX audio / jitter buffer: the AUDIO / TX overlay, which is
+    // otherwise only reachable while audio is off.
+    if (audioAvailable || txAudioAvailable) {
+        var audioState = audioEnabled ? 'ON' + (audioJbStats ? ' \u00b7 ' + Math.round(audioJbStats.bufMs) + ' ms' : '') : 'OFF';
+        grid.appendChild(makeFuncBtn('AUDIO', audioState, audioEnabled, showAudioMicMenu));
+    }
+
     // Fill remaining slots + back
     var total = grid.children.length;
     var cols = 5;
