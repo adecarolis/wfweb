@@ -178,6 +178,8 @@
         // Already implemented
         getStatus: true, setFrequency: true, setMode: true,
         setFilter: true, setPTT: true,
+        // BAND key -> band stacking register recall
+        setBand: true,
         // Audio plumbing — Phase 2 will fill these in; for now silently drop
         // so they don't noisily fall back to a closed WS.
         enableMic: true, enableAudio: true,
@@ -536,6 +538,35 @@
                     this.state.frequency = obj.value;
                     this._enqueue('setFreq', civ.cmdSetFrequency(obj.value));
                     this._emit('update', { frequency: obj.value, vfoAFrequency: obj.value });
+                    return;
+                case 'setBand':
+                    // BAND key: read the rig's band stacking register for
+                    // this band; the 0x1A 0x01 reply branch in _onFrame
+                    // applies it. The page only sends this for bands whose
+                    // rig-caps entry carries a bsr code.
+                    if (typeof obj.bsr !== 'number' || obj.bsr <= 0) return;
+                    var bsrReg = Math.max(1, Math.min(3, (obj.reg | 0) || 1));
+                    // The rig only stores the VFO into a register from its
+                    // own BAND key, never on CI-V tuning. So first do what
+                    // the key does: store the current VFO in the register
+                    // of the band being left (`save`), read-modify-write
+                    // so its tone bytes survive. The reply branch below
+                    // writes it back once the read comes in.
+                    this._pendingBsrSave = null;
+                    var save = obj.save;
+                    if (save && typeof save.bsr === 'number' && save.bsr > 0
+                            && this.state.frequency > 0 && this.state.mode) {
+                        var saveReg = Math.max(1, Math.min(3, (save.reg | 0) || 1));
+                        if (!(save.bsr === obj.bsr && saveReg === bsrReg)) {
+                            this._pendingBsrSave = { bsr: save.bsr, reg: saveReg,
+                                frequency: this.state.frequency, mode: this.state.mode,
+                                filter: this.state.filter || 1 };
+                            this._enqueue('readBsr:' + save.bsr + ':' + saveReg,
+                                          civ.cmdReadBandStack(save.bsr, saveReg));
+                        }
+                    }
+                    this._enqueue('readBsr:' + obj.bsr + ':' + bsrReg,
+                                  civ.cmdReadBandStack(obj.bsr, bsrReg));
                     return;
                 case 'setMode':
                     if (typeof obj.value !== 'string') return;
@@ -1809,6 +1840,41 @@
                 if (this._savedDataMod === null && modDataV !== this._modIn.usbReg
                         && (!this._modIn.netRegs || this._modIn.netRegs.indexOf(modDataV) === -1)) {
                     this._savedDataMod = modDataV;
+                }
+                return;
+            }
+
+            // 0x1A 0x01 — Band stacking register reply (setBand). Apply
+            // freq + mode + filter the way the rig's own BAND key does;
+            // data mode is deliberately left alone (wfweb owns it). The
+            // usual readback then confirms what the rig did.
+            if (payload.length >= 4 && payload[0] === 0x1A && payload[1] === 0x01) {
+                var capsEntry = RIG_CAPS[this.civAddr];
+                var bsr = civ.parseBandStackReply(payload, capsEntry && capsEntry.bands);
+                var pend = this._pendingBsrSave;
+                if (bsr && pend && pend.bsr === bsr.bsr && pend.reg === bsr.reg) {
+                    // The register being left: write it back with the VFO we had.
+                    this._pendingBsrSave = null;
+                    try {
+                        this._enqueue('writeBsr:' + bsr.bsr + ':' + bsr.reg,
+                            civ.cmdWriteBandStack(bsr.bsr, bsr.reg, pend.frequency, pend.mode,
+                                                  pend.filter, bsr.tail, bsr.nBytes));
+                    } catch (e) {
+                        console.warn('[CI-V] band stacking register not stored:', e.message);
+                    }
+                    return;
+                }
+                if (bsr && bsr.frequency > 0 && bsr.mode) {
+                    this.state.frequency = bsr.frequency;
+                    this.state.mode = bsr.mode;
+                    this.state.filter = bsr.filter;
+                    this._enqueue('setFreq', civ.cmdSetFrequency(bsr.frequency));
+                    this._enqueue('setMode', civ.cmdSetMode(bsr.mode, bsr.filter));
+                    this._emit('update', { frequency: bsr.frequency, vfoAFrequency: bsr.frequency,
+                                           mode: bsr.mode, filter: bsr.filter });
+                } else {
+                    console.warn('[CI-V] band stacking register reply not applied:',
+                        Array.from(payload).map(function(b){return b.toString(16).padStart(2,'0');}).join(' '));
                 }
                 return;
             }

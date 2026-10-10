@@ -109,7 +109,6 @@ signals:
     void getDataMode();
     void getModInput(bool dataOn);
     void setModInput(rigInput input, bool dataOn);
-    void getBandStackReg(char band, char regCode);
     void getDebug();
     void getRitEnabled();
     void getRitValue();

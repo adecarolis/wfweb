@@ -1180,6 +1180,62 @@
         for (var i = 0; i < bcd.length; i++) data.push(bcd[i]);
     }
 
+    // ---------- Band stacking register (cmd 0x1A 0x01) -------------------
+    // The rig's per-band memory behind its BAND keys: three slots per band
+    // holding freq + mode + filter (+ data/tone bytes whose layout differs
+    // per rig family and is not consumed here). `bsr` is the rig file's
+    // Bands\N\BSR code, carried in rig-caps bands[].bsr; `reg` is 1..3,
+    // 1 = most recent. The command without data reads the slot.
+    function cmdReadBandStack(bsr, reg) {
+        return new Uint8Array([0x1A, 0x01, encodeBcd2(bsr), encodeBcd2(reg)]);
+    }
+
+    // Write a register: the rig rejects a record without its data / tone
+    // bytes (IC-7300 bench, 2026-10-09), so `tail` is what a read of the
+    // same register returned after its filter byte, echoed back verbatim
+    // (read-modify-write; the layout of those bytes differs per rig).
+    function cmdWriteBandStack(bsr, reg, hz, modeName, filter, tail, nBytes) {
+        var code = MODE_TO_CODE[modeName];
+        if (code === undefined) throw new Error('unknown mode: ' + modeName);
+        var out = [0x1A, 0x01, encodeBcd2(bsr), encodeBcd2(reg)];
+        var fb = encodeBcdLE(hz, nBytes || 5);
+        for (var i = 0; i < fb.length; i++) out.push(fb[i]);
+        out.push(code, Math.max(1, Math.min(3, filter | 0)));
+        for (var j = 0; tail && j < tail.length; j++) out.push(tail[j]);
+        return new Uint8Array(out);
+    }
+
+    // Parse a `0x1A 0x01 …` reply: {bsr, reg, frequency, modeCode, mode,
+    // filter, nBytes, tail}, or null for anything else / a truncated frame.
+    // `bands` is the rig-caps band table, for the frequency width (5 bytes
+    // everywhere but the IC-905's 10 GHz band).
+    function parseBandStackReply(payload, bands) {
+        if (!payload || payload.length < 4) return null;
+        if (payload[0] !== 0x1A || payload[1] !== 0x01) return null;
+        var bsr = bcdDecodeCharBE(payload[2]);
+        var reg = bcdDecodeCharBE(payload[3]);
+        var nBytes = 5;
+        for (var i = 0; bands && i < bands.length; i++) {
+            if (bands[i].bsr === bsr && bands[i].bytes) { nBytes = bands[i].bytes; break; }
+        }
+        if (payload.length < 4 + nBytes + 2) return null;
+        var fb = [];
+        for (var j = 0; j < nBytes; j++) fb.push(payload[4 + j]);
+        // Mode is the raw register byte (0x17 DV / 0x22 DD are hex, not BCD).
+        var modeCode = payload[4 + nBytes];
+        var tail = [];
+        for (var k = 6 + nBytes; k < payload.length; k++) tail.push(payload[k]);
+        return {
+            bsr: bsr, reg: reg,
+            frequency: decodeBcdLE(fb),
+            modeCode: modeCode,
+            mode: CODE_TO_MODE[modeCode] || null,
+            filter: payload[5 + nBytes] || 1,
+            nBytes: nBytes,
+            tail: tail
+        };
+    }
+
     // Parse an incoming `0x1A 0x00 …` reply. Returns null if the reply
     // isn't a memory-contents frame; otherwise returns the populated `mem`
     // (with `mem.empty = true` if the rig truncated the response, which
@@ -1491,6 +1547,10 @@
         cmdWriteMemoryContents: cmdWriteMemoryContents,
         cmdClearMemoryContents: cmdClearMemoryContents,
         parseMemoryContentsReply: parseMemoryContentsReply,
+        // Band stacking register (0x1A 0x01)
+        cmdReadBandStack: cmdReadBandStack,
+        cmdWriteBandStack: cmdWriteBandStack,
+        parseBandStackReply: parseBandStackReply,
         memGroupSpec: _memGroupSpec,
         // Memory mode / channel / group select (cmd 0x08) + VFO mode (0x07)
         cmdSelectMemoryChannel: cmdSelectMemoryChannel,

@@ -1245,6 +1245,10 @@ void icomCommander::parseCommand()
         {
             if (b.bsr == bsr.band)
             {
+                if (payloadIn.length() < b.bytes + 5) {
+                    qWarning(logRig()) << "Short BSR reply:" << payloadIn.toHex(' ');
+                    break;
+                }
                 bsr.freq = parseFreqData(payloadIn.mid(2,b.bytes),receiver);
                 // The Band Stacking command returns the reg in the position that VFO is expected.
                 // As BSR is always on the active VFO, just set that.
@@ -1257,6 +1261,7 @@ void icomCommander::parseCommand()
                     bsr.tone = decodeTone(payloadIn.mid(b.bytes+5,3));
                     bsr.tsql = decodeTone(payloadIn.mid(b.bytes+8,3));
                 }
+                bsr.tail = payloadIn.mid(b.bytes+4);
                 qDebug(logRig()) << QString("BSR received, band:%0 code:%1 freq:%2 data:%3 mode:%4 filter:%5")
                                         .arg(bsr.band).arg(bsr.reg).arg(bsr.freq.Hz).arg(bsr.data).arg(bsr.mode).arg(bsr.filter);
                 value.setValue(bsr);
@@ -3766,10 +3771,17 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                             payload.append(makeFreqPayload(bsr.freq,b.bytes));
                             payload.append(bcdEncodeChar(bsr.mode));
                             payload.append(bcdEncodeChar(bsr.filter));
-                            payload.append((bsr.data << 4 & 0xf0) + (bsr.sql & 0x0f));
-                            if (bsr.tone.tone != 0) {
-                                payload.append(encodeTone(bsr.tone.tone));
-                                payload.append(encodeTone(bsr.tsql.tone));
+                            if (!bsr.tail.isEmpty()) {
+                                // Read-modify-write: the rig rejects a record
+                                // without its data/tone bytes, so echo back
+                                // what it sent (IC-7300 bench, 2026-10-09).
+                                payload.append(bsr.tail);
+                            } else {
+                                payload.append((bsr.data << 4 & 0xf0) + (bsr.sql & 0x0f));
+                                if (bsr.tone.tone != 0) {
+                                    payload.append(encodeTone(bsr.tone.tone));
+                                    payload.append(encodeTone(bsr.tsql.tone));
+                                }
                             }
                             break;
                         }

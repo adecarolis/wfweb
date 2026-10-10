@@ -2831,6 +2831,10 @@ var lanConnected = false;
 var reconnectTimer = null;
 var defaultModes = ['LSB', 'USB', 'AM', 'CW', 'RTTY', 'FM', 'CW-R'];
 
+// Band stacking register slot (1..3) last recalled per band label, session
+// only: pressing the band you are already on steps to the next slot, like
+// the rig's own BAND key. Bands without a register use bandLastFreq below.
+var bsrReg = {};
 // Band frequency memory: remember last-used frequency per band label
 var bandLastFreq = (function() {
     try { var s = localStorage.getItem('bandLastFreq'); if (s) return JSON.parse(s); } catch(e) {}
@@ -5061,7 +5065,7 @@ function populateBands(bands) {
     BAND_KEYS.forEach(function(k) {
         var b = byNum[k.num];
         if (!b || !(b.end > b.start)) return;
-        rigBands.push({ label: k.label, freq: Math.min(Math.max(k.home, b.start), b.end) });
+        rigBands.push({ label: k.label, freq: Math.min(Math.max(k.home, b.start), b.end), bsr: b.bsr || 0 });
         BAND_RANGES[k.label] = [b.start, b.end];
     });
     populateDigiBandSel();
@@ -5090,11 +5094,28 @@ function renderBandOverlay() {
             var btn = document.createElement('button');
             btn.className = 'ov-btn';
             btn.textContent = b.label;
-            btn.onclick = (function(f, lbl) { return function() {
-                var target = bandLastFreq[lbl] || f;
-                send({ cmd: 'setFrequency', value: target });
+            btn.onclick = (function(f, lbl, bsr) { return function() {
+                if (bsr) {
+                    // The rig's BAND key: recall the band's last-used stacking
+                    // register (freq + mode + filter); pressing the band you
+                    // are already on steps to the next of its three slots.
+                    // `save` names the register being left so the transport
+                    // stores the current VFO there first, as the key does —
+                    // the rig never does that for CI-V tuning by itself.
+                    var cur = bandLabelOf(currentFreq);
+                    var curBand = null;
+                    rigBands.forEach(function(rb) { if (rb.label === cur) curBand = rb; });
+                    var reg = (cur === lbl) ? (bsrReg[lbl] || 1) % 3 + 1 : (bsrReg[lbl] || 1);
+                    var msg = { cmd: 'setBand', bsr: bsr, reg: reg };
+                    if (curBand && curBand.bsr) msg.save = { bsr: curBand.bsr, reg: bsrReg[cur] || 1 };
+                    bsrReg[lbl] = reg;
+                    send(msg);
+                } else {
+                    send({ cmd: 'setFrequency', value: bandLastFreq[lbl] || f });
+                }
                 setPanel('default');
-            }; })(b.freq, b.label);
+            }; })(b.freq, b.label, b.bsr);
+            if (b.bsr) btn.title = 'Band stacking register: press again to cycle 1 / 2 / 3';
             grid.appendChild(btn);
         }
         if (r === 0) {

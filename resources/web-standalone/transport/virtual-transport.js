@@ -565,7 +565,10 @@
                 preamps: DEFAULT_PREAMPS,
                 // The IC-705's band table (HF through 70 cm) so the BAND
                 // picker's VHF/UHF row can be exercised off-air.
-                bands: (global.IcomRigCaps && global.IcomRigCaps[0xA4] && global.IcomRigCaps[0xA4].bands) || [],
+                // No band stacking registers off-air: bsr 0 keeps the page
+                // on its setFrequency path for the BAND keys.
+                bands: ((global.IcomRigCaps && global.IcomRigCaps[0xA4] && global.IcomRigCaps[0xA4].bands) || [])
+                    .map(function(b) { var c = Object.assign({}, b); c.bsr = 0; return c; }),
                 // Multi-step attenuator so the P.AMP/ATT cycle button can be
                 // exercised without a real IC-7610 (which has 16 steps).
                 attenuators: [

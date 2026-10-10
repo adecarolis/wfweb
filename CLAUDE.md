@@ -125,6 +125,29 @@ builds (linked from each `index.html`, aliased in `web.qrc`, copied by
 Design intent is "one component kit, tinted per mode". Do **not** reintroduce
 per-panel button/tab/input styling — set a `--mode-accent` and reuse `.wf-*`.
 
+### BAND picker
+The BAND overlay recalls the rig's band stacking register like the front-panel
+key: the page sends `setBand {bsr, reg, save}` (CI-V `1A 01`), the transport
+applies freq + mode + filter (`applyMemoryToVfo` on the server, the `1A 01`
+branch of `serial-transport.js` on Standalone) and the normal readback
+confirms. `bsr` comes per band in `rigInfo.bands[]` (rig-file `Bands\N\BSR`,
+exported by `extract-rig-caps.py`; 0 = no register, as on Kenwood/Yaesu/virtual
+rigs) and those bands fall back to `setFrequency` with the page's
+`bandLastFreq`. Data mode from the register is intentionally not applied
+(wfweb owns data mode).
+
+**The rig never stores the VFO into a register on CI-V tuning** — only its own
+BAND key does (IC-7300 bench, 2026-10-09). So `save` names the register being
+left (its `bsr` + the slot the page last recalled there, `bsrReg`) and the
+transport stores the current VFO in it first, read-modify-write: a write
+without the data/tone bytes gets NG, so the reply's bytes after the filter are
+echoed back verbatim (`bandStackType.tail` / `parseBandStackReply().tail`),
+which also keeps tones and sidesteps the per-rig layout of those bytes. On the
+server, `queue->add()` echoes both the read and the write through
+`receiveCache()` synchronously with the queue mutex held: the read echo has
+freq 0, the write echo is flagged by `bsrWriteEchoPending` — touching the queue
+on either deadlocks the server.
+
 ### Meter faces
 The top-bar meter (`#meterCanvas`) has two faces, picked in `drawMeter()`:
 - **Bar** — the IC-7300 tile bar, inline in each `index.html` (`drawSMeter` /

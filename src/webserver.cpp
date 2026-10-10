@@ -2010,6 +2010,59 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             queue->addUnique(priorityImmediate, queueItem(t.freqFunc, QVariant::fromValue<freqt>(f), false, t.receiver));
         }
     }
+    else if (type == "setBand") {
+        // BAND key: recall the rig's band stacking register (CI-V 1A 01).
+        // `bsr` is the rig file's Bands\N\BSR code the page got in
+        // rigInfo.bands[].bsr, `reg` 1..3 the slot (1 = most recent). The
+        // reply lands in receiveCache() -> applyMemoryToVfo(). Rigs without
+        // the command advertise bsr 0 and the page sends setFrequency instead.
+        const int bsr = cmd["bsr"].toInt();
+        const int reg = qBound(1, cmd["reg"].toInt(1), 3);
+        bool known = false;
+        if (rigCaps && rigCaps->commands.contains(funcBandStackReg) && bsr > 0) {
+            for (const bandType &b : rigCaps->bands) {
+                if (b.bsr == bsr) { known = true; break; }
+            }
+        }
+        if (!known) {
+            qCWarning(logWebServer) << "setBand: no band stacking register" << bsr << "on this rig";
+            return;
+        }
+        // The rig only stores the VFO into a register from its own BAND key
+        // (bench IC-7300: CI-V tuning never touches the stack), so do what
+        // the key does first: store the current VFO in the register of the
+        // band being left (`save`: its bsr + the slot last recalled there).
+        // Read-modify-write — the reply handler below swaps in freq / mode /
+        // filter and writes the record back with its tone bytes intact.
+        pendingBsrSave = {};
+        const QJsonObject save = cmd["save"].toObject();
+        const int saveBsr = save["bsr"].toInt();
+        const int saveReg = qBound(1, save["reg"].toInt(1), 3);
+        if (saveBsr > 0 && !(saveBsr == bsr && saveReg == reg)) {
+            bool cmd29 = rigCaps->hasCommand29;
+            uchar rx = cmd29 ? (queue->getState().vfo == vfoSub ? 1 : 0) : 0;
+            vfoCommandType t = queue->getVfoCommand(vfoA, rx, true);
+            const cacheItem fc = queue->getCache(t.freqFunc, t.receiver);
+            const cacheItem mc = queue->getCache(t.modeFunc, t.receiver);
+            if (fc.value.isValid() && mc.value.isValid()) {
+                const freqt f = fc.value.value<freqt>();
+                const modeInfo m = mc.value.value<modeInfo>();
+                if (f.Hz > 0 && m.reg != 0xff) {
+                    pendingBsrSave.bsr = saveBsr;
+                    pendingBsrSave.reg = saveReg;
+                    pendingBsrSave.hz = qint64(f.Hz);
+                    pendingBsrSave.mode = m.reg;
+                    pendingBsrSave.filter = (m.filter > 0 && m.filter != 0xff) ? m.filter : 1;
+                    queue->add(priorityImmediate, queueItem(funcBandStackReg,
+                               QVariant::fromValue<bandStackType>(bandStackType(uchar(saveBsr), uchar(saveReg))), false, 0));
+                }
+            }
+        }
+        // add(), not addUnique(): a bandStackType with freq 0 is the read
+        // request; icomcommander skips the post-set read-back for this func.
+        queue->add(priorityImmediate, queueItem(funcBandStackReg,
+                   QVariant::fromValue<bandStackType>(bandStackType(uchar(bsr), uchar(reg))), false, 0));
+    }
     else if (type == "setMode") {
         QString modeName = cmd["value"].toString();
         modeInfo m = stringToMode(modeName);
@@ -4215,6 +4268,36 @@ void webServer::receiveCache(cacheItem item)
         rigPoweredOn = item.value.toBool();
         update["powerState"] = rigPoweredOn;
         break;
+    case funcBandStackReg:
+    {
+        // Band stacking register reply for a setBand request. Our own
+        // request (freq 0) is echoed back through the cache on this thread
+        // with the queue mutex held, so it must leave without touching the
+        // queue; the real reply comes from the rig thread (queued).
+        if (strcmp(item.value.typeName(), "bandStackType") != 0) return;
+        if (bsrWriteEchoPending) { bsrWriteEchoPending = false; return; }   // our write, echoed
+        const bandStackType bsr = item.value.value<bandStackType>();
+        if (bsr.freq.Hz == 0) return;                                        // our read, echoed
+        if (pendingBsrSave.bsr == bsr.band && pendingBsrSave.reg == bsr.reg) {
+            // The register being left: write it back with the VFO we had.
+            bandStackType w = bsr;
+            w.freq.Hz = pendingBsrSave.hz;
+            w.freq.MHzDouble = pendingBsrSave.hz / 1.0E6;
+            w.mode = pendingBsrSave.mode;
+            w.filter = pendingBsrSave.filter;
+            pendingBsrSave = {};
+            qCInfo(logWebServer) << "setBand: storing" << w.freq.Hz << "Hz mode" << w.mode << "filter" << w.filter
+                                 << "in register" << w.band << "/" << w.reg;
+            bsrWriteEchoPending = true;
+            queue->add(priorityImmediate, queueItem(funcBandStackReg, QVariant::fromValue<bandStackType>(w), false, 0));
+            return;
+        }
+        qCInfo(logWebServer) << "setBand: register" << bsr.band << "/" << bsr.reg
+                             << "->" << bsr.freq.Hz << "Hz mode" << bsr.mode << "filter" << bsr.filter;
+        // Data mode is deliberately not restored: wfweb owns data mode itself.
+        applyMemoryToVfo(qint64(bsr.freq.Hz), bsr.mode, bsr.filter, 0);
+        return;
+    }
     case funcMemoryContents:
     {
         // Only process actual memory data from the radio (memoryType),
@@ -4826,13 +4909,16 @@ bool webServer::recallMemoryOnRig(int channel, int group, QString *error)
 void webServer::addBandCaps(QJsonObject &o) const
 {
     if (!rigCaps || rigCaps->bands.empty()) return;
-    struct edges { QString name; quint64 lo; quint64 hi; };
+    struct edges { QString name; quint64 lo; quint64 hi; int bsr; };
     QMap<int, edges> folded;
+    // bsr: the band's CI-V 1A 01 stacking-register code (0 = none). The
+    // page sends setBand for those bands and setFrequency for the rest.
+    const bool hasBsr = rigCaps->commands.contains(funcBandStackReg);
     for (const bandType &b : rigCaps->bands) {
         if (b.band == bandUnknown || b.highFreq <= b.lowFreq) continue;
         auto it = folded.find(int(b.band));
         if (it == folded.end()) {
-            folded.insert(int(b.band), edges{b.name, b.lowFreq, b.highFreq});
+            folded.insert(int(b.band), edges{b.name, b.lowFreq, b.highFreq, hasBsr ? int(b.bsr) : 0});
         } else {
             it->lo = qMin(it->lo, b.lowFreq);
             it->hi = qMax(it->hi, b.highFreq);
@@ -4845,6 +4931,7 @@ void webServer::addBandCaps(QJsonObject &o) const
         bo["name"] = it->name;
         bo["start"] = double(it->lo);
         bo["end"] = double(it->hi);
+        bo["bsr"] = it->bsr;
         bands.append(bo);
     }
     o["bands"] = bands;

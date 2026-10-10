@@ -658,6 +658,15 @@ private:
     // fallback, which does exactly the same thing from the rig's own cache.
     void applyMemoryToVfo(qint64 hz, quint8 modeReg, quint8 filter, quint8 datamode);
 
+    // setBand write-back: the band stacking register being left and the VFO
+    // state to store in it. Filled by the setBand handler, consumed by the
+    // matching 1A 01 reply in receiveCache() (read-modify-write).
+    struct { int bsr = 0; int reg = 0; qint64 hz = 0; quint8 mode = 0; quint8 filter = 0; } pendingBsrSave;
+    // Set right before queueing the write-back: queue->add() echoes the
+    // value through receiveCache() synchronously, and that echo carries a
+    // real frequency, so it is otherwise indistinguishable from a reply.
+    bool bsrWriteEchoPending = false;
+
     // Repeater access tone (TONE / TSQL / DTCS). Rigs speak one of two
     // dialects — the single "Tone Squelch Type" register (IC-705/9700/905) or
     // independent TONE/TSQL/DTCS booleans (IC-7300/7610/…) — and these two

@@ -144,6 +144,9 @@ EXTRACTED_CMDS = {
     "vfoModeSelect":  "VFO Mode Select",
     "memoryContents": "Memory Contents",
     "memoryClear":    "Memory Clear",
+    # Band stacking register read (0x1A 0x01) behind the BAND picker; its
+    # presence gates the per-band `bsr` code below.
+    "bandStackReg":   "Band Stacking Reg",
 }
 
 
@@ -245,7 +248,7 @@ def extract_num_name_list(props: dict[str, str], prefix: str) -> list[dict]:
     return [d for _, d in out]
 
 
-def extract_bands(props: dict[str, str]) -> list[dict]:
+def extract_bands(props: dict[str, str], has_bsr: bool = False) -> list[dict]:
     """Walk Rig/Bands\\N\\{Num,Name,Start,End} into [{num, name, start, end}].
 
     A .rig carries one row per ITU region wherever the band edges differ
@@ -259,6 +262,12 @@ def extract_bands(props: dict[str, str]) -> list[dict]:
     select command) is kept as memGroup, with groupStart = the FIRST row's
     Start — the same edge the server's recallMemoryOnRig() band-nudges to —
     rather than the folded minimum, which may lie outside the rig's region.
+
+    When the rig has the Band Stacking Reg command, Bands\\N\\BSR (the CI-V
+    1A 01 band code, 0 = this band has no register) is kept as bsr — same
+    across a band's region rows — and Bands\\N\\Bytes as bytes when it is
+    not the usual 5 (IC-905 10 GHz). The BAND picker sends setBand for
+    bands with a bsr and plain setFrequency for the rest.
     """
     pat = re.compile(r"^Rig/Bands\\(\d+)\\(\w+)$")
     found: dict[int, dict[str, str]] = {}
@@ -288,6 +297,16 @@ def extract_bands(props: dict[str, str]) -> list[dict]:
             if mem_group >= 0:
                 folded[num]["memGroup"] = mem_group
                 folded[num]["groupStart"] = start
+            if has_bsr:
+                try:
+                    bsr = int(e.get("BSR", "0"))
+                    nbytes = int(e.get("Bytes", "5"))
+                except ValueError:
+                    bsr, nbytes = 0, 5
+                if bsr > 0:
+                    folded[num]["bsr"] = bsr
+                    if nbytes != 5:
+                        folded[num]["bytes"] = nbytes
         else:
             cur["start"] = min(cur["start"], start)
             cur["end"] = max(cur["end"], end)
@@ -507,6 +526,10 @@ def js_bands(items: list[dict]) -> str:
         fields = f"num:{b['num']},name:{js_string(b['name'])},start:{b['start']},end:{b['end']}"
         if "memGroup" in b:
             fields += f",memGroup:{b['memGroup']},groupStart:{b['groupStart']}"
+        if "bsr" in b:
+            fields += f",bsr:{b['bsr']}"
+        if "bytes" in b:
+            fields += f",bytes:{b['bytes']}"
         parts.append("{" + fields + "}")
     return "[" + ",".join(parts) + "]"
 
@@ -555,7 +578,7 @@ def main() -> int:
         preamps = extract_num_name_list(props, "Preamps")
         attenuators = extract_num_name_list(props, "Attenuators")
         antennas = extract_num_name_list(props, "Antennas")
-        bands = extract_bands(props)
+        bands = extract_bands(props, "bandStackReg" in cmds)
         scope_modes = extract_num_name_list(props, "ScopeModes")
         scope_edge_ranges = extract_num_name_list(props, "ScopeEdgeRanges")
         rigs.append((civ, model, meters, cmds, caps, inputs, preamps, attenuators, antennas, bands, scope_modes, scope_edge_ranges, mem_format))

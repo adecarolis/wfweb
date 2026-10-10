@@ -3,6 +3,7 @@
 
 #include <QtNumeric>
 #include <QString>
+#include <QByteArray>
 #include <QList>
 #include <vector>
 #include <QHash>
@@ -194,7 +195,7 @@ struct bandType {
 struct bandStackType {
     bandStackType(): band(0),reg(0),freq(freqt()),data(0),mode(0),filter(0) {}
     bandStackType(bandStackType const &b): band(b.band),reg(b.reg),freq(b.freq),data(b.data),
-        mode(b.mode),filter(b.filter), sql(b.sql), tone(b.tone), tsql(b.tsql) {}
+        mode(b.mode),filter(b.filter), sql(b.sql), tone(b.tone), tsql(b.tsql), tail(b.tail) {}
     bandStackType(uchar band, uchar reg): band(band),reg(reg), freq(), data(0), mode(0), filter(0) {}
     bandStackType(uchar band, uchar reg, freqt freq, uchar data, uchar mode, uchar filter):
         band(band), reg(reg), freq(freq), data(data), mode(mode), filter(filter) {};
@@ -207,6 +208,10 @@ struct bandStackType {
     uchar sql;
     toneInfo tone;
     toneInfo tsql;
+    // Everything the rig sent after the filter byte (data/tone/duplex…),
+    // verbatim. Its layout differs per rig family; a read-modify-write that
+    // only changes freq/mode/filter echoes it back untouched.
+    QByteArray tail;
     bandStackType &operator=(const bandStackType &i) {
         this->band=i.band;
         this->reg=i.reg;
@@ -217,6 +222,7 @@ struct bandStackType {
         this->sql=i.sql;
         this->tone=i.tone;
         this->tsql=i.tsql;
+        this->tail=i.tail;
         return *this;
     }
 
