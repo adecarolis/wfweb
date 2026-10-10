@@ -150,6 +150,16 @@ server, `queue->add()` echoes both the read and the write through
 freq 0, the write echo is flagged by `bsrWriteEchoPending` — touching the queue
 on either deadlocks the server.
 
+### Mode panels put the VFO back
+FT8/FT4 and JS8 force USB and retune to their dial frequency on open. Both
+`index.html` snapshot frequency + mode + filter first (`saveVfoSnapshot`) and
+restore it on close (`restoreVfoSnapshot`) — skipped when the band was changed
+inside the panel, and handed over instead of restored when one panel opens
+straight over the other (`vfoSnapshotHandoff` in `closeOtherModes`). The
+restore sends `setMode {value, filter}` as one command on purpose: a trailing
+`setFilter` rebuilds from the server's mode cache before the mode reply is
+back and would undo the mode. Packet and FreeDV do not use this.
+
 ### Meter faces
 The top-bar meter (`#meterCanvas`) has two faces, picked in `drawMeter()`:
 - **Bar** — the IC-7300 tile bar, inline in each `index.html` (`drawSMeter` /

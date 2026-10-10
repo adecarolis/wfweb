@@ -226,7 +226,12 @@
                 case 'setMode':
                     if (typeof obj.value !== 'string') return;
                     this.state.mode = obj.value;
-                    this._emit('update', { mode: obj.value });
+                    if (obj.filter >= 1 && obj.filter <= 3) {
+                        this.state.filter = obj.filter;
+                        this._emit('update', { mode: obj.value, filter: obj.filter });
+                    } else {
+                        this._emit('update', { mode: obj.value });
+                    }
                     return;
                 case 'setAntenna':
                     // Two fields (antenna + rx), so not an ECHO_FIELDS entry.

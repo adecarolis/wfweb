@@ -2210,6 +2210,9 @@ const JS8_PANEL_MARKUP = `
         // Persist that the panel is open so a page reload restores it.
         try { window.localStorage.setItem('js8Open', '1'); } catch (e) {}
         if (typeof closeOtherModes === 'function') closeOtherModes('js8');
+        // Remember where the rig was so close() can put it back (host helper,
+        // same as the FT8 panel).
+        if (typeof window.saveVfoSnapshot === 'function') window.saveVfoSnapshot();
         if (typeof currentMode !== 'undefined' && currentMode !== 'USB'
             && typeof setMode === 'function') setMode('USB');
         // Tune to the JS8 dial frequency for the current band — same flow
@@ -2283,6 +2286,7 @@ const JS8_PANEL_MARKUP = `
         }
         S.txQueue.length = 0;
         S.chains.clear();
+        if (typeof window.restoreVfoSnapshot === 'function') window.restoreVfoSnapshot();
     }
 
     function updateRxToggle() {

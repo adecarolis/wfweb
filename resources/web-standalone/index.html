@@ -3312,6 +3312,29 @@ var digiTxSeq = 0;
 var digiTxAttempts = 0;
 var digiTuneActive = false;
 var digiSavedModLevel = -1;    // saved USB Mod Level before entering DIGI mode
+// A digital-mode panel (FT8/FT4, JS8) forces USB and retunes to its dial
+// frequency when it opens. Snapshot the VFO first so closing the panel puts
+// the rig back — frequency, mode and filter — unless the band was changed
+// inside the panel, in which case the rig stays where the user took it.
+// Switching straight from one of these panels to the other hands the
+// snapshot over (closeOtherModes), so closing the second still returns to
+// where the first one started.
+var vfoSnapshot = null;
+var vfoSnapshotHandoff = false;
+function saveVfoSnapshot() {
+    if (vfoSnapshot || !(currentFreq > 0) || !currentMode) return;
+    vfoSnapshot = { freq: currentFreq, mode: currentMode, filter: currentFilter, band: bandLabelOf(currentFreq) };
+}
+function restoreVfoSnapshot() {
+    if (vfoSnapshotHandoff) return;
+    var s = vfoSnapshot;
+    vfoSnapshot = null;
+    if (!s || bandLabelOf(currentFreq) !== s.band) return;
+    send({ cmd: 'setFrequency', value: s.freq });
+    send({ cmd: 'setMode', value: s.mode, filter: s.filter });
+}
+window.saveVfoSnapshot = saveVfoSnapshot;
+window.restoreVfoSnapshot = restoreVfoSnapshot;
 var DIGI_MOD_LEVEL = 192;      // USB Mod Level during DIGI mode (~75%)
 var digiTuneNode = null;    // AudioWorkletNode for continuous tune tone
 var DIGI_MAX_TX_ATTEMPTS = 5; // retry same message up to 5 times (~75s for FT8)
@@ -6915,6 +6938,12 @@ function toggleLanConnection() {
 // produces overlapping UI.  Whenever one of them is opened, this helper
 // closes whichever others are currently active.
 function closeOtherModes(except) {
+    // FT8 <-> JS8: the panel being closed must not restore the VFO, the one
+    // opening inherits its snapshot instead (see saveVfoSnapshot).
+    vfoSnapshotHandoff = (except === 'digi' || except === 'js8');
+    try { closeOtherModesInner(except); } finally { vfoSnapshotHandoff = false; }
+}
+function closeOtherModesInner(except) {
     if (except !== 'cw') {
         var cwBar = document.getElementById('cwBar');
         if (cwBar && !cwBar.classList.contains('hidden')) {
@@ -9247,7 +9276,9 @@ function toggleDigiBar() {
         send({ cmd: 'setDigiActive', active: true, mode: digiMode });
         bar.classList.remove('hidden');
         document.body.classList.add('digi-open');
-        // FT8 requires USB — set it automatically on open
+        // FT8 requires USB — set it automatically on open; remember where
+        // the rig was so closing the panel can put it back.
+        saveVfoSnapshot();
         if (currentMode !== 'USB') setMode('USB');
         // Set USB Mod Level to 75% for DIGI; save previous value
         var slider = document.getElementById('micGainSlider');
@@ -9275,6 +9306,7 @@ function toggleDigiBar() {
         send({ cmd: 'setDigiActive', active: false });
         stopDigiTune();
         stopDigiPeriodTimer();
+        restoreVfoSnapshot();
         // Restore USB Mod Level
         if (digiSavedModLevel >= 0) {
             throttledSend('micGain', 'setMicGain', digiSavedModLevel);

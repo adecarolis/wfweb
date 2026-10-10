@@ -2077,6 +2077,11 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
                 modeInfo cached = modeCache.value.value<modeInfo>();
                 m.filter = cached.filter;
             }
+            // An explicit filter rides in the same command: the panel-close
+            // restore needs mode + filter as one set, a trailing setFilter
+            // would rebuild from the cache before the mode reply lands.
+            const int wantFilter = cmd["filter"].toInt(0);
+            if (wantFilter >= 1 && wantFilter <= 3) m.filter = wantFilter;
             qCDebug(logWebServer) << "setMode:" << modeName << "mk=" << m.mk << "reg=" << m.reg
                                   << "name=" << m.name << "filter=" << m.filter << "func=" << t.modeFunc;
             queue->addUnique(priorityImmediate, queueItem(t.modeFunc, QVariant::fromValue<modeInfo>(m), false, t.receiver));

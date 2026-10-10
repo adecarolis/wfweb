@@ -578,8 +578,14 @@
                     // changes the mode (packet.js auto-restoring its
                     // saved-enabled state on reload was clobbering the
                     // user's filter selection back to FIL1 every refresh).
-                    this._enqueue('setMode', civ.cmdSetMode(obj.value, null));
-                    this._emit('update', { mode: obj.value });
+                    // An explicit filter (1..3) rides in the same 06 frame:
+                    // the panel-close restore needs mode + filter as one
+                    // command, a trailing setFilter would race it.
+                    var modeFilter = (obj.filter >= 1 && obj.filter <= 3) ? obj.filter : null;
+                    if (modeFilter) this.state.filter = modeFilter;
+                    this._enqueue('setMode', civ.cmdSetMode(obj.value, modeFilter));
+                    this._emit('update', modeFilter ? { mode: obj.value, filter: modeFilter }
+                                                    : { mode: obj.value });
                     return;
                 case 'setFilter':
                     if (typeof obj.value !== 'number') return;
