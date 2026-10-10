@@ -2019,7 +2019,8 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         const int bsr = cmd["bsr"].toInt();
         const int reg = qBound(1, cmd["reg"].toInt(1), 3);
         bool known = false;
-        if (rigCaps && rigCaps->commands.contains(funcBandStackReg) && bsr > 0) {
+        if (rigCaps && rigCaps->manufacturer == manufIcom
+                && rigCaps->commands.contains(funcBandStackReg) && bsr > 0) {
             for (const bandType &b : rigCaps->bands) {
                 if (b.bsr == bsr) { known = true; break; }
             }
@@ -4913,7 +4914,11 @@ void webServer::addBandCaps(QJsonObject &o) const
     QMap<int, edges> folded;
     // bsr: the band's CI-V 1A 01 stacking-register code (0 = none). The
     // page sends setBand for those bands and setFrequency for the rest.
-    const bool hasBsr = rigCaps->commands.contains(funcBandStackReg);
+    // Icom only: the Kenwood/Yaesu rig files carry band codes under the
+    // same label, but there funcBandStackReg is a native band-select
+    // (BD/BU0/BS) with no readable record, so they keep the plain path.
+    const bool hasBsr = rigCaps->manufacturer == manufIcom
+                     && rigCaps->commands.contains(funcBandStackReg);
     for (const bandType &b : rigCaps->bands) {
         if (b.band == bandUnknown || b.highFreq <= b.lowFreq) continue;
         auto it = folded.find(int(b.band));

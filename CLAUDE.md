@@ -131,9 +131,11 @@ key: the page sends `setBand {bsr, reg, save}` (CI-V `1A 01`), the transport
 applies freq + mode + filter (`applyMemoryToVfo` on the server, the `1A 01`
 branch of `serial-transport.js` on Standalone) and the normal readback
 confirms. `bsr` comes per band in `rigInfo.bands[]` (rig-file `Bands\N\BSR`,
-exported by `extract-rig-caps.py`; 0 = no register, as on Kenwood/Yaesu/virtual
-rigs) and those bands fall back to `setFrequency` with the page's
-`bandLastFreq`. Data mode from the register is intentionally not applied
+exported by `extract-rig-caps.py`; 0 = no register) and those bands fall back
+to `setFrequency` with the page's `bandLastFreq`. Icom only: the Kenwood/Yaesu
+rig files list band codes under the same "Band Stacking Reg" label, but their
+commanders turn it into a native band-select (`BD`/`BU0`/`BS`) with no readable
+record, so `addBandCaps` reports `bsr: 0` for them and the virtual rig. Data mode from the register is intentionally not applied
 (wfweb owns data mode).
 
 **The rig never stores the VFO into a register on CI-V tuning** — only its own
