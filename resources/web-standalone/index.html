@@ -383,7 +383,7 @@ body.meter-needle #meterCanvas { width: auto; height: 128px; aspect-ratio: 611 /
 #spectrumCanvas, #waterfallCanvas {
     display: block; width: 100%;
     position: absolute; left: 0;
-    cursor: crosshair;
+    cursor: var(--cursor-cross);
     touch-action: none;
 }
 #spectrumCanvas {
@@ -1001,7 +1001,7 @@ body.digi-open #bottomBar { grid-row: 5; }
     display: flex;
     flex-direction: column;
     border-bottom: 1px solid #024;
-    cursor: crosshair;
+    cursor: var(--cursor-cross);
 }
 .digi-wf-bar {
     flex: 1;
