@@ -60,7 +60,24 @@ var SCALES = {
 };
 var LABELS = { po: 'Po', swr: 'SWR', alc: 'ALC', comp: 'COMP', vd: 'Vd', id: 'Id' };
 var REST = -45, STOP_LO = -47, STOP_HI = 48;
-var FINE = 0.42;        // face scale below which the small numbers are dropped
+var FINE = 0.42;        // face scale below which only the armed scale is numbered
+
+// The small scale numbers, per reading: [text, x, y, size, colour].
+var NUMS = {
+    id:   [['0', 133, 118, 17, WHITE], ['10', 265, 88, 17, WHITE],
+           ['20', 402, 92, 17, WHITE], ['30', 533, 127, 17, WHITE],
+           ['A', 562, 137, 17, WHITE]],
+    po:   [['0', 157, 146, 17, WHITE], ['10', 229, 129, 17, WHITE],
+           ['20', 271, 125, 17, WHITE], ['50', 350, 122, 17, WHITE],
+           ['100', 448, 137, 17, WHITE], ['%', 532, 160, 17, WHITE]],
+    swr:  [['1', 185, 176, 17, WHITE], ['1.5', 241, 166, 17, WHITE],
+           ['2', 287, 158, 17, WHITE], ['3', 326, 159, 17, WHITE],
+           ['∞', 463, 181, 24, WHITE]],
+    comp: [['0', 200, 184, 17, BLUE], ['10', 270, 174, 17, BLUE],
+           ['20', 372, 174, 17, BLUE], ['dB', 467, 203, 17, BLUE]],
+    vd:   [['10', 340, 223, 16, WHITE], ['16V', 388, 227, 16, WHITE],
+           ['Vd', 430, 223, 16, WHITE]]
+};
 
 function angleOf(kind, v) {
     var t = SCALES[kind];
@@ -212,35 +229,15 @@ function drawFace(g, f) {
     text(g, f, 'COMP', 151, 210, 17, BLUE);
     text(g, f, 'ALC', 276, 224, 17, RED);
 
-    if (fine) {
-        text(g, f, '0', 133, 118, 17, WHITE);
-        text(g, f, '10', 265, 88, 17, WHITE);
-        text(g, f, '20', 402, 92, 17, WHITE);
-        text(g, f, '30', 533, 127, 17, WHITE);
-        text(g, f, 'A', 562, 137, 17, WHITE);
-
-        text(g, f, '0', 157, 146, 17, WHITE);
-        text(g, f, '10', 229, 129, 17, WHITE);
-        text(g, f, '20', 271, 125, 17, WHITE);
-        text(g, f, '50', 350, 122, 17, WHITE);
-        text(g, f, '100', 448, 137, 17, WHITE);
-        text(g, f, '%', 532, 160, 17, WHITE);
-
-        text(g, f, '1', 185, 176, 17, WHITE);
-        text(g, f, '1.5', 241, 166, 17, WHITE);
-        text(g, f, '2', 287, 158, 17, WHITE);
-        text(g, f, '3', 326, 159, 17, WHITE);
-        text(g, f, '∞', 463, 181, 24, WHITE);
-
-        text(g, f, '0', 200, 184, 17, BLUE);
-        text(g, f, '10', 270, 174, 17, BLUE);
-        text(g, f, '20', 372, 174, 17, BLUE);
-        text(g, f, 'dB', 467, 203, 17, BLUE);
-
-        text(g, f, '10', 340, 223, 16, WHITE);
-        text(g, f, '16V', 388, 227, 16, WHITE);
-        text(g, f, 'Vd', 430, 223, 16, WHITE);
-    }
+    // Scale numbers. A small face (a phone) has no room for all of them, so
+    // it numbers only the armed reading's scale, the one the badge names.
+    var kinds = fine ? Object.keys(NUMS) : [f.kind];
+    var nf = fine ? f : { scale: f.scale, minPx: 7 };
+    kinds.forEach(function (k) {
+        (NUMS[k] || []).forEach(function (n) {
+            text(g, nf, n[0], n[1], n[2], n[3], n[4]);
+        });
+    });
 
     // MET badge frame (its text is live) and the TX lamp.
     roundRect(g, 5.5, 3.5, 179, 31, 5);
@@ -311,9 +308,9 @@ function paint() {
 
     var scale = Math.min(cssW / W, cssH / H);
     var ox = (cssW - W * scale) / 2, oy = (cssH - H * scale) / 2;
-    var f = { scale: scale, minPx: scale >= FINE ? 7 : 6, tx: !!st.tx };
+    var f = { scale: scale, minPx: scale >= FINE ? 7 : 6, tx: !!st.tx, kind: st.kind };
 
-    var key = pw + 'x' + ph + (f.tx ? 't' : 'r');
+    var key = pw + 'x' + ph + (f.tx ? 't' : 'r') + (scale < FINE ? st.kind : '');
     if (key !== faceKey) {
         face = face || document.createElement('canvas');
         face.width = pw; face.height = ph;
