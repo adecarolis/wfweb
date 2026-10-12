@@ -145,6 +145,7 @@ webServer::~webServer()
     if (statusTimer) {
         statusTimer->stop();
     }
+    usbTxReset();
     if (usbAudioOutput) {
         usbAudioOutput->stop();
         delete usbAudioOutput;
@@ -1740,6 +1741,7 @@ void webServer::onWsDisconnected()
     QWebSocket *pClient = qobject_cast<QWebSocket *>(sender());
     if (pClient) {
         qInfo() << "Web client disconnected:" << pClient->peerAddress().toString();
+        if (pClient == micActiveClient) usbTxReset();
         // Restore DATA MOD OFF if this client had mic active
         if (pClient == micActiveClient && dataOffModSaved && queue) {
             queue->addUnique(priorityImmediate, queueItem(funcDATAOffMod, QVariant::fromValue<rigInput>(savedDataOffMod), false, 0));
@@ -1827,8 +1829,10 @@ void webServer::onWsBinaryMessage(QByteArray message)
 
     if (usbAudioOutput && txAudioConfigured) {
         // USB path.  preTxBuffer holds raw mono until the device starts;
-        // expansion to stereo (if needed) happens inside txWritePcmFrame
-        // so the same writer serves the mic, FT8 and PKT paths.
+        // from then on frames queue in usbTxPending and usbTxPump writes
+        // them a period at a time.  Expansion to stereo (if needed)
+        // happens inside txWritePcmFrame so the same writer serves the
+        // mic, FT8 and PKT paths.
         if (preTxBuffering) {
             // Accumulate chunks until the buffer reaches the device's full capacity,
             // then start ALSA and dump them all at once.  This ensures ALSA begins
@@ -1841,14 +1845,26 @@ void webServer::onWsBinaryMessage(QByteArray message)
                 usbAudioOutputDevice = usbAudioOutput->start();
                 if (usbAudioOutputDevice) {
                     txAudioActive = true;
-                    txWritePcmFrame(preTxBuffer, /*applyGain=*/false);
+                    usbTxPending = preTxBuffer;
+                    usbTxLastFrameMs = QDateTime::currentMSecsSinceEpoch();
+                    if (!usbTxPumpTimer) {
+                        usbTxPumpTimer = new QTimer(this);
+                        usbTxPumpTimer->setTimerType(Qt::PreciseTimer);
+                        connect(usbTxPumpTimer, &QTimer::timeout, this, &webServer::usbTxPump);
+                    }
+                    usbTxPumpTimer->start(10);
+                    qInfo() << "Web: TX audio device started, period=" << usbTxPeriodBytes()
+                            << "bytes mono, bufSize=" << usbAudioOutput->bufferSize();
+                    usbTxPump();
                 } else {
                     qWarning() << "Web: TX audio ALSA start() failed after pre-buffer";
                 }
                 preTxBuffer.clear();
             }
         } else {
-            txWritePcmFrame(pcmData, /*applyGain=*/false);
+            usbTxPending.append(pcmData);
+            usbTxLastFrameMs = QDateTime::currentMSecsSinceEpoch();
+            usbTxPump();
         }
     } else if (txConverter) {
         // LAN path. The rig's UDP audio jitter buffer expects audio in ~20 ms
@@ -2502,6 +2518,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
                 if (usbAudioOutput->state() != QAudio::StoppedState)
                     usbAudioOutput->stop();
                 usbAudioOutputDevice = nullptr;
+                usbTxReset();
                 preTxBuffer.clear();
                 preTxBuffering = true;
                 // Reset FreeDV TX state so onFreeDVTxReady() will restart ALSA
@@ -2524,6 +2541,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             if (freedvTxDrainTimer) freedvTxDrainTimer->stop();
             txAudioActive = false;
             micLanTxBuffer.clear();
+            usbTxReset();
             if (usbAudioOutput) {
                 usbAudioOutput->stop();
                 usbAudioOutputDevice = nullptr;
@@ -4493,6 +4511,75 @@ void webServer::txWritePcmFrame(const QByteArray &pcmMonoLE, bool applyGain)
     usbAudioOutputDevice->write(writeData);
 }
 
+// Mono bytes per device write.  The device's own period is the unit: on
+// WinMM a write shorter than it still spends a whole wave block, on ALSA
+// and CoreAudio any size lands in the ring buffer.  Clamped so an odd
+// backend value (a huge pulse period, none at all on Qt6) can neither add
+// latency nor starve the pump.
+int webServer::usbTxPeriodBytes() const
+{
+    const int ch = qMax(1, usbOutputChannels);
+    int bytes = 0;
+#if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+    if (usbAudioOutput) bytes = usbAudioOutput->periodSize() / ch;
+#endif
+    if (bytes < 960 || bytes > 4800)   // 10..50 ms at 48 kHz
+        bytes = 1920;                  // 20 ms
+    return bytes & ~1;
+}
+
+// Write the pending browser audio one period at a time, as long as the
+// device has room for a whole one.  Runs on every incoming frame and on
+// the pump timer, which keeps draining once the device had been full.
+void webServer::usbTxPump()
+{
+    if (!usbAudioOutput || !usbAudioOutputDevice || usbTxPending.isEmpty()) return;
+    const int ch = qMax(1, usbOutputChannels);
+    const int period = usbTxPeriodBytes();
+
+    // The browser is a real-time source, so this only grows when the
+    // device stops taking data.  Drop the oldest rather than build up
+    // latency.
+    const int cap = 48000;  // 500 ms
+    if (usbTxPending.size() > cap) {
+        if (!usbTxOverflowLogged) {
+            qWarning() << "Web: TX audio device not draining, dropping"
+                       << (usbTxPending.size() - cap) << "bytes";
+            usbTxOverflowLogged = true;
+        }
+        usbTxPending.remove(0, usbTxPending.size() - cap);
+    }
+
+    while (usbTxPending.size() >= period && usbAudioOutput->bytesFree() >= period * ch) {
+        txWritePcmFrame(usbTxPending.left(period), /*applyGain=*/false);
+        usbTxPending.remove(0, period);
+    }
+
+    // A tail shorter than a period goes out once the stream has stopped:
+    // the device reports Idle after it ran dry (WinMM, ALSA), or nothing
+    // has arrived for 100 ms, which never happens inside a live 2.7 ms
+    // frame stream (the pulse backend never reports Idle in push mode).
+    // Either way the device is silent already, so padding costs nothing,
+    // and the end of an FT8 frame is not lost.
+    if (!usbTxPending.isEmpty() && usbTxPending.size() < period
+            && (usbAudioOutput->state() == QAudio::IdleState
+                || QDateTime::currentMSecsSinceEpoch() - usbTxLastFrameMs >= 100)) {
+        usbTxPending.append(QByteArray(period - usbTxPending.size(), 0));
+        txWritePcmFrame(usbTxPending, /*applyGain=*/false);
+        usbTxPending.clear();
+    }
+}
+
+// Drop whatever the browser sent but the device has not taken, and stop
+// the pump.  Called wherever the mic session ends or another TX path
+// (FreeDV, RADE, PKT) takes the device over.
+void webServer::usbTxReset()
+{
+    usbTxPending.clear();
+    usbTxOverflowLogged = false;
+    if (usbTxPumpTimer) usbTxPumpTimer->stop();
+}
+
 // icomCommander caches a frequency the rig could not report as Hz == 0 and a
 // mode it could not report as a default modeInfo (IC-705 on a blank memory
 // channel answers both reads with a lone 0xFF). Emit JSON null for those so
@@ -5469,6 +5556,7 @@ void webServer::onFreeDVTxReady(audioPacket audio)
             if (usbAudioOutput->state() != QAudio::StoppedState)
                 usbAudioOutput->stop();
             usbAudioOutputDevice = nullptr;
+            usbTxReset();
 
             usbAudioOutputDevice = usbAudioOutput->start();
             if (usbAudioOutputDevice) {
@@ -5690,6 +5778,7 @@ void webServer::onRadeTxReady(audioPacket audio)
             if (usbAudioOutput->state() != QAudio::StoppedState)
                 usbAudioOutput->stop();
             usbAudioOutputDevice = nullptr;
+            usbTxReset();
 
             usbAudioOutputDevice = usbAudioOutput->start();
             if (usbAudioOutputDevice) {
@@ -6081,6 +6170,7 @@ void webServer::onPacketTxReady(audioPacket audio)
         if (usbAudioOutput->state() != QAudio::StoppedState)
             usbAudioOutput->stop();
         usbAudioOutputDevice = nullptr;
+        usbTxReset();
 
         usbAudioOutputDevice = usbAudioOutput->start();
         if (!usbAudioOutputDevice) {
@@ -6139,6 +6229,7 @@ void webServer::onPacketTxFailed(QString reason)
             usbAudioOutput->stop();
         usbAudioOutputDevice = nullptr;
         txAudioActive = false;
+        usbTxReset();
         if (micActiveClient) {
             preTxBuffer.clear();
             preTxBuffering = true;
@@ -6291,6 +6382,7 @@ void webServer::onUsbAudioOutputStateChanged(QAudio::State state)
         // burst), re-arm the pre-buffer so the next mic frames restart the
         // device — otherwise they'd hit a null device and be silently
         // dropped until the user toggled the mic.
+        usbTxReset();
         if (micActiveClient && usbAudioOutput) {
             preTxBuffer.clear();
             preTxBuffering = true;

@@ -171,6 +171,7 @@ private slots:
     void onReporterStateChanged(int state);
     void onPskReporterStateChanged(int state);
     void drainFreeDVTxBuffer();
+    void usbTxPump();
 
     // RADE V1
     void onRadeRxReady(audioPacket audio);
@@ -220,10 +221,16 @@ private:
     // Common TX-audio writer.  Takes mono int16 LE PCM, expands to stereo
     // if the device requires it, optionally applies freedvTxGain (ALC-
     // controlled), and writes to usbAudioOutputDevice.  Called from
-    // onWsBinaryMessage (mic / FT8 / voice — applyGain=false) and
+    // usbTxPump (mic / FT8 / voice — applyGain=false) and
     // drainPacketUsbTxBuffer (PKT — applyGain=true).  Same writer for
     // both, which is the structural unification of TX audio plumbing.
     void txWritePcmFrame(const QByteArray &pcmMonoLE, bool applyGain);
+    // Browser-frame coalescing in front of txWritePcmFrame (see
+    // usbTxPending): bytes of mono PCM per device write, the pending-
+    // buffer reset for when the mic session ends or another TX path takes
+    // the device.
+    int usbTxPeriodBytes() const;
+    void usbTxReset();
     void handleCommand(QWebSocket *client, const QJsonObject &cmd);
     // One station callsign + grid for the whole server, persisted under
     // [Station] in the settings file and pushed to every browser.  Replaces
@@ -355,6 +362,17 @@ private:
     QByteArray preTxBuffer;
     bool preTxBuffering = false;
     bool txAudioActive = false; // true once pre-buffer is flushed; stops device on IdleState
+    // Browser TX frames are far smaller than the device's period: the mic
+    // worklet posts one 128-sample quantum (2.7 ms) per WebSocket message,
+    // the FT8/JS8 pacer 512 samples.  Qt's WinMM backend gives every
+    // write() its own 40 ms wave block whatever its size and drops what it
+    // cannot place, so writing them one by one starved the device of all
+    // but ~13 ms in every 200 ms and chopped the speech (#136).  Frames
+    // queue here and usbTxPump writes them one full period at a time.
+    QByteArray usbTxPending;          // mono int16 LE awaiting a full period
+    QTimer *usbTxPumpTimer = nullptr; // keeps draining once the device was full
+    qint64 usbTxLastFrameMs = 0;      // wall clock of the last browser frame
+    bool usbTxOverflowLogged = false;
 
     // Single-writer rule for browser TX audio: wall-clock of the last
     // modem-tagged (header byte 1 & 0x01) frame.  Untagged mic frames are
