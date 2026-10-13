@@ -25,6 +25,9 @@ qmake wfweb.pro && make -j$(nproc)
 
 # Server flags: -b (daemon), -l (logfile), -s (settings file), -n (top-bar name tag)
 
+# Windows GUI launcher (separate exe, Qt Widgets) — build.bat and the Windows
+# CI job build it after the server; standalone:  cd launcher && qmake && nmake release
+
 # Standalone build — pure browser bundle, no C++ toolchain needed
 tools/build-static.sh dist/
 tools/serve-static.py              # local test on port 8000 (fixed), always serves <repo>/dist (no-store)
@@ -291,6 +294,12 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 | `tools/serve-static.py` | Local HTTP server for `dist/` with `Cache-Control: no-store` |
 | `tools/fingerprint-static.py` | Cache-busts local asset URLs with `?v=<sha>` |
 | `tools/extract-rig-caps.py` | Generates `civ/rig-caps.js` from `rigs/*.rig` |
+| `launcher/launcher.pro` | Windows GUI launcher (Qt Widgets), separate exe next to `wfweb.exe`; see "Windows launcher" below |
+| `launcher/src/launchconfig.cpp` | Form fields → wfweb command line (pure Qt5Core, unit-tested) |
+| `launcher/src/logparser.cpp` | Parses the server's `-l` log lines and classifies the ones the launcher reacts to (pure Qt5Core, unit-tested) |
+| `launcher/src/serverprocess.cpp` | QProcess wrapper: `q` on stdin to stop, Windows Job Object, no console window |
+| `tests/launcher_test.cpp` | Unit test for the two pure launcher helpers (`tests/test_cpp_units.py`, Linux CI) |
+| `tools/make-launcher-icon.py` | Regenerates `launcher/res/wfweb.{png,ico}` from `resources/web-standalone/favicon.svg` (resvg-py + Pillow; outputs are committed) |
 | `tools/build-rade-wasm.sh` / `tools/build-direwolf-wasm.sh` / `tools/build-js8-wasm.sh` | Emscripten rebuilds of the browser modems (only when their C/C++ source changes) |
 | `.github/workflows/pages.yml` | Publishes Standalone to wfweb.k1fm.us |
 | `resources/ft8ts/dist/ft8ts.mjs` | FT8/FT4 decoder module |
@@ -514,6 +523,37 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
   `closeOtherModes`. Everything else stays local to the module.
 
 ---
+
+## Windows launcher (`launcher/`)
+
+`wfweb-launcher.exe` is a **separate** Qt Widgets exe shipped in the Windows
+zip. The server stays CLI-only: nothing under `src/`, `include/` or
+`wfweb.pro` is involved, and the launcher includes only `wfweb_version.h`.
+It composes the same flags a user would type and supervises `wfweb.exe` as a
+child. The contract it relies on, all verified against the server source:
+- **Flags model.** Fields live in `QSettings("wfweb", "launcher")` and become
+  CLI flags on every start (`LaunchConfig::toArguments`). The server never
+  persists CLI overrides, so its own settings are untouched.
+- **Stop = `q` on stdin.** The keyboard thread (`src/keyboard.cpp`) reads
+  stdin even on a pipe; `q` runs the full teardown. Closing stdin does *not*
+  quit; `kill()` skips teardown. The launcher writes `q`, waits 10 s, then kills.
+- **Log via the `-l` file, not stdout.** stdout is block-buffered on a pipe;
+  the log file is flushed per line (`messageHandler`, `src/main.cpp`), format
+  `yyyy-MM-dd hh:mm:ss.zzz LVL category: msg`. stdout/stderr go to the null
+  device. `LogParser::classify` matches exact server strings — if you reword a
+  listening / serial / LAN log line, update the parser and `tests/launcher_test.cpp`.
+- **Up via REST.** A bind failure does not exit the server, so readiness is
+  `GET /api/v1/radio/info` on `webPort+1` (HTTPS mode) or `webPort` (plain
+  HTTP fallback); whichever answers fixes the browser scheme.
+- **Windows only, under `#ifdef Q_OS_WIN`:** `CREATE_NO_WINDOW` for the child
+  and a Job Object with kill-on-close, so the server dies with the launcher.
+- **Port conflicts** (`launcher/src/portowner.cpp`): the refusal dialog names the
+  process listening on the web port (`GetExtendedTcpTable`, image name, command
+  line read from its PEB) and offers to stop it only when it is `wfweb.exe`,
+  with a warning for `--lan` instances. Never automatic, never for other programs.
+- Built by `build.bat` and the Windows CI job only; the pure helpers are
+  tested on Linux CI through `tests/test_cpp_units.py`. Dialog-showing paths
+  must run inside the event loop (`--start` is deferred with a 0 ms timer).
 
 ## Workflow Rules
 

@@ -23,6 +23,8 @@ test.log
 Makefile.server
 wfweb
 tools/virtualrig/virtualrig
+# qmake writes the Windows icon/version resource next to launcher.pro (RC_ICONS).
+launcher/*_resource.rc
 .testrig/
 /dist/
 # WASM build artifact from tools/build-direwolf-wasm.sh — large, regenerable.

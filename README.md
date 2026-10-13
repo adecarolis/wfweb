@@ -198,6 +198,13 @@ Pre-built binaries are published on [GitHub Releases](../../releases):
 > it at boot, point a systemd unit's `ExecStart` at the file (see
 > `systemd/wfweb@.service`).
 
+> **Windows:** unzip and run `wfweb-launcher.exe`. It is a small window that
+> picks the serial port or LAN rig, the audio device and the web port, starts
+> `wfweb.exe` with the matching command-line flags, shows its log and opens the
+> browser once the server answers. `wfweb.exe` itself is unchanged: run it
+> from a console with the flags below whenever you prefer. Details in
+> [`launcher/README.md`](launcher/README.md).
+
 ---
 
 ## FreeDV and RADE digital voice

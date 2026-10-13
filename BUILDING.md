@@ -147,8 +147,14 @@ All build output goes to `build.log`. The last line is `EXIT:0` (success) or `EX
    - Installs the DLL, import lib, and headers into the vcpkg prefix.
    - Skipped if `codec2.lib` already exists in the vcpkg prefix.
 
-3. **wfweb**: runs `qmake` + `nmake`, deploys Qt runtime via `windeployqt`,
-   copies vcpkg DLLs, rig files, and licenses into `wfweb-release\`.
+3. **wfweb**: runs `qmake` + `nmake` for the server.
+
+4. **launcher**: runs `qmake` + `nmake` on `launcher\launcher.pro`, the
+   separate Qt Widgets window that starts the server (see
+   `launcher\README.md`). It needs no dependencies beyond Qt.
+
+5. Deploys the Qt runtime via `windeployqt` over both exes, then copies vcpkg
+   DLLs, rig files, and licenses into `wfweb-release\`.
 
 Both dependency builds are incremental — they only run on the first build or
 after cleaning.
@@ -157,6 +163,7 @@ after cleaning.
 
 The self-contained deployment directory is `wfweb-release\`, containing:
 - `wfweb.exe` — the server binary (with RADE statically linked)
+- `wfweb-launcher.exe` — the GUI launcher; runs `wfweb.exe` as a child process
 - Qt runtime DLLs and plugins (deployed via `windeployqt`)
 - `libcodec2.dll` — FreeDV codec2 library
 - vcpkg DLLs (portaudio, hidapi, OpenSSL)
@@ -167,6 +174,8 @@ The self-contained deployment directory is `wfweb-release\`, containing:
 - `Makefile`, `Makefile.Debug`, `Makefile.Release`, `.qmake.stash`
 - `release/`, `debug/` (intermediate object files)
 - `wfweb-release/`, `wfweb-debug/` (output directories)
+- the same under `launcher/` (`Makefile*`, `.qmake.stash`, `release/`,
+  `debug/`, the generated `*_resource.rc`)
 
 Note: `build.bat clean` does **not** remove the RADE or codec2 build artifacts.
 To force a full rebuild of those, delete `resources/radae_nopy\build\opus_msvc_build\` and/or
