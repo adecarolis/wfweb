@@ -476,14 +476,18 @@ The pre-built RADE, Direwolf, and JS8 WebAssembly modems are committed under `re
 
 ## Configuration file
 
-For persistent configuration, create an `.ini` file and pass it with `-s`:
+For persistent configuration, create an `.ini` file and pass it with `-s`.
+A hand-written file can use the flat `[Radio]` section shown here: wfweb reads
+it on the first run and moves it into a `[Radios]` array, which is what it
+reads from then on (so after the first run, edit `Radios\1\...` rather than
+`[Radio]`).
 
 ```ini
-[Program]
-hasRunSetup=true
+[General]
+Manufacturer=0
+WebServerPort=8080
 
 [Radio]
-Manufacturer=0
 RigCIVuInt=130
 SerialPortRadio=auto
 SerialPortBaud=115200
@@ -492,12 +496,8 @@ SerialPortBaud=115200
 For LAN connections:
 
 ```ini
-[Program]
-hasRunSetup=true
-
-[Radio]
+[General]
 Manufacturer=0
-RigCIVuInt=130
 
 [LAN]
 EnableLAN=true
@@ -513,13 +513,13 @@ Password=
 
 | Key | Section | Description | Example |
 |---|---|---|---|
-| `hasRunSetup` | `[Program]` | Skip first-time setup dialog | `true` |
-| `Manufacturer` | `[Radio]` | 0=Icom, 1=Kenwood, 2=Yaesu | `0` |
-| `RigCIVuInt` | `[Radio]` | CI-V address (decimal) | `148` |
-| `SerialPortRadio` | `[Radio]` | Serial port, or `auto` | `/dev/ttyUSB0` |
-| `SerialPortBaud` | `[Radio]` | Baud rate | `115200` |
-| `AudioOutput` | `[LAN]` | Local server audio output device (optional) | `hw:CARD=CODEC,DEV=0` |
-| `AudioInput` | `[LAN]` | Local server audio input device (optional) | `hw:CARD=CODEC,DEV=0` |
+| `Manufacturer` | `[General]` (or `[Radio]` on first run) | 0=Icom, 1=Kenwood, 2=Yaesu | `0` |
+| `WebServerPort` | `[General]` | Web UI port; the REST API is on the next port up; 0 disables the web server | `8080` |
+| `RigCIVuInt` | `[Radio]` on first run, then `Radios\1` | CI-V address (decimal); 0 = auto-detect | `148` |
+| `SerialPortRadio` | `[Radio]` on first run, then `Radios\1` | Serial port, or `auto` (first Icom found) | `/dev/ttyUSB0` |
+| `SerialPortBaud` | `[Radio]` on first run, then `Radios\1` | Baud rate | `115200` |
+| `AudioInput` / `AudioOutput` | `Radios\1` | Local server audio devices; `default` prefers a USB CODEC device | `hw:CARD=CODEC,DEV=0` |
+| `EnableLAN`, `IPAddress`, `Username`, `Password`, `ControlLANPort`, `SerialLANPort`, `AudioLANPort` | `[LAN]` | LAN rig connection (only read when `EnableLAN=true`) | see above |
 | `Callsign` / `Grid` | `[Station]` | Station callsign and locator (also set from the web UI) | `K1ABC` / `FN42` |
 | `Logbook` | `[General]` | ADIF logbook path; relative paths resolve next to the settings file | `station.adi` |
 | `Enabled` / `Target` / `Decodes` | `[RemoteLog]` | Remote logging (see [Logbook](#logbook-and-remote-logging)) | `true` / `127.0.0.1:2237` / `false` |
