@@ -2913,6 +2913,13 @@ var micStream = null;
 var micAudioCtx = null;
 var micWorkletNode = null;
 var micSeq = 0;
+var micDeviceLabel = '';   // what getUserMedia handed us, reported to the server
+var micDeviceWarn = '';    // server's micWarning: the mic is the radio's own codec
+var micAutoSwitchedFrom = ''; // the rig-codec label we moved away from, if any
+var rigAudioInputName = ''; // the server's own rig capture device: never a valid mic
+var micDevices = [];        // audioinput devices; labels only once permission is granted
+var micDeviceId = '';       // MIC tile choice; '' = AUTO (browser default, rig codec avoided)
+try { micDeviceId = localStorage.getItem('wfMicDeviceId') || ''; } catch (e) {}
 var monitorEnabled = false;
 var monitorLevel = 128; // 0-255 (radio gain)
 
@@ -3318,6 +3325,7 @@ function handleMessage(msg) {
                 if (msg.hasSpectrum) { hasSpectrum = true; spectAmpMax = msg.spectAmpMax || 160; scopeRigAssert(); }
                 if (msg.audioAvailable) { audioAvailable = true; audioSampleRate = msg.audioSampleRate || 48000; startPendingAudio(); }
                 if (msg.audioError) showAudioError(msg.audioError);
+                if (msg.rigAudioInputName !== undefined) rigAudioInputName = msg.rigAudioInputName || '';
                 updateTxAudioAvailable(msg.txAudioAvailable || false);
                 if (msg.spans) populateSpans(msg.spans);
                 if (msg.scopeModes) populateScopeModes(msg.scopeModes);
@@ -3354,6 +3362,7 @@ function handleMessage(msg) {
             if (msg.hasSpectrum) { hasSpectrum = true; spectAmpMax = msg.spectAmpMax || 160; scopeRigAssert(); }
             if (msg.audioAvailable) { audioAvailable = true; audioSampleRate = msg.audioSampleRate || 48000; startPendingAudio(); }
             if (msg.audioError) showAudioError(msg.audioError);
+            if (msg.rigAudioInputName !== undefined) rigAudioInputName = msg.rigAudioInputName || '';
             updateTxAudioAvailable(msg.txAudioAvailable || false);
             if (msg.spans) populateSpans(msg.spans);
             if (msg.scopeModes) populateScopeModes(msg.scopeModes);
@@ -3386,6 +3395,7 @@ function handleMessage(msg) {
         case 'audioAvailable':
             if (msg.available) { audioAvailable = true; audioSampleRate = msg.sampleRate || 48000; startPendingAudio(); }
             else { audioAvailable = false; if (audioEnabled) stopAudio(); }
+            if (msg.rigAudioInputName !== undefined) rigAudioInputName = msg.rigAudioInputName || '';
             if (msg.txAudioAvailable !== undefined) updateTxAudioAvailable(msg.txAudioAvailable);
             updateWarningVisibility();
             break;
@@ -3608,6 +3618,13 @@ function handleMessage(msg) {
         case 'radeCallsign':
             radeRxCallsign = msg.callsign || '';
             updateFreeDVStatus({});
+            break;
+        case 'micWarning':
+            // The server matched our mic label against the rig's own USB
+            // capture device: we'd be sending the receiver audio back out.
+            micDeviceWarn = msg.message || '';
+            console.warn('Mic:', micDeviceWarn);
+            updateWarningVisibility();
             break;
         case 'error':
             console.error('Server error:', msg.message);
@@ -5302,6 +5319,12 @@ function renderAudioMicOverlay() {
         grid.appendChild(makeFuncBtn('TX AUDIO', micEnabled ? 'ON' : 'OFF', micEnabled, function() {
             if (micEnabled) stopMic(); else startMic();
         }));
+        // Which input feeds TX AUDIO. AUTO takes the browser default but
+        // never the rig's own codec; tapping cycles through the inputs.
+        var mic = makeFuncBtn('MIC', micPickerState(), !!micDeviceId, cycleMicDevice);
+        mic.id = 'micDeviceBtn';
+        mic.title = micDeviceLabel ? ('Microphone: ' + micDeviceLabel) : 'Microphone input for TX AUDIO. Tap to cycle; AUTO avoids the radio\'s own USB codec.';
+        grid.appendChild(mic);
     }
 
     // RX jitter buffer: adaptive by default, or pinned to a fixed size.
@@ -6383,7 +6406,10 @@ function updateWarningVisibility() {
 
     // Show mic indicator permanently when TX audio is available; reflect current state
     if (txAudioAvailable && window.isSecureContext) {
-        micWarning.textContent = micEnabled ? 'MIC ON' : 'MIC OFF';
+        micWarning.textContent = micEnabled ? (micDeviceWarn ? 'MIC = RADIO RX' : 'MIC ON') : 'MIC OFF';
+        micWarning.title = (micEnabled && micDeviceLabel)
+            ? ('Microphone: ' + micDeviceLabel + (micDeviceWarn ? '\n' + micDeviceWarn : ''))
+            : '';
         micWarning.style.display = 'block';
     } else {
         micWarning.style.display = 'none';
@@ -7029,12 +7055,151 @@ function toggleMic() {
     startMic();
 }
 
+// ---- Mic device selection ----
+// The browser's "default" input is whatever the OS calls default, and on a
+// Windows box with an Icom rig that is often the rig's own USB codec: its
+// capture side is the receiver audio, so the transmission goes out silent
+// (issue #136 follow-up). The server names its rig capture device in
+// rigInfo; AUTO avoids it, and the MIC tile in AUDIO/MIC picks explicitly.
+
+function micIsRigDevice(label) {
+    if (!label || !rigAudioInputName) return false;
+    var l = label.toLowerCase(), r = rigAudioInputName.toLowerCase();
+    if (l.indexOf(r) !== -1) return true;
+    // Linux/macOS: Qt's and the browser's names differ, the codec's own
+    // name does not.
+    return l.indexOf('usb audio codec') !== -1 && r.indexOf('usb audio codec') !== -1;
+}
+
+function micConstraints(deviceId) {
+    var a = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
+    if (deviceId) a.deviceId = { exact: deviceId };
+    return { audio: a };
+}
+
+// Concrete input devices: Chromium also lists virtual "default" and
+// "communications" entries that alias one of these.
+function micRealDevices() {
+    return micDevices.filter(function(d) { return d.deviceId !== 'default' && d.deviceId !== 'communications'; });
+}
+
+function refreshMicDevices() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return Promise.resolve();
+    return navigator.mediaDevices.enumerateDevices().then(function(devs) {
+        micDevices = devs.filter(function(d) { return d.kind === 'audioinput'; });
+    }).catch(function() {});
+}
+
+function saveMicDevice() {
+    try { localStorage.setItem('wfMicDeviceId', micDeviceId); } catch (e) {}
+}
+
+// Resolve to a stream from a device that is not the rig's codec: the
+// remembered choice, else the browser default, else (when the default is
+// the rig codec) the first real input that is not.
+function acquireMic() {
+    micAutoSwitchedFrom = '';
+    var first = navigator.mediaDevices.getUserMedia(micConstraints(micDeviceId));
+    if (micDeviceId) {
+        first = first.catch(function(err) {
+            // The remembered device is gone (unplugged, new browser profile):
+            // forget it and take the default.
+            console.warn('Mic: saved device unavailable (' + err + '), using default');
+            micDeviceId = ''; saveMicDevice();
+            return navigator.mediaDevices.getUserMedia(micConstraints(''));
+        });
+    }
+    return first.then(function(stream) {
+        return refreshMicDevices().then(function() {
+            var t = stream.getAudioTracks()[0];
+            var label = t ? (t.label || '') : '';
+            if (micDeviceId || !micIsRigDevice(label)) return stream;
+            var alt = null, real = micRealDevices();
+            for (var i = 0; i < real.length; i++) {
+                if (!micIsRigDevice(real[i].label)) { alt = real[i]; break; }
+            }
+            if (!alt) return stream;   // nothing else to use; the server will warn
+            console.warn('Mic: browser default is the radio codec (' + label + '), switching to ' + alt.label);
+            stream.getTracks().forEach(function(x) { x.stop(); });
+            micAutoSwitchedFrom = label;
+            return navigator.mediaDevices.getUserMedia(micConstraints(alt.deviceId));
+        });
+    });
+}
+
+// Split a device label into the part before the parentheses and the part
+// inside them, after dropping what carries no information: Chromium's
+// "Default - " prefix and USB vid:pid, macOS Chrome's "(Built-in)" /
+// "(Bluetooth)" qualifier, and the PulseAudio/PipeWire profile suffix
+// ("Analog Stereo") on Linux.
+function micLabelParts(label) {
+    var s = (label || '')
+        .replace(/^(Default|Communications) - /, '')
+        .replace(/\s*\([0-9a-f]{4}:[0-9a-f]{4}\)\s*$/i, '')
+        .replace(/\s*\((Built-in|Bluetooth|USB|Virtual)\)\s*$/i, '')
+        .replace(/\s+(Analog|Digital)?\s*(Stereo|Mono)$/i, '')
+        .trim();
+    var open = s.indexOf('('), close = s.lastIndexOf(')');
+    var p = { prefix: s, inside: '' };
+    if (open > 0 && close > open) {
+        p.prefix = s.slice(0, open).trim();
+        p.inside = s.slice(open + 1, close).replace(/\((R|TM|C)\)/gi, '').replace(/\s+/g, ' ').trim();
+    }
+    return p;
+}
+
+// Tile text for a device label. Windows calls every input "Microphone (…)"
+// so the first characters say nothing; the adapter name in the parentheses
+// is what tells them apart ("Microphone Array (Realtek(R) Audio)" ->
+// "Realtek Audio"). When two inputs sit on one adapter ("Externes Mikrofon"
+// and "Stereo-Mix", both "(Synaptics HD Audio)") the prefix is what differs,
+// so that is shown instead. Labels without parentheses (Linux, macOS Safari)
+// are used whole.
+function micShortName(label, idx) {
+    var p = micLabelParts(label);
+    var out = p.inside || p.prefix;
+    if (p.inside) {
+        var real = micRealDevices();
+        for (var i = 0; i < real.length; i++) {
+            if (real[i].label !== label && micLabelParts(real[i].label).inside === p.inside) {
+                out = p.prefix || out;
+                break;
+            }
+        }
+    }
+    if (!out) return 'INPUT ' + (idx + 1);
+    return out.length > 24 ? out.slice(0, 23) + '…' : out;
+}
+
+function micPickerState() {
+    // AUTO names what it actually picked once the mic is running.
+    if (!micDeviceId) return (micEnabled && micDeviceLabel) ? 'AUTO · ' + micShortName(micDeviceLabel, 0) : 'AUTO';
+    var real = micRealDevices();
+    for (var i = 0; i < real.length; i++) {
+        if (real[i].deviceId === micDeviceId) return micShortName(real[i].label, i);
+    }
+    return 'SAVED';
+}
+
+function cycleMicDevice() {
+    refreshMicDevices().then(function() {
+        var ids = [''].concat(micRealDevices().map(function(d) { return d.deviceId; }));
+        var i = ids.indexOf(micDeviceId); if (i < 0) i = 0;
+        micDeviceId = ids[(i + 1) % ids.length];
+        saveMicDevice();
+        if (micEnabled) { stopMic(); startMic(); }
+        renderAudioMicOverlay();
+    });
+}
+
 function startMic() {
     if (micEnabled) return;
     setAudioSessionType('play-and-record');
-    navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } })
+    acquireMic()
     .then(function(stream) {
         micStream = stream;
+        var micTrack = stream.getAudioTracks()[0];
+        micDeviceLabel = micTrack ? (micTrack.label || '') : '';
         micAudioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 48000 });
         var source = micAudioCtx.createMediaStreamSource(stream);
         var captureCode = [
@@ -7075,7 +7240,9 @@ function startMic() {
                 sendTxAudio(frame);
             };
             micEnabled = true;
-            send({ cmd: 'enableMic', value: true });
+            var en = { cmd: 'enableMic', value: true, device: micDeviceLabel };
+            if (micAutoSwitchedFrom) en.autoSwitchedFrom = micAutoSwitchedFrom;
+            send(en);
             renderBottomBar();
             updateWarningVisibility();
             if (currentPanel === 'audiomiс') renderAudioMicOverlay();
@@ -7085,6 +7252,7 @@ function startMic() {
 
 function stopMic() {
     send({ cmd: 'enableMic', value: false }); micEnabled = false;
+    micDeviceLabel = ''; micDeviceWarn = '';
     if (micWorkletNode) { micWorkletNode.disconnect(); micWorkletNode = null; }
     if (micStream) { micStream.getTracks().forEach(function(t) { t.stop(); }); micStream = null; }
     if (micAudioCtx) { micAudioCtx.close(); micAudioCtx = null; }

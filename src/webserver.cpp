@@ -1,5 +1,6 @@
 #include "webserver.h"
 #include "freedvprocessor.h"
+#include <QtMath>
 #include <codec2/freedv_api.h>
 #include "logcategories.h"
 #include "wfweb_version.h"
@@ -545,6 +546,7 @@ void webServer::receiveRigCaps(rigCapabilities *caps)
             obj["audioSampleRate"] = (int)rigSampleRate;
         }
         obj["txAudioAvailable"] = txAudioConfigured;
+        obj["rigAudioInputName"] = rigCaptureDeviceName;
         QJsonArray fdvModes;
         fdvModes.append("RADE");
         fdvModes.append("700D");
@@ -1741,7 +1743,11 @@ void webServer::onWsDisconnected()
     QWebSocket *pClient = qobject_cast<QWebSocket *>(sender());
     if (pClient) {
         qInfo() << "Web client disconnected:" << pClient->peerAddress().toString();
-        if (pClient == micActiveClient) usbTxReset();
+        if (pClient == micActiveClient) {
+            micStatsLog("client disconnected");
+            micDeviceLabel.clear();
+            usbTxReset();
+        }
         // Restore DATA MOD OFF if this client had mic active
         if (pClient == micActiveClient && dataOffModSaved && queue) {
             queue->addUnique(priorityImmediate, queueItem(funcDATAOffMod, QVariant::fromValue<rigInput>(savedDataOffMod), false, 0));
@@ -1805,6 +1811,7 @@ void webServer::onWsBinaryMessage(QByteArray message)
     // transmission.  300 ms covers pacer jitter without noticeably delaying
     // mic resumption after the modem stream ends.
     const bool modemTagged = (static_cast<quint8>(message[1]) & 0x01) != 0;
+    if (!modemTagged) micStatsAccumulate(pcmData);
     const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
     if (modemTagged)
         lastModemAudioMs = nowMs;
@@ -1975,6 +1982,18 @@ void webServer::disableFreeDV()
     // "connected" to "waiting" so the UI stops looking active.
     notifyFreedvReporterStatus();
     qInfo() << "Web: FreeDV disabled";
+}
+
+// Is the browser's mic label the rig's own capture device?  Same name on
+// Windows (both come from the endpoint's friendly name; Chromium appends
+// the USB id).  On Linux and macOS Qt's ALSA/pulse names and the browser's
+// labels differ, but the Icom codec calls itself "USB Audio CODEC" in both.
+static bool labelIsRigCapture(const QString &label, const QString &rigName)
+{
+    if (label.isEmpty() || rigName.isEmpty()) return false;
+    if (label.contains(rigName, Qt::CaseInsensitive)) return true;
+    static const QString codec = QStringLiteral("USB Audio CODEC");
+    return label.contains(codec, Qt::CaseInsensitive) && rigName.contains(codec, Qt::CaseInsensitive);
 }
 
 void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
@@ -2511,6 +2530,32 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
                 qInfo() << "Web: No suitable mod input found in rig capabilities";
             }
             micActiveClient = client;
+            // TUNE and the FT8/JS8 TX path repeat enableMic without a
+            // device while the mic is already on; only a real mic start
+            // names one, and only that resets the session diagnostics.
+            if (cmd.contains("device")) {
+                micDeviceLabel = cmd["device"].toString();
+                micStatBytes = 0;
+                micStatPeak = 0;
+                micStatLastLogMs = QDateTime::currentMSecsSinceEpoch();
+                const QString from = cmd["autoSwitchedFrom"].toString();
+                qInfo().noquote() << "Web: browser mic device:" << micDeviceLabel
+                        << (from.isEmpty() ? QString()
+                                           : QStringLiteral("(browser default was the rig codec %1, switched automatically)").arg(from))
+                        << "(rig capture device:" << rigCaptureDeviceName << ")";
+                if (labelIsRigCapture(micDeviceLabel, rigCaptureDeviceName)) {
+                    const QString why = QStringLiteral("The browser is capturing the radio's own USB audio codec (")
+                            + micDeviceLabel
+                            + QStringLiteral("): that is the receiver audio, not a microphone, so the transmission "
+                                             "will be silent. Choose another input device in the browser's "
+                                             "microphone settings.");
+                    qWarning().noquote() << "Web:" << why;
+                    QJsonObject warn;
+                    warn["type"] = "micWarning";
+                    warn["message"] = why;
+                    sendJsonTo(client, warn);
+                }
+            }
             if (usbAudioOutput) {
                 // Stop any previous session cleanly, then arm the pre-buffer.
                 // ALSA will be started only once the pre-buffer is full, so it
@@ -2533,6 +2578,8 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
                 qInfo() << "Web: Restored DATA MOD OFF setting";
             }
             dataOffModSaved = false;
+            micStatsLog("session end");
+            micDeviceLabel.clear();
             micActiveClient = nullptr;
             preTxBuffering = false;
             preTxBuffer.clear();
@@ -3557,6 +3604,7 @@ QJsonObject webServer::buildInfoJson() const
             info["audioSampleRate"] = (int)rigSampleRate;
         }
         info["txAudioAvailable"] = txAudioConfigured;
+        info["rigAudioInputName"] = rigCaptureDeviceName;
         info["hasFilterSettings"] = rigCaps->commands.contains(funcPBTInner);
         info["hasPowerControl"] = rigCaps->commands.contains(funcPowerControl);
         info["powerOnNeedsRemoteJack"] = powerOnNeedsRemoteJack(rigCaps);
@@ -4578,6 +4626,43 @@ void webServer::usbTxReset()
     usbTxPending.clear();
     usbTxOverflowLogged = false;
     if (usbTxPumpTimer) usbTxPumpTimer->stop();
+}
+
+// Running peak of the untagged (mic) frames the browser sends, logged every
+// 5 s while they flow and once more when the session ends.  A browser that
+// captures the wrong device, a muted input or a stream that never starts
+// all show up here as a peak near the floor, where before the log only
+// said the mic was enabled.
+void webServer::micStatsAccumulate(const QByteArray &pcm)
+{
+    const qint16 *s = reinterpret_cast<const qint16 *>(pcm.constData());
+    const int n = pcm.size() / (int)sizeof(qint16);
+    for (int i = 0; i < n; i++) {
+        const int a = qAbs((int)s[i]);
+        if (a > micStatPeak) micStatPeak = a;
+    }
+    micStatBytes += pcm.size();
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    if (now - micStatLastLogMs >= 5000) {
+        micStatsLog("last 5 s");
+        micStatLastLogMs = now;
+        micStatBytes = 0;
+        micStatPeak = 0;
+    }
+}
+
+void webServer::micStatsLog(const char *why)
+{
+    if (micStatBytes <= 0) return;
+    const double seconds = micStatBytes / (48000.0 * sizeof(qint16));
+    const double dbfs = micStatPeak > 0 ? 20.0 * std::log10(micStatPeak / 32768.0) : -120.0;
+    QString line = QStringLiteral("Web: mic audio (%1): %2 s received, peak %3 dBFS")
+            .arg(QString::fromLatin1(why)).arg(seconds, 0, 'f', 1).arg(dbfs, 0, 'f', 1);
+    if (dbfs < -60.0)
+        line += QStringLiteral(" - silence: the browser is sending no signal");
+    qInfo().noquote() << line;
+    micStatBytes = 0;
+    micStatPeak = 0;
 }
 
 // icomCommander caches a frequency the rig could not report as Hz == 0 and a
@@ -7649,6 +7734,7 @@ void webServer::setupUsbAudio(quint32 sampleRate, QString preferredInputName,
     format.setByteOrder(QAudioFormat::LittleEndian);
     format.setCodec("audio/pcm");
 
+    rigCaptureDeviceName = usbDevice.deviceName();
     if (!usbDevice.isFormatSupported(format)) {
         // Try stereo (some USB codecs only support stereo)
         format.setChannelCount(2);
@@ -7722,6 +7808,7 @@ void webServer::setupUsbAudio(quint32 sampleRate, QString preferredInputName,
     format.setChannelCount(1);
     format.setSampleFormat(QAudioFormat::Int16);
 
+    rigCaptureDeviceName = usbDevice.description();
     usbAudioInput = new QAudioSource(usbDevice, format, this);
 #ifdef Q_OS_WIN
     connect(usbAudioInput, &QAudioSource::stateChanged, this, &webServer::onAudioStateChanged);
@@ -7994,6 +8081,7 @@ void webServer::setupUsbAudio(quint32 sampleRate, QString preferredInputName,
         notify["available"] = true;
         notify["sampleRate"] = (int)rigSampleRate;
         notify["txAudioAvailable"] = txAudioConfigured;
+        notify["rigAudioInputName"] = rigCaptureDeviceName;
         sendJsonToAll(notify);
     }
 }

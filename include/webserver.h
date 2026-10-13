@@ -389,6 +389,21 @@ private:
     bool dataOffModSaved = false;
     QWebSocket *micActiveClient = nullptr;
 
+    // Browser-mic diagnostics.  A browser whose default input is the rig's
+    // own USB codec streams the receiver audio back into the transmitter,
+    // which is silent on the air, and nothing in the log said so.  The
+    // browser now names the device it captures with enableMic; the server
+    // logs it, warns (log + micWarning to the client) when it is the rig's
+    // capture device, and logs the level of the mic frames it receives
+    // every 5 s and at session end so a silent source is visible too.
+    QString rigCaptureDeviceName;   // the input device setupUsbAudio() picked
+    QString micDeviceLabel;         // what the browser said it captures from
+    qint64 micStatBytes = 0;
+    int micStatPeak = 0;
+    qint64 micStatLastLogMs = 0;
+    void micStatsAccumulate(const QByteArray &pcm);
+    void micStatsLog(const char *why);
+
     // Pick the DATA MOD OFF input matching our audio transport: "LAN"/"WLAN"
     // by name when LAN-connected, otherwise USB by type (see issue #72 —
     // the LAN input's numeric type is inconsistent across .rig files).
