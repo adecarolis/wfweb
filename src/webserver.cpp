@@ -1195,7 +1195,7 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
             bool cmd29 = rigCaps && rigCaps->hasCommand29;
             uchar rx = cmd29 ? (queue->getState().vfo == vfoSub ? 1 : 0) : 0;
             vfoCommandType t = queue->getVfoCommand(vfoA, rx, false);
-            cacheItem modeCache = queue->getCache(t.modeFunc, t.receiver);
+            cacheItem modeCache = operatingModeCache(t);
             QJsonObject resp;
             resp["mode"] = QJsonValue(QJsonValue::Null);
             resp["filter"] = QJsonValue(QJsonValue::Null);
@@ -2107,7 +2107,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             uchar rx = cmd29 ? (queue->getState().vfo == vfoSub ? 1 : 0) : 0;
             vfoCommandType t = queue->getVfoCommand(vfoA, rx, true);
             // Preserve the current filter from cache instead of resetting to FIL1
-            cacheItem modeCache = queue->getCache(t.modeFunc, t.receiver);
+            cacheItem modeCache = operatingModeCache(t);
             if (modeCache.value.isValid()) {
                 modeInfo cached = modeCache.value.value<modeInfo>();
                 m.filter = cached.filter;
@@ -2321,7 +2321,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         // Get current filter from mode cache
         int filter = 1;
         vfoCommandType t = queue->getVfoCommand(vfoA, 0, false);
-        cacheItem modeCache = queue->getCache(t.modeFunc, 0);
+        cacheItem modeCache = operatingModeCache(t);
         if (modeCache.value.isValid()) {
             modeInfo m = modeCache.value.value<modeInfo>();
             filter = qBound(1, (int)m.filter, 3);
@@ -2332,12 +2332,17 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
     else if (type == "setFilter") {
         int filterNum = cmd["value"].toInt();
         if (filterNum >= 1 && filterNum <= 3) {
-            vfoCommandType t = queue->getVfoCommand(vfoA, 0, false);
-            cacheItem modeCache = queue->getCache(t.modeFunc, 0);
+            // Same targeting as setMode: the filter rides in the mode command,
+            // which is the Selected one in VFO mode and the plain 06 in memory
+            // mode (the per-VFO caches say nothing there, see operatingModeCache).
+            bool cmd29 = rigCaps && rigCaps->hasCommand29;
+            uchar rx = cmd29 ? (queue->getState().vfo == vfoSub ? 1 : 0) : 0;
+            vfoCommandType t = queue->getVfoCommand(vfoA, rx, true);
+            cacheItem modeCache = operatingModeCache(t);
             if (modeCache.value.isValid()) {
                 modeInfo m = modeCache.value.value<modeInfo>();
                 m.filter = filterNum;
-                queue->add(priorityImmediate, queueItem(t.modeFunc, QVariant::fromValue<modeInfo>(m), false, 0));
+                queue->addUnique(priorityImmediate, queueItem(t.modeFunc, QVariant::fromValue<modeInfo>(m), false, t.receiver));
                 // Width and shape are stored per filter; re-read both so the
                 // FILTER window shows the new filter's values.
                 bool hasShape = rigCaps && rigCaps->commands.contains(funcFilterShape);
@@ -2938,8 +2943,8 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             // bands >= 10 MHz, LSB below. This matches HF ham convention.
             if (queue) {
                 vfoCommandType t = queue->getVfoCommand(vfoA, 0, true);
-                cacheItem modeCache = queue->getCache(t.modeFunc, 0);
-                cacheItem freqCache = queue->getCache(t.freqFunc, 0);
+                cacheItem modeCache = operatingModeCache(t);
+                cacheItem freqCache = operatingFreqCache(t);
                 if (modeCache.value.isValid()) {
                     modeInfo cur = modeCache.value.value<modeInfo>();
                     if (cur.mk != modeUSB && cur.mk != modeLSB) {
@@ -3754,6 +3759,37 @@ void webServer::sendCurrentState(QWebSocket *client)
     }
 }
 
+// The frequency / mode the rig is operating with. getVfoCommand() names the
+// per-VFO cache (funcSelectedFreq / funcSelectedMode on an A/B rig); in
+// memory mode it names the plain 03 / 04 reads instead, and the Icom
+// commander files those replies under the Selected funcs too, so the named
+// cache never fills there while the periodic 25 00 / 26 00 poll keeps the
+// Selected one live with the recalled channel (IC-7300, measured). Anything
+// that only looked at the named cache saw nothing in memory mode: setFilter
+// silently did nothing (#138) and the status went out with null freq/mode.
+// Only funcs the rig has are consulted: getCache() re-requests an empty slot.
+cacheItem webServer::operatingFreqCache(const vfoCommandType &t)
+{
+    if (!queue || !rigCaps || t.freqFunc == funcNone) return cacheItem();
+    cacheItem c = queue->getCache(t.freqFunc, t.receiver);
+    if (!c.value.isValid() && rigCaps->commands.contains(funcSelectedFreq))
+        c = queue->getCache(funcSelectedFreq, 0);
+    if (!c.value.isValid() && rigCaps->commands.contains(funcFreq))
+        c = queue->getCache(funcFreq, t.receiver);
+    return c;
+}
+
+cacheItem webServer::operatingModeCache(const vfoCommandType &t)
+{
+    if (!queue || !rigCaps || t.modeFunc == funcNone) return cacheItem();
+    cacheItem c = queue->getCache(t.modeFunc, t.receiver);
+    if (!c.value.isValid() && rigCaps->commands.contains(funcSelectedMode))
+        c = queue->getCache(funcSelectedMode, 0);
+    if (!c.value.isValid() && rigCaps->commands.contains(funcMode))
+        c = queue->getCache(funcMode, t.receiver);
+    return c;
+}
+
 QJsonObject webServer::buildStatusJson()
 {
     QJsonObject status;
@@ -3768,7 +3804,7 @@ QJsonObject webServer::buildStatusJson()
     // Frequency - keep current VFO frequency for backwards compat. The key is
     // always present: null before the first reply and while the rig has no
     // frequency to report (blank memory channel), never a bogus number.
-    cacheItem freqCache = queue->getCache(t.freqFunc, 0);
+    cacheItem freqCache = operatingFreqCache(t);
     status["frequency"] = freqCache.value.isValid()
                         ? freqJson(freqCache.value.value<freqt>())
                         : QJsonValue(QJsonValue::Null);
@@ -3823,7 +3859,7 @@ QJsonObject webServer::buildStatusJson()
     }
 
     // Mode - same contract as frequency: keys always present, null when unknown.
-    cacheItem modeCache = queue->getCache(t.modeFunc, 0);
+    cacheItem modeCache = operatingModeCache(t);
     if (modeCache.value.isValid()) {
         modeInfo m = modeCache.value.value<modeInfo>();
         status["mode"] = modeJson(m);
@@ -6701,9 +6737,9 @@ void webServer::wsjtxSendStatus()
     WsjtxMessage::StatusFields status;
     if (queue && rigCaps) {
         const vfoCommandType v = queue->getVfoCommand(vfoA, 0, false);
-        const cacheItem fc = queue->getCache(v.freqFunc, v.receiver);
+        const cacheItem fc = operatingFreqCache(v);
         if (fc.value.isValid()) status.dialFrequency = fc.value.value<freqt>().Hz;
-        const cacheItem mc = queue->getCache(v.modeFunc, v.receiver);
+        const cacheItem mc = operatingModeCache(v);
         if (mc.value.isValid()) status.mode = modeToString(mc.value.value<modeInfo>());
     }
     if (digiActive && (digiMode == QLatin1String("FT8") || digiMode == QLatin1String("FT4")))

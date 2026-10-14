@@ -265,6 +265,9 @@ private:
     static QJsonValue filterJson(const modeInfo &m);
     modeInfo stringToMode(const QString &mode);
     QJsonObject buildStatusJson();
+    // Operating freq / mode with the fallbacks memory mode needs (#138).
+    cacheItem operatingFreqCache(const vfoCommandType &t);
+    cacheItem operatingModeCache(const vfoCommandType &t);
     codecType codecByteToType(quint8 codec);
     bool setupSsl();
 
