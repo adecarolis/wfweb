@@ -3348,6 +3348,14 @@ var digiQsoPartner = '';
 var digiQsoPartnerBusyWith = ''; // third station the partner was working when we clicked (tail-end); their traffic to it must not trip the auto-desist
 var digiTheirReport = '';  // report they sent us
 var digiOurReport = '';    // report we sent them (for logging)
+// A signal report out of a decoded message token, as it goes into the log.
+// The R in an FT8 R-report ("R-07") acknowledges our report; it is protocol,
+// not part of the report, so RST_RCVD gets "-07" (#140). A token that is no
+// report at all (RR73, a grid) yields ''.
+function digiReportFromToken(tok) {
+    var m = /^R?([-+]\d{1,2})$/i.exec(tok || '');
+    return m ? m[1] : '';
+}
 // ── ARRL Field Day (#73) — opt-in contest mode; '' leaves standard FT8/FT4 unchanged ──
 var digiContestMode = '';  // '' = standard, 'FD' = ARRL Field Day
 // Editable / "pinned" message rows (#74). Per-row operator overrides overlaid
@@ -9983,17 +9991,18 @@ function digiRowClick(el, ev) {
             var ourSnrStr = (roundedSnr >= 0 ? '+' : '') + roundedSnr;
             if (/\bRR73\b/i.test(msg) || /\bRRR\b/i.test(msg)) {
                 digiQsoState = 'RRR';
-                digiTheirReport = parts[2] || '';
+                // RR73/RRR carries no report: keep the one we already have
+                digiTheirReport = digiReportFromToken(parts[2]) || digiTheirReport;
                 digiOurReport = digiOurReport || ''; // preserve if already set mid-QSO
             } else if (parts.length >= 3 && /^R[-+]?\d+$/i.test(parts[2])) {
                 // They sent R-report → reply RRR
                 digiQsoState = 'RREPORT';
-                digiTheirReport = parts[2]; // their R-report of us → rstRcvd
+                digiTheirReport = digiReportFromToken(parts[2]); // their R-report of us → rstRcvd
                 digiOurReport = ourSnrStr;  // our SNR of them → rstSent
             } else if (parts.length >= 3 && /^[-+]?\d+$/i.test(parts[2])) {
                 // They sent us a plain signal report → we are the answerer, reply R+our_snr (Tx3)
                 digiQsoState = 'REPORT';
-                digiTheirReport = parts[2]; // their report of us → rstRcvd
+                digiTheirReport = digiReportFromToken(parts[2]); // their report of us → rstRcvd
                 digiOurReport = ourSnrStr;  // our SNR of them → Tx3 R-report + rstSent
             } else {
                 // They answered our CQ (grid/other, no report yet) — we are the
@@ -10478,7 +10487,7 @@ function handleDigiAutoQso(decodes, decodedSlotIndex) {
             if (parts[0] === myCall && parts[1] === digiQsoPartner && parts.length >= 3) {
                 console.log('[DIGI QSO] CALLING→EXCHANGE: received report ' + parts[2] + ' from ' + digiQsoPartner);
                 // Preserve their report to us
-                digiTheirReport = parts[2];
+                digiTheirReport = digiReportFromToken(parts[2]);
                 // Our reply uses OUR SNR (how well we received them), not their report
                 var ourSnr = decodes[i].snr;
                 digiOurReport = (ourSnr >= 0 ? '+' : '') + Math.round(ourSnr);
@@ -10518,7 +10527,7 @@ function handleDigiAutoQso(decodes, decodedSlotIndex) {
             // (Tx3) → reply RR73 (Tx4), then wait for their 73 in RREPORT.
             if (parts[0] === myCall && parts[1] === digiQsoPartner && /^R[-+]?\d+$/i.test(parts[2] || '')) {
                 console.log('[DIGI QSO] ANSWERED→RREPORT: received ' + parts[2]);
-                digiTheirReport = parts[2]; // their R-report of us → rstRcvd
+                digiTheirReport = digiReportFromToken(parts[2]); // their R-report of us → rstRcvd
                 digiTxAttempts = 0;
                 digiTxQueued = digiQsoPartner + ' ' + myCall + ' RR73';
                 digiTxSlotParity = (dSlot + 1) % 2;
