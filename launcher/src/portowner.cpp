@@ -1,6 +1,5 @@
 #include "portowner.h"
 
-#include <QDir>
 #include <QFileInfo>
 #include <QRegularExpression>
 
@@ -25,9 +24,14 @@ void PortOwner::classify(const QString &launcherLogPath)
     isWfweb = base.compare(QStringLiteral("wfweb"), Qt::CaseInsensitive) == 0;
     // A bare --lan, not --lan-user / --lan-pass / --lan-control.
     isLan = commandLine.contains(QRegularExpression("(^|\\s)--lan\\s"));
-    fromLauncher = !launcherLogPath.isEmpty()
-        && QDir::fromNativeSeparators(commandLine)
-               .contains(QDir::fromNativeSeparators(launcherLogPath), Qt::CaseInsensitive);
+    // Compare with one separator style regardless of the host: the command
+    // line is a Windows one even when this code runs in the Linux CI test,
+    // where QDir::fromNativeSeparators would leave backslashes alone.
+    QString command = commandLine;
+    QString logPath = launcherLogPath;
+    command.replace('\\', '/');
+    logPath.replace('\\', '/');
+    fromLauncher = !logPath.isEmpty() && command.contains(logPath, Qt::CaseInsensitive);
 }
 
 QString PortOwner::masked(const QString &commandLine)
