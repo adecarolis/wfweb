@@ -332,6 +332,12 @@ void civEmulator::onCivFromClient(const QByteArray& frame)
         break;
     }
     case 0x17: { // send CW (no reply per IC-V ICD; ack anyway for safety)
+        // Like the real rig: more than 30 characters in one frame is NG and
+        // nothing is keyed (#141) -- the client has to split long text.
+        if (body.size() > 30) {
+            emit replyFrame(ack(false));
+            break;
+        }
         // Empty payload OR 0xFF means abort.
         bool isAbort = body.isEmpty() || ((quint8)body[0] == 0xFF);
         if (isAbort) {

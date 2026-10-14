@@ -485,6 +485,23 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 - Run this after any change to `direwolfprocessor.*`, the vendored subset under
   `resources/direwolf/`, or `wfweb_direwolf_stubs.c`. Compile-clean is not enough.
 
+### CW keyer
+- The Icom keyer command (CI-V `17`) takes **at most 30 characters per
+  frame**; a longer frame is NG'd and nothing is keyed (#141). `icomCommander`
+  and `civ/icom.js` split longer text into 30-byte frames (a `^XX` prosign
+  stays whole); the virtual rig NGs oversize frames like the real one. The
+  page (`sendCWText`, both forks) also *paces* the pieces from its timing
+  model (`cwRigQueue`): the next piece goes out when the previous one has
+  ~6 characters left, so the rig's finite keyer buffer never overflows and
+  order is kept across calls. Every stop path goes through `cwStopRig()`,
+  which drops the unsent pieces before cutting the rig's buffer.
+- Server build: the CW macros live in the settings file (`[CW]`
+  `Macro1..Macro10`, `applyCwMacros`), pushed as `cwMacros` in `rigInfo` and
+  `cwMacrosChanged`; the browser only migrates a pre-existing localStorage
+  set to a server that has none. Standalone keeps them in localStorage.
+- There is no browser-generated CW sidetone on purpose (dffd32c9): the rig's
+  own sidetone comes back in the RX audio stream over USB (not over LAN).
+
 ### Shared station callsign
 - One callsign in the gear dialog feeds CW, FT8/FT4, JS8, FreeDV Reporter, APRS, and
   the AX.25 link. Do not add per-mode callsigns — the shared one is intentional.

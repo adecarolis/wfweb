@@ -742,6 +742,26 @@ void icomCommander::parseData(QByteArray dataInput)
     */
 }
 
+// The keyer command (17) takes at most 30 characters per CI-V frame; a longer
+// frame is answered NG and nothing is keyed (#141).  Cut the text into frames
+// of at most maxLen bytes, never inside a "^XX" prosign.
+static QList<QByteArray> splitCwText(const QByteArray &text, int maxLen)
+{
+    QList<QByteArray> frames;
+    QByteArray cur;
+    for (int i = 0; i < text.length(); ) {
+        int unit = (text.at(i) == '^' && i + 2 < text.length()) ? 3 : 1;
+        if (!cur.isEmpty() && cur.length() + unit > maxLen) {
+            frames.append(cur);
+            cur.clear();
+        }
+        cur.append(text.mid(i, unit));
+        i += unit;
+    }
+    if (!cur.isEmpty() || frames.isEmpty()) frames.append(cur);
+    return frames;
+}
+
 // True when every byte of `data` is packed BCD (both nibbles 0-9). A rig that
 // has nothing to report fails this: an IC-705 sitting on a blank memory
 // channel answers 25 00 / 26 00 with a single 0xFF instead of digits.
@@ -3226,8 +3246,18 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                         payload.append(uchar(0xff));
                     } else {
                         emit sidetone(QString(textData));
-                        payload.append(textData);
-                        qDebug(logRig()) << "CW output::" << textData ;
+                        // Longer text goes out as consecutive frames of at
+                        // most 30 characters; the rig appends each to its
+                        // keyer buffer.  The last frame stays in payload so
+                        // the usual send below handles it.
+                        const QByteArray cmdBytes = payload;
+                        const QList<QByteArray> frames = splitCwText(textData, 30);
+                        for (int f = 0; f < frames.size() - 1; f++) {
+                            qDebug(logRig()) << "CW output (frame" << f + 1 << "of" << frames.size() << "):" << frames.at(f);
+                            prepDataAndSend(cmdBytes + frames.at(f));
+                        }
+                        payload.append(frames.last());
+                        qDebug(logRig()) << "CW output::" << frames.last();
                     }
                     qDebug(logRig()) << "Sending CW: payload:" << payload.toHex(' ');
                 }

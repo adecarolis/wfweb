@@ -645,9 +645,25 @@
     }
 
     // ---------- CW keyer (cmd 0x17) --------------------------------------
+    // The keyer command takes at most 30 characters per frame; a longer frame
+    // is answered NG and nothing is keyed (#141).  Cut the text into pieces of
+    // at most maxLen bytes, never inside a "^XX" prosign; the caller sends one
+    // frame per piece and the rig appends them to its keyer buffer.
+    function splitCWText(text, maxLen) {
+        var s = String(text);
+        var pieces = [], cur = '';
+        for (var i = 0; i < s.length; ) {
+            var unit = (s[i] === '^' && i + 2 < s.length) ? 3 : 1;
+            if (cur && cur.length + unit > maxLen) { pieces.push(cur); cur = ''; }
+            cur += s.substr(i, unit);
+            i += unit;
+        }
+        if (cur || !pieces.length) pieces.push(cur);
+        return pieces;
+    }
     function cmdSendCW(text) {
-        // ASCII bytes after 0x17. Max 30 chars per frame on IC-7300.
-        var s = String(text).slice(0, 30);
+        // ASCII bytes after 0x17, one piece of splitCWText() (<= 30 chars).
+        var s = String(text);
         var out = new Uint8Array(1 + s.length);
         out[0] = 0x17;
         for (var i = 0; i < s.length; i++) out[i + 1] = s.charCodeAt(i) & 0xFF;
@@ -1501,6 +1517,7 @@
         cmdReadVdMeter: cmdReadVdMeter,
         cmdReadIdMeter: cmdReadIdMeter,
         cmdSendCW: cmdSendCW,
+        splitCWText: splitCWText,
         cmdStopCW: cmdStopCW,
         cmdSetScopeSpan: cmdSetScopeSpan,
         cmdReadScopeSpan: cmdReadScopeSpan,

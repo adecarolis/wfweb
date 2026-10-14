@@ -18,7 +18,7 @@ wfweb turns your transceiver into a web-accessible station. Waterfall, SSB, CW d
 
 ![CW mode with decoder](cw.png)
 
-**CW** — built-in decoder and keyer, with editable macros and one-click QSO logging.
+**CW** — built-in decoder and keyer, with editable macros (kept on the server, so every browser has the same set) and one-click QSO logging.
 
 ![AX.25 packet — connected session with a BBS, YAPP file transfer available](packet.png)
 
@@ -340,8 +340,7 @@ All settings can be passed as CLI flags. Run `wfweb --help` for the full list.
 | `--rigctld-port <port>` | Enable Hamlib rigctld TCP server (server build) | disabled |
 | `--rigctld-bind-all` | Bind rigctld to all interfaces instead of localhost | localhost only |
 | `--no-rigctld` | Disable rigctld even if enabled in settings | — |
-| `-n --name <tag>` | Name shown in the web UI top bar and browser tab (handy with several instances) | rig model |
-| `--logbook <file>` | ADIF logbook the server keeps (see REST_API.md) | `<data dir>/logbook.adi` |
+| `-n --name <tag>` | Name shown in the web UI top bar and browser tab (handy with several instances) | rig model || `--logbook <file>` | ADIF logbook the server keeps (see REST_API.md) | `<data dir>/logbook.adi` |
 | `--remote-log <host[:port]>` | Send every logged QSO to an external logging program (GridTracker, JTAlert, Log4OM… via the WSJT-X UDP protocol) | off |
 | `--no-remote-log` | Disable remote logging even if enabled in settings | — |
 | `--remote-log-decodes` | Also forward FT8/FT4 decodes to the remote logger | — |
@@ -528,6 +527,7 @@ Password=
 | `AudioInput` / `AudioOutput` | `Radios\1` | Local server audio devices; `default` prefers a USB CODEC device | `hw:CARD=CODEC,DEV=0` |
 | `EnableLAN`, `IPAddress`, `Username`, `Password`, `ControlLANPort`, `SerialLANPort`, `AudioLANPort` | `[LAN]` | LAN rig connection (only read when `EnableLAN=true`) | see above |
 | `Callsign` / `Grid` | `[Station]` | Station callsign and locator (also set from the web UI) | `K1ABC` / `FN42` |
+| `Macro1` … `Macro10` | `[CW]` | CW keyer macros, shared by every browser (also set from the CW bar's EDIT/SET; `[CALL]` and `[QSO]` are filled in when sent) | `CQ CQ DE [CALL] [CALL] K` |
 | `Logbook` | `[General]` | ADIF logbook path; relative paths resolve next to the settings file | `station.adi` |
 | `Enabled` / `Target` / `Decodes` | `[RemoteLog]` | Remote logging (see [Logbook](#logbook-and-remote-logging)) | `true` / `127.0.0.1:2237` / `false` |
 

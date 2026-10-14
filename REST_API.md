@@ -80,6 +80,21 @@ Over the WebSocket the browser sends `setStationCallsign {callsign,grid}` and
 every client receives `{"type":"stationChanged","callsign","grid"}`;
 `rigInfo` carries `stationCallsign` and `stationGrid`.
 
+### CW keyer macros
+
+The ten macro keys of the CW bar are server state too, persisted under
+`[CW]` (`Macro1` … `Macro10`; slot 5 is the EDIT key and never holds one) in
+the settings file, so every browser shows the same set. `[CALL]` and `[QSO]`
+in a macro are filled in by the browser when it is sent.
+
+| Method | Endpoint | Action |
+|---|---|---|
+| `GET` | `/api/v1/cw/macros` | `{"macros": {"1": "CQ CQ DE [CALL] [CALL] K", "2": "..."}}` |
+| `PUT` | `/api/v1/cw/macros` | Replace the whole set with the body's `macros` object (slots left out are cleared) |
+
+Over the WebSocket the browser sends `setCWMacros {macros}` and every client
+receives `{"type":"cwMacrosChanged","macros"}`; `rigInfo` carries `cwMacros`.
+
 ### Server logbook
 
 The server is the source of truth for the station logbook. It is a plain ADIF
@@ -594,6 +609,10 @@ Send CW text.
 ```
 
 `wpm` is optional (range 6–48). If omitted, current radio speed is used.
+Text longer than 30 characters is sent to an Icom rig as consecutive CI-V
+frames of 30 (the rig keys them back to back); the browser spaces such
+frames out so the keyer buffer never overflows, a script sending very long
+text at once should do the same.
 
 ```bash
 curl -s -X POST http://localhost:8081/api/v1/radio/cw \

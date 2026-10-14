@@ -962,6 +962,20 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
         return;
     }
 
+    // --- CW keyer macros: one set for every browser ---
+    if (p == "/api/v1/cw/macros") {
+        if (method == "GET") {
+            sendRestResponse(socket, 200, QJsonObject{{"macros", cwMacrosJson()}});
+        } else if (method == "PUT" || method == "POST") {
+            const QJsonObject in = parseBody();
+            applyCwMacros(in.contains("macros") ? in.value("macros").toObject() : in, "REST");
+            sendRestResponse(socket, 200, QJsonObject{{"macros", cwMacrosJson()}});
+        } else {
+            sendRestResponse(socket, 405, QJsonObject{{"error", "Method not allowed"}});
+        }
+        return;
+    }
+
     // --- Station logbook (see logbook.h) ---
     // The log is never returned whole: GET pages newest-first with a cursor
     // so a lifetime log stays cheap for the browser and the Pi alike.
@@ -3521,6 +3535,11 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         // in view sends none).
         applyStationCallsign(cmd["callsign"].toString(), cmd["grid"].toString(), true);
     }
+    else if (type == "setCWMacros") {
+        // A browser edited a CW macro: the whole set comes back and
+        // replaces the server's (persisted, pushed to every browser).
+        applyCwMacros(cmd["macros"].toObject(), "browser");
+    }
     else if (type == "setDigiActive") {
         // Browser opens / closes the FT8/FT4 panel.  PSK Reporter only
         // connects while a digital mode is actually being decoded.
@@ -3575,6 +3594,7 @@ QJsonObject webServer::buildInfoJson() const
     info["logbookPersistent"] = logbookPersistent_;
     info["stationCallsign"] = reporterCallsign;
     info["stationGrid"] = reporterGrid;
+    info["cwMacros"] = cwMacrosJson();
     info["version"] = QString(WFWEB_VERSION);
     // Instance tag from --name; empty means "show the rig model".
     info["name"] = instanceName_;
@@ -6564,6 +6584,62 @@ void webServer::applyStationCallsign(const QString &callIn, const QString &gridI
         sendJsonToAll(QJsonObject{{"type", "stationChanged"}, {"callsign", reporterCallsign}, {"grid", reporterGrid}});
 }
 
+// The CW bar has ten macro keys (slot 5 is the EDIT key, so it never holds
+// one).  They used to live in each browser's localStorage, which meant
+// setting them up again on every device and after every cache wipe (#141);
+// now the settings file holds them under [CW] Macro1..Macro10 and every
+// browser shows the same set, like the station callsign.
+static const int kCwMacroSlots = 10;
+
+static QString cwMacroKey(int slot)
+{
+    return QStringLiteral("CW/Macro%1").arg(slot);
+}
+
+void webServer::loadCwMacros()
+{
+    auto settings = openSettings();
+    cwMacros_.clear();
+    for (int slot = 1; slot <= kCwMacroSlots; slot++) {
+        const QString text = settings->value(cwMacroKey(slot)).toString().trimmed();
+        if (!text.isEmpty()) cwMacros_.insert(slot, text);
+    }
+    if (!cwMacros_.isEmpty())
+        qInfo().noquote() << "CW macros:" << cwMacros_.size() << "(from settings)";
+}
+
+QJsonObject webServer::cwMacrosJson() const
+{
+    QJsonObject out;
+    for (auto it = cwMacros_.cbegin(); it != cwMacros_.cend(); ++it)
+        out[QString::number(it.key())] = it.value();
+    return out;
+}
+
+void webServer::applyCwMacros(const QJsonObject &macros, const char *who)
+{
+    QMap<int, QString> next;
+    for (auto it = macros.begin(); it != macros.end(); ++it) {
+        bool ok = false;
+        const int slot = it.key().toInt(&ok);
+        if (!ok || slot < 1 || slot > kCwMacroSlots) continue;
+        // The keyer takes upper-case text; 500 characters is far beyond any
+        // macro and keeps a stray paste out of the settings file.
+        const QString text = it.value().toString().trimmed().toUpper().left(500);
+        if (!text.isEmpty()) next.insert(slot, text);
+    }
+    if (next == cwMacros_) return;
+    cwMacros_ = next;
+
+    auto settings = openSettings();
+    for (int slot = 1; slot <= kCwMacroSlots; slot++) {
+        if (cwMacros_.contains(slot)) settings->setValue(cwMacroKey(slot), cwMacros_.value(slot));
+        else settings->remove(cwMacroKey(slot));
+    }
+    qInfo().noquote() << "CW macros:" << cwMacros_.size() << QString("(saved, from %1)").arg(who);
+    sendJsonToAll(QJsonObject{{"type", "cwMacrosChanged"}, {"macros", cwMacrosJson()}});
+}
+
 void webServer::configureLogbook(const QString &logbookOverride,
                                  const QString &remoteLogOverride,
                                  bool noRemoteLog, bool remoteLogDecodes)
@@ -6574,6 +6650,7 @@ void webServer::configureLogbook(const QString &logbookOverride,
     // QSOs with it.
     applyStationCallsign(settings->value("Station/Callsign").toString(),
                          settings->value("Station/Grid").toString(), false);
+    loadCwMacros();
 
     // --logbook wins over Logbook= in the settings file.  A relative path in
     // a named profile resolves next to that profile, so contest.conf can

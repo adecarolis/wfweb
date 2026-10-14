@@ -33,6 +33,7 @@
     // every Icom that has them has the same ones.
     var CTCSS_TONES = global.IcomCtcssTones || [];
     var DTCS_CODES  = global.IcomDtcsCodes || [];
+    var cwFrameSeq = 0;   // unique queue keys for consecutive keyer frames
     // A memory channel stores the repeater shift as a 4-bit direction, not
     // the 0x1x duplexMode_t register the live 0x0F command uses.
     var DUPLEX_MEM_NIBBLE = { 'OFF': 0, 'DUP-': 1, 'DUP+': 2 };
@@ -821,10 +822,15 @@
                     }
                     return;
                 }
-                case 'sendCW':
+                case 'sendCW': {
                     if (!this._rigCanTransmit()) return;
                     if (typeof obj.text !== 'string' || !obj.text.length) return;
-                    this._enqueue('sendCW', civ.cmdSendCW(obj.text));
+                    // One frame per <= 30-char piece, each under its own key:
+                    // a shared key would let a piece still in the queue be
+                    // overwritten by the next one.
+                    var cwPieces = civ.splitCWText(obj.text, 30);
+                    for (var cp = 0; cp < cwPieces.length; cp++)
+                        this._enqueue('sendCW:' + (++cwFrameSeq), civ.cmdSendCW(cwPieces[cp]));
                     // The rig auto-keys to send the CW buffer; we never issue a
                     // PTT command, so flip transmitting optimistically to switch
                     // the meter UI to power/SWR and start polling TX meters
@@ -834,6 +840,7 @@
                         this._emit('update', { transmitting: true });
                     }
                     return;
+                }
                 case 'stopCW':
                     if (!this._rigCanTransmit()) return;
                     this._enqueue('stopCW', civ.cmdStopCW());

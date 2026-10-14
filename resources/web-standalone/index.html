@@ -8415,7 +8415,7 @@ document.addEventListener('keydown', function(e) {
     else if (e.key === 'Escape') {
         e.preventDefault();
         // Stop CW transmission first
-        send({ cmd: 'stopCW' });
+        cwStopRig();
         // If a digi-mode TX (FT8/JS8/FreeDV) is in flight, halt it
         // immediately and leave overlays/panels in place. ESC pressed
         // again with nothing TXing falls through to the overlay close.
@@ -8633,6 +8633,40 @@ function cwToRig(text) {
     });
 }
 
+// The Icom keyer command takes at most 30 characters per CI-V frame (a longer
+// frame is answered NG and nothing is keyed, #141) and the rig's keyer buffer
+// is finite.  Text therefore goes to the rig in pieces of at most
+// CW_RIG_FRAME_BYTES: the first at once, each next one when the timing model
+// says the previous piece has about CW_RIG_LEAD_CHARS characters left to key,
+// so the keyer never runs dry between pieces and never overflows.  Pieces are
+// kept in order across calls (a word typed while a macro is still going out
+// waits behind the macro's remaining pieces).
+var CW_RIG_FRAME_BYTES = 30;
+var CW_RIG_LEAD_CHARS = 6;
+var cwRigQueue = [];     // [{text, at}] in send order; at = wall-clock ms
+var cwRigTimer = null;
+
+function cwQueueRigText(text, at) {
+    cwRigQueue.push({ text: text, at: at });
+    cwPumpRigQueue();
+}
+
+function cwPumpRigQueue() {
+    if (cwRigTimer) { clearTimeout(cwRigTimer); cwRigTimer = null; }
+    while (cwRigQueue.length) {
+        var wait = cwRigQueue[0].at - Date.now();
+        if (wait > 0) { cwRigTimer = setTimeout(cwPumpRigQueue, wait); return; }
+        send({ cmd: 'sendCW', text: cwRigQueue.shift().text });
+    }
+}
+
+// Stop keying: drop the pieces not yet sent, then cut the rig's buffer.
+function cwStopRig() {
+    cwRigQueue = [];
+    if (cwRigTimer) { clearTimeout(cwRigTimer); cwRigTimer = null; }
+    send({ cmd: 'stopCW' });
+}
+
 function playCWSidetone(text, startIndex) {
     // Radio sidetone mode: no local sidetone generation
     // Just schedule character status updates for the transcript display
@@ -8787,9 +8821,11 @@ function sendCWText(text) {
 
     // Add characters with timing
     var tokens = cwTokenize(text);
+    var tokenStart = [];   // model start time of each token, for the rig pieces
     for (var i = 0; i < tokens.length; i++) {
         var char = tokens[i];
         var pattern = morse[char];
+        tokenStart.push(currentTime);
 
         cwCharacters.push({
             char: char,
@@ -8811,14 +8847,39 @@ function sendCWText(text) {
     }
 
     // Update next character time for cumulative tracking
+    var modelStart = cwNextCharTime;
     cwNextCharTime = currentTime;
 
-    // Record wall-clock start time for first batch
-    if (startIndex === 0) {
-        cwTransmitStartTime = Date.now();
+    // Wall-clock base of the model.  First batch, or the keyer went idle
+    // (everything queued so far has been keyed): the new text starts now,
+    // so the transcript highlight and the rig pieces are timed from now.
+    var now = Date.now();
+    if (startIndex === 0 || cwTransmitStartTime + modelStart < now) {
+        cwTransmitStartTime = now - modelStart;
     }
 
-    send({ cmd: 'sendCW', text: cwToRig(text) });
+    // Rig pieces of at most CW_RIG_FRAME_BYTES, a prosign never split.  The
+    // first goes behind whatever is still queued; each next one is due when
+    // the previous piece has CW_RIG_LEAD_CHARS characters left to key.
+    var pieces = [];
+    var cur = '', curFirst = 0;
+    for (var t = 0; t < tokens.length; t++) {
+        var rigTok = cwToRig(tokens[t]);
+        if (cur && cur.length + rigTok.length > CW_RIG_FRAME_BYTES) {
+            pieces.push({ text: cur, first: curFirst });
+            cur = ''; curFirst = t;
+        }
+        cur += rigTok;
+    }
+    if (cur) pieces.push({ text: cur, first: curFirst });
+    var at = cwRigQueue.length ? cwRigQueue[cwRigQueue.length - 1].at : 0;
+    for (var p = 0; p < pieces.length; p++) {
+        if (p > 0) {
+            var leadTok = Math.max(pieces[p - 1].first, pieces[p].first - CW_RIG_LEAD_CHARS);
+            at = Math.max(at, cwTransmitStartTime + tokenStart[leadTok]);
+        }
+        cwQueueRigText(pieces[p].text, at);
+    }
     playCWSidetone(text, startIndex); // Pass the starting index
     updateCWTranscript();
 }
@@ -8855,7 +8916,7 @@ function initCWHandlers() {
 
     // Stop button
     document.getElementById('cwStopBtn').addEventListener('click', function() {
-        send({ cmd: 'stopCW' });
+        cwStopRig();
         cwPendingText = '';
         // Clear character state
         cwCharacters = [];
@@ -8881,7 +8942,7 @@ function initCWHandlers() {
         cwNextCharTime = 0;
         cwTransmitStartTime = 0;
         clearCWTimers(); // Clear all pending character update timers
-        send({ cmd: 'stopCW' });
+        cwStopRig();
         setPanel('default'); // Return to default panel
         renderBottomBar();
     });
@@ -8951,7 +9012,7 @@ function initCWHandlers() {
                 e.preventDefault();
 
                 // Stop radio transmission immediately
-                send({ cmd: 'stopCW' });
+                cwStopRig();
 
                 // Remove ALL pending characters from display
                 cwCharacters = cwCharacters.filter(function(ch) {

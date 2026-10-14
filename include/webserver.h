@@ -237,6 +237,12 @@ private:
     // the old per-browser value that the last client to connect used to
     // overwrite (a stale tab could silently swap the call on every QSO).
     void applyStationCallsign(const QString &call, const QString &grid, bool persist);
+    // CW keyer macros: [CW] Macro1..Macro10 in the settings file, one set for
+    // every browser (#141).  applyCwMacros replaces the whole set, persists
+    // it and pushes it to every client.
+    void loadCwMacros();
+    void applyCwMacros(const QJsonObject &macros, const char *who);
+    QJsonObject cwMacrosJson() const;
     std::unique_ptr<QSettings> openSettings() const;
     // Station logbook (see logbook.h).  These wrap the Logbook mutations
     // with the WebSocket delta events and the WSJT-X emission.
@@ -438,6 +444,7 @@ private:
     PskReporter *pskReporter = nullptr;
     QString reporterCallsign;
     QString reporterGrid;
+    QMap<int, QString> cwMacros_;       // slot (1..10) -> macro text
     bool reporterEnabled = false;       // FreeDV Reporter toggle
     bool pskReporterEnabled = false;    // pskreporter.info toggle (FT8/FT4)
     bool digiActive = false;            // browser DIGI panel open (FT8/FT4)
