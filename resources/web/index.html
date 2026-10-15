@@ -580,6 +580,10 @@ body.meter-needle #meterCanvas { width: auto; height: 128px; aspect-ratio: 611 /
     gap: 5px; padding: 4px 0;
     flex: 1; align-content: center;
 }
+/* The VOL row sits right under the tiles, not at the foot of the overlay. */
+#audioMicOverlay .overlay-grid { flex: 0 0 auto; }
+#audioMicOverlay.visible { justify-content: center; }
+#audioMicOverlay .rx-vol-row { margin: 10px 0 0; }
 
 /* SPAN overlay */
 /* SPAN / REF is a bottom sheet, not a full cover: both settings change what
@@ -1977,6 +1981,13 @@ body.digi-open #bottomBar { grid-row: 5; }
     top: 118px;  /* clears the 14px-tall TONE readout above (92 + 26) */
     font-size: 14px;
 }
+/* Browser playback volume turned down is the same silent killer as RFG, with
+   the same cure one tap away (the GAIN panel), so it joins the stack in the
+   same orange. Hidden at 100 %. */
+#rxVolIndicator {
+    top: 144px;  /* clears the 14px-tall RFG readout above (118 + 26) */
+    font-size: 14px;
+}
 
 /* ============ RESPONSIVE ============ */
 @media (max-height: 450px) {
@@ -2609,6 +2620,14 @@ body.digi-open #bottomBar { grid-row: 5; }
                     <input type="range" id="afGainSlider" min="0" max="255" value="128"></div>
                 <span class="gain-val" id="afGainVal">50%</span>
             </div>
+            <!-- Browser-side playback volume (setRxVolume) — the AF row above is
+                 the radio's own speaker, which over USB does not touch the stream. -->
+            <div class="gain-row rx-vol-row" title="wfweb playback volume in this browser. AF is the radio's own speaker.">
+                <span class="gain-label">VOL</span>
+                <div class="gain-bar-bg"><div class="gain-bar-fill rx-vol-fill" style="width:100%"></div>
+                    <input type="range" class="rx-vol-slider" id="rxVolumeSlider" min="0" max="100" value="100"></div>
+                <span class="gain-val rx-vol-val">100%</span>
+            </div>
             <div class="gain-row">
                 <span class="gain-label">RF</span>
                 <div class="gain-bar-bg"><div class="gain-bar-fill" id="rfGainFill" style="width:50%"></div>
@@ -2724,6 +2743,12 @@ body.digi-open #bottomBar { grid-row: 5; }
         <div id="audioMicOverlay" class="overlay">
             <div class="overlay-title">AUDIO / TX</div>
             <div class="overlay-grid" id="audioMicGrid"></div>
+            <div class="gain-row rx-vol-row" id="audioVolRow" title="wfweb playback volume in this browser. AF is the radio's own speaker.">
+                <span class="gain-label">VOL</span>
+                <div class="gain-bar-bg"><div class="gain-bar-fill rx-vol-fill" style="width:100%"></div>
+                    <input type="range" class="rx-vol-slider" id="audioVolSlider" min="0" max="100" value="100"></div>
+                <span class="gain-val rx-vol-val">100%</span>
+            </div>
         </div>
 
         <!-- Warning overlays on spectrum -->
@@ -2733,6 +2758,7 @@ body.digi-open #bottomBar { grid-row: 5; }
         <div id="dupIndicator" class="spectrum-warning" style="display: none;" onclick="openDupModal()"></div>
         <div id="toneIndicator" class="spectrum-warning" style="display: none;" onclick="openToneModal()"></div>
         <div id="rfGainIndicator" class="spectrum-warning" style="display: none;" onclick="setPanel('gain')"></div>
+        <div id="rxVolIndicator" class="spectrum-warning" style="display: none;" onclick="setPanel('gain')"></div>
     </div>
 
     <!-- Row 5: Bottom bar -->
@@ -5319,6 +5345,7 @@ function makeFuncBtn(label, state, active, onclick) {
 function renderAudioMicOverlay() {
     var grid = document.getElementById('audioMicGrid');
     grid.innerHTML = '';
+    document.getElementById('audioVolRow').style.display = audioAvailable ? '' : 'none';
 
     // RX Audio button
     if (audioAvailable) {
@@ -6930,7 +6957,35 @@ function toggleAudio() {
     startAudio();
 }
 
-var audioGainNode = null; // Global gain node for muting RX audio during CW
+var audioGainNode = null; // RX playback gain: carries the browser-side VOL below
+
+// Browser-side RX playback volume (VOL in the GAIN panel and the AUDIO / TX
+// overlay). AF GAIN is the radio's own speaker — on a USB-connected Icom the
+// USB AF level is a fixed menu setting — so without this a remote operator
+// could only turn wfweb down by muting the tab. VOL scales audioGainNode with
+// a squared taper (50 % ≈ -12 dB, 0 = mute) so it reads like a volume knob.
+// The recorder and the CW / FT8 / JS8 decoder taps take the PCM before that
+// node (handleAudioData), so they never see it.
+var rxVolume = (function() {
+    try { var v = parseInt(localStorage.getItem('wfRxVolume'), 10); if (v >= 0 && v <= 100) return v; } catch (e) {}
+    return 100;
+})();
+function rxVolumeGain() { var f = rxVolume / 100; return f * f; }
+function setRxVolume(pct, save) {
+    rxVolume = Math.max(0, Math.min(100, Math.round(pct) || 0));
+    if (audioGainNode && audioCtx) audioGainNode.gain.setTargetAtTime(rxVolumeGain(), audioCtx.currentTime, 0.01);
+    var text = rxVolume ? rxVolume + '%' : 'MUTE';
+    document.querySelectorAll('.rx-vol-slider').forEach(function(s) { if (parseInt(s.value, 10) !== rxVolume) s.value = rxVolume; });
+    document.querySelectorAll('.rx-vol-fill').forEach(function(f) { f.style.width = rxVolume + '%'; });
+    document.querySelectorAll('.rx-vol-val').forEach(function(el) { el.textContent = text; });
+    var ind = document.getElementById('rxVolIndicator');
+    if (ind) { ind.textContent = 'VOL ' + text; ind.style.display = rxVolume < 100 ? '' : 'none'; }
+    if (save !== false) { try { localStorage.setItem('wfRxVolume', String(rxVolume)); } catch (e) {} }
+}
+document.querySelectorAll('.rx-vol-slider').forEach(function(s) {
+    s.addEventListener('input', function() { setRxVolume(parseInt(s.value, 10)); });
+});
+setRxVolume(rxVolume, false);
 
 // iOS gives the whole browser one audio session, and the moment a page opens
 // the microphone WebKit switches it to play-and-record in its video-chat mode:
@@ -7006,9 +7061,9 @@ function startAudio() {
         && audioCtx.sampleRate === audioSampleRate;
     if (audioCtx && !primed) stopAudio();
     if (!audioCtx) audioCtx = createRxAudioCtx();
-    // Create gain node for muting during CW
+    // Gain node: the browser-side VOL (setRxVolume)
     audioGainNode = audioCtx.createGain();
-    audioGainNode.gain.value = 1.0;
+    audioGainNode.gain.value = rxVolumeGain();
     audioGainNode.connect(audioCtx.destination);
     audioJbStats = null;
     if (audioCtx.audioWorklet && window.isSecureContext) startWithWorklet();
