@@ -20,6 +20,8 @@ wfweb turns your transceiver into a web-accessible station. Waterfall, SSB, CW d
 
 **CW** — built-in decoder and keyer, with editable macros (kept on the server, so every browser has the same set) and one-click QSO logging.
 
+> The keyer's sidetone is the radio's own, heard through the browser audio like any received signal. On the IC-7300 and other USB-connected Icoms the radio only puts it on the USB audio when **MENU › SET › Connectors › ACC/USB AF Beep/Speech… Output** is ON (it ships OFF; the radio's beeps come along too). Radios connected over LAN do not stream the sidetone.
+
 ![AX.25 packet — connected session with a BBS, YAPP file transfer available](packet.png)
 
 **Packet** — AX.25 connected mode at 300, 1200 and 9600 baud: BBS sessions, frame monitor, and YAPP file transfer.
