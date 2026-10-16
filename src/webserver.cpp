@@ -4056,6 +4056,12 @@ QJsonObject webServer::buildStatusJson()
     cacheItem fs = queue->getCache(funcFilterShape, 0);
     if (fs.value.isValid()) status["filterShape"] = fs.value.toInt();
 
+    // CW pitch (Hz): the browser sidetone follows it
+    if (rigCaps && rigCaps->commands.contains(funcCwPitch)) {
+        cacheItem cp = queue->getCache(funcCwPitch, 0);
+        if (cp.value.isValid()) status["cwPitch"] = cp.value.toInt();
+    }
+
     // Spectrum span
     cacheItem spanCache = queue->getCache(funcScopeSpan, 0);
     if (spanCache.value.isValid() && rigCaps) {
@@ -4369,6 +4375,9 @@ void webServer::receiveCache(cacheItem item)
         break;
     case funcPBTOuter:
         update["pbtOuter"] = item.value.toInt();
+        break;
+    case funcCwPitch:
+        update["cwPitch"] = item.value.toInt();
         break;
     case funcFilterShape:
         update["filterShape"] = item.value.toInt();

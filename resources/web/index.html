@@ -684,6 +684,7 @@ body.meter-needle #meterCanvas { width: auto; height: 128px; aspect-ratio: 611 /
 /* .cw-bar-header geometry is now .wf-panel-header; .cw-label is now .wf-badge.
    (Mobile overrides for these live in the @media block below.) */
 
+.cw-tone-btn .cw-narrow { display: none; }   /* the glyph form, phones only (below) */
 /* Mobile portrait: more compact CW bar */
 @media (orientation: portrait) and (max-width: 600px) {
     .cw-bar-header {
@@ -702,7 +703,9 @@ body.meter-needle #meterCanvas { width: auto; height: 128px; aspect-ratio: 611 /
     #cwSpeedInput { width: 32px; height: 28px; font-size: 12px; padding: 2px; }
     .cw-wpm-label { display: none; } /* Hide "WPM" - obvious from context */
     .cw-mode-btn { padding: 5px 5px; font-size: 10px; min-height: 28px; }
-    .cw-stop-btn, .cw-close-btn, .cw-edit-btn, .cw-log-btn { padding: 5px 5px; font-size: 10px; min-height: 28px; }
+    .cw-stop-btn, .cw-close-btn, .cw-edit-btn, .cw-log-btn, .cw-tone-btn { padding: 5px 5px; font-size: 10px; min-height: 28px; }
+    .cw-tone-btn .cw-wide { display: none; }   /* TONE becomes a note glyph */
+    .cw-tone-btn .cw-narrow { display: inline; }
     .cw-display { font-size: 11px; padding: 3px 4px; min-height: 18px; }
     .cw-input-field { font-size: 11px; padding: 3px 4px; }
     .cw-macro-grid { gap: 3px; padding: 4px 6px; }
@@ -2387,6 +2390,7 @@ body.digi-open #bottomBar { grid-row: 5; }
                     <button class="cw-mode-btn wf-btn" data-mode="words">WRD</button>
                     <button class="cw-mode-btn wf-btn" data-mode="lines">LN</button>
                 </div>
+                <button id="cwToneBtn" class="cw-tone-btn wf-btn" title="Sidetone made in the browser at the radio's CW pitch, at the VOL level. Switch it off if you key with a paddle and hear the radio's own sidetone over USB."><span class="cw-wide">TONE</span><span class="cw-narrow">&#9834;</span></button>
                 <button id="cwLogBtn" class="cw-log-btn wf-btn">LOG<span class="cw-wide"> QSO</span></button>
                 <button id="cwStopBtn" class="cw-stop-btn wf-btn danger">STOP</button>
                 <button id="cwCloseBtn" class="cw-close-btn wf-btn sq">✕</button>
@@ -3486,6 +3490,7 @@ function handleMessage(msg) {
             if (msg.antenna !== undefined || msg.rxAntenna !== undefined) updateAntennaState(msg.antenna, msg.rxAntenna);
             if (msg.filterWidth !== undefined) updateSlider('filterWidth', msg.filterWidth);
             if (msg.pbtInner !== undefined) updateSlider('pbtInner', msg.pbtInner);
+            if (msg.cwPitch !== undefined) setCwPitch(msg.cwPitch);
             if (msg.pbtOuter !== undefined) updateSlider('pbtOuter', msg.pbtOuter);
             if (msg.filterShape !== undefined) updateFilterShapeBtn(msg.filterShape);
             if (msg.powerState !== undefined) updatePowerState(msg.powerState);
@@ -3537,6 +3542,7 @@ function handleMessage(msg) {
             if (msg.antenna !== undefined || msg.rxAntenna !== undefined) updateAntennaState(msg.antenna, msg.rxAntenna);
             if (msg.filterWidth !== undefined) updateSlider('filterWidth', msg.filterWidth);
             if (msg.pbtInner !== undefined) updateSlider('pbtInner', msg.pbtInner);
+            if (msg.cwPitch !== undefined) setCwPitch(msg.cwPitch);
             if (msg.pbtOuter !== undefined) updateSlider('pbtOuter', msg.pbtOuter);
             if (msg.filterShape !== undefined) updateFilterShapeBtn(msg.filterShape);
             if (msg.powerState !== undefined) updatePowerState(msg.powerState);
@@ -6974,6 +6980,7 @@ function rxVolumeGain() { var f = rxVolume / 100; return f * f; }
 function setRxVolume(pct, save) {
     rxVolume = Math.max(0, Math.min(100, Math.round(pct) || 0));
     if (audioGainNode && audioCtx) audioGainNode.gain.setTargetAtTime(rxVolumeGain(), audioCtx.currentTime, 0.01);
+    if (window.cwToneGain) cwToneGain.gain.setTargetAtTime(cwSidetoneGain(), cwToneCtx.currentTime, 0.01);
     var text = rxVolume ? rxVolume + '%' : 'MUTE';
     document.querySelectorAll('.rx-vol-slider').forEach(function(s) { if (parseInt(s.value, 10) !== rxVolume) s.value = rxVolume; });
     document.querySelectorAll('.rx-vol-fill').forEach(function(f) { f.style.width = rxVolume + '%'; });
@@ -8554,6 +8561,153 @@ function hideMacroEditor() {
 // CW transmission state
 var cwTransmitStartTime = 0; // Wall-clock time when current CW transmission started
 
+// Browser-generated CW sidetone (#141): the TONE button of the CW bar, on
+// by default.  It is in step with the transcript, while the radio's own
+// sidetone only reaches the browser over USB (on the IC-7300 only with
+// ACC/USB AF Beep/Speech Output ON, together with every beep), never over
+// LAN, and then trails the keying by the RX jitter buffer.  The radio's is
+// still the truth -- it follows a paddle and the keyer as it really runs --
+// so TONE is a button, not a given.  No settings of its own: the pitch is
+// the radio's CW PITCH (cwPitch in status updates), the level follows VOL
+// as if the tone came in with the RX audio.
+// It is keyed from the same timing model as the transcript highlight
+// (cwCharacters[].startTime on the cwTransmitStartTime wall-clock base),
+// one sine oscillator through an envelope gain with a 5 ms attack and
+// release per element, in an AudioContext of its own; cwStopRig() cuts it
+// together with the rig's keyer buffer.  It never enters the RX chain, so
+// the CW decoder and the recorder (both tap the RX PCM) do not hear it.
+var cwSidetone = true;          // the TONE button; localStorage wfCwSidetone
+try { cwSidetone = localStorage.getItem('wfCwSidetone') !== '0'; } catch (e) {}
+var cwPitchHz = 600;            // the radio's CW PITCH; 600 Hz until it reports
+var CW_TONE_RAMP = 0.005;       // s, attack / release of each element
+var cwToneCtx = null, cwToneGain = null;    // context + level, kept once made
+var cwToneOsc = null, cwToneEnv = null;     // oscillator + envelope, parked when idle
+var cwToneIdleTimer = null;
+
+function cwSidetoneOn() { return cwSidetone; }
+function cwSidetoneGain() { return 0.2 * rxVolumeGain(); }
+
+function setCwPitch(hz) {
+    hz = parseInt(hz, 10);
+    if (!(hz >= 300 && hz <= 1000) || hz === cwPitchHz) return;
+    cwPitchHz = hz;
+    if (cwToneOsc) cwToneOsc.frequency.setTargetAtTime(cwPitchHz, cwToneCtx.currentTime, 0.01);
+}
+
+// Make (or wake) the audio graph.  Called from a keystroke or a tap, so
+// the context has its user activation.
+function cwSidetoneEnsure() {
+    if (!cwToneCtx) {
+        try {
+            cwToneCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
+        } catch (e) {
+            console.warn('[CW] No Web Audio for the sidetone:', e);
+            return false;
+        }
+        cwToneGain = cwToneCtx.createGain();
+        cwToneGain.connect(cwToneCtx.destination);
+    }
+    cwToneGain.gain.value = cwSidetoneGain();
+    if (cwToneCtx.state === 'suspended') cwToneCtx.resume();
+    if (!cwToneOsc) {
+        cwToneEnv = cwToneCtx.createGain();
+        cwToneEnv.gain.value = 0;
+        cwToneEnv.connect(cwToneGain);
+        cwToneOsc = cwToneCtx.createOscillator();
+        cwToneOsc.type = 'sine';
+        cwToneOsc.frequency.value = cwPitchHz;
+        cwToneOsc.connect(cwToneEnv);
+        cwToneOsc.start();
+    }
+    if (cwToneIdleTimer) { clearTimeout(cwToneIdleTimer); cwToneIdleTimer = null; }
+    return true;
+}
+
+// Park the oscillator once the last element is out, so an idle page does
+// not keep an audio graph running.
+function cwSidetoneIdle(afterMs) {
+    if (cwToneIdleTimer) clearTimeout(cwToneIdleTimer);
+    cwToneIdleTimer = setTimeout(function() {
+        cwToneIdleTimer = null;
+        if (cwToneOsc) {
+            try { cwToneOsc.stop(); } catch (e) {}
+            cwToneOsc.disconnect();
+            cwToneEnv.disconnect();
+        }
+        cwToneOsc = null;
+        cwToneEnv = null;
+    }, afterMs);
+}
+
+// Key every element of the transcript units from startIndex on, at the
+// model times the highlight uses, moved onto the audio clock.  Elements
+// already past are skipped, so this can also catch up mid-transmission.
+function cwSidetoneSchedule(startIndex) {
+    if (!cwSidetoneOn() || startIndex >= cwCharacters.length) return;
+    if (!cwSidetoneEnsure()) return;
+    var dot = 1200 / cwSpeed;
+    var now = cwToneCtx.currentTime;
+    var base = now + (cwTransmitStartTime - Date.now()) / 1000;   // audio time of model 0
+    var env = cwToneEnv.gain;
+    var last = now;
+    for (var i = startIndex; i < cwCharacters.length; i++) {
+        var pattern = CW_MORSE[cwCharacters[i].char];
+        if (!pattern || pattern === ' ') continue;
+        var t = cwCharacters[i].startTime;   // model ms
+        for (var j = 0; j < pattern.length; j++) {
+            var len = (pattern[j] === '.' ? dot : 3 * dot) / 1000;
+            var on = Math.max(base + t / 1000, now);
+            var off = base + t / 1000 + len;
+            if (off - CW_TONE_RAMP > on + CW_TONE_RAMP) {
+                env.setValueAtTime(0, on);
+                env.linearRampToValueAtTime(1, on + CW_TONE_RAMP);
+                env.setValueAtTime(1, off - CW_TONE_RAMP);
+                env.linearRampToValueAtTime(0, off);
+                last = off;
+            }
+            t += (len + dot / 1000) * 1000;
+        }
+    }
+    cwSidetoneIdle((last - now) * 1000 + 500);
+}
+
+// Cut the tone now (STOP, Backspace, close): drop what was scheduled and
+// release in one ramp.
+function cwSidetoneStop() {
+    if (!cwToneCtx || !cwToneEnv) return;
+    var now = cwToneCtx.currentTime;
+    var g = cwToneEnv.gain;
+    if (g.cancelAndHoldAtTime) g.cancelAndHoldAtTime(now);
+    else { g.cancelScheduledValues(now); g.setValueAtTime(g.value, now); }
+    g.linearRampToValueAtTime(0, now + CW_TONE_RAMP);
+    cwSidetoneIdle(200);
+}
+
+// One dit when TONE is switched on, so the tap is heard.
+function cwSidetonePreview() {
+    if (cwToneIdleTimer === null && cwToneOsc) return;   // keying: audible already
+    if (!cwSidetoneEnsure()) return;
+    var env = cwToneEnv.gain, on = cwToneCtx.currentTime + 0.01, off = on + 0.08;
+    env.setValueAtTime(0, on);
+    env.linearRampToValueAtTime(1, on + CW_TONE_RAMP);
+    env.setValueAtTime(1, off - CW_TONE_RAMP);
+    env.linearRampToValueAtTime(0, off);
+    cwSidetoneIdle(300);
+}
+
+function setCwSidetone(on) {
+    cwSidetone = !!on;
+    if (cwSidetone) { cwSidetoneSchedule(0); cwSidetonePreview(); }   // joins a transmission under way
+    else cwSidetoneStop();
+    try { localStorage.setItem('wfCwSidetone', cwSidetone ? '1' : '0'); } catch (e) {}
+    updateCwSidetoneUi();
+}
+
+function updateCwSidetoneUi() {
+    var btn = document.getElementById('cwToneBtn');
+    if (btn) btn.classList.toggle('active', cwSidetoneOn());
+}
+
 // Morse patterns for the TX progress transcript.  The radio's own memory keyer
 // does the keying (CI-V 0x17); this table only times the character highlighting,
 // so it has to agree with what the rig will actually send.
@@ -8627,17 +8781,19 @@ function cwPumpRigQueue() {
     }
 }
 
-// Stop keying: drop the pieces not yet sent, then cut the rig's buffer.
+// Stop keying: drop the pieces not yet sent, then cut the rig's buffer
+// and the browser sidetone with it.
 function cwStopRig() {
     cwRigQueue = [];
     if (cwRigTimer) { clearTimeout(cwRigTimer); cwRigTimer = null; }
     send({ cmd: 'stopCW' });
+    cwSidetoneStop();
 }
 
 function playCWSidetone(text, startIndex) {
-    // Radio sidetone mode: no local sidetone generation
-    // Just schedule character status updates for the transcript display
+    // The transcript highlight, and the browser sidetone when TONE is on.
     scheduleCharacterUpdates(text, startIndex);
+    cwSidetoneSchedule(startIndex);
 }
 
 function scheduleCharacterUpdates(text, startIndex) {
@@ -8899,6 +9055,13 @@ function initCWHandlers() {
         cwTransmitStartTime = 0;
         clearCWTimers(); // Clear all pending character update timers
         updateCWTranscript();
+    });
+
+    // Browser sidetone on / off
+    updateCwSidetoneUi();
+    document.getElementById('cwToneBtn').addEventListener('click', function() {
+        setCwSidetone(!cwSidetone);
+        document.getElementById('cwInput').focus();
     });
 
     // Log QSO button

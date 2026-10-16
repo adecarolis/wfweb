@@ -499,8 +499,18 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
   `Macro1..Macro10`, `applyCwMacros`), pushed as `cwMacros` in `rigInfo` and
   `cwMacrosChanged`; the browser only migrates a pre-existing localStorage
   set to a server that has none. Standalone keeps them in localStorage.
-- There is no browser-generated CW sidetone on purpose (dffd32c9): the rig's
-  own sidetone comes back in the RX audio stream over USB (not over LAN).
+- Two sidetones, one at a time. TONE in the CW bar (`cwSidetone*`, both forks,
+  `localStorage wfCwSidetone`, on by default) is a browser-generated tone keyed
+  from the same timing model as the transcript highlight (`cwSidetoneSchedule`
+  in `playCWSidetone`), one oscillator with a 5 ms envelope in an AudioContext
+  of its own, cut by `cwStopRig()`; no settings of its own: pitch = the rig's
+  CW PITCH (`cwPitch` in Hz in status / update messages: `funcCwPitch` on the
+  server, the `0x14 0x09` read in `serial-transport.js`), level follows VOL.
+  The rig's own sidetone (dffd32c9) comes back in the RX audio over USB only
+  (IC-7300: ACC/USB AF Beep/Speech Output ON), never over LAN; it is the one
+  that follows a paddle and gives true full break-in, with TONE off. The
+  browser tone never enters the RX chain, so the CW decoder and the recorder
+  do not see it.
 
 ### Shared station callsign
 - One callsign in the gear dialog feeds CW, FT8/FT4, JS8, FreeDV Reporter, APRS, and

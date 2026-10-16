@@ -158,6 +158,7 @@
         0x07: 'pbtInner',
         0x08: 'pbtOuter',
         0x0C: 'cwSpeed',
+        0x09: 'cwPitch',     // read-only here; reported in Hz (see the 0x14 reply)
     };
 
     // SPA command name → 0x16 NN sub byte (bool toggles)
@@ -1355,6 +1356,8 @@
                 var sub = ANALOG_SUB[cmdName];
                 this._enqueue('read_' + cmdName, civ.cmdReadAnalogLevel(sub));
             }
+            // CW pitch, for the browser sidetone (no set command: it is the rig's).
+            this._enqueue('read_cwPitch', civ.cmdReadAnalogLevel(0x09));
 
             // Initial reads — bool toggles + multi-state preamp.
             for (var cmdName2 in BOOL_SUB) {
@@ -1702,9 +1705,13 @@
                 var aReply = civ.parseAnalogLevelReply(payload);
                 if (aReply) {
                     var aField = ANALOG_SUB_TO_FIELD[aReply.sub];
-                    if (aField && this.state[aField] !== aReply.value) {
-                        this.state[aField] = aReply.value;
-                        var u = {}; u[aField] = aReply.value;
+                    var aVal = aReply.value;
+                    // CW pitch is 0..255 over 300..900 Hz; the SPA wants Hz
+                    // (same rounding as icomcommander.cpp funcCwPitch).
+                    if (aField === 'cwPitch') aVal = Math.round(((600 / 255) * aVal + 300) / 5) * 5;
+                    if (aField && this.state[aField] !== aVal) {
+                        this.state[aField] = aVal;
+                        var u = {}; u[aField] = aVal;
                         this._emit('update', u);
                     }
                     return;
@@ -2679,7 +2686,7 @@
             }
             // Pass through any cached values so the UI populates fully.
             var passthrough = ['afGain', 'rfGain', 'rfPower', 'squelch',
-                'micGain', 'monitorGain', 'pbtInner', 'pbtOuter', 'cwSpeed',
+                'micGain', 'monitorGain', 'pbtInner', 'pbtOuter', 'cwSpeed', 'cwPitch',
                 'autoNotch', 'nb', 'nr', 'preamp', 'attenuator',
                 'antenna', 'rxAntenna',
                 'split', 'tuner', 'spanIndex', 'filterWidth', 'filterShape',

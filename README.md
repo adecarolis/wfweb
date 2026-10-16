@@ -20,7 +20,7 @@ wfweb turns your transceiver into a web-accessible station. Waterfall, SSB, CW d
 
 **CW** — built-in decoder and keyer, with editable macros (kept on the server, so every browser has the same set) and one-click QSO logging.
 
-> The keyer's sidetone is the radio's own, heard through the browser audio like any received signal. On the IC-7300 and other USB-connected Icoms the radio only puts it on the USB audio when **MENU › SET › Connectors › ACC/USB AF Beep/Speech… Output** is ON (it ships OFF; the radio's beeps come along too). Radios connected over LAN do not stream the sidetone.
+> **Sidetone.** The CW bar's **TONE** button (on by default) plays a sidetone made in the browser, at the radio's CW pitch and at the VOL level, in step with the text as it is keyed. It is a stand-in: it follows the text wfweb sends, not a paddle, and over LAN it is the only sidetone there is. For true full break-in on a USB-connected radio, switch TONE off and let the radio send its own sidetone over the audio channel: on the IC-7300 and other USB-connected Icoms that is **MENU › SET › Connectors › ACC/USB AF Beep/Speech… Output** ON (it ships OFF; the radio's beeps come along too). You then hear the sidetone exactly as the radio keys it, paddle included, with the received signal between the elements, delayed only by the RX audio buffer. Keep just one of the two on, or you hear every element twice.
 
 ![AX.25 packet — connected session with a BBS, YAPP file transfer available](packet.png)
 
