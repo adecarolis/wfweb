@@ -3161,6 +3161,13 @@ var micStream = null;
 var micAudioCtx = null;
 var micWorkletNode = null;
 var micSeq = 0;
+var micStarting = false;   // startMic() is waiting on getUserMedia / the capture worklet
+var micStartGen = 0;       // bumped by stopMic(): a start still in flight drops what it gets
+var micError = null;       // { state, hint }: why the last start failed, shown on the MIC tile
+var micDeviceId = '';       // MIC button choice; '' = AUTO (pickDirectMicId, never the rig's codec)
+try { micDeviceId = localStorage.getItem('wfMicDeviceId') || ''; } catch (e) {}
+var micDeviceLabel = '';    // what getUserMedia handed us
+var micDevices = [];        // audioinput devices; labels only once permission is granted
 var monitorEnabled = false;
 var monitorLevel = 128; // 0-255 (radio gain)
 
@@ -3480,7 +3487,7 @@ function onTransportOpen() {
 function onTransportClose() {
     document.getElementById('connDot').classList.remove('connected');
     document.getElementById('connDot').title = 'Disconnected';
-    if (micEnabled) stopMic();
+    if (micEnabled || micStarting) stopMic();
     if (audioEnabled) stopAudio();
     audioAvailable = false;
     txAudioAvailable = false;
@@ -5600,11 +5607,16 @@ function renderAudioMicOverlay() {
         }));
     }
 
-    // TX Audio (Mic) button
+    // MIC: TX audio from this browser. OFF, then the remembered input (AUTO
+    // the first time: never the radio's own codec), then each other input;
+    // picking one turns TX audio on at once.
     if (txAudioAvailable && window.isSecureContext) {
-        grid.appendChild(makeFuncBtn('TX AUDIO', micEnabled ? 'ON' : 'OFF', micEnabled, function() {
-            if (micEnabled) stopMic(); else startMic();
-        }));
+        var mic = makeFuncBtn('MIC', micButtonState(), micEnabled, cycleMicDevice);
+        mic.id = 'micDeviceBtn';
+        mic.title = (micEnabled && micDeviceLabel) ? ('Microphone: ' + micDeviceLabel)
+            : micError ? micError.hint
+            : 'TX audio from this browser. Tap to cycle OFF, AUTO and each input; AUTO avoids the radio\'s own USB codec.';
+        grid.appendChild(mic);
     }
 
     // RX jitter buffer: adaptive by default, or pinned to a fixed size.
@@ -6683,7 +6695,8 @@ function updateWarningVisibility() {
 
     // Show mic indicator permanently when TX audio is available; reflect current state
     if (txAudioAvailable && window.isSecureContext) {
-        micWarning.textContent = micEnabled ? 'MIC ON' : 'MIC OFF';
+        micWarning.textContent = 'MIC ' + micStateText();
+        micWarning.title = micError ? micError.hint : '';
         micWarning.style.display = 'block';
     } else {
         micWarning.style.display = 'none';
@@ -7326,8 +7339,39 @@ function updateTxAudioAvailable(available) {
 
 function toggleMic() {
     if (!txAudioAvailable || !window.isSecureContext) return;
+    if (micStarting) return;   // already on its way: a second start would open a second mic
     if (micEnabled) { stopMic(); return; }
     startMic();
+}
+
+// MIC tile / MIC button text. A failed start says why instead of falling
+// back to a silent OFF.
+function micStateText() {
+    if (micEnabled) return 'ON';
+    return micError ? micError.state : 'OFF';
+}
+
+function micErrorFor(err) {
+    var name = err && err.name;
+    if (name === 'NotAllowedError' || name === 'SecurityError')
+        return { state: 'BLOCKED', hint: 'The browser refused the microphone. Allow it in the site settings, then tap again.' };
+    if (name === 'NotFoundError' || name === 'OverconstrainedError')
+        return { state: 'NOT FOUND', hint: 'No microphone input was found.' };
+    if (name === 'NotReadableError' || name === 'AbortError')
+        return { state: 'BUSY', hint: 'The microphone could not be opened. Another application may be using it.' };
+    return { state: 'FAILED', hint: 'The microphone could not be started' + (err && err.message ? ': ' + err.message : '.') };
+}
+
+function micStartFailed(what, err) {
+    console.error(what, err);
+    micError = micErrorFor(err);
+    stopMic();
+}
+
+function micRepaint() {
+    renderBottomBar();
+    updateWarningVisibility();
+    if (currentPanel === 'audiomiс') renderAudioMicOverlay();
 }
 
 // In the Standalone build the OS "default" input device is often the rig's USB
@@ -7335,6 +7379,24 @@ function toggleMic() {
 // getUserMedia({audio:true}) ends up capturing the rig's RX audio and
 // sending it back as TX — completely silent the moment we transmit
 // because the rig stops receiving. Exclude the rig from the mic pick.
+var MIC_RIG_PATTERN = /(USB Audio CODEC|USB-PCM Audio|IC-7300|IC-705|IC-9700|IC-7610|IC-7100|IC-9100|CP210|Burr-Brown|PCM29|PCM30)/i;
+
+// Inputs that can be a microphone: not the rig's own USB input (that is the
+// RX audio), not the "default" / "communications" aliases of a real input,
+// not a PulseAudio monitor. The label test catches the rig even when the
+// saved id changed (e.g. user re-paired serial port).
+function micCandidates(devs) {
+    var rigInId = null;
+    try { rigInId = localStorage.getItem('directRxAudioId'); } catch (e) { /* ignore */ }
+    return devs.filter(function(d) {
+        if (d.kind !== 'audioinput' || !d.deviceId) return false;
+        if (rigInId && d.deviceId === rigInId) return false;
+        if (d.deviceId === 'default' || d.deviceId === 'communications') return false;
+        if (/monitor of/i.test(d.label || '')) return false;
+        return !MIC_RIG_PATTERN.test(d.label || '');
+    });
+}
+
 function pickDirectMicId() {
     var rigInId = null;
     try { rigInId = localStorage.getItem('directRxAudioId'); } catch (e) { /* ignore */ }
@@ -7342,17 +7404,7 @@ function pickDirectMicId() {
     try { savedMicId = localStorage.getItem('directMicId'); } catch (e) { /* ignore */ }
     if (savedMicId && savedMicId !== rigInId) return Promise.resolve(savedMicId);
     return navigator.mediaDevices.enumerateDevices().then(function(devs) {
-        var inputs = devs.filter(function(d) { return d.kind === 'audioinput'; });
-        var rigPattern = /(USB Audio CODEC|USB-PCM Audio|IC-7300|IC-705|IC-9700|IC-7610|IC-7100|IC-9100|CP210|Burr-Brown|PCM29|PCM30)/i;
-        var candidates = inputs.filter(function(d) {
-            if (rigInId && d.deviceId === rigInId) return false;
-            if (d.deviceId === 'default') return false;
-            if (/monitor of/i.test(d.label || '')) return false;
-            // Also skip anything matching the rig label pattern in case the
-            // saved id changed (e.g. user re-paired serial port).
-            if (rigPattern.test(d.label || '')) return false;
-            return true;
-        });
+        var candidates = micCandidates(devs);
         var preferred = candidates.find(function(d) {
             return /Built-in|Microphone|Headset|Headphones|Mic/i.test(d.label || '');
         }) || candidates[0];
@@ -7368,16 +7420,132 @@ function pickDirectMicId() {
     });
 }
 
-function startMic() {
-    if (micEnabled) return;
+// The MIC button's choice, else AUTO's pick. An input that has gone away
+// (unplugged) is forgotten and AUTO picks again.
+function acquireMic() {
+    function open(id) {
+        var a = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
+        if (id) a.deviceId = { exact: id };
+        return navigator.mediaDevices.getUserMedia({ audio: a });
+    }
+    var want = micDeviceId ? Promise.resolve(micDeviceId) : pickDirectMicId();
+    return want.then(function(id) {
+        return open(id).catch(function(err) {
+            if (!id || !err || err.name !== 'OverconstrainedError') throw err;
+            console.warn('Mic: saved device unavailable, picking again');
+            if (micDeviceId) { micDeviceId = ''; saveMicDevice(); }
+            try { localStorage.removeItem('directMicId'); } catch (e) { /* ignore */ }
+            return pickDirectMicId().then(open);
+        });
+    });
+}
+
+function refreshMicDevices() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return Promise.resolve();
+    return navigator.mediaDevices.enumerateDevices().then(function(devs) {
+        micDevices = devs.filter(function(d) { return d.kind === 'audioinput'; });
+    }).catch(function() {});
+}
+
+function micRealDevices() {
+    return micCandidates(micDevices);
+}
+
+function saveMicDevice() {
+    try { localStorage.setItem('wfMicDeviceId', micDeviceId); } catch (e) {}
+}
+
+function micLabelParts(label) {
+    var s = (label || '')
+        .replace(/^(Default|Communications) - /, '')
+        .replace(/\s*\([0-9a-f]{4}:[0-9a-f]{4}\)\s*$/i, '')
+        .replace(/\s*\((Built-in|Bluetooth|USB|Virtual)\)\s*$/i, '')
+        .replace(/\s+(Analog|Digital)?\s*(Stereo|Mono)$/i, '')
+        .trim();
+    var open = s.indexOf('('), close = s.lastIndexOf(')');
+    var p = { prefix: s, inside: '' };
+    if (open > 0 && close > open) {
+        p.prefix = s.slice(0, open).trim();
+        p.inside = s.slice(open + 1, close).replace(/\((R|TM|C)\)/gi, '').replace(/\s+/g, ' ').trim();
+    }
+    return p;
+}
+
+function micShortName(label, idx) {
+    var p = micLabelParts(label);
+    var out = p.inside || p.prefix;
+    if (p.inside) {
+        var real = micRealDevices();
+        for (var i = 0; i < real.length; i++) {
+            if (real[i].label !== label && micLabelParts(real[i].label).inside === p.inside) {
+                out = p.prefix || out;
+                break;
+            }
+        }
+    }
+    if (!out) return 'INPUT ' + (idx + 1);
+    return out.length > 24 ? out.slice(0, 23) + '…' : out;
+}
+
+function micPickerState() {
+    // AUTO names what it actually picked once the mic is running.
+    if (!micDeviceId) return (micEnabled && micDeviceLabel) ? 'AUTO · ' + micShortName(micDeviceLabel, 0) : 'AUTO';
+    var real = micRealDevices();
+    for (var i = 0; i < real.length; i++) {
+        if (real[i].deviceId === micDeviceId) return micShortName(real[i].label, i);
+    }
+    return 'SAVED';
+}
+
+// The MIC button names the input while TX audio runs, else OFF or why the
+// last start failed.
+function micButtonState() {
+    return micEnabled ? micPickerState() : micStateText();
+}
+
+// MIC button: OFF -> the remembered input -> each following input -> OFF.
+// Turning on starts the mic inside the tap, so the browser's permission
+// prompt can show: until it is granted the browser names no inputs, and
+// there would be nothing to cycle through.
+function cycleMicDevice() {
+    if (micStarting) return;
+    if (!micEnabled) { startMic(); return; }
+    refreshMicDevices().then(function() {
+        var ids = [''].concat(micRealDevices().map(function(d) { return d.deviceId; }).filter(Boolean));
+        var i = ids.indexOf(micDeviceId);
+        stopMic();
+        if (i >= 0 && i + 1 < ids.length) {
+            micDeviceId = ids[i + 1];
+            saveMicDevice();
+            startMic();
+        } else {
+            micDeviceId = '';   // past the last input: OFF, and AUTO comes next
+            saveMicDevice();
+        }
+    });
+}
+
+// permission: a getUserMedia the caller already fired inside its click (the
+// virtual rig's START), so the browser asks while the gesture is still live.
+// The start waits for it and drops its stream: ours carries the constraints.
+function startMic(permission) {
+    if (micEnabled || micStarting) {
+        if (permission) permission.then(function(s) { s.getTracks().forEach(function(t) { t.stop(); }); }, function() {});
+        return;
+    }
+    var gen = ++micStartGen;
+    micStarting = true; micError = null;
+    micRepaint();
     setAudioSessionType('play-and-record');
-    pickDirectMicId().then(function(preferredId) {
-        var audioConstraints = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
-        if (preferredId) audioConstraints.deviceId = { exact: preferredId };
-        return navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
+    Promise.resolve(permission).then(function(s) {
+        if (s) s.getTracks().forEach(function(t) { t.stop(); });
+        return acquireMic();
     })
     .then(function(stream) {
+        if (gen !== micStartGen) { stream.getTracks().forEach(function(t) { t.stop(); }); return; }
         micStream = stream;
+        var micTrack = stream.getAudioTracks()[0];
+        micDeviceLabel = micTrack ? (micTrack.label || '') : '';
         micAudioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 48000 });
         var source = micAudioCtx.createMediaStreamSource(stream);
         var captureCode = [
@@ -7396,6 +7564,7 @@ function startMic() {
         var url = URL.createObjectURL(blob);
         micAudioCtx.audioWorklet.addModule(url).then(function() {
             URL.revokeObjectURL(url);
+            if (gen !== micStartGen) return;   // stopMic() already closed it
             micWorkletNode = new AudioWorkletNode(micAudioCtx, 'wfweb-capture-processor');
             source.connect(micWorkletNode);
             micWorkletNode.port.onmessage = function(e) {
@@ -7417,24 +7586,24 @@ function startMic() {
                 new Uint8Array(frame, 6).set(new Uint8Array(pcmBuffer));
                 sendTxAudio(frame);
             };
-            micEnabled = true;
+            micEnabled = true; micStarting = false;
             send({ cmd: 'enableMic', value: true });
-            renderBottomBar();
-            updateWarningVisibility();
-            if (currentPanel === 'audiomiс') renderAudioMicOverlay();
-        }).catch(function(err) { console.error('Mic AudioWorklet failed:', err); stopMic(); });
-    }).catch(function(err) { console.error('getUserMedia failed:', err); setAudioSessionType(micOffAudioSessionType()); });
+            micRepaint();
+        }).catch(function(err) { if (gen === micStartGen) micStartFailed('Mic AudioWorklet failed:', err); });
+    }).catch(function(err) { if (gen === micStartGen) micStartFailed('getUserMedia failed:', err); });
 }
 
+// Also cancels a start in flight: its callbacks see a newer micStartGen.
 function stopMic() {
-    send({ cmd: 'enableMic', value: false }); micEnabled = false;
+    if (micEnabled) send({ cmd: 'enableMic', value: false });
+    micEnabled = false; micStarting = false; micStartGen++;
+    micDeviceLabel = '';
     if (micWorkletNode) { micWorkletNode.disconnect(); micWorkletNode = null; }
     if (micStream) { micStream.getTracks().forEach(function(t) { t.stop(); }); micStream = null; }
     if (micAudioCtx) { micAudioCtx.close(); micAudioCtx = null; }
     setAudioSessionType(micOffAudioSessionType());
-    micSeq = 0; renderBottomBar();
-    updateWarningVisibility();
-    if (currentPanel === 'audiomiс') renderAudioMicOverlay();
+    micSeq = 0;
+    micRepaint();
 }
 
 function handleAudioData(buffer) {
@@ -12547,15 +12716,8 @@ async function initStandaloneSplash() {
             if (audioAvailable && !audioEnabled) {
                 try { startAudio(); } catch (e) { console.warn('audio start failed:', e); }
             }
-            micPromise.then(function (stream) {
-                // Drop this stream — startMic opens its own with constraints.
-                try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) { /* ignore */ }
-                if (!micEnabled) {
-                    try { startMic(); } catch (e) { console.warn('mic start failed:', e); }
-                }
-            }).catch(function (e) {
-                console.warn('mic permission denied/unavailable:', e);
-            });
+            // A refusal shows as MIC BLOCKED.
+            startMic(micPromise);
         });
         return;
     }
