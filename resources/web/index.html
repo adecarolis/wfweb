@@ -6443,6 +6443,44 @@ function freqKey(key) {
     document.getElementById('freqInputDisplay').textContent = freqInputBuf || '0';
 }
 
+// Keyboard for F-INP (#142). While the keypad is up, digits and '.' (',' on
+// a decimal-comma keypad) type as its buttons do, Backspace deletes the last
+// character, Delete is CE, Enter is ENT; Escape stays with the page handler,
+// which closes the keypad (BACK). With nothing else up, F opens it, and so
+// does a digit, which starts the entry -- but not while a mode panel that
+// takes typed text is open: a CW report typed after the CW box lost focus
+// must not become a frequency. Returns true when the key was taken.
+function freqInputKeydown(e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return false;
+    var k = (e.key === ',') ? '.' : e.key;
+    var isDigit = k.length === 1 && k >= '0' && k <= '9';
+    if (currentPanel !== 'freqinp') {
+        if (currentPanel !== 'default') return false;
+        if (e.target.tagName === 'SELECT' || e.target.isContentEditable) return false;
+        if (k === 'f' || k === 'F') { setPanel('freqinp'); return true; }
+        if (!isDigit || typingModePanelOpen()) return false;
+        setPanel('freqinp');
+        freqKey(k);
+        return true;
+    }
+    if (isDigit || k === '.') freqKey(k);
+    else if (k === 'Backspace') {
+        freqInputBuf = freqInputBuf.slice(0, -1);
+        document.getElementById('freqInputDisplay').textContent = freqInputBuf || '0';
+    }
+    else if (k === 'Delete') freqKey('CE');
+    else if (k === 'Enter') freqKey('ENT');
+    else return false;
+    return true;
+}
+
+function typingModePanelOpen() {
+    return !document.getElementById('cwBar').classList.contains('hidden')
+        || digiBarVisible
+        || !!(window.Packet && window.Packet.state && window.Packet.state.visible)
+        || (typeof window.js8MessengerVisible === 'function' && window.js8MessengerVisible());
+}
+
 // Tuner handler
 function handleTunerPress() {
     send({ cmd: 'setTuner', value: tunerState > 0 ? 0 : 1 });
@@ -8430,6 +8468,8 @@ document.addEventListener('keydown', function(e) {
     // Don't handle shortcuts when macro editor is open
     var macroEditor = document.getElementById('cwMacroEditor');
     if (macroEditor && macroEditor.style.display !== 'none') return;
+
+    if (freqInputKeydown(e)) { e.preventDefault(); return; }
 
     if (e.key === 'l' || e.key === 'L') { e.preventDefault(); openLogModal(); }
     else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
