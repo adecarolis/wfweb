@@ -11,6 +11,10 @@ page's model against the radio's actual keyed audio, CHR-mode type-ahead
 against the virtual rig's keyer buffer, Backspace, STOP and the sidetone in a
 real browser.  It needs the bench binaries, node, playwright-core and a
 Chromium (see the script's findBrowser) and is skipped without them.
+
+tests/cw_rig_capture.mjs (not run here: it keys the real IC-7300 with BK-IN
+OFF) measures the radio's keyer against the model per speed; the Icom dot
+table in cw-keyer.js and the virtual rig came from it.
 """
 
 import os

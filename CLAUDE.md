@@ -498,6 +498,16 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
   being counted with the character); `PARIS ` takes exactly 60000 / WPM ms.
   A 10-dot word gap once put the transcript, the pacing and the sidetone
   three dots behind the radio on every word (#141).
+- **The Icom keyer does not key 1200 / WPM.** Measured off the air on the
+  IC-7300 (`tests/cw_rig_capture.mjs`, BK-IN OFF so nothing is radiated): every
+  dot is an odd number of 1/6 ms ticks, up to 1.3 % off the textbook value
+  and not monotonic in the setting (20 WPM = 60.17 ms, 30 WPM = 39.5 ms). The
+  model keys that table (`CW_ICOM_DOT_TICKS`, `cwDotMs`) when
+  `rigInfo.manufacturer` is Icom, 1200 / WPM otherwise; the virtual rig keys
+  the same table (`kIcomDotTicks`), so the bench stays blind to a textbook
+  model — re-run the capture on the real radio when the model's timing is the
+  claim. The sidetone follows the model; a measured drift of 0 at every speed
+  is the acceptance test (#141).
 - The Icom keyer command (CI-V `17`) takes **at most 30 bytes per frame**; a
   longer frame is NG'd and nothing is keyed, and so is one that would
   overflow the keyer's finite buffer (#141). The keyer hands text over in

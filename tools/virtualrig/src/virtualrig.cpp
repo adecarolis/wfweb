@@ -103,6 +103,18 @@ const char* morseFor(char c)
 // charEnds, when given, receives the byte offset in the returned audio at
 // which each input character's audio ends (one entry per input byte), for
 // the keyer-buffer accounting in virtualRig.
+// The IC-7300 keyer's dot in 1/6 ms ticks for 6..48 WPM, as measured off
+// the air (tests/cw_rig_capture.mjs, 2026-10-17): not 1200 / WPM, and the
+// page's model (cw-keyer.js CW_ICOM_DOT_TICKS) keys the same table, so the
+// bench measures the model against what the real radio does (#141).
+static const int kIcomDotTicks[43] = {
+    1201, 1029, 901, 801, 723, 657, 603, 549, 511, 477,
+    447, 421, 399, 379, 361, 343, 327, 313, 301, 289,
+    277, 265, 255, 247, 237, 231, 223, 217, 211, 205,
+    199, 193, 189, 183, 181, 175, 171, 165, 163, 159,
+    157, 153, 151,
+};
+
 QByteArray synthesizeCw(const QByteArray& text, quint16 wpm, quint16 pitchHz,
                         bool& prevWasGap, QVector<int>* charEnds = nullptr)
 {
@@ -115,8 +127,10 @@ QByteArray synthesizeCw(const QByteArray& text, quint16 wpm, quint16 pitchHz,
     if (pitchHz < 200) pitchHz = 200;
     if (pitchHz > 2000) pitchHz = 2000;
 
-    const int unitMs = 1200 / wpm;            // PARIS standard: 1 unit
-    const int unitSamples = (kSampleRate * unitMs) / 1000;
+    // One unit (dot) in samples: 8 samples per 1/6 ms tick at 48 kHz, so
+    // the table is exact; 1200 / WPM outside the IC-7300's keyer range.
+    const int unitSamples = (wpm >= 6 && wpm <= 48) ? 8 * kIcomDotTicks[wpm - 6]
+                                                    : (kSampleRate * 1200 / wpm) / 1000;
     const int rampSamples = (kSampleRate * kRampMs) / 1000;
 
     QByteArray out;

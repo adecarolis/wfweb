@@ -226,7 +226,9 @@ curl -s http://localhost:8081/api/v1/radio | jq .
     "spans": [{"reg": 1, "name": "±2.5kHz", "freq": 5000}],
     "scopeModes": [{"num": 0, "name": "Center Mode"}, {"num": 1, "name": "Fixed Mode"}],
     "scopeFixedEdges": true,
-    "txMeters": [{"kind": "swr", "cal": [[0, 1.0], [48, 1.5], [120, 3.0], [241, 6.0]], "red": 3.0}]
+    "txMeters": [{"kind": "swr", "cal": [[0, 1.0], [48, 1.5], [120, 3.0], [241, 6.0]], "red": 3.0}],
+    "cwSpeedRange": {"min": 6, "max": 48},
+    "manufacturer": "Icom"
   },
   "status": {
     "frequency": 14200000,

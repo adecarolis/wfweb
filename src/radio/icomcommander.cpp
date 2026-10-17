@@ -58,6 +58,17 @@ icomCommander::~icomCommander()
 }
 
 
+// The keyer speed range (WPM) behind CI-V 0x14 0x0C's 0..255, from the rig
+// file's Key Speed command; 6-48 when the file does not say (#141).
+void icomCommander::keySpeedRange(int &lo, int &hi) const
+{
+    lo = 6; hi = 48;
+    if (rigCaps.commands.contains(funcKeySpeed)) {
+        const funcType &ks = rigCaps.commands[funcKeySpeed];
+        if (ks.maxVal > ks.minVal) { lo = ks.minVal; hi = ks.maxVal; }
+    }
+}
+
 void icomCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp,quint16 tcpPort, quint8 wf)
 {
     // construct
@@ -1067,8 +1078,11 @@ void icomCommander::parseCommand()
         break;
     // The following group are 2 bytes converted to uchar (0-255) but require special processing
     case funcKeySpeed: {
+        // Level 0..255 spans the keyer range of the rig file (6-48 WPM on
+        // most Icoms, 6-60 on the IC-7600 family) (#141).
         uchar level = bcdHexToUChar(payloadIn.at(0),payloadIn.at(1));
-        value.setValue<ushort>(round((level / 6.071) + 6));
+        int lo, hi; keySpeedRange(lo, hi);
+        value.setValue<ushort>(round(level * (hi - lo) / 255.0 + lo));
         break;
     }
     case funcCwPitch: {
@@ -3302,9 +3316,11 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
 
                 }
                 else if (func == funcKeySpeed){
-                    ushort wpm = round((value.value<ushort>()-6) * (6.071));
-                    qDebug(logRig()) << "Sending key speed orig:" << value.value<ushort>() << "sent:" << wpm;
-                    payload.append(bcdEncodeInt(wpm));
+                    int lo, hi; keySpeedRange(lo, hi);
+                    int wpm = qBound(lo, (int)value.value<ushort>(), hi);
+                    ushort level = round((wpm - lo) * 255.0 / (hi - lo));
+                    qDebug(logRig()) << "Sending key speed orig:" << value.value<ushort>() << "sent:" << level;
+                    payload.append(bcdEncodeInt(level));
                 }
                 else if (func == funcCwPitch) {
                     ushort pitch = 0;

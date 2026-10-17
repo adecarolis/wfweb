@@ -210,6 +210,35 @@
     };
 
     // ------------------------------------------------------------------
+    // The length of a dot.
+    // ------------------------------------------------------------------
+    // The Icom keyer does not key 1200 / WPM ms: measured off the air on an
+    // IC-7300 (tests/cw_rig_capture.mjs, 2026-10-17), every dot is an odd
+    // number of 1/6 ms ticks, up to 1.3 % away from the textbook value and
+    // not monotonic in the setting (30 WPM keys 39.5 ms, 20 WPM 60.17 ms).
+    // Over a long sentence the textbook model drifted a quarter second from
+    // the radio in either direction, depending on the speed (#141).  Ticks
+    // per dot for 6..48 WPM, the range of the 0x14 0x0C command; the dash is
+    // three dots and the gaps 1 / 3 / 7 dots, as modelled.
+    var CW_ICOM_DOT_TICKS = [
+        1201, 1029, 901, 801, 723, 657, 603, 549, 511, 477,
+        447, 421, 399, 379, 361, 343, 327, 313, 301, 289,
+        277, 265, 255, 247, 237, 231, 223, 217, 211, 205,
+        199, 193, 189, 183, 181, 175, 171, 165, 163, 159,
+        157, 153, 151,
+    ];
+    var CW_ICOM_DOT_TICKS_WPM0 = 6;
+
+    // Dot length in ms for a keyer ('icom' or anything else) at a speed.
+    function cwDotMs(keyer, wpm) {
+        if (keyer === 'icom') {
+            var i = Math.round(wpm) - CW_ICOM_DOT_TICKS_WPM0;
+            if (i >= 0 && i < CW_ICOM_DOT_TICKS.length) return CW_ICOM_DOT_TICKS[i] / 6;
+        }
+        return 1200 / wpm;
+    }
+
+    // ------------------------------------------------------------------
     // The keyer model.
     // ------------------------------------------------------------------
     // A 30-byte frame is accepted on an empty keyer, so the keyer buffer holds
@@ -222,6 +251,7 @@
 
     function WfCwKeyer(opts) {
         this._wpm = opts.wpm;                       // () -> words per minute
+        this._keyer = opts.keyer || function () { return 'ideal'; };   // () -> 'icom' | 'ideal' (cwDotMs)
         this._send = opts.send;                     // (text) -> hand a frame to the rig
         this._stopRig = opts.stopRig;               // () -> cut the rig's keyer buffer
         this._onChange = opts.onChange || function () {};
@@ -241,7 +271,7 @@
         this._rigEnd = 0;       // model index just past the last character queued for the rig
     }
 
-    WfCwKeyer.prototype.dot = function () { return 1200 / this._wpm(); };
+    WfCwKeyer.prototype.dot = function () { return cwDotMs(this._keyer(), this._wpm()); };
 
     // Model time of a wall-clock instant.
     WfCwKeyer.prototype.modelNow = function () { return this._now() - this.base; };
@@ -409,6 +439,8 @@
     global.cwTokenize = cwTokenize;
     global.cwToRig = cwToRig;
     global.cwTokenDuration = cwTokenDuration;
+    global.cwDotMs = cwDotMs;
+    global.CW_ICOM_DOT_TICKS = CW_ICOM_DOT_TICKS;
     global.WfCwSidetone = WfCwSidetone;
     global.WfCwKeyer = WfCwKeyer;
 })(typeof window !== 'undefined' ? window : this);

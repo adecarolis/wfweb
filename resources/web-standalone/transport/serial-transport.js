@@ -502,14 +502,16 @@
                 var aField = ANALOG_SUB_TO_FIELD[aSub];
                 this.state[aField] = aVal;
                 // CW key speed is the only analog level that's not on the
-                // raw 0..255 BCD scale: the UI exposes WPM (6..48), and the
-                // Icom mapping is level = round((wpm - 6) * 6.071), matching
-                // icomcommander.cpp funcKeySpeed. Without this, a WPM of 35
-                // sends level=35 which the rig decodes back to ~12 WPM, and
-                // small UI changes look like no change at all.
+                // raw 0..255 BCD scale: the UI exposes WPM and the level spans
+                // the rig file's keyer range (level = (wpm - min) * 255 /
+                // (max - min)), matching icomcommander.cpp funcKeySpeed.
+                // Without this, a WPM of 35 sends level=35 which the rig
+                // decodes back to ~12 WPM, and small UI changes look like no
+                // change at all.
                 var wireVal = aVal;
                 if (obj.cmd === 'setCWSpeed') {
-                    wireVal = Math.round((aVal - 6) * 6.071);
+                    var ksr = this._keySpeedRange || { min: 6, max: 48 };
+                    wireVal = Math.round((aVal - ksr.min) * 255 / (ksr.max - ksr.min));
                     if (wireVal < 0) wireVal = 0;
                     if (wireVal > 255) wireVal = 255;
                 }
@@ -1297,6 +1299,10 @@
             this._hasDuplex = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasDuplex);
             this._hasTuner = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasTuner);
             this._hasSpectrum = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasSpectrum);
+            // Keyer speed span of 0x14 0x0C's 0..255 (6-48 WPM on most Icoms,
+            // 6-60 on the IC-7600 family), from the rig file (#141).
+            var ksc = (capsEntry && capsEntry.caps) || {};
+            this._keySpeedRange = (ksc.keySpeedMax > ksc.keySpeedMin) ? { min: ksc.keySpeedMin, max: ksc.keySpeedMax } : { min: 6, max: 48 };
             // Memory channels (#92): V/M switch, addressing range, group
             // handling. Same facts webserver.cpp pulls from rigCaps.
             var mc = (capsEntry && capsEntry.caps) || {};
@@ -1709,6 +1715,8 @@
                     // CW pitch is 0..255 over 300..900 Hz; the SPA wants Hz
                     // (same rounding as icomcommander.cpp funcCwPitch).
                     if (aField === 'cwPitch') aVal = Math.round(((600 / 255) * aVal + 300) / 5) * 5;
+                    // Key speed: 0..255 over the rig file's WPM range (#141).
+                    if (aField === 'cwSpeed') { var ksr2 = this._keySpeedRange || { min: 6, max: 48 }; aVal = Math.round(aVal * (ksr2.max - ksr2.min) / 255 + ksr2.min); }
                     if (aField && this.state[aField] !== aVal) {
                         this.state[aField] = aVal;
                         var u = {}; u[aField] = aVal;
@@ -2593,6 +2601,7 @@
             this._emit('rigInfo', {
                 version: ((typeof window !== 'undefined' && window.__WFWEB_SEMVER__) || 'dev') + '-direct',
                 model: rigDisplayName(this.civAddr),
+                manufacturer: 'Icom',
                 connected: true,
                 modes: DEFAULT_MODES,
                 filters: DEFAULT_FILTERS,
@@ -2628,6 +2637,9 @@
                 ctcssTones: caps.hasCTCSS ? CTCSS_TONES : [],
                 dtcsCodes: caps.hasDTCS ? DTCS_CODES : [],
                 hasSpectrum: caps.hasSpectrum,
+                // Keyer speed range from the rig file (IC-7300: 6-48 WPM),
+                // for the CW bar's speed box (#141).
+                cwSpeedRange: (caps.keySpeedMax > caps.keySpeedMin) ? { min: caps.keySpeedMin, max: caps.keySpeedMax } : undefined,
                 // Memory channels (#92) — same three fields the server's caps carry.
                 // MEM is a rig concept: hidden when the channels are wfweb's,
                 // where a 0x08 select would jump to an unrelated rig channel.

@@ -799,6 +799,9 @@ body.meter-needle #meterCanvas { width: auto; height: 128px; aspect-ratio: 611 /
     border-color: var(--mode-accent);
     box-shadow: 0 0 4px var(--mode-accent-dim);
 }
+/* The -/+ keys step the speed; the native spinner only hid the digits (#141). */
+#cwSpeedInput { -moz-appearance: textfield; appearance: textfield; }
+#cwSpeedInput::-webkit-inner-spin-button, #cwSpeedInput::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .cw-wpm-label {
     color: var(--mode-accent-dim);
     font-size: 12px;
@@ -2590,7 +2593,7 @@ body.digi-open #bottomBar { grid-row: 5; }
                 <span class="cw-label wf-badge">CW</span>
                 <div class="cw-speed-ctrl">
                     <button class="cw-speed-btn wf-btn sq" id="cwSpeedDown">−</button>
-                    <input type="number" id="cwSpeedInput" min="10" max="35" value="20">
+                    <input type="number" id="cwSpeedInput" min="6" max="48" value="20" inputmode="numeric">
                     <span class="cw-wpm-label">WPM</span>
                     <button class="cw-speed-btn wf-btn sq" id="cwSpeedUp">+</button>
                 </div>
@@ -3612,6 +3615,8 @@ function handleMessage(msg) {
                 updateToneCaps(msg);
                 if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner);
                 if (msg.txMeters !== undefined) setTxMeterCaps(msg.txMeters, msg.poCal);
+                if (msg.cwSpeedRange) applyCwSpeedRange(msg.cwSpeedRange);
+                if (msg.manufacturer !== undefined) cwKeyerType = (msg.manufacturer === 'Icom') ? 'icom' : 'ideal';
                 if (msg.hasMemoryMode !== undefined) hasMemoryMode = !!msg.hasMemoryMode;
                 if (msg.memoriesLocal !== undefined) setMemoriesLocal(!!msg.memoriesLocal);
                 if (msg.memGroups !== undefined) setupMemoryGroups(msg.memGroups, msg.memStart || 0);
@@ -3646,6 +3651,8 @@ function handleMessage(msg) {
             updateToneCaps(msg);
             if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner);
             if (msg.txMeters !== undefined) setTxMeterCaps(msg.txMeters, msg.poCal);
+                if (msg.cwSpeedRange) applyCwSpeedRange(msg.cwSpeedRange);
+                if (msg.manufacturer !== undefined) cwKeyerType = (msg.manufacturer === 'Icom') ? 'icom' : 'ideal';
             if (msg.hasMemoryMode !== undefined) hasMemoryMode = !!msg.hasMemoryMode;
             if (msg.memoriesLocal !== undefined) setMemoriesLocal(!!msg.memoriesLocal);
             if (msg.memGroups !== undefined) setupMemoryGroups(msg.memGroups, msg.memStart || 0);
@@ -8715,6 +8722,24 @@ function setMobileViewportHeight() {
 // CW FUNCTIONS
 // ============================================================
 var cwSpeed = 20;
+// The keyer speed range of this radio (rigInfo.cwSpeedRange, from its rig
+// file: Icom 6-48, Kenwood / Yaesu up to 60); the -/+ keys and the box clamp
+// to it. The floor of 5 keeps the timing model's 1200 / WPM finite (#141).
+var cwSpeedRange = { min: 6, max: 48 };
+function clampCwSpeed(wpm) { return Math.max(cwSpeedRange.min, Math.min(cwSpeedRange.max, wpm)); }
+function applyCwSpeedRange(r) {
+    // A max above 100 is a raw 0..255 level range from an old rig file, not WPM.
+    if (!r || !(r.max > r.min) || r.max > 100) return;
+    cwSpeedRange = { min: Math.max(5, r.min | 0), max: r.max | 0 };
+    var input = document.getElementById('cwSpeedInput');
+    if (input) { input.min = cwSpeedRange.min; input.max = cwSpeedRange.max; }
+    var clamped = clampCwSpeed(cwSpeed);
+    if (clamped !== cwSpeed) {
+        cwSpeed = clamped;
+        if (input) input.value = cwSpeed;
+        if (!document.getElementById('cwBar').classList.contains('hidden')) send({ cmd: 'setCWSpeed', wpm: cwSpeed });
+    }
+}
 var cwMode = 'chars'; // chars, words, lines
 var cwPendingText = '';
 var cwSentText = '';
@@ -8826,6 +8851,7 @@ function hideMacroEditor() {
 // -- so TONE is a button, not a given.  No settings of its own: the pitch is
 // the radio's CW PITCH (cwPitch in status updates), the level follows VOL.
 var cwPitchHz = 600;            // the radio's CW PITCH; 600 Hz until it reports
+var cwKeyerType = 'ideal';      // 'icom' = the Icom keyer's measured dot table (rigInfo.manufacturer)
 var cwSidetone = new WfCwSidetone({
     enabled: (function() { try { return localStorage.getItem('wfCwSidetone') !== '0'; } catch (e) { return true; } })(),
     createContext: function() { return new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' }); },
@@ -8834,6 +8860,7 @@ var cwSidetone = new WfCwSidetone({
 });
 var cwKeyer = new WfCwKeyer({
     wpm: function() { return cwSpeed; },
+    keyer: function() { return cwKeyerType; },
     send: function(text) { send({ cmd: 'sendCW', text: text }); },
     stopRig: function() { send({ cmd: 'stopCW' }); },
     onChange: function() { updateCWTranscript(); },
@@ -8925,17 +8952,17 @@ function initCWHandlers() {
     // Speed buttons
     var speedInput = document.getElementById('cwSpeedInput');
     document.getElementById('cwSpeedDown').addEventListener('click', function() {
-        cwSpeed = Math.max(10, cwSpeed - 1);
+        cwSpeed = clampCwSpeed(cwSpeed - 1);
         speedInput.value = cwSpeed;
         send({ cmd: 'setCWSpeed', wpm: cwSpeed });
     });
     document.getElementById('cwSpeedUp').addEventListener('click', function() {
-        cwSpeed = Math.min(35, cwSpeed + 1);
+        cwSpeed = clampCwSpeed(cwSpeed + 1);
         speedInput.value = cwSpeed;
         send({ cmd: 'setCWSpeed', wpm: cwSpeed });
     });
     speedInput.addEventListener('change', function() {
-        cwSpeed = Math.max(10, Math.min(35, parseInt(speedInput.value) || 20));
+        cwSpeed = clampCwSpeed(parseInt(speedInput.value) || 20);
         speedInput.value = cwSpeed;
         send({ cmd: 'setCWSpeed', wpm: cwSpeed });
     });

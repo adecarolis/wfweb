@@ -12,7 +12,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const src = fs.readFileSync(path.join(here, '../resources/web-shared/cw-keyer.js'), 'utf8');
 const W = {};
 new Function('window', src)(W);
-const { CW_MORSE, cwTokenDuration, WfCwKeyer, WfCwSidetone } = W;
+const { CW_MORSE, cwTokenDuration, cwDotMs, CW_ICOM_DOT_TICKS, WfCwKeyer, WfCwSidetone } = W;
 
 let failures = 0;
 function check(ok, msg) { console.log((ok ? 'PASS ' : 'FAIL ') + msg); if (!ok) failures++; }
@@ -85,7 +85,7 @@ function makeKeyer(clock, rig, opts = {}) {
     now: () => clock.now(), setTimeout: (f, ms) => clock.setTimeout(f, ms), clearTimeout: (t) => clock.clearTimeout(t),
   });
   const k = new WfCwKeyer({
-    wpm: () => opts.wpm || 20, send: rig.send, stopRig: rig.stop, sidetone: tone,
+    wpm: () => opts.wpm || 20, keyer: () => opts.keyer || 'ideal', send: rig.send, stopRig: rig.stop, sidetone: tone,
     now: () => clock.now(), setTimeout: (f, ms) => clock.setTimeout(f, ms), clearTimeout: (t) => clock.clearTimeout(t),
     onChange: () => { k.changes = (k.changes || 0) + 1; },
   });
@@ -105,6 +105,8 @@ function atRig(k, rig, t) {
   check(k.nextTime === 3000, 'PARIS plus word space takes 60000 / 20 = 3000 ms at 20 WPM (got ' + k.nextTime + ')');
   const k2 = makeKeyer(clock, makeRig(clock), { wpm: 25 }); k2.sendText('PARIS ');
   check(k2.nextTime === 2400, 'and 2400 ms at 25 WPM (got ' + k2.nextTime + ')');
+  const k48 = makeKeyer(clock, makeRig(clock), { wpm: 48 }); k48.sendText('PARIS ');
+  check(k48.nextTime === 1250, 'and 1250 ms at 48 WPM, the IC-7300 keyer\'s top (got ' + k48.nextTime + ')');
   const dot = 60;
   check(cwTokenDuration('E', null, dot) === 4 * dot, 'E = dit + three-dot character gap');
   check(cwTokenDuration(' ', 'E', dot) === 4 * dot && cwTokenDuration(' ', null, dot) === 7 * dot, 'a space after a character adds four dots, a leading one seven');
@@ -116,11 +118,25 @@ function atRig(k, rig, t) {
   check(e4[1].on - e4[0].off === 3 * dot, 'character gap is three dots');
 }
 
-// ---- 2. pacing: CHR mode type-ahead never overflows nor starves the rig ----
+// ---- 1b. the Icom keyer's dot table -----------------------------------------
 {
-  const clock = new Clock(), rig = makeRig(clock), k = makeKeyer(clock, rig);
+  check(CW_ICOM_DOT_TICKS.length === 43 && CW_ICOM_DOT_TICKS.every(n => n % 2 === 1), 'Icom table covers 6..48 WPM in odd 1/6 ms ticks');
+  check(cwDotMs('ideal', 20) === 60 && cwDotMs('icom', 5) === 240 && cwDotMs('icom', 49) === 1200 / 49, 'ideal keyer and out-of-table speeds use 1200 / WPM');
+  check(close(cwDotMs('icom', 20), 60.1667, 0.001) && cwDotMs('icom', 30) === 39.5 && close(cwDotMs('icom', 48), 25.1667, 0.001), 'IC-7300 measured dots: 60.17 ms at 20 WPM, 39.5 at 30, 25.17 at 48');
+  const clock = new Clock(), ki = makeKeyer(clock, makeRig(clock), { wpm: 30, keyer: 'icom' });
+  ki.sendText('PARIS ');
+  check(close(ki.nextTime, 50 * 39.5, 0.01), 'PARIS at 30 WPM on the Icom keyer takes 50 x 39.5 = 1975 ms, not 2000 (got ' + ki.nextTime + ')');
+  const k20 = makeKeyer(clock, makeRig(clock), { wpm: 20, keyer: 'icom' });
+  k20.sendText('PARIS ');
+  check(close(k20.nextTime, 3008.33, 0.01), 'and 3008 ms at 20 WPM (got ' + k20.nextTime.toFixed(2) + ')');
+}
+
+// ---- 2. pacing: CHR mode type-ahead never overflows nor starves the rig ----
+// At 20 WPM, and at both ends of the rigs' keyer range (6 and 48 WPM).
+for (const wpm of [20, 6, 48]) {
+  const clock = new Clock(), rig = makeRig(clock), k = makeKeyer(clock, rig, { wpm });
   const text = 'THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG 0123456789';
-  for (const ch of text) { k.sendText(ch); clock.advance(30); }   // 33 chars/s, far faster than 20 WPM
+  for (const ch of text) { k.sendText(ch); clock.advance(30); }   // 33 chars/s, far faster than the keyer
   const end = k.base + k.nextTime;
   let maxAt = 0, minAt = 99, starved = false;
   for (let t = clock.now(); t < end; t += 10) {
@@ -131,9 +147,9 @@ function atRig(k, rig, t) {
   }
   clock.run(end + 100);
   const sentText = rig.frames.filter(f => f.text !== null).map(f => f.text).join('');
-  check(sentText === text, 'CHR mode: every character reaches the rig, in order');
-  check(maxAt <= k.leadChars + 1, 'CHR mode: rig never holds more than lead + 1 characters ahead (max ' + maxAt + ')');
-  check(!starved, 'CHR mode: rig never runs dry while text is pending');
+  check(sentText === text, 'CHR mode at ' + wpm + ' WPM: every character reaches the rig, in order');
+  check(maxAt <= k.leadChars + 1, 'CHR mode at ' + wpm + ' WPM: rig never holds more than lead + 1 characters ahead (max ' + maxAt + ')');
+  check(!starved, 'CHR mode at ' + wpm + ' WPM: rig never runs dry while text is pending');
 }
 
 // ---- 3. pacing: one long text in frames of at most frameChars ---------------

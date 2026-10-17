@@ -119,6 +119,9 @@ EXTRACTED_CMDS = {
     # [0x12, 0x00]); rxAntenna presence also gates the 0x12 rx flag byte.
     "antenna":   "Antenna",
     "rxAntenna": "RX Antenna",
+    # Keyer speed (0x14 0x0C); only its Min/Max (WPM) are used, for the
+    # CW bar's speed box (#141).
+    "keySpeed":  "Key Speed",
     # Repeater access tone. Two dialects: the newer rigs (IC-705/9700/905)
     # carry the whole TONE/TSQL/DTCS selection in one "Tone Squelch Type"
     # register (0x16 0x5D); the rest toggle independent booleans (0x16 0x42
@@ -445,6 +448,9 @@ def extract_caps(props: dict[str, str], cmd_meta: dict[str, dict]) -> dict:
         "memMax":    (cmd_meta.get("memoryMode") or cmd_meta.get("memoryContents")
                       or {}).get("max", 0),
         "vfoModeSelectCmd29": bool((cmd_meta.get("vfoModeSelect") or {}).get("cmd29")),
+        # Keyer speed range in WPM (IC-7300: 6-48), 0/0 when the rig has no keyer.
+        "keySpeedMin": (cmd_meta.get("keySpeed") or {}).get("min", 0),
+        "keySpeedMax": (cmd_meta.get("keySpeed") or {}).get("max", 0),
     }
 
 
@@ -609,7 +615,7 @@ def main() -> int:
         "//             hasCommand29, hasSelectedFreq, hasDuplex, hasTuner,",
         "//             hasCTCSS, hasDTCS, hasToneSqlType, txMeters,",
         "//             hasMemoryMode, memGroups, memStart, memories, memMax,",
-        "//             vfoModeSelectCmd29 }",
+        "//             vfoModeSelectCmd29, keySpeedMin, keySpeedMax }",
         "//   meters: { kind: [[rigVal, actualVal, redLine?], ...] }",
         "//           kinds: sMeter, swr, power, alc, comp, center, voltage, current",
         "//   cmds:   { modOff, modData1, modData2, modData3, antenna, rxAntenna,",

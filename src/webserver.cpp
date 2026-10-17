@@ -45,6 +45,18 @@ static constexpr float RADE_TX_GAIN = 0.4f;
 // Repeater duplex direction on the wire. The browser and the REST clients
 // speak these three names; the parser only ever caches simplex / DUP- / DUP+,
 // so the default arm is just a guard.
+// The rig's make for the browser (its CW keyer model keys Icom timing).
+static QString manufacturerName(manufacturersType_t m)
+{
+    switch (m) {
+    case manufIcom: return QStringLiteral("Icom");
+    case manufKenwood: return QStringLiteral("Kenwood");
+    case manufYaesu: return QStringLiteral("Yaesu");
+    case manufFlexRadio: return QStringLiteral("FlexRadio");
+    }
+    return QStringLiteral("Unknown");
+}
+
 static QString duplexModeName(duplexMode_t dm)
 {
     switch (dm) {
@@ -517,6 +529,7 @@ void webServer::receiveRigCaps(rigCapabilities *caps)
         QJsonObject obj;
         obj["type"] = "rigConnected";
         obj["model"] = rigCaps->modelName;
+        obj["manufacturer"] = manufacturerName(rigCaps->manufacturer);
         obj["hasTransmit"] = rigCaps->hasTransmit;
         obj["hasSpectrum"] = rigCaps->hasSpectrum;
         obj["spectLenMax"] = rigCaps->spectLenMax;
@@ -3614,6 +3627,7 @@ QJsonObject webServer::buildInfoJson() const
     if (rigCaps) {
         info["connected"] = true;
         info["model"] = rigCaps->modelName;
+        info["manufacturer"] = manufacturerName(rigCaps->manufacturer);
         info["hasTransmit"] = rigCaps->hasTransmit;
         info["hasSpectrum"] = rigCaps->hasSpectrum;
         info["spectLenMax"] = rigCaps->spectLenMax;
@@ -5239,6 +5253,18 @@ void webServer::addTxMeterCaps(QJsonObject &o) const
         poCal.append(pt);
     }
     o["poCal"] = poCal;
+
+    // The keyer speed range from the rig file (Icom 6-48 WPM, Kenwood and
+    // Yaesu up to 60), so the CW bar's speed box clamps to this radio (#141).
+    if (rigCaps->commands.contains(funcKeySpeed)) {
+        const funcType &ks = rigCaps->commands[funcKeySpeed];
+        if (ks.maxVal > ks.minVal) {
+            QJsonObject r;
+            r["min"] = ks.minVal;
+            r["max"] = ks.maxVal;
+            o["cwSpeedRange"] = r;
+        }
+    }
 }
 
 // The cached reading of whichever optional meter is currently polled. Only
