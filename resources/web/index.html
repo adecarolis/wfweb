@@ -11904,10 +11904,11 @@ function logCWQso() {
 }
 
 // Mode for a hand-added log row: the open app-mode panel wins (the rig sits
-// in USB while FT8/FT4/JS8 run), otherwise the rig's own mode (#125).
+// in USB/LSB while FT8/FT4/JS8/FreeDV run), otherwise the rig's own mode (#125).
 function defaultLogMode() {
     if (digiBarVisible) return digiMode;
     if (typeof window.js8MessengerVisible === 'function' && window.js8MessengerVisible()) return 'JS8';
+    if (freedvEnabled) return 'FREEDV';
     return (currentMode && currentMode !== '---') ? currentMode : 'SSB';
 }
 
