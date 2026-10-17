@@ -92,7 +92,7 @@ other.** No Direct/Server runtime gates: each `index.html` is single-purpose.
 |-----|---------|----------|
 | `resources/web/` | C++ server build (`wfweb.pro`) | Server-only `index.html`, `transport/websocket-transport.js`, `debug.html` |
 | `resources/web-standalone/` | Static bundle (`tools/build-static.sh`) | Standalone `index.html`, `transport/serial-transport.js`, `civ/`, `wasm/` |
-| `resources/web-shared/` | Both | `index.html`-side modules and pure assets: `theme.css` (design tokens + `.wf-*` kit), `packet.js`, `recorder.js` (+ vendored `lamejs/`), `needle-meter.js`, `rx-jitter.js`, `transport/rig-transport.js` (base class), CW decoder JS family, `ggmorse-wasm.js`, JS8 family (`js8.mjs`, `js8-panel.mjs`, `js8-panel.css`), `models/`, `digits/`, `digits-sprite.png` |
+| `resources/web-shared/` | Both | `index.html`-side modules and pure assets: `theme.css` (design tokens + `.wf-*` kit), `packet.js`, `recorder.js` (+ vendored `lamejs/`), `needle-meter.js`, `rx-jitter.js`, `cw-keyer.js`, `transport/rig-transport.js` (base class), CW decoder JS family, `ggmorse-wasm.js`, JS8 family (`js8.mjs`, `js8-panel.mjs`, `js8-panel.css`), `models/`, `digits/`, `digits-sprite.png` |
 
 Build inputs for `ggmorse-wasm.js` (the `.cpp` wrapper + license) live in
 `resources/ggmorse-src/`, alongside `resources/build-ggmorse-wasm.sh`. The
@@ -286,6 +286,7 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 | `resources/web-shared/recorder.js` | Audio (MP3) / video recorder behind the top-bar REC button (both builds) |
 | `resources/web-shared/needle-meter.js` | IC-7610-style needle meter face + needle ballistics; alternative to the tile-bar meter in `index.html` (both builds) |
 | `resources/web-shared/rx-jitter.js` | Adaptive RX jitter buffer (worklet + ScriptProcessor fallback, both builds); simulated by `tests/rx_jitter_sim.mjs` |
+| `resources/web-shared/cw-keyer.js` | CW keyer model: timing, pacing of the text to the rig's keyer, browser sidetone (both builds); `tests/cw_keyer_sim.mjs` under node, `tests/cw_bench.mjs` on the two-rig bench, both via `tests/test_cw_keyer.py` |
 | `resources/web-shared/js8-panel.mjs` | JS8 messenger panel — markup + state machine, QSO tabs, RX/TX, CMD palette (both builds) |
 | `resources/web-shared/js8.mjs` | JS8 WASM codec bridge — 8-FSK synth + encode/decode wrapper (both builds) |
 | `resources/web-shared/` | Files shared by both builds (CW decoder, ggmorse, sprites, models) |
@@ -486,31 +487,54 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
   `resources/direwolf/`, or `wfweb_direwolf_stubs.c`. Compile-clean is not enough.
 
 ### CW keyer
-- The Icom keyer command (CI-V `17`) takes **at most 30 characters per
-  frame**; a longer frame is NG'd and nothing is keyed (#141). `icomCommander`
-  and `civ/icom.js` split longer text into 30-byte frames (a `^XX` prosign
-  stays whole); the virtual rig NGs oversize frames like the real one. The
-  page (`sendCWText`, both forks) also *paces* the pieces from its timing
-  model (`cwRigQueue`): the next piece goes out when the previous one has
-  ~6 characters left, so the rig's finite keyer buffer never overflows and
-  order is kept across calls. Every stop path goes through `cwStopRig()`,
-  which drops the unsent pieces before cutting the rig's buffer.
+- The model lives in `resources/web-shared/cw-keyer.js` (`WfCwKeyer`,
+  `WfCwSidetone`, `CW_MORSE`, `cwTokenDuration`), one copy for both forks;
+  each `index.html` only builds the two objects (`cwKeyer`, `cwSidetone`),
+  renders the transcript (`cwCharacters` is the keyer's own array, mutated
+  in place, recorder.js reads it) and wires the buttons. **Do not put timing,
+  pacing or sidetone logic back into the pages.** Timing follows the Icom
+  keyer: 1:3, one dot between elements, three between characters, seven
+  between words (a space after a character adds four, the character gap
+  being counted with the character); `PARIS ` takes exactly 60000 / WPM ms.
+  A 10-dot word gap once put the transcript, the pacing and the sidetone
+  three dots behind the radio on every word (#141).
+- The Icom keyer command (CI-V `17`) takes **at most 30 bytes per frame**; a
+  longer frame is NG'd and nothing is keyed, and so is one that would
+  overflow the keyer's finite buffer (#141). The keyer hands text over in
+  frames of at most 20 bytes (a `^XX` prosign never split), each due when the
+  rig is down to 6 units of what was queued before, in CHR mode as much as
+  for a long macro: the rig never holds more than ~26 bytes and never runs
+  dry. `icomCommander` and `civ/icom.js` still split a longer frame at 30
+  bytes as a backstop. Characters the keyer cannot send (not in `CW_MORSE`)
+  are dropped before they reach the model or the radio.
+- Stop paths: `cwKeyer.stop()` (STOP, close: nothing keyed, nothing shown),
+  `cwKeyer.cut()` (Escape, Backspace in CHR mode: cut the rig and the tone,
+  drop what is pending, rewind the model clock to now so the next text starts
+  at once). The characters already handed to the keyer cannot be taken back.
 - Server build: the CW macros live in the settings file (`[CW]`
   `Macro1..Macro10`, `applyCwMacros`), pushed as `cwMacros` in `rigInfo` and
   `cwMacrosChanged`; the browser only migrates a pre-existing localStorage
   set to a server that has none. Standalone keeps them in localStorage.
-- Two sidetones, one at a time. TONE in the CW bar (`cwSidetone*`, both forks,
-  `localStorage wfCwSidetone`, on by default) is a browser-generated tone keyed
-  from the same timing model as the transcript highlight (`cwSidetoneSchedule`
-  in `playCWSidetone`), one oscillator with a 5 ms envelope in an AudioContext
-  of its own, cut by `cwStopRig()`; no settings of its own: pitch = the rig's
-  CW PITCH (`cwPitch` in Hz in status / update messages: `funcCwPitch` on the
-  server, the `0x14 0x09` read in `serial-transport.js`), level follows VOL.
-  The rig's own sidetone (dffd32c9) comes back in the RX audio over USB only
+- Two sidetones, one at a time. TONE in the CW bar (`WfCwSidetone`,
+  `localStorage wfCwSidetone`, on by default) is keyed from the model's
+  element times, one oscillator with a 5 ms envelope in an AudioContext of
+  its own, parked only after the furthest scheduled element (a typed space
+  schedules nothing); no settings of its own: pitch = the rig's CW PITCH
+  (`cwPitch` in Hz in status / update messages: `funcCwPitch` on the server,
+  the `0x14 0x09` read in `serial-transport.js`), level follows VOL. The
+  rig's own sidetone (dffd32c9) comes back in the RX audio over USB only
   (IC-7300: ACC/USB AF Beep/Speech Output ON), never over LAN; it is the one
   that follows a paddle and gives true full break-in, with TONE off. The
   browser tone never enters the RX chain, so the CW decoder and the recorder
   do not see it.
+- Tests: `tests/cw_keyer_sim.mjs` (node, virtual clock, fake AudioContext)
+  checks timing, pacing, Backspace, unknown characters and the sidetone;
+  `tests/cw_bench.mjs` runs on the two-rig bench and measures the model
+  against the virtual rig's **actual keyed audio** (a bench that compares the
+  tone with the page's own model cannot see a model error). The virtual rig
+  emulates a 30-byte keyer buffer (`civEmulator::keyerPending`) and NGs an
+  overflowing frame, so type-ahead bugs fail there. Run both after any change
+  to the module (`pytest tests/test_cw_keyer.py`).
 
 ### Shared station callsign
 - One callsign in the gear dialog feeds CW, FT8/FT4, JS8, FreeDV Reporter, APRS, and

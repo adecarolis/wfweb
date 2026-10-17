@@ -340,6 +340,14 @@ void civEmulator::onCivFromClient(const QByteArray& frame)
         }
         // Empty payload OR 0xFF means abort.
         bool isAbort = body.isEmpty() || ((quint8)body[0] == 0xFF);
+        if (!isAbort && keyerPending.load() + body.size() > kKeyerBufferBytes) {
+            // Keyer buffer full: the frame is rejected and nothing of it is
+            // keyed (the client has to pace its text).
+            qWarning() << "civEmulator" << name << "CW NG: keyer buffer full,"
+                       << keyerPending.load() << "bytes pending +" << body.size();
+            emit replyFrame(ack(false));
+            break;
+        }
         if (isAbort) {
             emit cwAbortRequested();
         } else {

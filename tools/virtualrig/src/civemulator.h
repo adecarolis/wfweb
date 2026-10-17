@@ -5,6 +5,7 @@
 #include <QByteArray>
 #include <QString>
 #include <QTimer>
+#include <atomic>
 
 // Minimal CI-V responder. Parses inbound frames from a client (as received
 // by icomServer and forwarded via haveDataFromServer), tracks per-rig state,
@@ -37,6 +38,14 @@ public:
     // client. Keeps the civ-side ptt state authoritative so PTT-read replies
     // and S/TX-meter gating stay correct.
     void setExternalPtt(bool on);
+
+    // Keyer buffer emulation (#141).  virtualRig keeps this at the number of
+    // keyer-text bytes queued but not yet keyed; a 0x17 frame that would push
+    // it past kKeyerBufferBytes is answered NG and dropped, as the real rig's
+    // RJCTED does.  A 30-byte frame is known to fit an empty keyer, so 30 is
+    // the one size the real buffer is known to have at least.
+    static constexpr int kKeyerBufferBytes = 30;
+    std::atomic<int> keyerPending{0};
 
 public slots:
     // Full CI-V frame as received from the client, including 0xFE 0xFE

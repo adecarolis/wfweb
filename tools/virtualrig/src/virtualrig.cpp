@@ -100,8 +100,11 @@ const char* morseFor(char c)
 // frames (each with one or more chars) get correctly-spaced inter-char and
 // inter-word gaps. Set to true on first call (no leading gap); the function
 // updates it to reflect whether the synthesized audio ended on silence.
+// charEnds, when given, receives the byte offset in the returned audio at
+// which each input character's audio ends (one entry per input byte), for
+// the keyer-buffer accounting in virtualRig.
 QByteArray synthesizeCw(const QByteArray& text, quint16 wpm, quint16 pitchHz,
-                        bool& prevWasGap)
+                        bool& prevWasGap, QVector<int>* charEnds = nullptr)
 {
     constexpr int kSampleRate = 48000;
     constexpr float kAmplitude = 12000.0f; // headroom under int16 max
@@ -159,11 +162,12 @@ QByteArray synthesizeCw(const QByteArray& text, quint16 wpm, quint16 pitchHz,
             if (!prevWasGap) appendSilence(3 * unitSamples);
             appendSilence(4 * unitSamples);
             prevWasGap = true;
+            if (charEnds) charEnds->append(out.size());
             continue;
         }
         const char* m = morseFor(c);
         if (!m) m = morseFor('?');     // unknown → ?
-        if (!m) continue;              // can't happen, ? is in the table
+        if (!m) { if (charEnds) charEnds->append(out.size()); continue; }  // can't happen, ? is in the table
 
         // Inter-character gap: 3 units. Skip at the very start (or right
         // after a space, which already laid down a full word gap).
@@ -175,6 +179,7 @@ QByteArray synthesizeCw(const QByteArray& text, quint16 wpm, quint16 pitchHz,
             appendTone(onUnits * unitSamples);
             if (m[j + 1]) appendSilence(unitSamples); // intra-symbol gap
         }
+        if (charEnds) charEnds->append(out.size());
     }
     return out;
 }
@@ -518,9 +523,16 @@ void virtualRig::onCwSendRequested(const QByteArray& text, quint16 wpm, quint16 
     // reflect whether the produced audio ended on silence. So back-to-back
     // single-char frames (e.g. typing "H" then "E") get the 3-unit gap
     // they need not to slur into one symbol stream.
-    QByteArray audio = synthesizeCw(text, wpm, pitchHz, cwPrevWasGap);
+    QVector<int> charEnds;
+    QByteArray audio = synthesizeCw(text, wpm, pitchHz, cwPrevWasGap, &charEnds);
     if (audio.isEmpty()) return;
     cwTxBuffer.append(audio);
+    // Keyer buffer accounting: a character stays pending until its audio has
+    // been pumped out (see drainCwTx), and the emulator NGs a frame that
+    // would overflow the buffer.
+    for (int i = 0; i < charEnds.size(); ++i) cwCharEnds.append(cwQueuedBytes + charEnds.at(i));
+    cwQueuedBytes += audio.size();
+    if (civ) civ->keyerPending.store(cwCharEnds.size());
 
     if (!cwActive) {
         cwActive = true;
@@ -538,6 +550,9 @@ void virtualRig::onCwSendRequested(const QByteArray& text, quint16 wpm, quint16 
 void virtualRig::onCwAbortRequested()
 {
     cwTxBuffer.clear();
+    cwCharEnds.clear();
+    cwQueuedBytes = cwPlayedBytes = 0;
+    if (civ) civ->keyerPending.store(0);
     cwPrevWasGap = true; // next session starts fresh
     if (cwActive) {
         cwActive = false;
@@ -569,6 +584,9 @@ void virtualRig::drainCwTx()
     int take = qMin(cwTxBuffer.size(), kBytesPerTick);
     chunk = cwTxBuffer.left(take);
     cwTxBuffer.remove(0, take);
+    cwPlayedBytes += take;
+    while (!cwCharEnds.isEmpty() && cwCharEnds.first() <= cwPlayedBytes) cwCharEnds.removeFirst();
+    if (civ) civ->keyerPending.store(cwCharEnds.size());
     // Pad short tail to a full 20 ms chunk so downstream resamplers see a
     // consistent frame size.
     if (chunk.size() < kBytesPerTick) {

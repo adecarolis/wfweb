@@ -3002,6 +3002,7 @@ body.digi-open #bottomBar { grid-row: 5; }
 <script src="needle-meter.js"></script>
 <script src="recorder.js"></script>
 <script src="rx-jitter.js"></script>
+<script src="cw-keyer.js"></script>
 <script>
 // ============================================================
 // STATE
@@ -7236,7 +7237,7 @@ function rxVolumeGain() { var f = rxVolume / 100; return f * f; }
 function setRxVolume(pct, save) {
     rxVolume = Math.max(0, Math.min(100, Math.round(pct) || 0));
     if (audioGainNode && audioCtx) audioGainNode.gain.setTargetAtTime(rxVolumeGain(), audioCtx.currentTime, 0.01);
-    if (window.cwToneGain) cwToneGain.gain.setTargetAtTime(cwSidetoneGain(), cwToneCtx.currentTime, 0.01);
+    if (window.cwSidetone) cwSidetone.gainChanged();
     var text = rxVolume ? rxVolume + '%' : 'MUTE';
     document.querySelectorAll('.rx-vol-slider').forEach(function(s) { if (parseInt(s.value, 10) !== rxVolume) s.value = rxVolume; });
     document.querySelectorAll('.rx-vol-fill').forEach(function(f) { f.style.width = rxVolume + '%'; });
@@ -8717,10 +8718,7 @@ var cwSpeed = 20;
 var cwMode = 'chars'; // chars, words, lines
 var cwPendingText = '';
 var cwSentText = '';
-var cwCharacters = []; // Array of {char, status: 'pending'|'sending'|'sent', startTime}
-var cwCharIndex = 0; // Current character being sent
-var cwNextCharTime = 0; // Cumulative timing for next character
-var cwUpdateTimers = []; // Track pending setTimeout IDs for cleanup
+// The transcript (cwCharacters) and its timing belong to cwKeyer, below.
 
 // CW Macros
 var cwMacros = {}; // Macro templates for buttons
@@ -8815,318 +8813,56 @@ function hideMacroEditor() {
     cwEditingMacro = null;
 }
 
-// CW transmission state
-var cwTransmitStartTime = 0; // Wall-clock time when current CW transmission started
-
-// Browser-generated CW sidetone (#141): the TONE button of the CW bar, on
-// by default.  It is in step with the transcript, while the radio's own
-// sidetone only reaches the browser over USB (on the IC-7300 only with
-// ACC/USB AF Beep/Speech Output ON, together with every beep), never over
-// LAN, and then trails the keying by the RX jitter buffer.  The radio's is
-// still the truth -- it follows a paddle and the keyer as it really runs --
-// so TONE is a button, not a given.  No settings of its own: the pitch is
-// the radio's CW PITCH (cwPitch in status updates), the level follows VOL
-// as if the tone came in with the RX audio.
-// It is keyed from the same timing model as the transcript highlight
-// (cwCharacters[].startTime on the cwTransmitStartTime wall-clock base),
-// one sine oscillator through an envelope gain with a 5 ms attack and
-// release per element, in an AudioContext of its own; cwStopRig() cuts it
-// together with the rig's keyer buffer.  It never enters the RX chain, so
-// the CW decoder and the recorder (both tap the RX PCM) do not hear it.
-var cwSidetone = true;          // the TONE button; localStorage wfCwSidetone
-try { cwSidetone = localStorage.getItem('wfCwSidetone') !== '0'; } catch (e) {}
+// CW keyer.  The timing model, the pacing of the text to the radio's keyer
+// and the browser sidetone live in cw-keyer.js (shared by both builds and
+// driven under node by tests/cw_keyer_sim.mjs); this page only renders the
+// transcript and wires the buttons.
+//
+// Sidetone (#141): TONE in the CW bar, on by default.  It is in step with the
+// transcript, while the radio's own sidetone only reaches the browser over
+// USB (IC-7300: ACC/USB AF Beep/Speech Output ON, with every beep), never
+// over LAN, and then trails the keying by the RX jitter buffer.  The radio's
+// is still the truth -- it follows a paddle and the keyer as it really runs
+// -- so TONE is a button, not a given.  No settings of its own: the pitch is
+// the radio's CW PITCH (cwPitch in status updates), the level follows VOL.
 var cwPitchHz = 600;            // the radio's CW PITCH; 600 Hz until it reports
-var CW_TONE_RAMP = 0.005;       // s, attack / release of each element
-var cwToneCtx = null, cwToneGain = null;    // context + level, kept once made
-var cwToneOsc = null, cwToneEnv = null;     // oscillator + envelope, parked when idle
-var cwToneIdleTimer = null;
-var cwToneEnd = 0;              // audio time of the last element scheduled so far
-
-function cwSidetoneOn() { return cwSidetone; }
-function cwSidetoneGain() { return 0.2 * rxVolumeGain(); }
+var cwSidetone = new WfCwSidetone({
+    enabled: (function() { try { return localStorage.getItem('wfCwSidetone') !== '0'; } catch (e) { return true; } })(),
+    createContext: function() { return new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' }); },
+    pitch: function() { return cwPitchHz; },
+    gain: function() { return 0.2 * rxVolumeGain(); }
+});
+var cwKeyer = new WfCwKeyer({
+    wpm: function() { return cwSpeed; },
+    send: function(text) { send({ cmd: 'sendCW', text: text }); },
+    stopRig: function() { send({ cmd: 'stopCW' }); },
+    onChange: function() { updateCWTranscript(); },
+    sidetone: cwSidetone
+});
+var cwCharacters = cwKeyer.characters;   // the transcript; recorder.js reads it too
 
 function setCwPitch(hz) {
     hz = parseInt(hz, 10);
     if (!(hz >= 300 && hz <= 1000) || hz === cwPitchHz) return;
     cwPitchHz = hz;
-    if (cwToneOsc) cwToneOsc.frequency.setTargetAtTime(cwPitchHz, cwToneCtx.currentTime, 0.01);
+    cwSidetone.pitchChanged();
 }
 
-// Make (or wake) the audio graph.  Called from a keystroke or a tap, so
-// the context has its user activation.
-function cwSidetoneEnsure() {
-    if (!cwToneCtx) {
-        try {
-            cwToneCtx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' });
-        } catch (e) {
-            console.warn('[CW] No Web Audio for the sidetone:', e);
-            return false;
-        }
-        cwToneGain = cwToneCtx.createGain();
-        cwToneGain.connect(cwToneCtx.destination);
-    }
-    cwToneGain.gain.value = cwSidetoneGain();
-    if (cwToneCtx.state === 'suspended') cwToneCtx.resume();
-    if (!cwToneOsc) {
-        cwToneEnv = cwToneCtx.createGain();
-        cwToneEnv.gain.value = 0;
-        cwToneEnv.connect(cwToneGain);
-        cwToneOsc = cwToneCtx.createOscillator();
-        cwToneOsc.type = 'sine';
-        cwToneOsc.frequency.value = cwPitchHz;
-        cwToneOsc.connect(cwToneEnv);
-        cwToneOsc.start();
-    }
-    if (cwToneIdleTimer) { clearTimeout(cwToneIdleTimer); cwToneIdleTimer = null; }
-    return true;
-}
-
-// Park the oscillator once the last scheduled element is out (cwToneEnd, not
-// just this call's: a typed space schedules nothing, and parking then would
-// throw away the characters still pending), so an idle page does not keep
-// an audio graph running.
-function cwSidetoneIdle() {
-    if (cwToneIdleTimer) clearTimeout(cwToneIdleTimer);
-    var afterMs = Math.max(0, (cwToneEnd - cwToneCtx.currentTime) * 1000) + 500;
-    cwToneIdleTimer = setTimeout(function() {
-        cwToneIdleTimer = null;
-        if (cwToneOsc) {
-            try { cwToneOsc.stop(); } catch (e) {}
-            cwToneOsc.disconnect();
-            cwToneEnv.disconnect();
-        }
-        cwToneOsc = null;
-        cwToneEnv = null;
-    }, afterMs);
-}
-
-// Key every element of the transcript units from startIndex on, at the
-// model times the highlight uses, moved onto the audio clock.  Elements
-// already past are skipped, so this can also catch up mid-transmission.
-function cwSidetoneSchedule(startIndex) {
-    if (!cwSidetoneOn() || startIndex >= cwCharacters.length) return;
-    if (!cwSidetoneEnsure()) return;
-    var dot = 1200 / cwSpeed;
-    var now = cwToneCtx.currentTime;
-    var base = now + (cwTransmitStartTime - Date.now()) / 1000;   // audio time of model 0
-    var env = cwToneEnv.gain;
-    if (cwToneEnd < now) cwToneEnd = now;
-    for (var i = startIndex; i < cwCharacters.length; i++) {
-        var pattern = CW_MORSE[cwCharacters[i].char];
-        if (!pattern || pattern === ' ') continue;
-        var t = cwCharacters[i].startTime;   // model ms
-        for (var j = 0; j < pattern.length; j++) {
-            var len = (pattern[j] === '.' ? dot : 3 * dot) / 1000;
-            var on = Math.max(base + t / 1000, now);
-            var off = base + t / 1000 + len;
-            if (off - CW_TONE_RAMP > on + CW_TONE_RAMP) {
-                env.setValueAtTime(0, on);
-                env.linearRampToValueAtTime(1, on + CW_TONE_RAMP);
-                env.setValueAtTime(1, off - CW_TONE_RAMP);
-                env.linearRampToValueAtTime(0, off);
-                if (off > cwToneEnd) cwToneEnd = off;
-            }
-            t += (len + dot / 1000) * 1000;
-        }
-    }
-    cwSidetoneIdle();
-}
-
-// Cut the tone now (STOP, Backspace, close): drop what was scheduled and
-// release in one ramp.
-function cwSidetoneStop() {
-    if (!cwToneCtx || !cwToneEnv) return;
-    var now = cwToneCtx.currentTime;
-    var g = cwToneEnv.gain;
-    if (g.cancelAndHoldAtTime) g.cancelAndHoldAtTime(now);
-    else { g.cancelScheduledValues(now); g.setValueAtTime(g.value, now); }
-    g.linearRampToValueAtTime(0, now + CW_TONE_RAMP);
-    cwToneEnd = now;
-    cwSidetoneIdle();
-}
-
-// One dit when TONE is switched on, so the tap is heard.
-function cwSidetonePreview() {
-    if (cwToneIdleTimer === null && cwToneOsc) return;   // keying: audible already
-    if (!cwSidetoneEnsure()) return;
-    var env = cwToneEnv.gain, on = cwToneCtx.currentTime + 0.01, off = on + 0.08;
-    env.setValueAtTime(0, on);
-    env.linearRampToValueAtTime(1, on + CW_TONE_RAMP);
-    env.setValueAtTime(1, off - CW_TONE_RAMP);
-    env.linearRampToValueAtTime(0, off);
-    if (off > cwToneEnd) cwToneEnd = off;
-    cwSidetoneIdle();
-}
+function cwSidetoneOn() { return cwSidetone.enabled; }
 
 function setCwSidetone(on) {
-    cwSidetone = !!on;
-    if (cwSidetone) { cwSidetoneSchedule(0); cwSidetonePreview(); }   // joins a transmission under way
-    else cwSidetoneStop();
-    try { localStorage.setItem('wfCwSidetone', cwSidetone ? '1' : '0'); } catch (e) {}
+    cwSidetone.setEnabled(on, cwKeyer.elements(0));   // joins a transmission under way
+    try { localStorage.setItem('wfCwSidetone', cwSidetone.enabled ? '1' : '0'); } catch (e) {}
     updateCwSidetoneUi();
 }
 
 function updateCwSidetoneUi() {
     var btn = document.getElementById('cwToneBtn');
-    if (btn) btn.classList.toggle('active', cwSidetoneOn());
+    if (btn) btn.classList.toggle('active', cwSidetone.enabled);
 }
 
-// Morse patterns for the TX progress transcript.  The radio's own memory keyer
-// does the keying (CI-V 0x17); this table only times the character highlighting,
-// so it has to agree with what the rig will actually send.
-//
-// Prosigns are typed <AR> / <SK> / ... in the input box and count as ONE unit
-// here.  cwToRig() rewrites them to the Icom keyer's "^XX" form, which sends the
-// two letters with no inter-character space.
-var CW_MORSE = {
-    'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.', 'F': '..-.',
-    'G': '--.', 'H': '....', 'I': '..', 'J': '.---', 'K': '-.-', 'L': '.-..',
-    'M': '--', 'N': '-.', 'O': '---', 'P': '.--.', 'Q': '--.-', 'R': '.-.',
-    'S': '...', 'T': '-', 'U': '..-', 'V': '...-', 'W': '.--', 'X': '-..-',
-    'Y': '-.--', 'Z': '--..', '0': '-----', '1': '.----', '2': '..---',
-    '3': '...--', '4': '....-', '5': '.....', '6': '-....', '7': '--...',
-    '8': '---..', '9': '----.', '.': '.-.-.-', ',': '--..--', '?': '..--..',
-    '/': '-..-.', '=': '-...-', '+': '.-.-.', ' ': ' ',
-    '<AR>': '.-.-.', '<AS>': '.-...', '<BK>': '-...-.-', '<BT>': '-...-',
-    '<CT>': '-.-.-', '<HH>': '........', '<KN>': '-.--.', '<SK>': '...-.-',
-    '<SN>': '...-.'
-};
-
-// Split CW text into transcript units: a known <XX> prosign is one unit, every
-// other character is its own.  sendCWText() and scheduleCharacterUpdates() must
-// tokenize identically or the highlight indices drift out of step.
-function cwTokenize(text) {
-    var out = [];
-    var re = /<[A-Z]{2}>/g;
-    var last = 0;
-    var m;
-    while ((m = re.exec(text)) !== null) {
-        if (!CW_MORSE[m[0]]) continue;   // unknown <XX>: falls through as plain chars
-        for (var i = last; i < m.index; i++) out.push(text[i]);
-        out.push(m[0]);
-        last = re.lastIndex;
-    }
-    for (var j = last; j < text.length; j++) out.push(text[j]);
-    return out;
-}
-
-// Rewrite <XX> prosigns into the "^XX" form the Icom keyer understands.
-function cwToRig(text) {
-    return text.replace(/<([A-Z]{2})>/g, function(whole, pair) {
-        return CW_MORSE[whole] ? '^' + pair : whole;
-    });
-}
-
-// Model length of one transcript unit in ms, as the Icom keyer times it: 1:3
-// dot/dash, one dot between elements, three between characters, seven
-// between words.  The three-dot character gap is counted with the character
-// it follows, so a space after a character adds only the four dots that
-// gap does not cover (#141: counting all seven put the transcript, the piece
-// pacing and the sidetone three dots behind the radio on every word).
-function cwTokenDuration(char, prev, dot) {
-    if (char === ' ') return (prev && prev !== ' ') ? 4 * dot : 7 * dot;
-    var pattern = CW_MORSE[char];
-    if (!pattern) return 0;
-    var ms = 0;
-    for (var j = 0; j < pattern.length; j++) ms += (pattern[j] === '.' ? 1 : 3) * dot + dot;
-    return ms + 2 * dot;   // the last element's dot gap plus two more = character gap
-}
-
-// The Icom keyer command takes at most 30 characters per CI-V frame (a longer
-// frame is answered NG and nothing is keyed, #141) and the rig's keyer buffer
-// is finite.  Text therefore goes to the rig in pieces of at most
-// CW_RIG_FRAME_BYTES: the first at once, each next one when the timing model
-// says the previous piece has about CW_RIG_LEAD_CHARS characters left to key,
-// so the keyer never runs dry between pieces and never overflows.  Pieces are
-// kept in order across calls (a word typed while a macro is still going out
-// waits behind the macro's remaining pieces).
-var CW_RIG_FRAME_BYTES = 30;
-var CW_RIG_LEAD_CHARS = 6;
-var cwRigQueue = [];     // [{text, at}] in send order; at = wall-clock ms
-var cwRigTimer = null;
-
-function cwQueueRigText(text, at) {
-    cwRigQueue.push({ text: text, at: at });
-    cwPumpRigQueue();
-}
-
-function cwPumpRigQueue() {
-    if (cwRigTimer) { clearTimeout(cwRigTimer); cwRigTimer = null; }
-    while (cwRigQueue.length) {
-        var wait = cwRigQueue[0].at - Date.now();
-        if (wait > 0) { cwRigTimer = setTimeout(cwPumpRigQueue, wait); return; }
-        send({ cmd: 'sendCW', text: cwRigQueue.shift().text });
-    }
-}
-
-// Stop keying: drop the pieces not yet sent, then cut the rig's buffer
-// and the browser sidetone with it.
-function cwStopRig() {
-    cwRigQueue = [];
-    if (cwRigTimer) { clearTimeout(cwRigTimer); cwRigTimer = null; }
-    send({ cmd: 'stopCW' });
-    cwSidetoneStop();
-}
-
-function playCWSidetone(text, startIndex) {
-    // The transcript highlight, and the browser sidetone when TONE is on.
-    scheduleCharacterUpdates(text, startIndex);
-    cwSidetoneSchedule(startIndex);
-}
-
-function scheduleCharacterUpdates(text, startIndex) {
-    // Update specific characters starting at startIndex
-    // Schedule their status updates using wall-clock time so appended
-    // transmissions continue seamlessly from the current progress.
-
-    var dotDuration = 1200 / cwSpeed;
-
-    if (startIndex >= cwCharacters.length) return; // Invalid index
-
-    var now = Date.now();
-    var elapsed = now - cwTransmitStartTime;
-
-    // Schedule updates for each character in this transmission
-    var tokens = cwTokenize(text);
-    for (var i = 0; i < tokens.length && (startIndex + i) < cwCharacters.length; i++) {
-        var charObj = cwCharacters[startIndex + i];
-
-        (function(charObj, prev) {
-            var char = charObj.char;
-
-            // Delay from now = when char should start minus time already elapsed
-            var actualStartTime = charObj.startTime - elapsed;
-
-            // Mark as "sending" when transmission starts
-            var timer1 = setTimeout(function() {
-                if (charObj.status === 'pending') {
-                    charObj.status = 'sending';
-                    updateCWTranscript();
-                }
-            }, Math.max(0, actualStartTime));
-            cwUpdateTimers.push(timer1);
-
-            var charDuration = cwTokenDuration(char, prev, dotDuration);
-
-            // Mark as "sent" when transmission completes
-            var timer2 = setTimeout(function() {
-                if (charObj.status === 'sending') {
-                    charObj.status = 'sent';
-                    updateCWTranscript();
-                }
-            }, Math.max(0, actualStartTime + charDuration));
-            cwUpdateTimers.push(timer2);
-        })(charObj, startIndex + i > 0 ? cwCharacters[startIndex + i - 1].char : null);
-    }
-}
-
-function clearCWTimers() {
-    // Clear all pending character update timers
-    for (var i = 0; i < cwUpdateTimers.length; i++) {
-        clearTimeout(cwUpdateTimers[i]);
-    }
-    cwUpdateTimers = [];
-}
+// Stop keying now, keep what was sent (Escape).
+function cwStopRig() { cwKeyer.cut(); }
 
 function toggleCWBar() {
     var cwBar = document.getElementById('cwBar');
@@ -9183,74 +8919,7 @@ function updateCWTranscript() {
     display.scrollLeft = display.scrollWidth;
 }
 
-function sendCWText(text) {
-    if (!text) return;
-
-    text = text.toUpperCase(); // Force uppercase for morse code
-
-    // Calculate timing for each character
-    var dotDuration = 1200 / cwSpeed;
-
-    // Use cumulative timing to prevent overlaps
-    var currentTime = cwNextCharTime;
-    var startIndex = cwCharacters.length; // Track where these characters start
-
-    // Add characters with timing
-    var tokens = cwTokenize(text);
-    var tokenStart = [];   // model start time of each token, for the rig pieces
-    var prev = startIndex > 0 ? cwCharacters[startIndex - 1].char : null;
-    for (var i = 0; i < tokens.length; i++) {
-        var char = tokens[i];
-        tokenStart.push(currentTime);
-
-        cwCharacters.push({
-            char: char,
-            status: 'pending',
-            startTime: currentTime,
-            groupIndex: startIndex // Track which transmission this belongs to
-        });
-
-        currentTime += cwTokenDuration(char, prev, dotDuration);
-        prev = char;
-    }
-
-    // Update next character time for cumulative tracking
-    var modelStart = cwNextCharTime;
-    cwNextCharTime = currentTime;
-
-    // Wall-clock base of the model.  First batch, or the keyer went idle
-    // (everything queued so far has been keyed): the new text starts now,
-    // so the transcript highlight and the rig pieces are timed from now.
-    var now = Date.now();
-    if (startIndex === 0 || cwTransmitStartTime + modelStart < now) {
-        cwTransmitStartTime = now - modelStart;
-    }
-
-    // Rig pieces of at most CW_RIG_FRAME_BYTES, a prosign never split.  The
-    // first goes behind whatever is still queued; each next one is due when
-    // the previous piece has CW_RIG_LEAD_CHARS characters left to key.
-    var pieces = [];
-    var cur = '', curFirst = 0;
-    for (var t = 0; t < tokens.length; t++) {
-        var rigTok = cwToRig(tokens[t]);
-        if (cur && cur.length + rigTok.length > CW_RIG_FRAME_BYTES) {
-            pieces.push({ text: cur, first: curFirst });
-            cur = ''; curFirst = t;
-        }
-        cur += rigTok;
-    }
-    if (cur) pieces.push({ text: cur, first: curFirst });
-    var at = cwRigQueue.length ? cwRigQueue[cwRigQueue.length - 1].at : 0;
-    for (var p = 0; p < pieces.length; p++) {
-        if (p > 0) {
-            var leadTok = Math.max(pieces[p - 1].first, pieces[p].first - CW_RIG_LEAD_CHARS);
-            at = Math.max(at, cwTransmitStartTime + tokenStart[leadTok]);
-        }
-        cwQueueRigText(pieces[p].text, at);
-    }
-    playCWSidetone(text, startIndex); // Pass the starting index
-    updateCWTranscript();
-}
+function sendCWText(text) { cwKeyer.sendText(text); }
 
 function initCWHandlers() {
     // Speed buttons
@@ -9284,21 +8953,14 @@ function initCWHandlers() {
 
     // Stop button
     document.getElementById('cwStopBtn').addEventListener('click', function() {
-        cwStopRig();
+        cwKeyer.stop();
         cwPendingText = '';
-        // Clear character state
-        cwCharacters = [];
-        cwCharIndex = 0;
-        cwNextCharTime = 0;
-        cwTransmitStartTime = 0;
-        clearCWTimers(); // Clear all pending character update timers
-        updateCWTranscript();
     });
 
     // Browser sidetone on / off
     updateCwSidetoneUi();
     document.getElementById('cwToneBtn').addEventListener('click', function() {
-        setCwSidetone(!cwSidetone);
+        setCwSidetone(!cwSidetone.enabled);
         document.getElementById('cwInput').focus();
     });
 
@@ -9312,12 +8974,7 @@ function initCWHandlers() {
         document.getElementById('cwInput').value = '';
         cwSentText = '';
         cwPendingText = '';
-        cwCharacters = [];
-        cwCharIndex = 0;
-        cwNextCharTime = 0;
-        cwTransmitStartTime = 0;
-        clearCWTimers(); // Clear all pending character update timers
-        cwStopRig();
+        cwKeyer.stop();
         setPanel('default'); // Return to default panel
         renderBottomBar();
     });
@@ -9380,22 +9037,13 @@ function initCWHandlers() {
     cwInput.addEventListener('keydown', function(e) {
         // In character mode, Delete stops transmission and flushes all pending characters
         if ((e.key === 'Backspace' || e.key === 'Delete') && cwMode === 'chars') {
-            // Check if there are any pending characters
-            var hasPending = cwCharacters.some(function(ch) { return ch.status === 'pending'; });
-
-            if (hasPending) {
+            // The characters already handed to the radio's keyer cannot be
+            // taken back, so Backspace stops keying and drops everything
+            // pending; the keyer rewinds its clock so the next text starts
+            // at once.
+            if (cwKeyer.backspace()) {
                 e.preventDefault();
-
-                // Stop radio transmission immediately
-                cwStopRig();
-
-                // Remove ALL pending characters from display
-                cwCharacters = cwCharacters.filter(function(ch) {
-                    return ch.status !== 'pending';
-                });
-
                 console.log('[CW] Transmission stopped, all pending characters flushed');
-                updateCWTranscript();
             }
         }
 
