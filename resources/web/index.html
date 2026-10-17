@@ -2918,6 +2918,7 @@ var DEFAULT_BANDS = [
 ];
 var rigBands = [];      // [{label, freq}] — the picker's buttons, see populateBands()
 var BAND_RANGES = {};   // label -> [start, end) — which band a frequency belongs to
+var rigBandNums = {};   // num -> true for every band in the rig's table, keyed or not
 populateBands(null);
 
 var audioCtx = null;
@@ -3220,6 +3221,10 @@ var digiFt8tsReady = false;
 var DIGI_BANDS = [
     { label: '160m', ft8: 1840000,  ft4: 1844000  },
     { label: '80m',  ft8: 3573000,  ft4: 3575000  },
+    // 60 m has no picker key (BAND_KEYS), so it is gated on the rig's own
+    // band table entry (Num 18) instead. 5.357 is the WSJT-X FT8 default;
+    // there is no FT4 channel (#116).
+    { label: '60m',  ft8: 5357000,  num: 18 },
     { label: '40m',  ft8: 7074000,  ft4: 7047000  },
     { label: '30m',  ft8: 10136000, ft4: 10140000 },
     { label: '20m',  ft8: 14074000, ft4: 14080000 },
@@ -3243,7 +3248,9 @@ function digiDialHz(band) {
 // the BAND picker (populateBands), so an IC-705 gets 2m/70cm and an HF rig
 // doesn't.
 function rigDigiBands() {
-    return DIGI_BANDS.filter(function(b) { return bandLabelOf(b.ft8) !== null; });
+    return DIGI_BANDS.filter(function(b) {
+        return b.num !== undefined ? !!rigBandNums[b.num] : bandLabelOf(b.ft8) !== null;
+    });
 }
 function populateDigiBandSel() {
     var bandSel = document.getElementById('digiBandSel');
@@ -5156,6 +5163,8 @@ function renderModeOverlay() {
 function populateBands(bands) {
     var byNum = {};
     (bands && bands.length ? bands : DEFAULT_BANDS).forEach(function(b) { byNum[b.num] = b; });
+    rigBandNums = {};
+    for (var n in byNum) if (byNum[n].end > byNum[n].start) rigBandNums[n] = true;
     rigBands = [];
     BAND_RANGES = {};
     BAND_KEYS.forEach(function(k) {
@@ -11334,6 +11343,7 @@ function streamDigiAudio(samples12k, onDone, onFirstChunk) {
 function freqToBand(hz) {
     if (hz >= 1800000 && hz < 2000000) return '160M';
     if (hz >= 3500000 && hz < 4000000) return '80M';
+    if (hz >= 5060000 && hz < 5450000) return '60M';
     if (hz >= 7000000 && hz < 7300000) return '40M';
     if (hz >= 10100000 && hz < 10150000) return '30M';
     if (hz >= 14000000 && hz < 14350000) return '20M';
