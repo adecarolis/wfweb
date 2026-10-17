@@ -3164,7 +3164,7 @@ var micSeq = 0;
 var micStarting = false;   // startMic() is waiting on getUserMedia / the capture worklet
 var micStartGen = 0;       // bumped by stopMic(): a start still in flight drops what it gets
 var micError = null;       // { state, hint }: why the last start failed, shown on the MIC tile
-var micDeviceId = '';       // MIC button choice; '' = AUTO (pickDirectMicId, never the rig's codec)
+var micDeviceId = '';       // TX AUDIO button choice; '' = AUTO (pickDirectMicId, never the rig's codec)
 try { micDeviceId = localStorage.getItem('wfMicDeviceId') || ''; } catch (e) {}
 var micDeviceLabel = '';    // what getUserMedia handed us
 var micDevices = [];        // audioinput devices; labels only once permission is granted
@@ -5607,11 +5607,11 @@ function renderAudioMicOverlay() {
         }));
     }
 
-    // MIC: TX audio from this browser. OFF, then the remembered input (AUTO
+    // TX AUDIO: the browser's microphone. OFF, then the remembered input (AUTO
     // the first time: never the radio's own codec), then each other input;
     // picking one turns TX audio on at once.
     if (txAudioAvailable && window.isSecureContext) {
-        var mic = makeFuncBtn('MIC', micButtonState(), micEnabled, cycleMicDevice);
+        var mic = makeFuncBtn('TX AUDIO', micButtonState(), micEnabled, cycleMicDevice);
         mic.id = 'micDeviceBtn';
         mic.title = (micEnabled && micDeviceLabel) ? ('Microphone: ' + micDeviceLabel)
             : micError ? micError.hint
@@ -7344,7 +7344,7 @@ function toggleMic() {
     startMic();
 }
 
-// MIC tile / MIC button text. A failed start says why instead of falling
+// MIC tile / TX AUDIO button text. A failed start says why instead of falling
 // back to a silent OFF.
 function micStateText() {
     if (micEnabled) return 'ON';
@@ -7420,7 +7420,7 @@ function pickDirectMicId() {
     });
 }
 
-// The MIC button's choice, else AUTO's pick. An input that has gone away
+// The TX AUDIO button's choice, else AUTO's pick. An input that has gone away
 // (unplugged) is forgotten and AUTO picks again.
 function acquireMic() {
     function open(id) {
@@ -7497,13 +7497,13 @@ function micPickerState() {
     return 'SAVED';
 }
 
-// The MIC button names the input while TX audio runs, else OFF or why the
+// The TX AUDIO button names the input while TX audio runs, else OFF or why the
 // last start failed.
 function micButtonState() {
     return micEnabled ? micPickerState() : micStateText();
 }
 
-// MIC button: OFF -> the remembered input -> each following input -> OFF.
+// TX AUDIO button: OFF -> the remembered input -> each following input -> OFF.
 // Turning on starts the mic inside the tap, so the browser's permission
 // prompt can show: until it is granted the browser names no inputs, and
 // there would be nothing to cycle through.
