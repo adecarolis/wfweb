@@ -8840,6 +8840,7 @@ var CW_TONE_RAMP = 0.005;       // s, attack / release of each element
 var cwToneCtx = null, cwToneGain = null;    // context + level, kept once made
 var cwToneOsc = null, cwToneEnv = null;     // oscillator + envelope, parked when idle
 var cwToneIdleTimer = null;
+var cwToneEnd = 0;              // audio time of the last element scheduled so far
 
 function cwSidetoneOn() { return cwSidetone; }
 function cwSidetoneGain() { return 0.2 * rxVolumeGain(); }
@@ -8880,10 +8881,13 @@ function cwSidetoneEnsure() {
     return true;
 }
 
-// Park the oscillator once the last element is out, so an idle page does
-// not keep an audio graph running.
-function cwSidetoneIdle(afterMs) {
+// Park the oscillator once the last scheduled element is out (cwToneEnd, not
+// just this call's: a typed space schedules nothing, and parking then would
+// throw away the characters still pending), so an idle page does not keep
+// an audio graph running.
+function cwSidetoneIdle() {
     if (cwToneIdleTimer) clearTimeout(cwToneIdleTimer);
+    var afterMs = Math.max(0, (cwToneEnd - cwToneCtx.currentTime) * 1000) + 500;
     cwToneIdleTimer = setTimeout(function() {
         cwToneIdleTimer = null;
         if (cwToneOsc) {
@@ -8906,7 +8910,7 @@ function cwSidetoneSchedule(startIndex) {
     var now = cwToneCtx.currentTime;
     var base = now + (cwTransmitStartTime - Date.now()) / 1000;   // audio time of model 0
     var env = cwToneEnv.gain;
-    var last = now;
+    if (cwToneEnd < now) cwToneEnd = now;
     for (var i = startIndex; i < cwCharacters.length; i++) {
         var pattern = CW_MORSE[cwCharacters[i].char];
         if (!pattern || pattern === ' ') continue;
@@ -8920,12 +8924,12 @@ function cwSidetoneSchedule(startIndex) {
                 env.linearRampToValueAtTime(1, on + CW_TONE_RAMP);
                 env.setValueAtTime(1, off - CW_TONE_RAMP);
                 env.linearRampToValueAtTime(0, off);
-                last = off;
+                if (off > cwToneEnd) cwToneEnd = off;
             }
             t += (len + dot / 1000) * 1000;
         }
     }
-    cwSidetoneIdle((last - now) * 1000 + 500);
+    cwSidetoneIdle();
 }
 
 // Cut the tone now (STOP, Backspace, close): drop what was scheduled and
@@ -8937,7 +8941,8 @@ function cwSidetoneStop() {
     if (g.cancelAndHoldAtTime) g.cancelAndHoldAtTime(now);
     else { g.cancelScheduledValues(now); g.setValueAtTime(g.value, now); }
     g.linearRampToValueAtTime(0, now + CW_TONE_RAMP);
-    cwSidetoneIdle(200);
+    cwToneEnd = now;
+    cwSidetoneIdle();
 }
 
 // One dit when TONE is switched on, so the tap is heard.
@@ -8949,7 +8954,8 @@ function cwSidetonePreview() {
     env.linearRampToValueAtTime(1, on + CW_TONE_RAMP);
     env.setValueAtTime(1, off - CW_TONE_RAMP);
     env.linearRampToValueAtTime(0, off);
-    cwSidetoneIdle(300);
+    if (off > cwToneEnd) cwToneEnd = off;
+    cwSidetoneIdle();
 }
 
 function setCwSidetone(on) {
@@ -9011,6 +9017,21 @@ function cwToRig(text) {
     });
 }
 
+// Model length of one transcript unit in ms, as the Icom keyer times it: 1:3
+// dot/dash, one dot between elements, three between characters, seven
+// between words.  The three-dot character gap is counted with the character
+// it follows, so a space after a character adds only the four dots that
+// gap does not cover (#141: counting all seven put the transcript, the piece
+// pacing and the sidetone three dots behind the radio on every word).
+function cwTokenDuration(char, prev, dot) {
+    if (char === ' ') return (prev && prev !== ' ') ? 4 * dot : 7 * dot;
+    var pattern = CW_MORSE[char];
+    if (!pattern) return 0;
+    var ms = 0;
+    for (var j = 0; j < pattern.length; j++) ms += (pattern[j] === '.' ? 1 : 3) * dot + dot;
+    return ms + 2 * dot;   // the last element's dot gap plus two more = character gap
+}
+
 // The Icom keyer command takes at most 30 characters per CI-V frame (a longer
 // frame is answered NG and nothing is keyed, #141) and the rig's keyer buffer
 // is finite.  Text therefore goes to the rig in pieces of at most
@@ -9058,13 +9079,7 @@ function scheduleCharacterUpdates(text, startIndex) {
     // Schedule their status updates using wall-clock time so appended
     // transmissions continue seamlessly from the current progress.
 
-    var morse = CW_MORSE;
-
     var dotDuration = 1200 / cwSpeed;
-    var dashDuration = dotDuration * 3;
-    var symbolGap = dotDuration;
-    var charGap = dotDuration * 3;
-    var wordGap = dotDuration * 7;
 
     if (startIndex >= cwCharacters.length) return; // Invalid index
 
@@ -9076,7 +9091,7 @@ function scheduleCharacterUpdates(text, startIndex) {
     for (var i = 0; i < tokens.length && (startIndex + i) < cwCharacters.length; i++) {
         var charObj = cwCharacters[startIndex + i];
 
-        (function(charObj) {
+        (function(charObj, prev) {
             var char = charObj.char;
 
             // Delay from now = when char should start minus time already elapsed
@@ -9091,20 +9106,7 @@ function scheduleCharacterUpdates(text, startIndex) {
             }, Math.max(0, actualStartTime));
             cwUpdateTimers.push(timer1);
 
-            // Calculate character duration
-            var pattern = morse[char];
-            var charDuration = 0;
-
-            if (char === ' ') {
-                charDuration = wordGap;
-            } else if (pattern) {
-                for (var j = 0; j < pattern.length; j++) {
-                    var symbol = pattern[j];
-                    charDuration += (symbol === '.') ? dotDuration : dashDuration;
-                    charDuration += symbolGap;
-                }
-                charDuration += charGap - symbolGap;
-            }
+            var charDuration = cwTokenDuration(char, prev, dotDuration);
 
             // Mark as "sent" when transmission completes
             var timer2 = setTimeout(function() {
@@ -9114,7 +9116,7 @@ function scheduleCharacterUpdates(text, startIndex) {
                 }
             }, Math.max(0, actualStartTime + charDuration));
             cwUpdateTimers.push(timer2);
-        })(charObj);
+        })(charObj, startIndex + i > 0 ? cwCharacters[startIndex + i - 1].char : null);
     }
 }
 
@@ -9187,13 +9189,7 @@ function sendCWText(text) {
     text = text.toUpperCase(); // Force uppercase for morse code
 
     // Calculate timing for each character
-    var morse = CW_MORSE;
-
     var dotDuration = 1200 / cwSpeed;
-    var dashDuration = dotDuration * 3;
-    var symbolGap = dotDuration;
-    var charGap = dotDuration * 3;
-    var wordGap = dotDuration * 7;
 
     // Use cumulative timing to prevent overlaps
     var currentTime = cwNextCharTime;
@@ -9202,9 +9198,9 @@ function sendCWText(text) {
     // Add characters with timing
     var tokens = cwTokenize(text);
     var tokenStart = [];   // model start time of each token, for the rig pieces
+    var prev = startIndex > 0 ? cwCharacters[startIndex - 1].char : null;
     for (var i = 0; i < tokens.length; i++) {
         var char = tokens[i];
-        var pattern = morse[char];
         tokenStart.push(currentTime);
 
         cwCharacters.push({
@@ -9214,16 +9210,8 @@ function sendCWText(text) {
             groupIndex: startIndex // Track which transmission this belongs to
         });
 
-        if (char === ' ') {
-            currentTime += wordGap;
-        } else if (pattern) {
-            for (var j = 0; j < pattern.length; j++) {
-                var symbol = pattern[j];
-                currentTime += (symbol === '.') ? dotDuration : dashDuration;
-                currentTime += symbolGap;
-            }
-            currentTime += charGap - symbolGap;
-        }
+        currentTime += cwTokenDuration(char, prev, dotDuration);
+        prev = char;
     }
 
     // Update next character time for cumulative tracking
