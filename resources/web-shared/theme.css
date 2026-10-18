@@ -66,6 +66,12 @@
     --on-accent:       #000;
     --field-text:      #cfc;
     --panel-bg:        #00140c;
+
+    /* -- Pointer over scopes / waterfalls ---------------------------------- *
+     * Our own crosshair, white with a dark outline: `cursor: crosshair` is   *
+     * the OS pointer, a thin black cross on some themes (Raspberry Pi OS)    *
+     * that vanishes on the navy waterfall (#135). Hotspot is the centre.     */
+    --cursor-cross: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='23' height='23'%3E%3Cpath d='M11.5 1v8M11.5 14v8M1 11.5h8M14 11.5h8' stroke='black' stroke-opacity='.8' stroke-width='3'/%3E%3Cpath d='M11.5 1.5v7M11.5 14.5v7M1.5 11.5h7M14.5 11.5h7' stroke='white' stroke-width='1'/%3E%3C/svg%3E") 11 11, crosshair;
 }
 
 /* -- Per-mode accent palettes ------------------------------------------------
@@ -124,11 +130,19 @@
     cursor: pointer;
     white-space: nowrap;
 }
-.wf-btn:hover:not(:disabled),
 .wf-btn.active {
     background: var(--mode-accent-dim);
     color: var(--on-accent);
     border-color: var(--mode-accent);
+}
+/* Hover only where a pointer can hover: a touch screen keeps :hover after a
+   tap, which left TONE / Hold TX looking active after being switched off. */
+@media (hover: hover) {
+    .wf-btn:hover:not(:disabled) {
+        background: var(--mode-accent-dim);
+        color: var(--on-accent);
+        border-color: var(--mode-accent);
+    }
 }
 .wf-btn:active:not(:disabled) { transform: translateY(1px); }
 .wf-btn:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -154,12 +168,18 @@
     border-color: var(--state-error);
     color: var(--state-error);
 }
-.wf-btn.danger:hover:not(:disabled),
 .wf-btn.danger.active,
 .wf-btn.danger:active:not(:disabled) {
     background: var(--state-error);
     color: #fff;
     border-color: var(--state-error);
+}
+@media (hover: hover) {
+    .wf-btn.danger:hover:not(:disabled) {
+        background: var(--state-error);
+        color: #fff;
+        border-color: var(--state-error);
+    }
 }
 
 /* -- Tab -------------------------------------------------------------------- *
@@ -182,9 +202,11 @@
     cursor: pointer;
     user-select: none;
 }
-.wf-tab:hover:not(.active) {
-    background: var(--mode-accent-dim);
-    color: var(--on-accent);
+@media (hover: hover) {
+    .wf-tab:hover:not(.active) {
+        background: var(--mode-accent-dim);
+        color: var(--on-accent);
+    }
 }
 .wf-tab.active {
     background: var(--mode-accent-dim);

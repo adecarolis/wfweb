@@ -58,6 +58,17 @@ icomCommander::~icomCommander()
 }
 
 
+// The keyer speed range (WPM) behind CI-V 0x14 0x0C's 0..255, from the rig
+// file's Key Speed command; 6-48 when the file does not say (#141).
+void icomCommander::keySpeedRange(int &lo, int &hi) const
+{
+    lo = 6; hi = 48;
+    if (rigCaps.commands.contains(funcKeySpeed)) {
+        const funcType &ks = rigCaps.commands[funcKeySpeed];
+        if (ks.maxVal > ks.minVal) { lo = ks.minVal; hi = ks.maxVal; }
+    }
+}
+
 void icomCommander::commSetup(QHash<quint16,rigInfo> rigList, quint16 rigCivAddr, QString rigSerialPort, quint32 rigBaudRate, QString vsp,quint16 tcpPort, quint8 wf)
 {
     // construct
@@ -742,6 +753,26 @@ void icomCommander::parseData(QByteArray dataInput)
     */
 }
 
+// The keyer command (17) takes at most 30 characters per CI-V frame; a longer
+// frame is answered NG and nothing is keyed (#141).  Cut the text into frames
+// of at most maxLen bytes, never inside a "^XX" prosign.
+static QList<QByteArray> splitCwText(const QByteArray &text, int maxLen)
+{
+    QList<QByteArray> frames;
+    QByteArray cur;
+    for (int i = 0; i < text.length(); ) {
+        int unit = (text.at(i) == '^' && i + 2 < text.length()) ? 3 : 1;
+        if (!cur.isEmpty() && cur.length() + unit > maxLen) {
+            frames.append(cur);
+            cur.clear();
+        }
+        cur.append(text.mid(i, unit));
+        i += unit;
+    }
+    if (!cur.isEmpty() || frames.isEmpty()) frames.append(cur);
+    return frames;
+}
+
 // True when every byte of `data` is packed BCD (both nibbles 0-9). A rig that
 // has nothing to report fails this: an IC-705 sitting on a blank memory
 // channel answers 25 00 / 26 00 with a single 0xFF instead of digits.
@@ -1047,8 +1078,11 @@ void icomCommander::parseCommand()
         break;
     // The following group are 2 bytes converted to uchar (0-255) but require special processing
     case funcKeySpeed: {
+        // Level 0..255 spans the keyer range of the rig file (6-48 WPM on
+        // most Icoms, 6-60 on the IC-7600 family) (#141).
         uchar level = bcdHexToUChar(payloadIn.at(0),payloadIn.at(1));
-        value.setValue<ushort>(round((level / 6.071) + 6));
+        int lo, hi; keySpeedRange(lo, hi);
+        value.setValue<ushort>(round(level * (hi - lo) / 255.0 + lo));
         break;
     }
     case funcCwPitch: {
@@ -1245,6 +1279,10 @@ void icomCommander::parseCommand()
         {
             if (b.bsr == bsr.band)
             {
+                if (payloadIn.length() < b.bytes + 5) {
+                    qWarning(logRig()) << "Short BSR reply:" << payloadIn.toHex(' ');
+                    break;
+                }
                 bsr.freq = parseFreqData(payloadIn.mid(2,b.bytes),receiver);
                 // The Band Stacking command returns the reg in the position that VFO is expected.
                 // As BSR is always on the active VFO, just set that.
@@ -1257,6 +1295,7 @@ void icomCommander::parseCommand()
                     bsr.tone = decodeTone(payloadIn.mid(b.bytes+5,3));
                     bsr.tsql = decodeTone(payloadIn.mid(b.bytes+8,3));
                 }
+                bsr.tail = payloadIn.mid(b.bytes+4);
                 qDebug(logRig()) << QString("BSR received, band:%0 code:%1 freq:%2 data:%3 mode:%4 filter:%5")
                                         .arg(bsr.band).arg(bsr.reg).arg(bsr.freq.Hz).arg(bsr.data).arg(bsr.mode).arg(bsr.filter);
                 value.setValue(bsr);
@@ -3221,8 +3260,18 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                         payload.append(uchar(0xff));
                     } else {
                         emit sidetone(QString(textData));
-                        payload.append(textData);
-                        qDebug(logRig()) << "CW output::" << textData ;
+                        // Longer text goes out as consecutive frames of at
+                        // most 30 characters; the rig appends each to its
+                        // keyer buffer.  The last frame stays in payload so
+                        // the usual send below handles it.
+                        const QByteArray cmdBytes = payload;
+                        const QList<QByteArray> frames = splitCwText(textData, 30);
+                        for (int f = 0; f < frames.size() - 1; f++) {
+                            qDebug(logRig()) << "CW output (frame" << f + 1 << "of" << frames.size() << "):" << frames.at(f);
+                            prepDataAndSend(cmdBytes + frames.at(f));
+                        }
+                        payload.append(frames.last());
+                        qDebug(logRig()) << "CW output::" << frames.last();
                     }
                     qDebug(logRig()) << "Sending CW: payload:" << payload.toHex(' ');
                 }
@@ -3267,9 +3316,11 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
 
                 }
                 else if (func == funcKeySpeed){
-                    ushort wpm = round((value.value<ushort>()-6) * (6.071));
-                    qDebug(logRig()) << "Sending key speed orig:" << value.value<ushort>() << "sent:" << wpm;
-                    payload.append(bcdEncodeInt(wpm));
+                    int lo, hi; keySpeedRange(lo, hi);
+                    int wpm = qBound(lo, (int)value.value<ushort>(), hi);
+                    ushort level = round((wpm - lo) * 255.0 / (hi - lo));
+                    qDebug(logRig()) << "Sending key speed orig:" << value.value<ushort>() << "sent:" << level;
+                    payload.append(bcdEncodeInt(level));
                 }
                 else if (func == funcCwPitch) {
                     ushort pitch = 0;
@@ -3766,10 +3817,17 @@ void icomCommander::receiveCommand(funcs func, QVariant value, uchar receiver)
                             payload.append(makeFreqPayload(bsr.freq,b.bytes));
                             payload.append(bcdEncodeChar(bsr.mode));
                             payload.append(bcdEncodeChar(bsr.filter));
-                            payload.append((bsr.data << 4 & 0xf0) + (bsr.sql & 0x0f));
-                            if (bsr.tone.tone != 0) {
-                                payload.append(encodeTone(bsr.tone.tone));
-                                payload.append(encodeTone(bsr.tsql.tone));
+                            if (!bsr.tail.isEmpty()) {
+                                // Read-modify-write: the rig rejects a record
+                                // without its data/tone bytes, so echo back
+                                // what it sent (IC-7300 bench, 2026-10-09).
+                                payload.append(bsr.tail);
+                            } else {
+                                payload.append((bsr.data << 4 & 0xf0) + (bsr.sql & 0x0f));
+                                if (bsr.tone.tone != 0) {
+                                    payload.append(encodeTone(bsr.tone.tone));
+                                    payload.append(encodeTone(bsr.tsql.tone));
+                                }
                             }
                             break;
                         }

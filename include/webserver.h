@@ -171,6 +171,7 @@ private slots:
     void onReporterStateChanged(int state);
     void onPskReporterStateChanged(int state);
     void drainFreeDVTxBuffer();
+    void usbTxPump();
 
     // RADE V1
     void onRadeRxReady(audioPacket audio);
@@ -220,16 +221,28 @@ private:
     // Common TX-audio writer.  Takes mono int16 LE PCM, expands to stereo
     // if the device requires it, optionally applies freedvTxGain (ALC-
     // controlled), and writes to usbAudioOutputDevice.  Called from
-    // onWsBinaryMessage (mic / FT8 / voice — applyGain=false) and
+    // usbTxPump (mic / FT8 / voice — applyGain=false) and
     // drainPacketUsbTxBuffer (PKT — applyGain=true).  Same writer for
     // both, which is the structural unification of TX audio plumbing.
     void txWritePcmFrame(const QByteArray &pcmMonoLE, bool applyGain);
+    // Browser-frame coalescing in front of txWritePcmFrame (see
+    // usbTxPending): bytes of mono PCM per device write, the pending-
+    // buffer reset for when the mic session ends or another TX path takes
+    // the device.
+    int usbTxPeriodBytes() const;
+    void usbTxReset();
     void handleCommand(QWebSocket *client, const QJsonObject &cmd);
     // One station callsign + grid for the whole server, persisted under
     // [Station] in the settings file and pushed to every browser.  Replaces
     // the old per-browser value that the last client to connect used to
     // overwrite (a stale tab could silently swap the call on every QSO).
     void applyStationCallsign(const QString &call, const QString &grid, bool persist);
+    // CW keyer macros: [CW] Macro1..Macro10 in the settings file, one set for
+    // every browser (#141).  applyCwMacros replaces the whole set, persists
+    // it and pushes it to every client.
+    void loadCwMacros();
+    void applyCwMacros(const QJsonObject &macros, const char *who);
+    QJsonObject cwMacrosJson() const;
     std::unique_ptr<QSettings> openSettings() const;
     // Station logbook (see logbook.h).  These wrap the Logbook mutations
     // with the WebSocket delta events and the WSJT-X emission.
@@ -258,6 +271,9 @@ private:
     static QJsonValue filterJson(const modeInfo &m);
     modeInfo stringToMode(const QString &mode);
     QJsonObject buildStatusJson();
+    // Operating freq / mode with the fallbacks memory mode needs (#138).
+    cacheItem operatingFreqCache(const vfoCommandType &t);
+    cacheItem operatingModeCache(const vfoCommandType &t);
     codecType codecByteToType(quint8 codec);
     bool setupSsl();
 
@@ -355,6 +371,17 @@ private:
     QByteArray preTxBuffer;
     bool preTxBuffering = false;
     bool txAudioActive = false; // true once pre-buffer is flushed; stops device on IdleState
+    // Browser TX frames are far smaller than the device's period: the mic
+    // worklet posts one 128-sample quantum (2.7 ms) per WebSocket message,
+    // the FT8/JS8 pacer 512 samples.  Qt's WinMM backend gives every
+    // write() its own 40 ms wave block whatever its size and drops what it
+    // cannot place, so writing them one by one starved the device of all
+    // but ~13 ms in every 200 ms and chopped the speech (#136).  Frames
+    // queue here and usbTxPump writes them one full period at a time.
+    QByteArray usbTxPending;          // mono int16 LE awaiting a full period
+    QTimer *usbTxPumpTimer = nullptr; // keeps draining once the device was full
+    qint64 usbTxLastFrameMs = 0;      // wall clock of the last browser frame
+    bool usbTxOverflowLogged = false;
 
     // Single-writer rule for browser TX audio: wall-clock of the last
     // modem-tagged (header byte 1 & 0x01) frame.  Untagged mic frames are
@@ -370,6 +397,21 @@ private:
     rigInput savedDataOffMod;
     bool dataOffModSaved = false;
     QWebSocket *micActiveClient = nullptr;
+
+    // Browser-mic diagnostics.  A browser whose default input is the rig's
+    // own USB codec streams the receiver audio back into the transmitter,
+    // which is silent on the air, and nothing in the log said so.  The
+    // browser now names the device it captures with enableMic; the server
+    // logs it, warns (log + micWarning to the client) when it is the rig's
+    // capture device, and logs the level of the mic frames it receives
+    // every 5 s and at session end so a silent source is visible too.
+    QString rigCaptureDeviceName;   // the input device setupUsbAudio() picked
+    QString micDeviceLabel;         // what the browser said it captures from
+    qint64 micStatBytes = 0;
+    int micStatPeak = 0;
+    qint64 micStatLastLogMs = 0;
+    void micStatsAccumulate(const QByteArray &pcm);
+    void micStatsLog(const char *why);
 
     // Pick the DATA MOD OFF input matching our audio transport: "LAN"/"WLAN"
     // by name when LAN-connected, otherwise USB by type (see issue #72 —
@@ -402,6 +444,7 @@ private:
     PskReporter *pskReporter = nullptr;
     QString reporterCallsign;
     QString reporterGrid;
+    QMap<int, QString> cwMacros_;       // slot (1..10) -> macro text
     bool reporterEnabled = false;       // FreeDV Reporter toggle
     bool pskReporterEnabled = false;    // pskreporter.info toggle (FT8/FT4)
     bool digiActive = false;            // browser DIGI panel open (FT8/FT4)
@@ -657,6 +700,15 @@ private:
     // local-memory recall and by recallMemoryOnRig()'s no-select-command
     // fallback, which does exactly the same thing from the rig's own cache.
     void applyMemoryToVfo(qint64 hz, quint8 modeReg, quint8 filter, quint8 datamode);
+
+    // setBand write-back: the band stacking register being left and the VFO
+    // state to store in it. Filled by the setBand handler, consumed by the
+    // matching 1A 01 reply in receiveCache() (read-modify-write).
+    struct { int bsr = 0; int reg = 0; qint64 hz = 0; quint8 mode = 0; quint8 filter = 0; } pendingBsrSave;
+    // Set right before queueing the write-back: queue->add() echoes the
+    // value through receiveCache() synchronously, and that echo carries a
+    // real frequency, so it is otherwise indistinguishable from a reply.
+    bool bsrWriteEchoPending = false;
 
     // Repeater access tone (TONE / TSQL / DTCS). Rigs speak one of two
     // dialects — the single "Tone Squelch Type" register (IC-705/9700/905) or

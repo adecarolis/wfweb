@@ -111,7 +111,7 @@ body.js8-open #bottomBar { grid-row: 5; }
     flex-direction: column;
     border: 1px solid var(--mode-accent-bg);
     border-radius: 3px;
-    cursor: crosshair;
+    cursor: var(--cursor-cross);
     overflow: hidden;
 }
 .js8-wf-bar {

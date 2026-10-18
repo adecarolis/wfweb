@@ -21,6 +21,10 @@ UNITS = {
     "logbook": ["src/logbook.cpp"],
     # Terminal status page layout at every terminal size.
     "consolestatus": ["src/consolestatus.cpp"],
+    # Windows launcher helpers: wfweb command line composed from the form,
+    # and the server log lines the launcher reacts to.
+    "launcher": ["launcher/src/launchconfig.cpp", "launcher/src/logparser.cpp",
+                 "launcher/src/portowner.cpp"],
 }
 
 

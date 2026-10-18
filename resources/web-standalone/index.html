@@ -383,7 +383,7 @@ body.meter-needle #meterCanvas { width: auto; height: 128px; aspect-ratio: 611 /
 #spectrumCanvas, #waterfallCanvas {
     display: block; width: 100%;
     position: absolute; left: 0;
-    cursor: crosshair;
+    cursor: var(--cursor-cross);
     touch-action: none;
 }
 #spectrumCanvas {
@@ -642,6 +642,10 @@ body.meter-needle #meterCanvas { width: auto; height: 128px; aspect-ratio: 611 /
     gap: 5px; padding: 4px 0;
     flex: 1; align-content: center;
 }
+/* The VOL row sits right under the tiles, not at the foot of the overlay. */
+#audioMicOverlay .overlay-grid { flex: 0 0 auto; }
+#audioMicOverlay.visible { justify-content: center; }
+#audioMicOverlay .rx-vol-row { margin: 10px 0 0; }
 
 /* SPAN overlay */
 /* SPAN / REF is a bottom sheet, not a full cover: both settings change what
@@ -742,6 +746,7 @@ body.meter-needle #meterCanvas { width: auto; height: 128px; aspect-ratio: 611 /
 /* .cw-bar-header geometry is now .wf-panel-header; .cw-label is now .wf-badge.
    (Mobile overrides for these live in the @media block below.) */
 
+.cw-tone-btn .cw-narrow { display: none; }   /* the glyph form, phones only (below) */
 /* Mobile portrait: more compact CW bar */
 @media (orientation: portrait) and (max-width: 600px) {
     .cw-bar-header {
@@ -760,7 +765,9 @@ body.meter-needle #meterCanvas { width: auto; height: 128px; aspect-ratio: 611 /
     #cwSpeedInput { width: 32px; height: 28px; font-size: 12px; padding: 2px; }
     .cw-wpm-label { display: none; } /* Hide "WPM" - obvious from context */
     .cw-mode-btn { padding: 5px 5px; font-size: 10px; min-height: 28px; }
-    .cw-stop-btn, .cw-close-btn, .cw-edit-btn, .cw-log-btn { padding: 5px 5px; font-size: 10px; min-height: 28px; }
+    .cw-stop-btn, .cw-close-btn, .cw-edit-btn, .cw-log-btn, .cw-tone-btn { padding: 5px 5px; font-size: 10px; min-height: 28px; }
+    .cw-tone-btn .cw-wide { display: none; }   /* TONE becomes a note glyph */
+    .cw-tone-btn .cw-narrow { display: inline; }
     .cw-display { font-size: 11px; padding: 3px 4px; min-height: 18px; }
     .cw-input-field { font-size: 11px; padding: 3px 4px; }
     .cw-macro-grid { gap: 3px; padding: 4px 6px; }
@@ -792,6 +799,9 @@ body.meter-needle #meterCanvas { width: auto; height: 128px; aspect-ratio: 611 /
     border-color: var(--mode-accent);
     box-shadow: 0 0 4px var(--mode-accent-dim);
 }
+/* The -/+ keys step the speed; the native spinner only hid the digits (#141). */
+#cwSpeedInput { -moz-appearance: textfield; appearance: textfield; }
+#cwSpeedInput::-webkit-inner-spin-button, #cwSpeedInput::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .cw-wpm-label {
     color: var(--mode-accent-dim);
     font-size: 12px;
@@ -1001,7 +1011,7 @@ body.digi-open #bottomBar { grid-row: 5; }
     display: flex;
     flex-direction: column;
     border-bottom: 1px solid #024;
-    cursor: crosshair;
+    cursor: var(--cursor-cross);
 }
 .digi-wf-bar {
     flex: 1;
@@ -2014,6 +2024,13 @@ body.digi-open #bottomBar { grid-row: 5; }
     top: 118px;  /* clears the 14px-tall TONE readout above (92 + 26) */
     font-size: 14px;
 }
+/* Browser playback volume turned down is the same silent killer as RFG, with
+   the same cure one tap away (the GAIN panel), so it joins the stack in the
+   same orange. Hidden at 100 %. */
+#rxVolIndicator {
+    top: 144px;  /* clears the 14px-tall RFG readout above (118 + 26) */
+    font-size: 14px;
+}
 
 /* ============ RESPONSIVE ============ */
 @media (max-height: 450px) {
@@ -2576,7 +2593,7 @@ body.digi-open #bottomBar { grid-row: 5; }
                 <span class="cw-label wf-badge">CW</span>
                 <div class="cw-speed-ctrl">
                     <button class="cw-speed-btn wf-btn sq" id="cwSpeedDown">−</button>
-                    <input type="number" id="cwSpeedInput" min="10" max="35" value="20">
+                    <input type="number" id="cwSpeedInput" min="6" max="48" value="20" inputmode="numeric">
                     <span class="cw-wpm-label">WPM</span>
                     <button class="cw-speed-btn wf-btn sq" id="cwSpeedUp">+</button>
                 </div>
@@ -2585,6 +2602,7 @@ body.digi-open #bottomBar { grid-row: 5; }
                     <button class="cw-mode-btn wf-btn" data-mode="words">WRD</button>
                     <button class="cw-mode-btn wf-btn" data-mode="lines">LN</button>
                 </div>
+                <button id="cwToneBtn" class="cw-tone-btn wf-btn" title="Sidetone made in the browser at the radio's CW pitch, at the VOL level. Switch it off if you key with a paddle and hear the radio's own sidetone over USB."><span class="cw-wide">TONE</span><span class="cw-narrow">&#9834;</span></button>
                 <button id="cwLogBtn" class="cw-log-btn wf-btn">LOG<span class="cw-wide"> QSO</span></button>
                 <button id="cwStopBtn" class="cw-stop-btn wf-btn danger">STOP</button>
                 <button id="cwCloseBtn" class="cw-close-btn wf-btn sq">✕</button>
@@ -2803,6 +2821,14 @@ body.digi-open #bottomBar { grid-row: 5; }
                     <input type="range" id="afGainSlider" min="0" max="255" value="128"></div>
                 <span class="gain-val" id="afGainVal">50%</span>
             </div>
+            <!-- Browser-side playback volume (setRxVolume) — the AF row above is
+                 the radio's own speaker, which over USB does not touch the stream. -->
+            <div class="gain-row rx-vol-row" title="wfweb playback volume in this browser. AF is the radio's own speaker.">
+                <span class="gain-label">VOL</span>
+                <div class="gain-bar-bg"><div class="gain-bar-fill rx-vol-fill" style="width:100%"></div>
+                    <input type="range" class="rx-vol-slider" id="rxVolumeSlider" min="0" max="100" value="100"></div>
+                <span class="gain-val rx-vol-val">100%</span>
+            </div>
             <div class="gain-row">
                 <span class="gain-label">RF</span>
                 <div class="gain-bar-bg"><div class="gain-bar-fill" id="rfGainFill" style="width:50%"></div>
@@ -2918,6 +2944,12 @@ body.digi-open #bottomBar { grid-row: 5; }
         <div id="audioMicOverlay" class="overlay">
             <div class="overlay-title">AUDIO / TX</div>
             <div class="overlay-grid" id="audioMicGrid"></div>
+            <div class="gain-row rx-vol-row" id="audioVolRow" title="wfweb playback volume in this browser. AF is the radio's own speaker.">
+                <span class="gain-label">VOL</span>
+                <div class="gain-bar-bg"><div class="gain-bar-fill rx-vol-fill" style="width:100%"></div>
+                    <input type="range" class="rx-vol-slider" id="audioVolSlider" min="0" max="100" value="100"></div>
+                <span class="gain-val rx-vol-val">100%</span>
+            </div>
         </div>
 
         <!-- Connection (transport) overlay. Standalone build: shown only
@@ -2954,6 +2986,7 @@ body.digi-open #bottomBar { grid-row: 5; }
         <div id="dupIndicator" class="spectrum-warning" style="display: none;" onclick="openDupModal()"></div>
         <div id="toneIndicator" class="spectrum-warning" style="display: none;" onclick="openToneModal()"></div>
         <div id="rfGainIndicator" class="spectrum-warning" style="display: none;" onclick="setPanel('gain')"></div>
+        <div id="rxVolIndicator" class="spectrum-warning" style="display: none;" onclick="setPanel('gain')"></div>
     </div>
 
     <!-- Row 5: Bottom bar -->
@@ -2971,6 +3004,8 @@ body.digi-open #bottomBar { grid-row: 5; }
 <script src="wf-canvas.js"></script>
 <script src="needle-meter.js"></script>
 <script src="recorder.js"></script>
+<script src="rx-jitter.js"></script>
+<script src="cw-keyer.js"></script>
 <script>
 // ============================================================
 // STATE
@@ -3049,6 +3084,10 @@ var isLan = false;
 var lanConnected = false;
 var defaultModes = ['LSB', 'USB', 'AM', 'CW', 'RTTY', 'FM', 'CW-R'];
 
+// Band stacking register slot (1..3) last recalled per band label, session
+// only: pressing the band you are already on steps to the next slot, like
+// the rig's own BAND key. Bands without a register use bandLastFreq below.
+var bsrReg = {};
 // Band frequency memory: remember last-used frequency per band label
 var bandLastFreq = (function() {
     try { var s = localStorage.getItem('bandLastFreq'); if (s) return JSON.parse(s); } catch(e) {}
@@ -3098,6 +3137,7 @@ var DEFAULT_BANDS = [
 ];
 var rigBands = [];      // [{label, freq}] — the picker's buttons, see populateBands()
 var BAND_RANGES = {};   // label -> [start, end) — which band a frequency belongs to
+var rigBandNums = {};   // num -> true for every band in the rig's table, keyed or not
 populateBands(null);
 
 var audioCtx = null;
@@ -3126,6 +3166,13 @@ var micStream = null;
 var micAudioCtx = null;
 var micWorkletNode = null;
 var micSeq = 0;
+var micStarting = false;   // startMic() is waiting on getUserMedia / the capture worklet
+var micStartGen = 0;       // bumped by stopMic(): a start still in flight drops what it gets
+var micError = null;       // { state, hint }: why the last start failed, shown on the MIC tile
+var micDeviceId = '';       // TX AUDIO button choice; '' = AUTO (pickDirectMicId, never the rig's codec)
+try { micDeviceId = localStorage.getItem('wfMicDeviceId') || ''; } catch (e) {}
+var micDeviceLabel = '';    // what getUserMedia handed us
+var micDevices = [];        // audioinput devices; labels only once permission is granted
 var monitorEnabled = false;
 var monitorLevel = 128; // 0-255 (radio gain)
 
@@ -3307,6 +3354,29 @@ var digiTxSeq = 0;
 var digiTxAttempts = 0;
 var digiTuneActive = false;
 var digiSavedModLevel = -1;    // saved USB Mod Level before entering DIGI mode
+// A digital-mode panel (FT8/FT4, JS8) forces USB and retunes to its dial
+// frequency when it opens. Snapshot the VFO first so closing the panel puts
+// the rig back — frequency, mode and filter — unless the band was changed
+// inside the panel, in which case the rig stays where the user took it.
+// Switching straight from one of these panels to the other hands the
+// snapshot over (closeOtherModes), so closing the second still returns to
+// where the first one started.
+var vfoSnapshot = null;
+var vfoSnapshotHandoff = false;
+function saveVfoSnapshot() {
+    if (vfoSnapshot || !(currentFreq > 0) || !currentMode) return;
+    vfoSnapshot = { freq: currentFreq, mode: currentMode, filter: currentFilter, band: bandLabelOf(currentFreq) };
+}
+function restoreVfoSnapshot() {
+    if (vfoSnapshotHandoff) return;
+    var s = vfoSnapshot;
+    vfoSnapshot = null;
+    if (!s || bandLabelOf(currentFreq) !== s.band) return;
+    send({ cmd: 'setFrequency', value: s.freq });
+    send({ cmd: 'setMode', value: s.mode, filter: s.filter });
+}
+window.saveVfoSnapshot = saveVfoSnapshot;
+window.restoreVfoSnapshot = restoreVfoSnapshot;
 var DIGI_MOD_LEVEL = 192;      // USB Mod Level during DIGI mode (~75%)
 var digiTuneNode = null;    // AudioWorkletNode for continuous tune tone
 var DIGI_MAX_TX_ATTEMPTS = 5; // retry same message up to 5 times (~75s for FT8)
@@ -3320,6 +3390,14 @@ var digiQsoPartner = '';
 var digiQsoPartnerBusyWith = ''; // third station the partner was working when we clicked (tail-end); their traffic to it must not trip the auto-desist
 var digiTheirReport = '';  // report they sent us
 var digiOurReport = '';    // report we sent them (for logging)
+// A signal report out of a decoded message token, as it goes into the log.
+// The R in an FT8 R-report ("R-07") acknowledges our report; it is protocol,
+// not part of the report, so RST_RCVD gets "-07" (#140). A token that is no
+// report at all (RR73, a grid) yields ''.
+function digiReportFromToken(tok) {
+    var m = /^R?([-+]\d{1,2})$/i.exec(tok || '');
+    return m ? m[1] : '';
+}
 // ── ARRL Field Day (#73) — opt-in contest mode; '' leaves standard FT8/FT4 unchanged ──
 var digiContestMode = '';  // '' = standard, 'FD' = ARRL Field Day
 // Editable / "pinned" message rows (#74). Per-row operator overrides overlaid
@@ -3350,6 +3428,10 @@ var digiFt8tsReady = false;
 var DIGI_BANDS = [
     { label: '160m', ft8: 1840000,  ft4: 1844000  },
     { label: '80m',  ft8: 3573000,  ft4: 3575000  },
+    // 60 m has no picker key (BAND_KEYS), so it is gated on the rig's own
+    // band table entry (Num 18) instead. 5.357 is the WSJT-X FT8 default;
+    // there is no FT4 channel (#116).
+    { label: '60m',  ft8: 5357000,  num: 18 },
     { label: '40m',  ft8: 7074000,  ft4: 7047000  },
     { label: '30m',  ft8: 10136000, ft4: 10140000 },
     { label: '20m',  ft8: 14074000, ft4: 14080000 },
@@ -3373,7 +3455,9 @@ function digiDialHz(band) {
 // the BAND picker (populateBands), so an IC-705 gets 2m/70cm and an HF rig
 // doesn't.
 function rigDigiBands() {
-    return DIGI_BANDS.filter(function(b) { return bandLabelOf(b.ft8) !== null; });
+    return DIGI_BANDS.filter(function(b) {
+        return b.num !== undefined ? !!rigBandNums[b.num] : bandLabelOf(b.ft8) !== null;
+    });
 }
 function populateDigiBandSel() {
     var bandSel = document.getElementById('digiBandSel');
@@ -3414,7 +3498,7 @@ function onTransportOpen() {
 function onTransportClose() {
     document.getElementById('connDot').classList.remove('connected');
     document.getElementById('connDot').title = 'Disconnected';
-    if (micEnabled) stopMic();
+    if (micEnabled || micStarting) stopMic();
     if (audioEnabled) stopAudio();
     audioAvailable = false;
     txAudioAvailable = false;
@@ -3538,6 +3622,8 @@ function handleMessage(msg) {
                 updateToneCaps(msg);
                 if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner);
                 if (msg.txMeters !== undefined) setTxMeterCaps(msg.txMeters, msg.poCal);
+                if (msg.cwSpeedRange) applyCwSpeedRange(msg.cwSpeedRange);
+                if (msg.manufacturer !== undefined) cwKeyerType = (msg.manufacturer === 'Icom') ? 'icom' : 'ideal';
                 if (msg.hasMemoryMode !== undefined) hasMemoryMode = !!msg.hasMemoryMode;
                 if (msg.memoriesLocal !== undefined) setMemoriesLocal(!!msg.memoriesLocal);
                 if (msg.memGroups !== undefined) setupMemoryGroups(msg.memGroups, msg.memStart || 0);
@@ -3572,6 +3658,8 @@ function handleMessage(msg) {
             updateToneCaps(msg);
             if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner);
             if (msg.txMeters !== undefined) setTxMeterCaps(msg.txMeters, msg.poCal);
+                if (msg.cwSpeedRange) applyCwSpeedRange(msg.cwSpeedRange);
+                if (msg.manufacturer !== undefined) cwKeyerType = (msg.manufacturer === 'Icom') ? 'icom' : 'ideal';
             if (msg.hasMemoryMode !== undefined) hasMemoryMode = !!msg.hasMemoryMode;
             if (msg.memoriesLocal !== undefined) setMemoriesLocal(!!msg.memoriesLocal);
             if (msg.memGroups !== undefined) setupMemoryGroups(msg.memGroups, msg.memStart || 0);
@@ -3629,6 +3717,7 @@ function handleMessage(msg) {
             if (msg.antenna !== undefined || msg.rxAntenna !== undefined) updateAntennaState(msg.antenna, msg.rxAntenna);
             if (msg.filterWidth !== undefined) updateSlider('filterWidth', msg.filterWidth);
             if (msg.pbtInner !== undefined) updateSlider('pbtInner', msg.pbtInner);
+            if (msg.cwPitch !== undefined) setCwPitch(msg.cwPitch);
             if (msg.pbtOuter !== undefined) updateSlider('pbtOuter', msg.pbtOuter);
             if (msg.filterShape !== undefined) updateFilterShapeBtn(msg.filterShape);
             if (msg.powerState !== undefined) updatePowerState(msg.powerState);
@@ -3677,6 +3766,7 @@ function handleMessage(msg) {
             if (msg.antenna !== undefined || msg.rxAntenna !== undefined) updateAntennaState(msg.antenna, msg.rxAntenna);
             if (msg.filterWidth !== undefined) updateSlider('filterWidth', msg.filterWidth);
             if (msg.pbtInner !== undefined) updateSlider('pbtInner', msg.pbtInner);
+            if (msg.cwPitch !== undefined) setCwPitch(msg.cwPitch);
             if (msg.pbtOuter !== undefined) updateSlider('pbtOuter', msg.pbtOuter);
             if (msg.filterShape !== undefined) updateFilterShapeBtn(msg.filterShape);
             if (msg.powerState !== undefined) updatePowerState(msg.powerState);
@@ -5317,12 +5407,14 @@ function renderModeOverlay() {
 function populateBands(bands) {
     var byNum = {};
     (bands && bands.length ? bands : DEFAULT_BANDS).forEach(function(b) { byNum[b.num] = b; });
+    rigBandNums = {};
+    for (var n in byNum) if (byNum[n].end > byNum[n].start) rigBandNums[n] = true;
     rigBands = [];
     BAND_RANGES = {};
     BAND_KEYS.forEach(function(k) {
         var b = byNum[k.num];
         if (!b || !(b.end > b.start)) return;
-        rigBands.push({ label: k.label, freq: Math.min(Math.max(k.home, b.start), b.end) });
+        rigBands.push({ label: k.label, freq: Math.min(Math.max(k.home, b.start), b.end), bsr: b.bsr || 0 });
         BAND_RANGES[k.label] = [b.start, b.end];
     });
     populateDigiBandSel();
@@ -5351,11 +5443,28 @@ function renderBandOverlay() {
             var btn = document.createElement('button');
             btn.className = 'ov-btn';
             btn.textContent = b.label;
-            btn.onclick = (function(f, lbl) { return function() {
-                var target = bandLastFreq[lbl] || f;
-                send({ cmd: 'setFrequency', value: target });
+            btn.onclick = (function(f, lbl, bsr) { return function() {
+                if (bsr) {
+                    // The rig's BAND key: recall the band's last-used stacking
+                    // register (freq + mode + filter); pressing the band you
+                    // are already on steps to the next of its three slots.
+                    // `save` names the register being left so the transport
+                    // stores the current VFO there first, as the key does —
+                    // the rig never does that for CI-V tuning by itself.
+                    var cur = bandLabelOf(currentFreq);
+                    var curBand = null;
+                    rigBands.forEach(function(rb) { if (rb.label === cur) curBand = rb; });
+                    var reg = (cur === lbl) ? (bsrReg[lbl] || 1) % 3 + 1 : (bsrReg[lbl] || 1);
+                    var msg = { cmd: 'setBand', bsr: bsr, reg: reg };
+                    if (curBand && curBand.bsr) msg.save = { bsr: curBand.bsr, reg: bsrReg[cur] || 1 };
+                    bsrReg[lbl] = reg;
+                    send(msg);
+                } else {
+                    send({ cmd: 'setFrequency', value: bandLastFreq[lbl] || f });
+                }
                 setPanel('default');
-            }; })(b.freq, b.label);
+            }; })(b.freq, b.label, b.bsr);
+            if (b.bsr) btn.title = 'Band stacking register: press again to cycle 1 / 2 / 3';
             grid.appendChild(btn);
         }
         if (r === 0) {
@@ -5467,6 +5576,13 @@ function renderFuncOverlay() {
         renderFuncOverlay();
     }));
 
+    // RX audio / TX audio / jitter buffer: the AUDIO / TX overlay, which is
+    // otherwise only reachable while audio is off.
+    if (audioAvailable || txAudioAvailable) {
+        var audioState = audioEnabled ? 'ON' + (audioJbStats ? ' \u00b7 ' + Math.round(audioJbStats.bufMs) + ' ms' : '') : 'OFF';
+        grid.appendChild(makeFuncBtn('AUDIO', audioState, audioEnabled, showAudioMicMenu));
+    }
+
     // Fill remaining slots + back
     var total = grid.children.length;
     var cols = 5;
@@ -5499,6 +5615,7 @@ function makeFuncBtn(label, state, active, onclick) {
 function renderAudioMicOverlay() {
     var grid = document.getElementById('audioMicGrid');
     grid.innerHTML = '';
+    document.getElementById('audioVolRow').style.display = audioAvailable ? '' : 'none';
 
     // RX Audio button
     if (audioAvailable) {
@@ -5507,11 +5624,24 @@ function renderAudioMicOverlay() {
         }));
     }
 
-    // TX Audio (Mic) button
+    // TX AUDIO: the browser's microphone. OFF, then the remembered input (AUTO
+    // the first time: never the radio's own codec), then each other input;
+    // picking one turns TX audio on at once.
     if (txAudioAvailable && window.isSecureContext) {
-        grid.appendChild(makeFuncBtn('TX AUDIO', micEnabled ? 'ON' : 'OFF', micEnabled, function() {
-            if (micEnabled) stopMic(); else startMic();
-        }));
+        var mic = makeFuncBtn('TX AUDIO', micButtonState(), micEnabled, cycleMicDevice);
+        mic.id = 'micDeviceBtn';
+        mic.title = (micEnabled && micDeviceLabel) ? ('Microphone: ' + micDeviceLabel)
+            : micError ? micError.hint
+            : 'TX audio from this browser. Tap to cycle OFF, AUTO and each input; AUTO avoids the radio\'s own USB codec.';
+        grid.appendChild(mic);
+    }
+
+    // RX jitter buffer: adaptive by default, or pinned to a fixed size.
+    if (audioAvailable) {
+        var buf = makeFuncBtn('BUFFER', audioBufState(), !!audioBufLock, cycleAudioBuf);
+        buf.id = 'audioBufBtn';
+        buf.title = 'RX audio buffer. AUTO sizes it to the jitter it measures; tap to pin a fixed size.';
+        grid.appendChild(buf);
     }
 
     // Fill remaining slots + back
@@ -6557,6 +6687,44 @@ function freqKey(key) {
     document.getElementById('freqInputDisplay').textContent = freqInputBuf || '0';
 }
 
+// Keyboard for F-INP (#142). While the keypad is up, digits and '.' (',' on
+// a decimal-comma keypad) type as its buttons do, Backspace deletes the last
+// character, Delete is CE, Enter is ENT; Escape stays with the page handler,
+// which closes the keypad (BACK). With nothing else up, F opens it, and so
+// does a digit, which starts the entry -- but not while a mode panel that
+// takes typed text is open: a CW report typed after the CW box lost focus
+// must not become a frequency. Returns true when the key was taken.
+function freqInputKeydown(e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return false;
+    var k = (e.key === ',') ? '.' : e.key;
+    var isDigit = k.length === 1 && k >= '0' && k <= '9';
+    if (currentPanel !== 'freqinp') {
+        if (currentPanel !== 'default') return false;
+        if (e.target.tagName === 'SELECT' || e.target.isContentEditable) return false;
+        if (k === 'f' || k === 'F') { setPanel('freqinp'); return true; }
+        if (!isDigit || typingModePanelOpen()) return false;
+        setPanel('freqinp');
+        freqKey(k);
+        return true;
+    }
+    if (isDigit || k === '.') freqKey(k);
+    else if (k === 'Backspace') {
+        freqInputBuf = freqInputBuf.slice(0, -1);
+        document.getElementById('freqInputDisplay').textContent = freqInputBuf || '0';
+    }
+    else if (k === 'Delete') freqKey('CE');
+    else if (k === 'Enter') freqKey('ENT');
+    else return false;
+    return true;
+}
+
+function typingModePanelOpen() {
+    return !document.getElementById('cwBar').classList.contains('hidden')
+        || digiBarVisible
+        || !!(window.Packet && window.Packet.state && window.Packet.state.visible)
+        || (typeof window.js8MessengerVisible === 'function' && window.js8MessengerVisible());
+}
+
 // Tuner handler
 function handleTunerPress() {
     send({ cmd: 'setTuner', value: tunerState > 0 ? 0 : 1 });
@@ -6582,7 +6750,8 @@ function updateWarningVisibility() {
 
     // Show mic indicator permanently when TX audio is available; reflect current state
     if (txAudioAvailable && window.isSecureContext) {
-        micWarning.textContent = micEnabled ? 'MIC ON' : 'MIC OFF';
+        micWarning.textContent = 'MIC ' + micStateText();
+        micWarning.title = micError ? micError.hint : '';
         micWarning.style.display = 'block';
     } else {
         micWarning.style.display = 'none';
@@ -6878,6 +7047,12 @@ function toggleLanConnection() {
 // produces overlapping UI.  Whenever one of them is opened, this helper
 // closes whichever others are currently active.
 function closeOtherModes(except) {
+    // FT8 <-> JS8: the panel being closed must not restore the VFO, the one
+    // opening inherits its snapshot instead (see saveVfoSnapshot).
+    vfoSnapshotHandoff = (except === 'digi' || except === 'js8');
+    try { closeOtherModesInner(except); } finally { vfoSnapshotHandoff = false; }
+}
+function closeOtherModesInner(except) {
     if (except !== 'cw') {
         var cwBar = document.getElementById('cwBar');
         if (cwBar && !cwBar.classList.contains('hidden')) {
@@ -7087,9 +7262,11 @@ function setSpan(idx) { send({ cmd: 'setSpan', value: idx }); updateSpanIndex(id
 // ============================================================
 // AUDIO (preserved)
 // ============================================================
-var audioRingBuf = null, audioRingWrite = 0, audioRingRead = 0;
-var audioRingBuffered = 0, audioRingStarted = false, audioPrebufferSamples = 0;
 var audioScriptNode = null, audioUseWorklet = false;
+var audioJb = null;          // ScriptProcessor fallback: the jitter buffer runs on the main thread
+var audioJbStats = null;     // latest report from the jitter buffer (worklet or fallback)
+var audioBufLock = 0;        // BUFFER tile: 0 = AUTO, else the pinned buffer in ms
+try { audioBufLock = parseInt(localStorage.getItem('wfAudioBufLock'), 10) || 0; } catch (e) {}
 
 function toggleAudio() {
     if (!audioAvailable) return;
@@ -7097,64 +7274,85 @@ function toggleAudio() {
     startAudio();
 }
 
-var audioGainNode = null; // Global gain node for muting RX audio during CW
+var audioGainNode = null; // RX playback gain: carries the browser-side VOL below
+
+// Browser-side RX playback volume (VOL in the GAIN panel and the AUDIO / TX
+// overlay). AF GAIN is the radio's own speaker — on a USB-connected Icom the
+// USB AF level is a fixed menu setting — so without this a remote operator
+// could only turn wfweb down by muting the tab. VOL scales audioGainNode with
+// a squared taper (50 % ≈ -12 dB, 0 = mute) so it reads like a volume knob.
+// The recorder and the CW / FT8 / JS8 decoder taps take the PCM before that
+// node (handleAudioData), so they never see it.
+var rxVolume = (function() {
+    try { var v = parseInt(localStorage.getItem('wfRxVolume'), 10); if (v >= 0 && v <= 100) return v; } catch (e) {}
+    return 100;
+})();
+function rxVolumeGain() { var f = rxVolume / 100; return f * f; }
+function setRxVolume(pct, save) {
+    rxVolume = Math.max(0, Math.min(100, Math.round(pct) || 0));
+    if (audioGainNode && audioCtx) audioGainNode.gain.setTargetAtTime(rxVolumeGain(), audioCtx.currentTime, 0.01);
+    if (window.cwSidetone) cwSidetone.gainChanged();
+    var text = rxVolume ? rxVolume + '%' : 'MUTE';
+    document.querySelectorAll('.rx-vol-slider').forEach(function(s) { if (parseInt(s.value, 10) !== rxVolume) s.value = rxVolume; });
+    document.querySelectorAll('.rx-vol-fill').forEach(function(f) { f.style.width = rxVolume + '%'; });
+    document.querySelectorAll('.rx-vol-val').forEach(function(el) { el.textContent = text; });
+    var ind = document.getElementById('rxVolIndicator');
+    if (ind) { ind.textContent = 'VOL ' + text; ind.style.display = rxVolume < 100 ? '' : 'none'; }
+    if (save !== false) { try { localStorage.setItem('wfRxVolume', String(rxVolume)); } catch (e) {} }
+}
+document.querySelectorAll('.rx-vol-slider').forEach(function(s) {
+    s.addEventListener('input', function() { setRxVolume(parseInt(s.value, 10)); });
+});
+setRxVolume(rxVolume, false);
+
+// iOS gives the whole browser one audio session, and WebKit moves it to
+// play-and-record (video-chat mode, speaker several times quieter) the moment
+// a page captures anything - then keeps it there for as long as any Web Audio
+// plays, across reloads, until the browser is killed. Safari 16.4+ lets the
+// page name the category (navigator.audioSession.type) and that overrides
+// the inference. In this build RX audio from a USB rig is itself a capture of
+// the rig's codec (SerialRigTransport opens it with getUserMedia), so the
+// session is play-and-record while that or the mic is open and ambient (what
+// a page with only Web Audio gets) otherwise; the virtual rig's RX arrives
+// over a BroadcastChannel and only the mic counts. A no-op everywhere else.
+function setAudioSessionType(type) {
+    var s = navigator.audioSession;
+    if (!s || !('type' in s)) return;
+    try {
+        if (s.type === type) return;
+        s.type = type;
+        console.log('[Audio] session ' + type);
+    } catch (e) { console.warn('[Audio] session ' + type + ' failed:', e); }
+}
+function rxAudioIsCapture() {
+    return typeof SerialRigTransport !== 'undefined' && serialTransport instanceof SerialRigTransport;
+}
+// The session type once the mic is closed.
+function micOffAudioSessionType() {
+    return (audioEnabled && rxAudioIsCapture()) ? 'play-and-record' : 'ambient';
+}
 
 function startAudio() {
     if (audioCtx) stopAudio();
+    if (rxAudioIsCapture()) setAudioSessionType('play-and-record');
     audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: audioSampleRate });
-    var bufSize = audioCtx.sampleRate * 1.5; // 1.5s buffer for low-latency LAN
-    audioRingBuf = new Float32Array(bufSize);
-
-    // Create gain node for muting during CW
+    // Gain node: the browser-side VOL (setRxVolume)
     audioGainNode = audioCtx.createGain();
-    audioGainNode.gain.value = 1.0;
+    audioGainNode.gain.value = rxVolumeGain();
     audioGainNode.connect(audioCtx.destination);
-    audioRingWrite = 0; audioRingRead = 0; audioRingBuffered = 0;
-    audioRingStarted = false;
-    audioPrebufferSamples = Math.floor(audioCtx.sampleRate * 0.04); // 40ms pre-buffer
+    audioJbStats = null;
     if (audioCtx.audioWorklet && window.isSecureContext) startWithWorklet();
     else startWithScriptProcessor();
 }
 
+// The adaptive jitter buffer (rx-jitter.js) runs inside the worklet: RX
+// frames are posted to it and it reports its size and underruns back.
 function startWithWorklet() {
-    var processorCode = [
-        'class WfwebAudioProcessor extends AudioWorkletProcessor {',
-        '  constructor() {',
-        '    super();',
-        '    this.buffer = new Float32Array(sampleRate * 1.5);',
-        '    this.writePos = 0; this.readPos = 0; this.buffered = 0;',
-        '    this.started = false;',
-        '    this.prebufferSamples = Math.floor(sampleRate * 0.04);',
-        '    this.maxBuffered = Math.floor(sampleRate * 0.2);',
-        '    this.port.onmessage = (e) => {',
-        '      if (e.data === "flush") { this.buffered = 0; this.readPos = this.writePos; this.started = false; return; }',
-        '      var samples = e.data; var len = samples.length; var bufLen = this.buffer.length;',
-        '      for (var i = 0; i < len; i++) { this.buffer[this.writePos] = samples[i]; this.writePos = (this.writePos + 1) % bufLen; }',
-        '      this.buffered += len; if (this.buffered > bufLen) this.buffered = bufLen;',
-        '      if (this.started && this.buffered > this.maxBuffered) {',
-        '        var target = Math.floor(sampleRate * 0.08); var skip = this.buffered - target;',
-        '        this.readPos = (this.readPos + skip) % bufLen; this.buffered -= skip;',
-        '      }',
-        '    };',
-        '  }',
-        '  process(inputs, outputs) {',
-        '    var output = outputs[0][0]; if (!output) return true;',
-        '    if (!this.started && this.buffered < this.prebufferSamples) { output.fill(0); return true; }',
-        '    this.started = true; var bufLen = this.buffer.length;',
-        '    for (var i = 0; i < output.length; i++) {',
-        '      if (this.buffered > 0) { output[i] = this.buffer[this.readPos]; this.readPos = (this.readPos + 1) % bufLen; this.buffered--; }',
-        '      else { output[i] = 0; }',
-        '    }',
-        '    return true;',
-        '  }',
-        '}',
-        'registerProcessor("wfweb-audio-processor", WfwebAudioProcessor);'
-    ].join('\n');
-    var blob = new Blob([processorCode], { type: 'application/javascript' });
-    var url = URL.createObjectURL(blob);
+    var url = wfRxWorkletUrl();
     audioCtx.audioWorklet.addModule(url).then(function() {
         URL.revokeObjectURL(url);
-        audioWorkletNode = new AudioWorkletNode(audioCtx, 'wfweb-audio-processor');
+        audioWorkletNode = new AudioWorkletNode(audioCtx, 'wfweb-audio-processor', { processorOptions: audioJbOptions() });
+        audioWorkletNode.port.onmessage = function(e) { onAudioJbEvent(e.data); };
         audioWorkletNode.connect(audioGainNode); // Connect through gain node for muting
         audioUseWorklet = true;
         send({ cmd: 'enableAudio', value: true });
@@ -7166,16 +7364,10 @@ function startWithWorklet() {
 }
 
 function startWithScriptProcessor() {
+    audioJb = new WfJitterBuffer(audioCtx.sampleRate, audioJbOptions());
+    audioJb.onEvent = onAudioJbEvent;
     audioScriptNode = audioCtx.createScriptProcessor(4096, 0, 1);
-    audioScriptNode.onaudioprocess = function(e) {
-        var output = e.outputBuffer.getChannelData(0);
-        if (!audioRingStarted && audioRingBuffered < audioPrebufferSamples) { for (var i = 0; i < output.length; i++) output[i] = 0; return; }
-        audioRingStarted = true; var bufLen = audioRingBuf.length;
-        for (var i = 0; i < output.length; i++) {
-            if (audioRingBuffered > 0) { output[i] = audioRingBuf[audioRingRead]; audioRingRead = (audioRingRead + 1) % bufLen; audioRingBuffered--; }
-            else output[i] = 0;
-        }
-    };
+    audioScriptNode.onaudioprocess = function(e) { audioJb.pull(e.outputBuffer.getChannelData(0)); };
     audioScriptNode.connect(audioGainNode); // Connect through gain node for muting
     audioUseWorklet = false;
     send({ cmd: 'enableAudio', value: true });
@@ -7187,7 +7379,7 @@ function stopAudio() {
     if (audioWorkletNode) { audioWorkletNode.disconnect(); audioWorkletNode = null; }
     if (audioScriptNode) { audioScriptNode.disconnect(); audioScriptNode = null; }
     if (audioGainNode) { audioGainNode.disconnect(); audioGainNode = null; }
-    audioUseWorklet = false; audioRingBuf = null;
+    audioUseWorklet = false; audioJb = null; audioJbStats = null;
     if (audioCtx) { audioCtx.close(); audioCtx = null; }
     renderBottomBar();
     updateWarningVisibility();
@@ -7202,8 +7394,39 @@ function updateTxAudioAvailable(available) {
 
 function toggleMic() {
     if (!txAudioAvailable || !window.isSecureContext) return;
+    if (micStarting) return;   // already on its way: a second start would open a second mic
     if (micEnabled) { stopMic(); return; }
     startMic();
+}
+
+// MIC tile / TX AUDIO button text. A failed start says why instead of falling
+// back to a silent OFF.
+function micStateText() {
+    if (micEnabled) return 'ON';
+    return micError ? micError.state : 'OFF';
+}
+
+function micErrorFor(err) {
+    var name = err && err.name;
+    if (name === 'NotAllowedError' || name === 'SecurityError')
+        return { state: 'BLOCKED', hint: 'The browser refused the microphone. Allow it in the site settings, then tap again.' };
+    if (name === 'NotFoundError' || name === 'OverconstrainedError')
+        return { state: 'NOT FOUND', hint: 'No microphone input was found.' };
+    if (name === 'NotReadableError' || name === 'AbortError')
+        return { state: 'BUSY', hint: 'The microphone could not be opened. Another application may be using it.' };
+    return { state: 'FAILED', hint: 'The microphone could not be started' + (err && err.message ? ': ' + err.message : '.') };
+}
+
+function micStartFailed(what, err) {
+    console.error(what, err);
+    micError = micErrorFor(err);
+    stopMic();
+}
+
+function micRepaint() {
+    renderBottomBar();
+    updateWarningVisibility();
+    if (currentPanel === 'audiomiс') renderAudioMicOverlay();
 }
 
 // In the Standalone build the OS "default" input device is often the rig's USB
@@ -7211,6 +7434,24 @@ function toggleMic() {
 // getUserMedia({audio:true}) ends up capturing the rig's RX audio and
 // sending it back as TX — completely silent the moment we transmit
 // because the rig stops receiving. Exclude the rig from the mic pick.
+var MIC_RIG_PATTERN = /(USB Audio CODEC|USB-PCM Audio|IC-7300|IC-705|IC-9700|IC-7610|IC-7100|IC-9100|CP210|Burr-Brown|PCM29|PCM30)/i;
+
+// Inputs that can be a microphone: not the rig's own USB input (that is the
+// RX audio), not the "default" / "communications" aliases of a real input,
+// not a PulseAudio monitor. The label test catches the rig even when the
+// saved id changed (e.g. user re-paired serial port).
+function micCandidates(devs) {
+    var rigInId = null;
+    try { rigInId = localStorage.getItem('directRxAudioId'); } catch (e) { /* ignore */ }
+    return devs.filter(function(d) {
+        if (d.kind !== 'audioinput' || !d.deviceId) return false;
+        if (rigInId && d.deviceId === rigInId) return false;
+        if (d.deviceId === 'default' || d.deviceId === 'communications') return false;
+        if (/monitor of/i.test(d.label || '')) return false;
+        return !MIC_RIG_PATTERN.test(d.label || '');
+    });
+}
+
 function pickDirectMicId() {
     var rigInId = null;
     try { rigInId = localStorage.getItem('directRxAudioId'); } catch (e) { /* ignore */ }
@@ -7218,17 +7459,7 @@ function pickDirectMicId() {
     try { savedMicId = localStorage.getItem('directMicId'); } catch (e) { /* ignore */ }
     if (savedMicId && savedMicId !== rigInId) return Promise.resolve(savedMicId);
     return navigator.mediaDevices.enumerateDevices().then(function(devs) {
-        var inputs = devs.filter(function(d) { return d.kind === 'audioinput'; });
-        var rigPattern = /(USB Audio CODEC|USB-PCM Audio|IC-7300|IC-705|IC-9700|IC-7610|IC-7100|IC-9100|CP210|Burr-Brown|PCM29|PCM30)/i;
-        var candidates = inputs.filter(function(d) {
-            if (rigInId && d.deviceId === rigInId) return false;
-            if (d.deviceId === 'default') return false;
-            if (/monitor of/i.test(d.label || '')) return false;
-            // Also skip anything matching the rig label pattern in case the
-            // saved id changed (e.g. user re-paired serial port).
-            if (rigPattern.test(d.label || '')) return false;
-            return true;
-        });
+        var candidates = micCandidates(devs);
         var preferred = candidates.find(function(d) {
             return /Built-in|Microphone|Headset|Headphones|Mic/i.test(d.label || '');
         }) || candidates[0];
@@ -7244,15 +7475,132 @@ function pickDirectMicId() {
     });
 }
 
-function startMic() {
-    if (micEnabled) return;
-    pickDirectMicId().then(function(preferredId) {
-        var audioConstraints = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
-        if (preferredId) audioConstraints.deviceId = { exact: preferredId };
-        return navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
+// The TX AUDIO button's choice, else AUTO's pick. An input that has gone away
+// (unplugged) is forgotten and AUTO picks again.
+function acquireMic() {
+    function open(id) {
+        var a = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };
+        if (id) a.deviceId = { exact: id };
+        return navigator.mediaDevices.getUserMedia({ audio: a });
+    }
+    var want = micDeviceId ? Promise.resolve(micDeviceId) : pickDirectMicId();
+    return want.then(function(id) {
+        return open(id).catch(function(err) {
+            if (!id || !err || err.name !== 'OverconstrainedError') throw err;
+            console.warn('Mic: saved device unavailable, picking again');
+            if (micDeviceId) { micDeviceId = ''; saveMicDevice(); }
+            try { localStorage.removeItem('directMicId'); } catch (e) { /* ignore */ }
+            return pickDirectMicId().then(open);
+        });
+    });
+}
+
+function refreshMicDevices() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return Promise.resolve();
+    return navigator.mediaDevices.enumerateDevices().then(function(devs) {
+        micDevices = devs.filter(function(d) { return d.kind === 'audioinput'; });
+    }).catch(function() {});
+}
+
+function micRealDevices() {
+    return micCandidates(micDevices);
+}
+
+function saveMicDevice() {
+    try { localStorage.setItem('wfMicDeviceId', micDeviceId); } catch (e) {}
+}
+
+function micLabelParts(label) {
+    var s = (label || '')
+        .replace(/^(Default|Communications) - /, '')
+        .replace(/\s*\([0-9a-f]{4}:[0-9a-f]{4}\)\s*$/i, '')
+        .replace(/\s*\((Built-in|Bluetooth|USB|Virtual)\)\s*$/i, '')
+        .replace(/\s+(Analog|Digital)?\s*(Stereo|Mono)$/i, '')
+        .trim();
+    var open = s.indexOf('('), close = s.lastIndexOf(')');
+    var p = { prefix: s, inside: '' };
+    if (open > 0 && close > open) {
+        p.prefix = s.slice(0, open).trim();
+        p.inside = s.slice(open + 1, close).replace(/\((R|TM|C)\)/gi, '').replace(/\s+/g, ' ').trim();
+    }
+    return p;
+}
+
+function micShortName(label, idx) {
+    var p = micLabelParts(label);
+    var out = p.inside || p.prefix;
+    if (p.inside) {
+        var real = micRealDevices();
+        for (var i = 0; i < real.length; i++) {
+            if (real[i].label !== label && micLabelParts(real[i].label).inside === p.inside) {
+                out = p.prefix || out;
+                break;
+            }
+        }
+    }
+    if (!out) return 'INPUT ' + (idx + 1);
+    return out.length > 24 ? out.slice(0, 23) + '…' : out;
+}
+
+function micPickerState() {
+    // AUTO names what it actually picked once the mic is running.
+    if (!micDeviceId) return (micEnabled && micDeviceLabel) ? 'AUTO · ' + micShortName(micDeviceLabel, 0) : 'AUTO';
+    var real = micRealDevices();
+    for (var i = 0; i < real.length; i++) {
+        if (real[i].deviceId === micDeviceId) return micShortName(real[i].label, i);
+    }
+    return 'SAVED';
+}
+
+// The TX AUDIO button names the input while TX audio runs, else OFF or why the
+// last start failed.
+function micButtonState() {
+    return micEnabled ? micPickerState() : micStateText();
+}
+
+// TX AUDIO button: OFF -> the remembered input -> each following input -> OFF.
+// Turning on starts the mic inside the tap, so the browser's permission
+// prompt can show: until it is granted the browser names no inputs, and
+// there would be nothing to cycle through.
+function cycleMicDevice() {
+    if (micStarting) return;
+    if (!micEnabled) { startMic(); return; }
+    refreshMicDevices().then(function() {
+        var ids = [''].concat(micRealDevices().map(function(d) { return d.deviceId; }).filter(Boolean));
+        var i = ids.indexOf(micDeviceId);
+        stopMic();
+        if (i >= 0 && i + 1 < ids.length) {
+            micDeviceId = ids[i + 1];
+            saveMicDevice();
+            startMic();
+        } else {
+            micDeviceId = '';   // past the last input: OFF, and AUTO comes next
+            saveMicDevice();
+        }
+    });
+}
+
+// permission: a getUserMedia the caller already fired inside its click (the
+// virtual rig's START), so the browser asks while the gesture is still live.
+// The start waits for it and drops its stream: ours carries the constraints.
+function startMic(permission) {
+    if (micEnabled || micStarting) {
+        if (permission) permission.then(function(s) { s.getTracks().forEach(function(t) { t.stop(); }); }, function() {});
+        return;
+    }
+    var gen = ++micStartGen;
+    micStarting = true; micError = null;
+    micRepaint();
+    setAudioSessionType('play-and-record');
+    Promise.resolve(permission).then(function(s) {
+        if (s) s.getTracks().forEach(function(t) { t.stop(); });
+        return acquireMic();
     })
     .then(function(stream) {
+        if (gen !== micStartGen) { stream.getTracks().forEach(function(t) { t.stop(); }); return; }
         micStream = stream;
+        var micTrack = stream.getAudioTracks()[0];
+        micDeviceLabel = micTrack ? (micTrack.label || '') : '';
         micAudioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 48000 });
         var source = micAudioCtx.createMediaStreamSource(stream);
         var captureCode = [
@@ -7271,6 +7619,7 @@ function startMic() {
         var url = URL.createObjectURL(blob);
         micAudioCtx.audioWorklet.addModule(url).then(function() {
             URL.revokeObjectURL(url);
+            if (gen !== micStartGen) return;   // stopMic() already closed it
             micWorkletNode = new AudioWorkletNode(micAudioCtx, 'wfweb-capture-processor');
             source.connect(micWorkletNode);
             micWorkletNode.port.onmessage = function(e) {
@@ -7292,23 +7641,24 @@ function startMic() {
                 new Uint8Array(frame, 6).set(new Uint8Array(pcmBuffer));
                 sendTxAudio(frame);
             };
-            micEnabled = true;
+            micEnabled = true; micStarting = false;
             send({ cmd: 'enableMic', value: true });
-            renderBottomBar();
-            updateWarningVisibility();
-            if (currentPanel === 'audiomiс') renderAudioMicOverlay();
-        }).catch(function(err) { console.error('Mic AudioWorklet failed:', err); stopMic(); });
-    }).catch(function(err) { console.error('getUserMedia failed:', err); });
+            micRepaint();
+        }).catch(function(err) { if (gen === micStartGen) micStartFailed('Mic AudioWorklet failed:', err); });
+    }).catch(function(err) { if (gen === micStartGen) micStartFailed('getUserMedia failed:', err); });
 }
 
+// Also cancels a start in flight: its callbacks see a newer micStartGen.
 function stopMic() {
-    send({ cmd: 'enableMic', value: false }); micEnabled = false;
+    if (micEnabled) send({ cmd: 'enableMic', value: false });
+    micEnabled = false; micStarting = false; micStartGen++;
+    micDeviceLabel = '';
     if (micWorkletNode) { micWorkletNode.disconnect(); micWorkletNode = null; }
     if (micStream) { micStream.getTracks().forEach(function(t) { t.stop(); }); micStream = null; }
     if (micAudioCtx) { micAudioCtx.close(); micAudioCtx = null; }
-    micSeq = 0; renderBottomBar();
-    updateWarningVisibility();
-    if (currentPanel === 'audiomiс') renderAudioMicOverlay();
+    setAudioSessionType(micOffAudioSessionType());
+    micSeq = 0;
+    micRepaint();
 }
 
 function handleAudioData(buffer) {
@@ -7325,23 +7675,52 @@ function handleAudioData(buffer) {
     if (toneScanDetector) feedToneScan(pcmData);
     Recorder.feedRx(pcmData, audioSampleRate);
 
-    if (audioUseWorklet && audioWorkletNode) {
-        audioWorkletNode.port.postMessage(floatData);
-    } else if (audioRingBuf) {
-        var len = floatData.length, bufLen = audioRingBuf.length;
-        for (var i = 0; i < len; i++) { audioRingBuf[audioRingWrite] = floatData[i]; audioRingWrite = (audioRingWrite + 1) % bufLen; }
-        audioRingBuffered += len; if (audioRingBuffered > bufLen) audioRingBuffered = bufLen;
-        var maxBuf = Math.floor(audioSampleRate * 0.2); // 200ms max buffer
-        if (audioRingStarted && audioRingBuffered > maxBuf) {
-            var target = Math.floor(audioSampleRate * 0.08), skip = audioRingBuffered - target; // 80ms target
-            audioRingRead = (audioRingRead + skip) % bufLen; audioRingBuffered -= skip;
-        }
-    }
+    if (audioUseWorklet && audioWorkletNode) audioWorkletNode.port.postMessage(floatData, [floatData.buffer]);
+    else if (audioJb) audioJb.push(floatData);
 }
 
 function flushAudio() {
     if (audioUseWorklet && audioWorkletNode) audioWorkletNode.port.postMessage('flush');
-    else if (audioRingBuf) { audioRingBuffered = 0; audioRingRead = audioRingWrite; audioRingStarted = false; }
+    else if (audioJb) audioJb.flush();
+}
+
+// Jitter buffer reports (rx-jitter.js): every 2 s, plus the underrun it
+// faded out on and the late audio it skipped. The learned size is kept for
+// the next session; the BUFFER tile can pin a fixed size instead.
+function audioJbOptions() {
+    var o = { lockMs: audioBufLock, targetMs: 0 };
+    try { o.targetMs = Math.min(parseFloat(localStorage.getItem('wfAudioBufMs')) || 0, 300); } catch (e) {}
+    return o;
+}
+var audioJbSavedMs = -1;
+function onAudioJbEvent(ev) {
+    audioJbStats = ev;
+    if (ev.type === 'underrun')
+        console.log('[Audio] underrun #' + ev.underruns + ': ' + Math.round(ev.gapMs) + ' ms gap, buffer ' +
+            Math.round(ev.fromMs) + ' \u2192 ' + Math.round(ev.toMs) + ' ms');
+    else if (ev.type === 'skip')
+        console.log('[Audio] skipped ' + Math.round(ev.ms) + ' ms of late audio, buffer ' + Math.round(ev.bufMs) + ' ms');
+    var learned = Math.round(ev.targetMs);
+    if (!ev.locked && learned !== audioJbSavedMs) {
+        audioJbSavedMs = learned;
+        try { localStorage.setItem('wfAudioBufMs', String(learned)); } catch (e) {}
+    }
+    var btn = document.getElementById('audioBufBtn');
+    if (btn) btn.querySelector('.btn-state').textContent = audioBufState();
+}
+var AUDIO_BUF_STEPS = [0, 50, 100, 200, 400];
+function audioBufState() {
+    var s = audioBufLock ? audioBufLock + ' ms' : 'AUTO' + (audioJbStats ? ' ' + Math.round(audioJbStats.bufMs) + ' ms' : '');
+    if (audioJbStats && audioJbStats.underruns) s += ' \u00b7 ' + audioJbStats.underruns + ' gap' + (audioJbStats.underruns > 1 ? 's' : '');
+    return s;
+}
+function cycleAudioBuf() {
+    var i = AUDIO_BUF_STEPS.indexOf(audioBufLock);
+    audioBufLock = AUDIO_BUF_STEPS[(i + 1) % AUDIO_BUF_STEPS.length];
+    try { localStorage.setItem('wfAudioBufLock', String(audioBufLock)); } catch (e) {}
+    if (audioUseWorklet && audioWorkletNode) audioWorkletNode.port.postMessage({ cmd: 'lock', ms: audioBufLock });
+    else if (audioJb) audioJb.setLock(audioBufLock);
+    renderAudioMicOverlay();
 }
 
 // ============================================================
@@ -8307,6 +8686,8 @@ document.addEventListener('keydown', function(e) {
     var macroEditor = document.getElementById('cwMacroEditor');
     if (macroEditor && macroEditor.style.display !== 'none') return;
 
+    if (freqInputKeydown(e)) { e.preventDefault(); return; }
+
     if (e.key === 'l' || e.key === 'L') { e.preventDefault(); openLogModal(); }
     else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
         e.preventDefault();
@@ -8322,7 +8703,7 @@ document.addEventListener('keydown', function(e) {
     else if (e.key === 'Escape') {
         e.preventDefault();
         // Stop CW transmission first
-        send({ cmd: 'stopCW' });
+        cwStopRig();
         // If a digi-mode TX (FT8/JS8/FreeDV) is in flight, halt it
         // immediately and leave overlays/panels in place. ESC pressed
         // again with nothing TXing falls through to the overlay close.
@@ -8390,13 +8771,28 @@ function setMobileViewportHeight() {
 // CW FUNCTIONS
 // ============================================================
 var cwSpeed = 20;
+// The keyer speed range of this radio (rigInfo.cwSpeedRange, from its rig
+// file: Icom 6-48, Kenwood / Yaesu up to 60); the -/+ keys and the box clamp
+// to it. The floor of 5 keeps the timing model's 1200 / WPM finite (#141).
+var cwSpeedRange = { min: 6, max: 48 };
+function clampCwSpeed(wpm) { return Math.max(cwSpeedRange.min, Math.min(cwSpeedRange.max, wpm)); }
+function applyCwSpeedRange(r) {
+    // A max above 100 is a raw 0..255 level range from an old rig file, not WPM.
+    if (!r || !(r.max > r.min) || r.max > 100) return;
+    cwSpeedRange = { min: Math.max(5, r.min | 0), max: r.max | 0 };
+    var input = document.getElementById('cwSpeedInput');
+    if (input) { input.min = cwSpeedRange.min; input.max = cwSpeedRange.max; }
+    var clamped = clampCwSpeed(cwSpeed);
+    if (clamped !== cwSpeed) {
+        cwSpeed = clamped;
+        if (input) input.value = cwSpeed;
+        if (!document.getElementById('cwBar').classList.contains('hidden')) send({ cmd: 'setCWSpeed', wpm: cwSpeed });
+    }
+}
 var cwMode = 'chars'; // chars, words, lines
 var cwPendingText = '';
 var cwSentText = '';
-var cwCharacters = []; // Array of {char, status: 'pending'|'sending'|'sent', startTime}
-var cwCharIndex = 0; // Current character being sent
-var cwNextCharTime = 0; // Cumulative timing for next character
-var cwUpdateTimers = []; // Track pending setTimeout IDs for cleanup
+// The transcript (cwCharacters) and its timing belong to cwKeyer, below.
 
 // CW Macros
 var cwMacros = {}; // Macro templates for buttons
@@ -8491,133 +8887,58 @@ function hideMacroEditor() {
     cwEditingMacro = null;
 }
 
-// CW transmission state
-var cwTransmitStartTime = 0; // Wall-clock time when current CW transmission started
-
-// Morse patterns for the TX progress transcript.  The radio's own memory keyer
-// does the keying (CI-V 0x17); this table only times the character highlighting,
-// so it has to agree with what the rig will actually send.
+// CW keyer.  The timing model, the pacing of the text to the radio's keyer
+// and the browser sidetone live in cw-keyer.js (shared by both builds and
+// driven under node by tests/cw_keyer_sim.mjs); this page only renders the
+// transcript and wires the buttons.
 //
-// Prosigns are typed <AR> / <SK> / ... in the input box and count as ONE unit
-// here.  cwToRig() rewrites them to the Icom keyer's "^XX" form, which sends the
-// two letters with no inter-character space.
-var CW_MORSE = {
-    'A': '.-', 'B': '-...', 'C': '-.-.', 'D': '-..', 'E': '.', 'F': '..-.',
-    'G': '--.', 'H': '....', 'I': '..', 'J': '.---', 'K': '-.-', 'L': '.-..',
-    'M': '--', 'N': '-.', 'O': '---', 'P': '.--.', 'Q': '--.-', 'R': '.-.',
-    'S': '...', 'T': '-', 'U': '..-', 'V': '...-', 'W': '.--', 'X': '-..-',
-    'Y': '-.--', 'Z': '--..', '0': '-----', '1': '.----', '2': '..---',
-    '3': '...--', '4': '....-', '5': '.....', '6': '-....', '7': '--...',
-    '8': '---..', '9': '----.', '.': '.-.-.-', ',': '--..--', '?': '..--..',
-    '/': '-..-.', '=': '-...-', '+': '.-.-.', ' ': ' ',
-    '<AR>': '.-.-.', '<AS>': '.-...', '<BK>': '-...-.-', '<BT>': '-...-',
-    '<CT>': '-.-.-', '<HH>': '........', '<KN>': '-.--.', '<SK>': '...-.-',
-    '<SN>': '...-.'
-};
+// Sidetone (#141): TONE in the CW bar, on by default.  It is in step with the
+// transcript, while the radio's own sidetone only reaches the browser over
+// USB (IC-7300: ACC/USB AF Beep/Speech Output ON, with every beep), never
+// over LAN, and then trails the keying by the RX jitter buffer.  The radio's
+// is still the truth -- it follows a paddle and the keyer as it really runs
+// -- so TONE is a button, not a given.  No settings of its own: the pitch is
+// the radio's CW PITCH (cwPitch in status updates), the level follows VOL.
+var cwPitchHz = 600;            // the radio's CW PITCH; 600 Hz until it reports
+var cwKeyerType = 'ideal';      // 'icom' = the Icom keyer's measured dot table (rigInfo.manufacturer)
+var cwSidetone = new WfCwSidetone({
+    enabled: (function() { try { return localStorage.getItem('wfCwSidetone') !== '0'; } catch (e) { return true; } })(),
+    createContext: function() { return new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' }); },
+    pitch: function() { return cwPitchHz; },
+    gain: function() { return 0.2 * rxVolumeGain(); }
+});
+var cwKeyer = new WfCwKeyer({
+    wpm: function() { return cwSpeed; },
+    keyer: function() { return cwKeyerType; },
+    send: function(text) { send({ cmd: 'sendCW', text: text }); },
+    stopRig: function() { send({ cmd: 'stopCW' }); },
+    onChange: function() { updateCWTranscript(); },
+    sidetone: cwSidetone
+});
+var cwCharacters = cwKeyer.characters;   // the transcript; recorder.js reads it too
 
-// Split CW text into transcript units: a known <XX> prosign is one unit, every
-// other character is its own.  sendCWText() and scheduleCharacterUpdates() must
-// tokenize identically or the highlight indices drift out of step.
-function cwTokenize(text) {
-    var out = [];
-    var re = /<[A-Z]{2}>/g;
-    var last = 0;
-    var m;
-    while ((m = re.exec(text)) !== null) {
-        if (!CW_MORSE[m[0]]) continue;   // unknown <XX>: falls through as plain chars
-        for (var i = last; i < m.index; i++) out.push(text[i]);
-        out.push(m[0]);
-        last = re.lastIndex;
-    }
-    for (var j = last; j < text.length; j++) out.push(text[j]);
-    return out;
+function setCwPitch(hz) {
+    hz = parseInt(hz, 10);
+    if (!(hz >= 300 && hz <= 1000) || hz === cwPitchHz) return;
+    cwPitchHz = hz;
+    cwSidetone.pitchChanged();
 }
 
-// Rewrite <XX> prosigns into the "^XX" form the Icom keyer understands.
-function cwToRig(text) {
-    return text.replace(/<([A-Z]{2})>/g, function(whole, pair) {
-        return CW_MORSE[whole] ? '^' + pair : whole;
-    });
+function cwSidetoneOn() { return cwSidetone.enabled; }
+
+function setCwSidetone(on) {
+    cwSidetone.setEnabled(on, cwKeyer.elements(0));   // joins a transmission under way
+    try { localStorage.setItem('wfCwSidetone', cwSidetone.enabled ? '1' : '0'); } catch (e) {}
+    updateCwSidetoneUi();
 }
 
-function playCWSidetone(text, startIndex) {
-    // Radio sidetone mode: no local sidetone generation
-    // Just schedule character status updates for the transcript display
-    scheduleCharacterUpdates(text, startIndex);
+function updateCwSidetoneUi() {
+    var btn = document.getElementById('cwToneBtn');
+    if (btn) btn.classList.toggle('active', cwSidetone.enabled);
 }
 
-function scheduleCharacterUpdates(text, startIndex) {
-    // Update specific characters starting at startIndex
-    // Schedule their status updates using wall-clock time so appended
-    // transmissions continue seamlessly from the current progress.
-
-    var morse = CW_MORSE;
-
-    var dotDuration = 1200 / cwSpeed;
-    var dashDuration = dotDuration * 3;
-    var symbolGap = dotDuration;
-    var charGap = dotDuration * 3;
-    var wordGap = dotDuration * 7;
-
-    if (startIndex >= cwCharacters.length) return; // Invalid index
-
-    var now = Date.now();
-    var elapsed = now - cwTransmitStartTime;
-
-    // Schedule updates for each character in this transmission
-    var tokens = cwTokenize(text);
-    for (var i = 0; i < tokens.length && (startIndex + i) < cwCharacters.length; i++) {
-        var charObj = cwCharacters[startIndex + i];
-
-        (function(charObj) {
-            var char = charObj.char;
-
-            // Delay from now = when char should start minus time already elapsed
-            var actualStartTime = charObj.startTime - elapsed;
-
-            // Mark as "sending" when transmission starts
-            var timer1 = setTimeout(function() {
-                if (charObj.status === 'pending') {
-                    charObj.status = 'sending';
-                    updateCWTranscript();
-                }
-            }, Math.max(0, actualStartTime));
-            cwUpdateTimers.push(timer1);
-
-            // Calculate character duration
-            var pattern = morse[char];
-            var charDuration = 0;
-
-            if (char === ' ') {
-                charDuration = wordGap;
-            } else if (pattern) {
-                for (var j = 0; j < pattern.length; j++) {
-                    var symbol = pattern[j];
-                    charDuration += (symbol === '.') ? dotDuration : dashDuration;
-                    charDuration += symbolGap;
-                }
-                charDuration += charGap - symbolGap;
-            }
-
-            // Mark as "sent" when transmission completes
-            var timer2 = setTimeout(function() {
-                if (charObj.status === 'sending') {
-                    charObj.status = 'sent';
-                    updateCWTranscript();
-                }
-            }, Math.max(0, actualStartTime + charDuration));
-            cwUpdateTimers.push(timer2);
-        })(charObj);
-    }
-}
-
-function clearCWTimers() {
-    // Clear all pending character update timers
-    for (var i = 0; i < cwUpdateTimers.length; i++) {
-        clearTimeout(cwUpdateTimers[i]);
-    }
-    cwUpdateTimers = [];
-}
+// Stop keying now, keep what was sent (Escape).
+function cwStopRig() { cwKeyer.cut(); }
 
 function toggleCWBar() {
     var cwBar = document.getElementById('cwBar');
@@ -8674,77 +8995,23 @@ function updateCWTranscript() {
     display.scrollLeft = display.scrollWidth;
 }
 
-function sendCWText(text) {
-    if (!text) return;
-
-    text = text.toUpperCase(); // Force uppercase for morse code
-
-    // Calculate timing for each character
-    var morse = CW_MORSE;
-
-    var dotDuration = 1200 / cwSpeed;
-    var dashDuration = dotDuration * 3;
-    var symbolGap = dotDuration;
-    var charGap = dotDuration * 3;
-    var wordGap = dotDuration * 7;
-
-    // Use cumulative timing to prevent overlaps
-    var currentTime = cwNextCharTime;
-    var startIndex = cwCharacters.length; // Track where these characters start
-
-    // Add characters with timing
-    var tokens = cwTokenize(text);
-    for (var i = 0; i < tokens.length; i++) {
-        var char = tokens[i];
-        var pattern = morse[char];
-
-        cwCharacters.push({
-            char: char,
-            status: 'pending',
-            startTime: currentTime,
-            groupIndex: startIndex // Track which transmission this belongs to
-        });
-
-        if (char === ' ') {
-            currentTime += wordGap;
-        } else if (pattern) {
-            for (var j = 0; j < pattern.length; j++) {
-                var symbol = pattern[j];
-                currentTime += (symbol === '.') ? dotDuration : dashDuration;
-                currentTime += symbolGap;
-            }
-            currentTime += charGap - symbolGap;
-        }
-    }
-
-    // Update next character time for cumulative tracking
-    cwNextCharTime = currentTime;
-
-    // Record wall-clock start time for first batch
-    if (startIndex === 0) {
-        cwTransmitStartTime = Date.now();
-    }
-
-    send({ cmd: 'sendCW', text: cwToRig(text) });
-    playCWSidetone(text, startIndex); // Pass the starting index
-    updateCWTranscript();
-}
+function sendCWText(text) { cwKeyer.sendText(text); }
 
 function initCWHandlers() {
     // Speed buttons
     var speedInput = document.getElementById('cwSpeedInput');
     document.getElementById('cwSpeedDown').addEventListener('click', function() {
-        cwSpeed = Math.max(10, cwSpeed - 1);
+        cwSpeed = clampCwSpeed(cwSpeed - 1);
         speedInput.value = cwSpeed;
         send({ cmd: 'setCWSpeed', wpm: cwSpeed });
     });
     document.getElementById('cwSpeedUp').addEventListener('click', function() {
-        cwSpeed = Math.min(35, cwSpeed + 1);
+        cwSpeed = clampCwSpeed(cwSpeed + 1);
         speedInput.value = cwSpeed;
         send({ cmd: 'setCWSpeed', wpm: cwSpeed });
     });
     speedInput.addEventListener('change', function() {
-        cwSpeed = Math.max(10, Math.min(35, parseInt(speedInput.value) || 20));
+        cwSpeed = clampCwSpeed(parseInt(speedInput.value) || 20);
         speedInput.value = cwSpeed;
         send({ cmd: 'setCWSpeed', wpm: cwSpeed });
     });
@@ -8762,15 +9029,15 @@ function initCWHandlers() {
 
     // Stop button
     document.getElementById('cwStopBtn').addEventListener('click', function() {
-        send({ cmd: 'stopCW' });
+        cwKeyer.stop();
         cwPendingText = '';
-        // Clear character state
-        cwCharacters = [];
-        cwCharIndex = 0;
-        cwNextCharTime = 0;
-        cwTransmitStartTime = 0;
-        clearCWTimers(); // Clear all pending character update timers
-        updateCWTranscript();
+    });
+
+    // Browser sidetone on / off
+    updateCwSidetoneUi();
+    document.getElementById('cwToneBtn').addEventListener('click', function() {
+        setCwSidetone(!cwSidetone.enabled);
+        document.getElementById('cwInput').focus();
     });
 
     // Log QSO button
@@ -8783,12 +9050,7 @@ function initCWHandlers() {
         document.getElementById('cwInput').value = '';
         cwSentText = '';
         cwPendingText = '';
-        cwCharacters = [];
-        cwCharIndex = 0;
-        cwNextCharTime = 0;
-        cwTransmitStartTime = 0;
-        clearCWTimers(); // Clear all pending character update timers
-        send({ cmd: 'stopCW' });
+        cwKeyer.stop();
         setPanel('default'); // Return to default panel
         renderBottomBar();
     });
@@ -8851,22 +9113,13 @@ function initCWHandlers() {
     cwInput.addEventListener('keydown', function(e) {
         // In character mode, Delete stops transmission and flushes all pending characters
         if ((e.key === 'Backspace' || e.key === 'Delete') && cwMode === 'chars') {
-            // Check if there are any pending characters
-            var hasPending = cwCharacters.some(function(ch) { return ch.status === 'pending'; });
-
-            if (hasPending) {
+            // The characters already handed to the radio's keyer cannot be
+            // taken back, so Backspace stops keying and drops everything
+            // pending; the keyer rewinds its clock so the next text starts
+            // at once.
+            if (cwKeyer.backspace()) {
                 e.preventDefault();
-
-                // Stop radio transmission immediately
-                send({ cmd: 'stopCW' });
-
-                // Remove ALL pending characters from display
-                cwCharacters = cwCharacters.filter(function(ch) {
-                    return ch.status !== 'pending';
-                });
-
                 console.log('[CW] Transmission stopped, all pending characters flushed');
-                updateCWTranscript();
             }
         }
 
@@ -9191,7 +9444,9 @@ function toggleDigiBar() {
         send({ cmd: 'setDigiActive', active: true, mode: digiMode });
         bar.classList.remove('hidden');
         document.body.classList.add('digi-open');
-        // FT8 requires USB — set it automatically on open
+        // FT8 requires USB — set it automatically on open; remember where
+        // the rig was so closing the panel can put it back.
+        saveVfoSnapshot();
         if (currentMode !== 'USB') setMode('USB');
         // Set USB Mod Level to 75% for DIGI; save previous value
         var slider = document.getElementById('micGainSlider');
@@ -9219,6 +9474,7 @@ function toggleDigiBar() {
         send({ cmd: 'setDigiActive', active: false });
         stopDigiTune();
         stopDigiPeriodTimer();
+        restoreVfoSnapshot();
         // Restore USB Mod Level
         if (digiSavedModLevel >= 0) {
             throttledSend('micGain', 'setMicGain', digiSavedModLevel);
@@ -9895,17 +10151,18 @@ function digiRowClick(el, ev) {
             var ourSnrStr = (roundedSnr >= 0 ? '+' : '') + roundedSnr;
             if (/\bRR73\b/i.test(msg) || /\bRRR\b/i.test(msg)) {
                 digiQsoState = 'RRR';
-                digiTheirReport = parts[2] || '';
+                // RR73/RRR carries no report: keep the one we already have
+                digiTheirReport = digiReportFromToken(parts[2]) || digiTheirReport;
                 digiOurReport = digiOurReport || ''; // preserve if already set mid-QSO
             } else if (parts.length >= 3 && /^R[-+]?\d+$/i.test(parts[2])) {
                 // They sent R-report → reply RRR
                 digiQsoState = 'RREPORT';
-                digiTheirReport = parts[2]; // their R-report of us → rstRcvd
+                digiTheirReport = digiReportFromToken(parts[2]); // their R-report of us → rstRcvd
                 digiOurReport = ourSnrStr;  // our SNR of them → rstSent
             } else if (parts.length >= 3 && /^[-+]?\d+$/i.test(parts[2])) {
                 // They sent us a plain signal report → we are the answerer, reply R+our_snr (Tx3)
                 digiQsoState = 'REPORT';
-                digiTheirReport = parts[2]; // their report of us → rstRcvd
+                digiTheirReport = digiReportFromToken(parts[2]); // their report of us → rstRcvd
                 digiOurReport = ourSnrStr;  // our SNR of them → Tx3 R-report + rstSent
             } else {
                 // They answered our CQ (grid/other, no report yet) — we are the
@@ -10390,7 +10647,7 @@ function handleDigiAutoQso(decodes, decodedSlotIndex) {
             if (parts[0] === myCall && parts[1] === digiQsoPartner && parts.length >= 3) {
                 console.log('[DIGI QSO] CALLING→EXCHANGE: received report ' + parts[2] + ' from ' + digiQsoPartner);
                 // Preserve their report to us
-                digiTheirReport = parts[2];
+                digiTheirReport = digiReportFromToken(parts[2]);
                 // Our reply uses OUR SNR (how well we received them), not their report
                 var ourSnr = decodes[i].snr;
                 digiOurReport = (ourSnr >= 0 ? '+' : '') + Math.round(ourSnr);
@@ -10430,7 +10687,7 @@ function handleDigiAutoQso(decodes, decodedSlotIndex) {
             // (Tx3) → reply RR73 (Tx4), then wait for their 73 in RREPORT.
             if (parts[0] === myCall && parts[1] === digiQsoPartner && /^R[-+]?\d+$/i.test(parts[2] || '')) {
                 console.log('[DIGI QSO] ANSWERED→RREPORT: received ' + parts[2]);
-                digiTheirReport = parts[2]; // their R-report of us → rstRcvd
+                digiTheirReport = digiReportFromToken(parts[2]); // their R-report of us → rstRcvd
                 digiTxAttempts = 0;
                 digiTxQueued = digiQsoPartner + ' ' + myCall + ' RR73';
                 digiTxSlotParity = (dSlot + 1) % 2;
@@ -11275,6 +11532,7 @@ function streamDigiAudio(samples12k, onDone, onFirstChunk) {
 function freqToBand(hz) {
     if (hz >= 1800000 && hz < 2000000) return '160M';
     if (hz >= 3500000 && hz < 4000000) return '80M';
+    if (hz >= 5060000 && hz < 5450000) return '60M';
     if (hz >= 7000000 && hz < 7300000) return '40M';
     if (hz >= 10100000 && hz < 10150000) return '30M';
     if (hz >= 14000000 && hz < 14350000) return '20M';
@@ -11386,10 +11644,11 @@ function logCWQso() {
 }
 
 // Mode for a hand-added log row: the open app-mode panel wins (the rig sits
-// in USB while FT8/FT4/JS8 run), otherwise the rig's own mode (#125).
+// in USB/LSB while FT8/FT4/JS8/FreeDV run), otherwise the rig's own mode (#125).
 function defaultLogMode() {
     if (digiBarVisible) return digiMode;
     if (typeof window.js8MessengerVisible === 'function' && window.js8MessengerVisible()) return 'JS8';
+    if (freedvEnabled) return 'FREEDV';
     return (currentMode && currentMode !== '---') ? currentMode : 'SSB';
 }
 
@@ -12150,6 +12409,7 @@ async function initStandaloneSplash() {
             // never appears. We grab the stream now, stop it (startMic will
             // request its own with the proper constraints), and the cached
             // permission then lets startMic succeed without a second prompt.
+            setAudioSessionType('play-and-record');
             var micPromise = navigator.mediaDevices && navigator.mediaDevices.getUserMedia
                 ? navigator.mediaDevices.getUserMedia({
                     audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
@@ -12170,15 +12430,8 @@ async function initStandaloneSplash() {
             if (audioAvailable && !audioEnabled) {
                 try { startAudio(); } catch (e) { console.warn('audio start failed:', e); }
             }
-            micPromise.then(function (stream) {
-                // Drop this stream — startMic opens its own with constraints.
-                try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) { /* ignore */ }
-                if (!micEnabled) {
-                    try { startMic(); } catch (e) { console.warn('mic start failed:', e); }
-                }
-            }).catch(function (e) {
-                console.warn('mic permission denied/unavailable:', e);
-            });
+            // A refusal shows as MIC BLOCKED.
+            startMic(micPromise);
         });
         return;
     }
@@ -12223,6 +12476,7 @@ async function initStandaloneSplash() {
         // cached permission no matter how long connect took. (Same fix the
         // virtual-rig path above already uses.)
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            setAudioSessionType('play-and-record');
             navigator.mediaDevices.getUserMedia({
                 audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false }
             }).then(function (stream) {

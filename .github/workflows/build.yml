@@ -730,9 +730,18 @@ jobs:
           qmake wfweb.pro CONFIG+=release "VCPKG_DIR=C:/vcpkg/installed/x64-windows" "DEFINES-=FTDI_SUPPORT"
           nmake release
 
+      # Separate Qt Widgets exe that composes wfweb's command line and runs
+      # it as a child process (launcher/README.md). Lands next to wfweb.exe.
+      - name: Build launcher
+        shell: cmd
+        run: |
+          cd launcher
+          qmake launcher.pro CONFIG+=release
+          nmake release
+
       - name: Deploy Qt runtime
         shell: cmd
-        run: windeployqt --release --no-translations --no-opengl-sw wfweb-release\wfweb.exe
+        run: windeployqt --release --no-translations --no-opengl-sw wfweb-release\wfweb.exe wfweb-release\wfweb-launcher.exe
 
       - name: Deploy vcpkg DLLs and assets
         shell: pwsh

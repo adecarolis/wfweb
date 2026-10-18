@@ -6,6 +6,7 @@
 #include <QTimer>
 #include <QString>
 #include <QByteArray>
+#include <QVector>
 #include <QMutex>
 
 #include "rigserver.h"
@@ -101,6 +102,11 @@ private:
     QByteArray cwTxBuffer;
     QTimer* cwTxTimer = nullptr;
     bool cwActive = false;
+    // Keyer buffer accounting (#141): byte offset into the pumped audio at
+    // which each queued character ends; a character is pending until then.
+    QVector<qint64> cwCharEnds;
+    qint64 cwQueuedBytes = 0;
+    qint64 cwPlayedBytes = 0;
     // Carries the "previous symbol was a gap" state across back-to-back 0x17
     // frames so single-char inputs ("H","E") don't slur into one mash. Reset
     // to true (i.e. no leading gap needed) every time the pump fully drains.

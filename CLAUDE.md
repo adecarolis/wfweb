@@ -25,6 +25,9 @@ qmake wfweb.pro && make -j$(nproc)
 
 # Server flags: -b (daemon), -l (logfile), -s (settings file), -n (top-bar name tag)
 
+# Windows GUI launcher (separate exe, Qt Widgets) — build.bat and the Windows
+# CI job build it after the server; standalone:  cd launcher && qmake && nmake release
+
 # Standalone build — pure browser bundle, no C++ toolchain needed
 tools/build-static.sh dist/
 tools/serve-static.py              # local test on port 8000 (fixed), always serves <repo>/dist (no-store)
@@ -89,7 +92,7 @@ other.** No Direct/Server runtime gates: each `index.html` is single-purpose.
 |-----|---------|----------|
 | `resources/web/` | C++ server build (`wfweb.pro`) | Server-only `index.html`, `transport/websocket-transport.js`, `debug.html` |
 | `resources/web-standalone/` | Static bundle (`tools/build-static.sh`) | Standalone `index.html`, `transport/serial-transport.js`, `civ/`, `wasm/` |
-| `resources/web-shared/` | Both | `index.html`-side modules and pure assets: `theme.css` (design tokens + `.wf-*` kit), `packet.js`, `recorder.js` (+ vendored `lamejs/`), `needle-meter.js`, `transport/rig-transport.js` (base class), CW decoder JS family, `ggmorse-wasm.js`, JS8 family (`js8.mjs`, `js8-panel.mjs`, `js8-panel.css`), `models/`, `digits/`, `digits-sprite.png` |
+| `resources/web-shared/` | Both | `index.html`-side modules and pure assets: `theme.css` (design tokens + `.wf-*` kit), `packet.js`, `recorder.js` (+ vendored `lamejs/`), `needle-meter.js`, `rx-jitter.js`, `cw-keyer.js`, `transport/rig-transport.js` (base class), CW decoder JS family, `ggmorse-wasm.js`, JS8 family (`js8.mjs`, `js8-panel.mjs`, `js8-panel.css`), `models/`, `digits/`, `digits-sprite.png` |
 
 Build inputs for `ggmorse-wasm.js` (the `.cpp` wrapper + license) live in
 `resources/ggmorse-src/`, alongside `resources/build-ggmorse-wasm.sh`. The
@@ -124,6 +127,41 @@ builds (linked from each `index.html`, aliased in `web.qrc`, copied by
 
 Design intent is "one component kit, tinted per mode". Do **not** reintroduce
 per-panel button/tab/input styling — set a `--mode-accent` and reuse `.wf-*`.
+
+### BAND picker
+The BAND overlay recalls the rig's band stacking register like the front-panel
+key: the page sends `setBand {bsr, reg, save}` (CI-V `1A 01`), the transport
+applies freq + mode + filter (`applyMemoryToVfo` on the server, the `1A 01`
+branch of `serial-transport.js` on Standalone) and the normal readback
+confirms. `bsr` comes per band in `rigInfo.bands[]` (rig-file `Bands\N\BSR`,
+exported by `extract-rig-caps.py`; 0 = no register) and those bands fall back
+to `setFrequency` with the page's `bandLastFreq`. Icom only: the Kenwood/Yaesu
+rig files list band codes under the same "Band Stacking Reg" label, but their
+commanders turn it into a native band-select (`BD`/`BU0`/`BS`) with no readable
+record, so `addBandCaps` reports `bsr: 0` for them and the virtual rig. Data mode from the register is intentionally not applied
+(wfweb owns data mode).
+
+**The rig never stores the VFO into a register on CI-V tuning** — only its own
+BAND key does (IC-7300 bench, 2026-10-09). So `save` names the register being
+left (its `bsr` + the slot the page last recalled there, `bsrReg`) and the
+transport stores the current VFO in it first, read-modify-write: a write
+without the data/tone bytes gets NG, so the reply's bytes after the filter are
+echoed back verbatim (`bandStackType.tail` / `parseBandStackReply().tail`),
+which also keeps tones and sidesteps the per-rig layout of those bytes. On the
+server, `queue->add()` echoes both the read and the write through
+`receiveCache()` synchronously with the queue mutex held: the read echo has
+freq 0, the write echo is flagged by `bsrWriteEchoPending` — touching the queue
+on either deadlocks the server.
+
+### Mode panels put the VFO back
+FT8/FT4 and JS8 force USB and retune to their dial frequency on open. Both
+`index.html` snapshot frequency + mode + filter first (`saveVfoSnapshot`) and
+restore it on close (`restoreVfoSnapshot`) — skipped when the band was changed
+inside the panel, and handed over instead of restored when one panel opens
+straight over the other (`vfoSnapshotHandoff` in `closeOtherModes`). The
+restore sends `setMode {value, filter}` as one command on purpose: a trailing
+`setFilter` rebuilds from the server's mode cache before the mode reply is
+back and would undo the mode. Packet and FreeDV do not use this.
 
 ### Meter faces
 The top-bar meter (`#meterCanvas`) has two faces, picked in `drawMeter()`:
@@ -167,6 +205,26 @@ Without a server, the browser does in JS / WASM what the Server does in Qt:
 |-----------|---------|--------|
 | RX (rig->browser) | `0x02` | `[0x02][0x00][seq_u16LE][rateDiv_u16LE][PCM_Int16LE...]` |
 | TX (browser->rig) | `0x03` | `[0x03][0x00][seq_u16LE][reserved_u16LE][PCM_Int16LE...]` |
+
+### RX jitter buffer (`rx-jitter.js`)
+RX frames go from `handleAudioData` into `WfJitterBuffer`
+(`resources/web-shared/rx-jitter.js`), which runs inside the playback
+AudioWorklet (its source is shipped there as text by `wfRxWorkletUrl()`, the
+`recorder.js` pattern) or on the main thread for the ScriptProcessor fallback.
+It sizes itself to the jitter it measures: an underrun fades out, re-buffers
+and grows the target from the measured gap; every 2 s the stall budget the
+period needed is recorded and the target shrinks back to the largest one seen
+in the last `hold` periods (60 s, doubling on repeat underruns up to 10 min).
+The depth is steered onto the target by resampling (+2 % / -0.4 %, which also
+absorbs rig-vs-sound-card clock drift) and, above 250 ms excess, by a
+crossfaded skip at a quiet moment; a backlog that large already present when
+playback starts (frames queued before the AudioContext ran) is dropped at
+once. It reports every 2 s (`onAudioJbEvent`): underruns and skips go to the
+console as `[Audio] ...`, the AUDIO / TX overlay (FUNC > AUDIO, or the AUDIO
+OFF warning) has a BUFFER tile (AUTO, or pinned to 50/100/200/400 ms,
+`wfAudioBufLock`), and the learned size persists in `wfAudioBufMs`. `tests/rx_jitter_sim.mjs`
+(via `tests/test_rx_jitter.py`) drives it under node through jitter, stalls,
+drift and TX gaps — run it after any change to the class.
 
 ### Port Conventions
 - 8080: HTTPS/web browser (with audio/mic support)
@@ -227,6 +285,8 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 | `resources/web-shared/packet.js` | Browser-side AX.25 / APRS / YAPP stack (both builds) |
 | `resources/web-shared/recorder.js` | Audio (MP3) / video recorder behind the top-bar REC button (both builds) |
 | `resources/web-shared/needle-meter.js` | IC-7610-style needle meter face + needle ballistics; alternative to the tile-bar meter in `index.html` (both builds) |
+| `resources/web-shared/rx-jitter.js` | Adaptive RX jitter buffer (worklet + ScriptProcessor fallback, both builds); simulated by `tests/rx_jitter_sim.mjs` |
+| `resources/web-shared/cw-keyer.js` | CW keyer model: timing, pacing of the text to the rig's keyer, browser sidetone (both builds); `tests/cw_keyer_sim.mjs` under node, `tests/cw_bench.mjs` on the two-rig bench, both via `tests/test_cw_keyer.py` |
 | `resources/web-shared/js8-panel.mjs` | JS8 messenger panel — markup + state machine, QSO tabs, RX/TX, CMD palette (both builds) |
 | `resources/web-shared/js8.mjs` | JS8 WASM codec bridge — 8-FSK synth + encode/decode wrapper (both builds) |
 | `resources/web-shared/` | Files shared by both builds (CW decoder, ggmorse, sprites, models) |
@@ -235,6 +295,12 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 | `tools/serve-static.py` | Local HTTP server for `dist/` with `Cache-Control: no-store` |
 | `tools/fingerprint-static.py` | Cache-busts local asset URLs with `?v=<sha>` |
 | `tools/extract-rig-caps.py` | Generates `civ/rig-caps.js` from `rigs/*.rig` |
+| `launcher/launcher.pro` | Windows GUI launcher (Qt Widgets), separate exe next to `wfweb.exe`; see "Windows launcher" below |
+| `launcher/src/launchconfig.cpp` | Form fields → wfweb command line (pure Qt5Core, unit-tested) |
+| `launcher/src/logparser.cpp` | Parses the server's `-l` log lines and classifies the ones the launcher reacts to (pure Qt5Core, unit-tested) |
+| `launcher/src/serverprocess.cpp` | QProcess wrapper: `q` on stdin to stop, Windows Job Object, no console window |
+| `tests/launcher_test.cpp` | Unit test for the two pure launcher helpers (`tests/test_cpp_units.py`, Linux CI) |
+| `tools/make-launcher-icon.py` | Regenerates `launcher/res/wfweb.{png,ico}` from `resources/web-standalone/favicon.svg` (resvg-py + Pillow; outputs are committed) |
 | `tools/build-rade-wasm.sh` / `tools/build-direwolf-wasm.sh` / `tools/build-js8-wasm.sh` | Emscripten rebuilds of the browser modems (only when their C/C++ source changes) |
 | `.github/workflows/pages.yml` | Publishes Standalone to wfweb.k1fm.us |
 | `resources/ft8ts/dist/ft8ts.mjs` | FT8/FT4 decoder module |
@@ -420,6 +486,66 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 - Run this after any change to `direwolfprocessor.*`, the vendored subset under
   `resources/direwolf/`, or `wfweb_direwolf_stubs.c`. Compile-clean is not enough.
 
+### CW keyer
+- The model lives in `resources/web-shared/cw-keyer.js` (`WfCwKeyer`,
+  `WfCwSidetone`, `CW_MORSE`, `cwTokenDuration`), one copy for both forks;
+  each `index.html` only builds the two objects (`cwKeyer`, `cwSidetone`),
+  renders the transcript (`cwCharacters` is the keyer's own array, mutated
+  in place, recorder.js reads it) and wires the buttons. **Do not put timing,
+  pacing or sidetone logic back into the pages.** Timing follows the Icom
+  keyer: 1:3, one dot between elements, three between characters, seven
+  between words (a space after a character adds four, the character gap
+  being counted with the character); `PARIS ` takes exactly 60000 / WPM ms.
+  A 10-dot word gap once put the transcript, the pacing and the sidetone
+  three dots behind the radio on every word (#141).
+- **The Icom keyer does not key 1200 / WPM.** Measured off the air on the
+  IC-7300 (`tests/cw_rig_capture.mjs`, BK-IN OFF so nothing is radiated): every
+  dot is an odd number of 1/6 ms ticks, up to 1.3 % off the textbook value
+  and not monotonic in the setting (20 WPM = 60.17 ms, 30 WPM = 39.5 ms). The
+  model keys that table (`CW_ICOM_DOT_TICKS`, `cwDotMs`) when
+  `rigInfo.manufacturer` is Icom, 1200 / WPM otherwise; the virtual rig keys
+  the same table (`kIcomDotTicks`), so the bench stays blind to a textbook
+  model — re-run the capture on the real radio when the model's timing is the
+  claim. The sidetone follows the model; a measured drift of 0 at every speed
+  is the acceptance test (#141).
+- The Icom keyer command (CI-V `17`) takes **at most 30 bytes per frame**; a
+  longer frame is NG'd and nothing is keyed, and so is one that would
+  overflow the keyer's finite buffer (#141). The keyer hands text over in
+  frames of at most 20 bytes (a `^XX` prosign never split), each due when the
+  rig is down to 6 units of what was queued before, in CHR mode as much as
+  for a long macro: the rig never holds more than ~26 bytes and never runs
+  dry. `icomCommander` and `civ/icom.js` still split a longer frame at 30
+  bytes as a backstop. Characters the keyer cannot send (not in `CW_MORSE`)
+  are dropped before they reach the model or the radio.
+- Stop paths: `cwKeyer.stop()` (STOP, close: nothing keyed, nothing shown),
+  `cwKeyer.cut()` (Escape, Backspace in CHR mode: cut the rig and the tone,
+  drop what is pending, rewind the model clock to now so the next text starts
+  at once). The characters already handed to the keyer cannot be taken back.
+- Server build: the CW macros live in the settings file (`[CW]`
+  `Macro1..Macro10`, `applyCwMacros`), pushed as `cwMacros` in `rigInfo` and
+  `cwMacrosChanged`; the browser only migrates a pre-existing localStorage
+  set to a server that has none. Standalone keeps them in localStorage.
+- Two sidetones, one at a time. TONE in the CW bar (`WfCwSidetone`,
+  `localStorage wfCwSidetone`, on by default) is keyed from the model's
+  element times, one oscillator with a 5 ms envelope in an AudioContext of
+  its own, parked only after the furthest scheduled element (a typed space
+  schedules nothing); no settings of its own: pitch = the rig's CW PITCH
+  (`cwPitch` in Hz in status / update messages: `funcCwPitch` on the server,
+  the `0x14 0x09` read in `serial-transport.js`), level follows VOL. The
+  rig's own sidetone (dffd32c9) comes back in the RX audio over USB only
+  (IC-7300: ACC/USB AF Beep/Speech Output ON), never over LAN; it is the one
+  that follows a paddle and gives true full break-in, with TONE off. The
+  browser tone never enters the RX chain, so the CW decoder and the recorder
+  do not see it.
+- Tests: `tests/cw_keyer_sim.mjs` (node, virtual clock, fake AudioContext)
+  checks timing, pacing, Backspace, unknown characters and the sidetone;
+  `tests/cw_bench.mjs` runs on the two-rig bench and measures the model
+  against the virtual rig's **actual keyed audio** (a bench that compares the
+  tone with the page's own model cannot see a model error). The virtual rig
+  emulates a 30-byte keyer buffer (`civEmulator::keyerPending`) and NGs an
+  overflowing frame, so type-ahead bugs fail there. Run both after any change
+  to the module (`pytest tests/test_cw_keyer.py`).
+
 ### Shared station callsign
 - One callsign in the gear dialog feeds CW, FT8/FT4, JS8, FreeDV Reporter, APRS, and
   the AX.25 link. Do not add per-mode callsigns — the shared one is intentional.
@@ -458,6 +584,37 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
   `closeOtherModes`. Everything else stays local to the module.
 
 ---
+
+## Windows launcher (`launcher/`)
+
+`wfweb-launcher.exe` is a **separate** Qt Widgets exe shipped in the Windows
+zip. The server stays CLI-only: nothing under `src/`, `include/` or
+`wfweb.pro` is involved, and the launcher includes only `wfweb_version.h`.
+It composes the same flags a user would type and supervises `wfweb.exe` as a
+child. The contract it relies on, all verified against the server source:
+- **Flags model.** Fields live in `QSettings("wfweb", "launcher")` and become
+  CLI flags on every start (`LaunchConfig::toArguments`). The server never
+  persists CLI overrides, so its own settings are untouched.
+- **Stop = `q` on stdin.** The keyboard thread (`src/keyboard.cpp`) reads
+  stdin even on a pipe; `q` runs the full teardown. Closing stdin does *not*
+  quit; `kill()` skips teardown. The launcher writes `q`, waits 10 s, then kills.
+- **Log via the `-l` file, not stdout.** stdout is block-buffered on a pipe;
+  the log file is flushed per line (`messageHandler`, `src/main.cpp`), format
+  `yyyy-MM-dd hh:mm:ss.zzz LVL category: msg`. stdout/stderr go to the null
+  device. `LogParser::classify` matches exact server strings — if you reword a
+  listening / serial / LAN log line, update the parser and `tests/launcher_test.cpp`.
+- **Up via REST.** A bind failure does not exit the server, so readiness is
+  `GET /api/v1/radio/info` on `webPort+1` (HTTPS mode) or `webPort` (plain
+  HTTP fallback); whichever answers fixes the browser scheme.
+- **Windows only, under `#ifdef Q_OS_WIN`:** `CREATE_NO_WINDOW` for the child
+  and a Job Object with kill-on-close, so the server dies with the launcher.
+- **Port conflicts** (`launcher/src/portowner.cpp`): the refusal dialog names the
+  process listening on the web port (`GetExtendedTcpTable`, image name, command
+  line read from its PEB) and offers to stop it only when it is `wfweb.exe`,
+  with a warning for `--lan` instances. Never automatic, never for other programs.
+- Built by `build.bat` and the Windows CI job only; the pure helpers are
+  tested on Linux CI through `tests/test_cpp_units.py`. Dialog-showing paths
+  must run inside the event loop (`--start` is deferred with a 0 ms timer).
 
 ## Workflow Rules
 

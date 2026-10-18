@@ -44,6 +44,9 @@ rd /s /q release 2>nul
 rd /s /q debug 2>nul
 rd /s /q wfweb-release 2>nul
 rd /s /q wfweb-debug 2>nul
+del /q launcher\Makefile launcher\Makefile.Debug launcher\Makefile.Release launcher\.qmake.stash launcher\*_resource.rc 2>nul
+rd /s /q launcher\release 2>nul
+rd /s /q launcher\debug 2>nul
 echo Clean done. >> %LOG%
 goto :build
 
@@ -55,6 +58,9 @@ rd /s /q release 2>nul
 rd /s /q debug 2>nul
 rd /s /q wfweb-release 2>nul
 rd /s /q wfweb-debug 2>nul
+del /q launcher\Makefile launcher\Makefile.Debug launcher\Makefile.Release launcher\.qmake.stash launcher\*_resource.rc 2>nul
+rd /s /q launcher\release 2>nul
+rd /s /q launcher\debug 2>nul
 echo Clean done. >> %LOG%
 echo EXIT:0 >> %LOG%
 exit /b 0
@@ -160,10 +166,30 @@ if errorlevel 1 (
     exit /b 1
 )
 
-:: --- Deploy Qt runtime ---
+:: --- Launcher (separate Qt Widgets exe, lands next to wfweb.exe) ---
+echo === launcher: qmake === >> %LOG%
+pushd launcher
+"%QTDIR%\bin\qmake.exe" launcher.pro CONFIG+=release >> %LOG% 2>&1
+if errorlevel 1 (
+    popd
+    echo ERROR: launcher qmake failed >> %LOG%
+    echo EXIT:1 >> %LOG%
+    exit /b 1
+)
+echo === launcher: nmake === >> %LOG%
+nmake release >> %LOG% 2>&1
+if errorlevel 1 (
+    popd
+    echo ERROR: launcher nmake failed >> %LOG%
+    echo EXIT:1 >> %LOG%
+    exit /b 1
+)
+popd
+
+:: --- Deploy Qt runtime (both exes; the launcher adds no DLLs of its own) ---
 echo === windeployqt === >> %LOG%
 set OUTDIR=%SRCDIR%\wfweb-release
-"%QTDIR%\bin\windeployqt.exe" --release --no-translations --no-opengl-sw "%OUTDIR%\wfweb.exe" >> %LOG% 2>&1
+"%QTDIR%\bin\windeployqt.exe" --release --no-translations --no-opengl-sw "%OUTDIR%\wfweb.exe" "%OUTDIR%\wfweb-launcher.exe" >> %LOG% 2>&1
 if errorlevel 1 (
     echo ERROR: windeployqt failed >> %LOG%
     echo EXIT:1 >> %LOG%
@@ -203,7 +229,7 @@ if not exist "%OUTDIR%\rigs" mkdir "%OUTDIR%\rigs"
 copy /y "%SRCDIR%\rigs\*.rig" "%OUTDIR%\rigs\" >> %LOG% 2>&1
 echo Rig files deployed >> %LOG%
 
-echo BUILD OK: wfweb-release\wfweb.exe >> %LOG%
+echo BUILD OK: wfweb-release\wfweb.exe + wfweb-launcher.exe >> %LOG%
 echo EXIT:0 >> %LOG%
 exit /b 0
 

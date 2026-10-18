@@ -332,8 +332,22 @@ void civEmulator::onCivFromClient(const QByteArray& frame)
         break;
     }
     case 0x17: { // send CW (no reply per IC-V ICD; ack anyway for safety)
+        // Like the real rig: more than 30 characters in one frame is NG and
+        // nothing is keyed (#141) -- the client has to split long text.
+        if (body.size() > 30) {
+            emit replyFrame(ack(false));
+            break;
+        }
         // Empty payload OR 0xFF means abort.
         bool isAbort = body.isEmpty() || ((quint8)body[0] == 0xFF);
+        if (!isAbort && keyerPending.load() + body.size() > kKeyerBufferBytes) {
+            // Keyer buffer full: the frame is rejected and nothing of it is
+            // keyed (the client has to pace its text).
+            qWarning() << "civEmulator" << name << "CW NG: keyer buffer full,"
+                       << keyerPending.load() << "bytes pending +" << body.size();
+            emit replyFrame(ack(false));
+            break;
+        }
         if (isAbort) {
             emit cwAbortRequested();
         } else {

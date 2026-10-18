@@ -2173,6 +2173,9 @@ const JS8_PANEL_MARKUP = `
     var JS8_BANDS = [
         { label: '160m', hz: 1842000  },
         { label: '80m',  hz: 3578000  },
+        // JS8Call-improved's 60 m default. No BAND picker key, so it is
+        // gated on the rig's band table entry (Num 18) instead (#116).
+        { label: '60m',  hz: 5363000,  num: 18 },
         { label: '40m',  hz: 7078000  },
         { label: '30m',  hz: 10130000 },
         { label: '20m',  hz: 14078000 },
@@ -2187,7 +2190,10 @@ const JS8_PANEL_MARKUP = `
     // behind the BAND picker), so an IC-705 gets 2m and an HF rig doesn't.
     function rigJs8Bands() {
         if (typeof bandLabelOf !== 'function') return JS8_BANDS;
-        return JS8_BANDS.filter(function (b) { return bandLabelOf(b.hz) !== null; });
+        return JS8_BANDS.filter(function (b) {
+            if (b.num !== undefined) return typeof rigBandNums === 'object' && !!rigBandNums[b.num];
+            return bandLabelOf(b.hz) !== null;
+        });
     }
     function getCurrentJs8Band() {
         if (typeof currentFreq !== 'number' || !currentFreq) return null;
@@ -2210,6 +2216,9 @@ const JS8_PANEL_MARKUP = `
         // Persist that the panel is open so a page reload restores it.
         try { window.localStorage.setItem('js8Open', '1'); } catch (e) {}
         if (typeof closeOtherModes === 'function') closeOtherModes('js8');
+        // Remember where the rig was so close() can put it back (host helper,
+        // same as the FT8 panel).
+        if (typeof window.saveVfoSnapshot === 'function') window.saveVfoSnapshot();
         if (typeof currentMode !== 'undefined' && currentMode !== 'USB'
             && typeof setMode === 'function') setMode('USB');
         // Tune to the JS8 dial frequency for the current band — same flow
@@ -2283,6 +2292,7 @@ const JS8_PANEL_MARKUP = `
         }
         S.txQueue.length = 0;
         S.chains.clear();
+        if (typeof window.restoreVfoSnapshot === 'function') window.restoreVfoSnapshot();
     }
 
     function updateRxToggle() {

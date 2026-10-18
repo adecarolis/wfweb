@@ -53,6 +53,7 @@ signals:
     void stopsidetone();
 
 private:
+    void keySpeedRange(int &lo, int &hi) const;   // WPM span of 0x14 0x0C, from the rig file (#141)
     void commonSetup();
 
     void parseData(QByteArray data); // new data come here

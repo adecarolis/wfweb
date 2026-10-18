@@ -33,6 +33,7 @@
     // every Icom that has them has the same ones.
     var CTCSS_TONES = global.IcomCtcssTones || [];
     var DTCS_CODES  = global.IcomDtcsCodes || [];
+    var cwFrameSeq = 0;   // unique queue keys for consecutive keyer frames
     // A memory channel stores the repeater shift as a 4-bit direction, not
     // the 0x1x duplexMode_t register the live 0x0F command uses.
     var DUPLEX_MEM_NIBBLE = { 'OFF': 0, 'DUP-': 1, 'DUP+': 2 };
@@ -157,6 +158,7 @@
         0x07: 'pbtInner',
         0x08: 'pbtOuter',
         0x0C: 'cwSpeed',
+        0x09: 'cwPitch',     // read-only here; reported in Hz (see the 0x14 reply)
     };
 
     // SPA command name → 0x16 NN sub byte (bool toggles)
@@ -178,6 +180,8 @@
         // Already implemented
         getStatus: true, setFrequency: true, setMode: true,
         setFilter: true, setPTT: true,
+        // BAND key -> band stacking register recall
+        setBand: true,
         // Audio plumbing — Phase 2 will fill these in; for now silently drop
         // so they don't noisily fall back to a closed WS.
         enableMic: true, enableAudio: true,
@@ -498,14 +502,16 @@
                 var aField = ANALOG_SUB_TO_FIELD[aSub];
                 this.state[aField] = aVal;
                 // CW key speed is the only analog level that's not on the
-                // raw 0..255 BCD scale: the UI exposes WPM (6..48), and the
-                // Icom mapping is level = round((wpm - 6) * 6.071), matching
-                // icomcommander.cpp funcKeySpeed. Without this, a WPM of 35
-                // sends level=35 which the rig decodes back to ~12 WPM, and
-                // small UI changes look like no change at all.
+                // raw 0..255 BCD scale: the UI exposes WPM and the level spans
+                // the rig file's keyer range (level = (wpm - min) * 255 /
+                // (max - min)), matching icomcommander.cpp funcKeySpeed.
+                // Without this, a WPM of 35 sends level=35 which the rig
+                // decodes back to ~12 WPM, and small UI changes look like no
+                // change at all.
                 var wireVal = aVal;
                 if (obj.cmd === 'setCWSpeed') {
-                    wireVal = Math.round((aVal - 6) * 6.071);
+                    var ksr = this._keySpeedRange || { min: 6, max: 48 };
+                    wireVal = Math.round((aVal - ksr.min) * 255 / (ksr.max - ksr.min));
                     if (wireVal < 0) wireVal = 0;
                     if (wireVal > 255) wireVal = 255;
                 }
@@ -537,6 +543,35 @@
                     this._enqueue('setFreq', civ.cmdSetFrequency(obj.value));
                     this._emit('update', { frequency: obj.value, vfoAFrequency: obj.value });
                     return;
+                case 'setBand':
+                    // BAND key: read the rig's band stacking register for
+                    // this band; the 0x1A 0x01 reply branch in _onFrame
+                    // applies it. The page only sends this for bands whose
+                    // rig-caps entry carries a bsr code.
+                    if (typeof obj.bsr !== 'number' || obj.bsr <= 0) return;
+                    var bsrReg = Math.max(1, Math.min(3, (obj.reg | 0) || 1));
+                    // The rig only stores the VFO into a register from its
+                    // own BAND key, never on CI-V tuning. So first do what
+                    // the key does: store the current VFO in the register
+                    // of the band being left (`save`), read-modify-write
+                    // so its tone bytes survive. The reply branch below
+                    // writes it back once the read comes in.
+                    this._pendingBsrSave = null;
+                    var save = obj.save;
+                    if (save && typeof save.bsr === 'number' && save.bsr > 0
+                            && this.state.frequency > 0 && this.state.mode) {
+                        var saveReg = Math.max(1, Math.min(3, (save.reg | 0) || 1));
+                        if (!(save.bsr === obj.bsr && saveReg === bsrReg)) {
+                            this._pendingBsrSave = { bsr: save.bsr, reg: saveReg,
+                                frequency: this.state.frequency, mode: this.state.mode,
+                                filter: this.state.filter || 1 };
+                            this._enqueue('readBsr:' + save.bsr + ':' + saveReg,
+                                          civ.cmdReadBandStack(save.bsr, saveReg));
+                        }
+                    }
+                    this._enqueue('readBsr:' + obj.bsr + ':' + bsrReg,
+                                  civ.cmdReadBandStack(obj.bsr, bsrReg));
+                    return;
                 case 'setMode':
                     if (typeof obj.value !== 'string') return;
                     this.state.mode = obj.value;
@@ -547,8 +582,14 @@
                     // changes the mode (packet.js auto-restoring its
                     // saved-enabled state on reload was clobbering the
                     // user's filter selection back to FIL1 every refresh).
-                    this._enqueue('setMode', civ.cmdSetMode(obj.value, null));
-                    this._emit('update', { mode: obj.value });
+                    // An explicit filter (1..3) rides in the same 06 frame:
+                    // the panel-close restore needs mode + filter as one
+                    // command, a trailing setFilter would race it.
+                    var modeFilter = (obj.filter >= 1 && obj.filter <= 3) ? obj.filter : null;
+                    if (modeFilter) this.state.filter = modeFilter;
+                    this._enqueue('setMode', civ.cmdSetMode(obj.value, modeFilter));
+                    this._emit('update', modeFilter ? { mode: obj.value, filter: modeFilter }
+                                                    : { mode: obj.value });
                     return;
                 case 'setFilter':
                     if (typeof obj.value !== 'number') return;
@@ -784,10 +825,15 @@
                     }
                     return;
                 }
-                case 'sendCW':
+                case 'sendCW': {
                     if (!this._rigCanTransmit()) return;
                     if (typeof obj.text !== 'string' || !obj.text.length) return;
-                    this._enqueue('sendCW', civ.cmdSendCW(obj.text));
+                    // One frame per <= 30-char piece, each under its own key:
+                    // a shared key would let a piece still in the queue be
+                    // overwritten by the next one.
+                    var cwPieces = civ.splitCWText(obj.text, 30);
+                    for (var cp = 0; cp < cwPieces.length; cp++)
+                        this._enqueue('sendCW:' + (++cwFrameSeq), civ.cmdSendCW(cwPieces[cp]));
                     // The rig auto-keys to send the CW buffer; we never issue a
                     // PTT command, so flip transmitting optimistically to switch
                     // the meter UI to power/SWR and start polling TX meters
@@ -797,6 +843,7 @@
                         this._emit('update', { transmitting: true });
                     }
                     return;
+                }
                 case 'stopCW':
                     if (!this._rigCanTransmit()) return;
                     this._enqueue('stopCW', civ.cmdStopCW());
@@ -1252,6 +1299,10 @@
             this._hasDuplex = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasDuplex);
             this._hasTuner = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasTuner);
             this._hasSpectrum = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasSpectrum);
+            // Keyer speed span of 0x14 0x0C's 0..255 (6-48 WPM on most Icoms,
+            // 6-60 on the IC-7600 family), from the rig file (#141).
+            var ksc = (capsEntry && capsEntry.caps) || {};
+            this._keySpeedRange = (ksc.keySpeedMax > ksc.keySpeedMin) ? { min: ksc.keySpeedMin, max: ksc.keySpeedMax } : { min: 6, max: 48 };
             // Memory channels (#92): V/M switch, addressing range, group
             // handling. Same facts webserver.cpp pulls from rigCaps.
             var mc = (capsEntry && capsEntry.caps) || {};
@@ -1311,6 +1362,8 @@
                 var sub = ANALOG_SUB[cmdName];
                 this._enqueue('read_' + cmdName, civ.cmdReadAnalogLevel(sub));
             }
+            // CW pitch, for the browser sidetone (no set command: it is the rig's).
+            this._enqueue('read_cwPitch', civ.cmdReadAnalogLevel(0x09));
 
             // Initial reads — bool toggles + multi-state preamp.
             for (var cmdName2 in BOOL_SUB) {
@@ -1658,9 +1711,15 @@
                 var aReply = civ.parseAnalogLevelReply(payload);
                 if (aReply) {
                     var aField = ANALOG_SUB_TO_FIELD[aReply.sub];
-                    if (aField && this.state[aField] !== aReply.value) {
-                        this.state[aField] = aReply.value;
-                        var u = {}; u[aField] = aReply.value;
+                    var aVal = aReply.value;
+                    // CW pitch is 0..255 over 300..900 Hz; the SPA wants Hz
+                    // (same rounding as icomcommander.cpp funcCwPitch).
+                    if (aField === 'cwPitch') aVal = Math.round(((600 / 255) * aVal + 300) / 5) * 5;
+                    // Key speed: 0..255 over the rig file's WPM range (#141).
+                    if (aField === 'cwSpeed') { var ksr2 = this._keySpeedRange || { min: 6, max: 48 }; aVal = Math.round(aVal * (ksr2.max - ksr2.min) / 255 + ksr2.min); }
+                    if (aField && this.state[aField] !== aVal) {
+                        this.state[aField] = aVal;
+                        var u = {}; u[aField] = aVal;
                         this._emit('update', u);
                     }
                     return;
@@ -1809,6 +1868,41 @@
                 if (this._savedDataMod === null && modDataV !== this._modIn.usbReg
                         && (!this._modIn.netRegs || this._modIn.netRegs.indexOf(modDataV) === -1)) {
                     this._savedDataMod = modDataV;
+                }
+                return;
+            }
+
+            // 0x1A 0x01 — Band stacking register reply (setBand). Apply
+            // freq + mode + filter the way the rig's own BAND key does;
+            // data mode is deliberately left alone (wfweb owns it). The
+            // usual readback then confirms what the rig did.
+            if (payload.length >= 4 && payload[0] === 0x1A && payload[1] === 0x01) {
+                var capsEntry = RIG_CAPS[this.civAddr];
+                var bsr = civ.parseBandStackReply(payload, capsEntry && capsEntry.bands);
+                var pend = this._pendingBsrSave;
+                if (bsr && pend && pend.bsr === bsr.bsr && pend.reg === bsr.reg) {
+                    // The register being left: write it back with the VFO we had.
+                    this._pendingBsrSave = null;
+                    try {
+                        this._enqueue('writeBsr:' + bsr.bsr + ':' + bsr.reg,
+                            civ.cmdWriteBandStack(bsr.bsr, bsr.reg, pend.frequency, pend.mode,
+                                                  pend.filter, bsr.tail, bsr.nBytes));
+                    } catch (e) {
+                        console.warn('[CI-V] band stacking register not stored:', e.message);
+                    }
+                    return;
+                }
+                if (bsr && bsr.frequency > 0 && bsr.mode) {
+                    this.state.frequency = bsr.frequency;
+                    this.state.mode = bsr.mode;
+                    this.state.filter = bsr.filter;
+                    this._enqueue('setFreq', civ.cmdSetFrequency(bsr.frequency));
+                    this._enqueue('setMode', civ.cmdSetMode(bsr.mode, bsr.filter));
+                    this._emit('update', { frequency: bsr.frequency, vfoAFrequency: bsr.frequency,
+                                           mode: bsr.mode, filter: bsr.filter });
+                } else {
+                    console.warn('[CI-V] band stacking register reply not applied:',
+                        Array.from(payload).map(function(b){return b.toString(16).padStart(2,'0');}).join(' '));
                 }
                 return;
             }
@@ -2507,6 +2601,7 @@
             this._emit('rigInfo', {
                 version: ((typeof window !== 'undefined' && window.__WFWEB_SEMVER__) || 'dev') + '-direct',
                 model: rigDisplayName(this.civAddr),
+                manufacturer: 'Icom',
                 connected: true,
                 modes: DEFAULT_MODES,
                 filters: DEFAULT_FILTERS,
@@ -2542,6 +2637,9 @@
                 ctcssTones: caps.hasCTCSS ? CTCSS_TONES : [],
                 dtcsCodes: caps.hasDTCS ? DTCS_CODES : [],
                 hasSpectrum: caps.hasSpectrum,
+                // Keyer speed range from the rig file (IC-7300: 6-48 WPM),
+                // for the CW bar's speed box (#141).
+                cwSpeedRange: (caps.keySpeedMax > caps.keySpeedMin) ? { min: caps.keySpeedMin, max: caps.keySpeedMax } : undefined,
                 // Memory channels (#92) — same three fields the server's caps carry.
                 // MEM is a rig concept: hidden when the channels are wfweb's,
                 // where a 0x08 select would jump to an unrelated rig channel.
@@ -2600,7 +2698,7 @@
             }
             // Pass through any cached values so the UI populates fully.
             var passthrough = ['afGain', 'rfGain', 'rfPower', 'squelch',
-                'micGain', 'monitorGain', 'pbtInner', 'pbtOuter', 'cwSpeed',
+                'micGain', 'monitorGain', 'pbtInner', 'pbtOuter', 'cwSpeed', 'cwPitch',
                 'autoNotch', 'nb', 'nr', 'preamp', 'attenuator',
                 'antenna', 'rxAntenna',
                 'split', 'tuner', 'spanIndex', 'filterWidth', 'filterShape',
