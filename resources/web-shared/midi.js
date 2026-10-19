@@ -501,10 +501,13 @@
     WfMidiPanel.prototype._monitor = function () {
         var el = this.el.querySelector('.midi-monitor');
         if (!el) return;
-        var m = this.midi.lastMessage;
-        el.textContent = m
-            ? 'Last: ' + (m.type === 'cc' ? 'CC ' + m.num + ' = ' + m.value : 'Note ' + m.num + (m.on ? ' on' : ' off')) + ' (ch ' + m.ch + ')'
-            : 'Last: \u2014';
+        var midi = this.midi, m = midi.lastMessage;
+        if (!m) { el.textContent = 'Last: \u2014'; return; }
+        // Name the action it drives, so a stray binding (a LEARN that caught
+        // the wrong control) shows here instead of as a dead control.
+        var bnd = midi.bindingFor(m), a = bnd && midi.actions[bnd.action];
+        el.textContent = 'Last: ' + (m.type === 'cc' ? 'CC ' + m.num + ' = ' + m.value : 'Note ' + m.num + (m.on ? ' on' : ' off')) +
+            ' (ch ' + m.ch + ') \u2192 ' + (a ? a.label || bnd.action : 'unmapped');
     };
 
     global.MIDI_PRESETS = MIDI_PRESETS;

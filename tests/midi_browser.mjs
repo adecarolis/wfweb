@@ -125,7 +125,9 @@ try {
   await midi([0x90, 70, 127]);
   await page.waitForFunction(() => !window.midi.learning);
   check((await spanRow.locator('.midi-binding').textContent()) === 'Note 70', 'LEARN binds SPAN - to the next note (Note 70)');
-  check((await page.locator('#midiPanel .midi-monitor').textContent()).includes('Note 70 on'), 'monitor shows the last message');
+  check((await page.locator('#midiPanel .midi-monitor').textContent()).includes('Note 70 on (ch 1) \u2192 SPAN -'), 'monitor shows the last message and the action it drives');
+  await midi([0x90, 99, 127]);
+  check((await page.locator('#midiPanel .midi-monitor').textContent()).endsWith('unmapped'), 'an unbound message reads "unmapped"');
   if (process.env.WFWEB_SHOT_DIR) await page.locator('#midiOverlay').screenshot({ path: path.join(process.env.WFWEB_SHOT_DIR, 'midi-window.png') });
   await page.evaluate(() => { window.closeMidiModal(); window.setPanel('default'); });
   check(await page.evaluate(() => localStorage.getItem('wfMidiEnabled') === '1' && JSON.parse(localStorage.getItem('wfMidiMap')).bindings.some(b => b.num === 70)), 'enabled flag and learnt map persisted');
