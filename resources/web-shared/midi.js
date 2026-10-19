@@ -378,7 +378,7 @@
     // .mem-modal shell) and re-rendered on every change.
     // ------------------------------------------------------------------
     var MIDI_STATUS_TEXT = {
-        off: 'Off', unsupported: 'Web MIDI not available in this browser',
+        off: 'Off', unsupported: '',
         pending: 'Waiting for permission\u2026', denied: 'MIDI permission denied', ready: ''
     };
 
@@ -423,6 +423,14 @@
         this.el.innerHTML = '';
         this.el.classList.add('midi-panel', 'mode-midi');
 
+        if (midi.status === 'unsupported') {
+            // Web MIDI is only exposed to secure pages, and Safari has none.
+            var secure = global.isSecureContext !== false;
+            this.el.appendChild(h('div', 'midi-status midi-unsupported', secure
+                ? 'This browser has no Web MIDI. Open this page in Chrome or Edge (Safari and iOS cannot use a MIDI controller).'
+                : 'Web MIDI needs a secure page. Open this page with https:// in Chrome or Edge.'));
+            return;
+        }
         var top = h('div', 'midi-row');
         top.appendChild(btn(midi.enabled ? 'ON' : 'OFF', midi.enabled, function () {
             if (midi.enabled) midi.disable(); else midi.enable();

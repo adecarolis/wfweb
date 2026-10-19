@@ -299,6 +299,7 @@
 .midi-label { color: var(--mode-accent); font-weight: var(--fw-bold); font-size: var(--fs-xs); letter-spacing: 1px; }
 .midi-status { color: var(--text-dim); }
 .midi-status.ok { color: var(--state-ok); }
+.midi-unsupported { color: var(--state-warn); line-height: 1.4; }
 .midi-panel select.wf-field { font-size: var(--fs-sm); padding: 2px 4px; }
 .midi-map { overflow-y: auto; flex: 1 1 auto; min-height: 80px; max-height: 40vh; border-top: var(--border-w) solid var(--mode-accent-dim); }
 .midi-map-row { display: grid; grid-template-columns: minmax(0, 1fr) 7em 6em auto auto; align-items: center; gap: var(--space-1) var(--space-2); padding: 2px 0; border-bottom: var(--border-w) solid var(--border-col); }

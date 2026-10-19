@@ -625,8 +625,10 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
   call the same functions as the page's own controls (`stepBand` /
   `recallBand`, `setMode`, `setCwSpeedValue`, the GAIN sliders driven by an
   `input` event, `setSpan`, `midiPtt` = the PTT button's path). FUNC > MIDI
-  (only where `navigator.requestMIDIAccess` exists — no Safari/iOS) opens
-  `#midiOverlay`, whose body `WfMidiPanel` builds. Off until switched on:
+  opens `#midiOverlay`, whose body `WfMidiPanel` builds. The tile is always
+  shown: without `navigator.requestMIDIAccess` (Safari / iOS, plain http) it
+  reads N/A and the window says to use Chrome / Edge over https — a hidden
+  tile in Safari cost a bench session. Off until switched on:
   `localStorage wfMidiEnabled`, the map in `wfMidiMap`, keyer options in
   `wfMidiOpts`.
 - The map is a table, `[{type: 'cc'|'note', num, enc, action}]`, with

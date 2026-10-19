@@ -5790,11 +5790,10 @@ function renderFuncOverlay() {
         renderFuncOverlay();
     }));
 
-    // MIDI controller window; only where the browser has Web MIDI (not
-    // Safari / iOS).
-    if (WfMidi.supported()) {
-        grid.appendChild(makeFuncBtn('MIDI', midiTileState(), midi.enabled, openMidiModal));
-    }
+    // MIDI controller window. Always shown: where the browser has no Web
+    // MIDI (Safari / iOS, or a plain-http page) it reads N/A and the window
+    // says why -- a hidden tile left the operator guessing.
+    grid.appendChild(makeFuncBtn('MIDI', midiTileState(), midi.enabled && midi.status !== 'unsupported', openMidiModal));
 
     // RX audio / TX audio / jitter buffer: the AUDIO / TX overlay, which is
     // otherwise only reachable while audio is off.
@@ -9506,6 +9505,7 @@ cwPaddle.setSwap(midi.opts.swap);
 if (midi.enabled) midi.enable();
 
 function midiTileState() {
+    if (midi.status === 'unsupported') return 'N/A';
     if (!midi.enabled) return 'OFF';
     if (midi.status === 'ready') return midi.devices.length ? 'ON' : 'NO DEV';
     if (midi.status === 'denied') return 'DENIED';

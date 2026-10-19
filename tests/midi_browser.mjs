@@ -132,6 +132,21 @@ try {
   await page.evaluate(() => { window.closeMidiModal(); window.setPanel('default'); });
   check(await page.evaluate(() => localStorage.getItem('wfMidiEnabled') === '1' && JSON.parse(localStorage.getItem('wfMidiMap')).bindings.some(b => b.num === 70)), 'enabled flag and learnt map persisted');
 
+  // -- a browser without Web MIDI (Safari): tile shown as N/A, window says why --
+  {
+    const ctx2 = await browser.newContext();
+    await ctx2.addInitScript(() => { delete Navigator.prototype.requestMIDIAccess; });
+    const p2 = await ctx2.newPage();
+    await p2.goto(URL0);
+    await p2.waitForFunction(() => typeof window.midi === 'object');
+    await p2.evaluate(() => window.setPanel('func'));
+    const t2 = p2.locator('#funcGrid .ov-btn', { hasText: 'MIDI' });
+    check(await t2.count() === 1 && (await t2.textContent()).includes('N/A'), 'no Web MIDI: the MIDI tile is still shown, reading N/A');
+    await p2.evaluate(() => window.openMidiModal());   // the start splash still covers the page here
+    check((await p2.locator('#midiPanel').textContent()).includes('Chrome or Edge'), 'and the MIDI window says to use Chrome or Edge');
+    await ctx2.close();
+  }
+
   // -- knob: fine and coarse tune --
   const f0 = await page.evaluate(() => window.currentFreq);
   await midi([0xB0, 100, 74]);   // WheelA +10 ticks x 10 Hz
