@@ -7716,9 +7716,13 @@ var rxVolume = (function() {
     return 100;
 })();
 function rxVolumeGain() { var f = rxVolume / 100; return f * f; }
+// What the RX playback gain is set to: VOL, or nothing while the paddle
+// sends (setRxPaddleMute).
+var rxPaddleMuted = false;
+function rxPlaybackGain() { return rxPaddleMuted ? 0 : rxVolumeGain(); }
 function setRxVolume(pct, save) {
     rxVolume = Math.max(0, Math.min(100, Math.round(pct) || 0));
-    if (audioGainNode && audioCtx) audioGainNode.gain.setTargetAtTime(rxVolumeGain(), audioCtx.currentTime, 0.01);
+    if (audioGainNode && audioCtx) audioGainNode.gain.setTargetAtTime(rxPlaybackGain(), audioCtx.currentTime, 0.01);
     if (window.cwSidetone) cwSidetone.gainChanged();
     var text = rxVolume ? rxVolume + '%' : 'MUTE';
     document.querySelectorAll('.rx-vol-slider').forEach(function(s) { if (parseInt(s.value, 10) !== rxVolume) s.value = rxVolume; });
@@ -7766,7 +7770,7 @@ function startAudio() {
     audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: audioSampleRate });
     // Gain node: the browser-side VOL (setRxVolume)
     audioGainNode = audioCtx.createGain();
-    audioGainNode.gain.value = rxVolumeGain();
+    audioGainNode.gain.value = rxPlaybackGain();
     audioGainNode.connect(audioCtx.destination);
     audioJbStats = null;
     if (audioCtx.audioWorklet && window.isSecureContext) startWithWorklet();
@@ -9401,8 +9405,23 @@ function cwStopRig() { cwKeyer.cut(); }
 var cwPaddle = new WfCwPaddle({
     dot: function() { return cwKeyer.dot(); },
     sidetone: cwSidetone,
-    onChar: function(ch) { cwKeyer.sendText(ch, { tone: false }); }
+    onChar: function(ch) { cwKeyer.sendText(ch, { tone: false }); },
+    // The radio's own sidetone comes back a character late (it keys only
+    // decoded text): cut the RX audio from the first element until that
+    // echo has played out -- the radio's keying, the jitter buffer, margin.
+    onRxMute: setRxPaddleMute,
+    rigEnd: function() { return cwKeyer.characters.length ? cwKeyer.base + cwKeyer.nextTime : 0; },
+    rxDelay: function() { return (audioJbStats ? audioJbStats.bufMs : 150) + 300; }
 });
+
+function setRxPaddleMute(on) {
+    rxPaddleMuted = on;
+    if (!audioGainNode || !audioCtx) return;
+    var g = audioGainNode.gain, t = audioCtx.currentTime;
+    g.cancelScheduledValues(t);
+    g.setValueAtTime(g.value, t);
+    g.linearRampToValueAtTime(rxPlaybackGain(), t + (on ? 0.003 : 0.03));   // out at once, back with a short fade
+}
 var midi = new WfMidi();
 var midiTuner = new WfMidiTuner({
     getFreq: function() { return currentFreq; },

@@ -7,6 +7,8 @@
 // characters, and each finished character goes to WfCwKeyer.sendText() --
 // the same path as typing in CHR mode -- so the radio's own keyer sends it
 // with clean timing, one character behind the fist by design.
+// The radio's own sidetone, coming back in the RX audio, is that late echo,
+// so the RX audio is cut while the paddle sends (WfCwRxMute).
 //
 // Gaps follow the keyer model: one dot between elements, three between
 // characters, seven between words.  A character is closed after a gap of
@@ -170,6 +172,7 @@
         this._initialDot = opts.dot;                // () -> ms, the CW speed's dot
         this._onElement = opts.onElement || function () {};   // (kind, on, off)
         this._onKeyDown = opts.onKeyDown || function () {};
+        this._onKeyUp = opts.onKeyUp || function () {};
         this.sidetone = opts.sidetone || null;
         this.dotMs = 0;
         this._downAt = null;
@@ -190,6 +193,7 @@
         var on = this._downAt;
         this._downAt = null;
         if (this.sidetone) this.sidetone.keyUp();
+        this._onKeyUp(now);
         var dur = now - on;
         var dot = this.dot();
         if (dur < 0.3 * dot) return;                // contact bounce
@@ -202,28 +206,87 @@
     };
 
     WfStraightKey.prototype.stop = function () {
+        if (this._downAt !== null) this._onKeyUp(this._now());
         this._downAt = null;
         if (this.sidetone) this.sidetone.keyUp();
+    };
+
+    // ------------------------------------------------------------------
+    // RX mute while the paddle sends.  The radio keys a paddle character only
+    // once it is decoded, so its own sidetone (back in the RX audio over USB)
+    // trails the fist by a character -- an echo of the sending.  The RX audio
+    // is cut on the first element and stays cut until the radio has keyed
+    // everything decoded so far and that audio has come back through the RX
+    // path (rxDelay: transport + jitter buffer).  The check is re-run until
+    // then, since a character decoded later moves the radio's end out.
+    // ------------------------------------------------------------------
+    function WfCwRxMute(opts) {
+        timers(opts, this);
+        this._dot = opts.dot;                       // () -> ms
+        this._rigEnd = opts.rigEnd || function () { return 0; };     // () -> wall ms the radio's keying ends
+        this._rxDelay = opts.rxDelay || function () { return 400; }; // () -> ms from the radio's keying to the speaker
+        this._onChange = opts.onChange || function () {};            // (muted)
+        this.wordGap = opts.wordGap || 5;           // the decoder's last word: a space is decided by then
+        this.muted = false;
+        this._held = false;
+        this._lastOff = 0;
+        this._timer = null;
+    }
+
+    // An element was keyed, ending at off (wall ms).
+    WfCwRxMute.prototype.activity = function (off) {
+        if (off > this._lastOff) this._lastOff = off;
+        if (!this.muted) { this.muted = true; this._onChange(true); }
+        this._check();
+    };
+
+    // Straight key down / up: muted for as long as it is held.
+    WfCwRxMute.prototype.hold = function (down) {
+        this._held = !!down;
+        this.activity(this._now());
+    };
+
+    WfCwRxMute.prototype.due = function () {
+        return Math.max(this._lastOff + this.wordGap * this._dot(), this._rigEnd()) + this._rxDelay();
+    };
+
+    WfCwRxMute.prototype._check = function () {
+        var self = this;
+        if (this._timer !== null) { this._clearTimeout(this._timer); this._timer = null; }
+        if (!this.muted || this._held) return;
+        var wait = this.due() - this._now();
+        if (wait <= 0) { this.muted = false; this._onChange(false); return; }
+        this._timer = this._setTimeout(function () { self._timer = null; self._check(); }, wait);
     };
 
     // ------------------------------------------------------------------
     // What a page builds: paddle + straight key, each with its decoder,
     // feeding one onChar(ch).
     // ------------------------------------------------------------------
+    // opts.onRxMute(muted), with opts.rigEnd and opts.rxDelay, cuts the RX
+    // audio while the paddle sends (WfCwRxMute).
     function WfCwPaddle(opts) {
         var self = this;
         var t = { now: opts.now, setTimeout: opts.setTimeout, clearTimeout: opts.clearTimeout };
         function mk(o) { for (var k in t) if (t[k]) o[k] = t[k]; return o; }
+        this.rxMute = opts.onRxMute ? new WfCwRxMute(mk({
+            dot: function () { return Math.max(opts.dot(), self.straight.dot()); },
+            rigEnd: opts.rigEnd, rxDelay: opts.rxDelay, onChange: opts.onRxMute
+        })) : null;
         this.keyer = new WfPaddleKeyer(mk({
             dot: opts.dot, sidetone: opts.sidetone, mode: opts.mode, swap: opts.swap,
-            onElement: function (kind, on, off) { self.keyerDecoder.element(kind, on, off); }
+            onElement: function (kind, on, off) {
+                if (self.rxMute) self.rxMute.activity(off);
+                self.keyerDecoder.element(kind, on, off);
+            }
         }));
         this.keyerDecoder = new WfCwElementDecoder(mk({
             dot: opts.dot, onChar: opts.onChar, onUnknown: opts.onUnknown
         }));
         this.straight = new WfStraightKey(mk({
             dot: opts.dot, sidetone: opts.sidetone,
-            onKeyDown: function () { self.straightDecoder.keyDown(); },
+            onKeyDown: function () { if (self.rxMute) self.rxMute.hold(true); self.straightDecoder.keyDown(); },
+            onKeyUp: function () { if (self.rxMute) self.rxMute.hold(false); },
             onElement: function (kind, on, off) { self.straightDecoder.element(kind, on, off); }
         }));
         this.straightDecoder = new WfCwElementDecoder(mk({
@@ -248,5 +311,6 @@
     global.WfCwElementDecoder = WfCwElementDecoder;
     global.WfPaddleKeyer = WfPaddleKeyer;
     global.WfStraightKey = WfStraightKey;
+    global.WfCwRxMute = WfCwRxMute;
     global.WfCwPaddle = WfCwPaddle;
 })(typeof window !== 'undefined' ? window : this);

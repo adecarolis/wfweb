@@ -29,11 +29,14 @@ function makeStation(clock, opts = {}) {
   const rig = makeRig(clock);
   const tone = new WfCwSidetone({ enabled: true, createContext: () => fakeContext(clock), pitch: () => 600, gain: () => 0.2, ...timers(clock) });
   const keyer = new WfCwKeyer({ wpm: () => wpm, send: rig.send, stopRig: rig.stop, sidetone: tone, ...timers(clock) });
-  const st = { rig, tone, keyer, text: '', elements: [], unknown: [] };
+  const st = { rig, tone, keyer, text: '', elements: [], unknown: [], mute: [] };
   st.paddle = new WfCwPaddle({
     dot: () => keyer.dot(), sidetone: tone, mode: opts.mode, swap: opts.swap, ...timers(clock),
     onChar: (ch) => { st.text += ch; keyer.sendText(ch, { tone: false }); },
     onUnknown: (p) => st.unknown.push(p),
+    onRxMute: (m) => st.mute.push({ t: clock.now(), m }),
+    rigEnd: () => keyer.characters.length ? keyer.base + keyer.nextTime : 0,
+    rxDelay: () => 400,
   });
   const onEl = st.paddle.keyer._onElement;
   st.paddle.keyer._onElement = (k, on, off) => { st.elements.push({ k, on, off }); onEl(k, on, off); };
@@ -233,6 +236,48 @@ for (const opWpm of [12, 25]) {
   clock.run(t0 + 100); st.paddle.stop();
   clock.run(t0 + 3000);
   check(st.text === '' && st.rig.frames.length === 0, 'stop() mid-character: nothing decoded, nothing sent');
+}
+
+// ---- 12. RX audio cut on the first element, back after the radio's echo ----
+{
+  const clock = new Clock(), st = makeStation(clock, { wpm: 20 });
+  const d = st.keyer.dot();
+  const tl = paddleTimeline('CQ CQ', d, clock.now() + 100);
+  play(clock, tl.ev, (e) => st.paddle.paddle(e.side, e.closed));
+  clock.run(tl.end + 20000);
+  const rigEnd = st.keyer.base + st.keyer.nextTime;
+  check(st.mute.length === 2 && st.mute[0].m === true && st.mute[1].m === false, 'one mute, one unmute for a paddled "CQ CQ" (' + JSON.stringify(st.mute.map(x => x.m)) + ')');
+  check(st.mute[0].t === st.elements[0].on, 'muted on the first element, at once');
+  check(st.mute[1].t >= rigEnd + 400 && st.mute[1].t <= rigEnd + 400 + 1, `unmuted when the radio's keying plus the RX delay is over (${(st.mute[1].t - rigEnd).toFixed(0)} ms after the radio's end)`);
+  check(st.text === 'CQ CQ ' && st.rig.frames.map(f => f.text).join('') === 'CQ CQ ', 'the text still reaches the rig');
+}
+{
+  // two overs with a pause longer than the window: two mute cycles
+  const clock = new Clock(), st = makeStation(clock, { wpm: 25 });
+  const d = st.keyer.dot();
+  let tl = paddleTimeline('K', d, clock.now() + 100);
+  play(clock, tl.ev, (e) => st.paddle.paddle(e.side, e.closed));
+  clock.run(tl.end + 5000);
+  tl = paddleTimeline('R', d, clock.now() + 100);
+  play(clock, tl.ev, (e) => st.paddle.paddle(e.side, e.closed));
+  clock.run(tl.end + 5000);
+  check(st.mute.map(x => x.m).join() === 'true,false,true,false', 'two overs, two mute windows');
+}
+{
+  // straight key held 2 s: muted throughout, released after
+  const clock = new Clock(), st = makeStation(clock, { wpm: 20 });
+  const t0 = clock.now() + 100;
+  clock.run(t0); st.paddle.straightKey(true);
+  clock.run(t0 + 2000);
+  check(st.mute.length === 1 && st.mute[0].m === true && st.mute[0].t === t0, 'straight key: muted on key-down and for as long as it is held');
+  st.paddle.straightKey(false);
+  clock.run(t0 + 6000);
+  check(st.mute.length === 2 && st.mute[1].m === false, 'straight key: unmuted after release');
+  const c2 = new Clock(), s2 = makeStation(c2, { wpm: 20 });
+  const t1 = c2.now() + 100;
+  c2.run(t1); s2.paddle.straightKey(true); c2.run(t1 + 4); s2.paddle.straightKey(false);   // bounce
+  c2.run(t1 + 3000);
+  check(s2.mute.map(x => x.m).join() === 'true,false', 'a contact bounce does not leave the RX muted');
 }
 
 console.log(failures ? 'FAILED ' + failures : 'ALL PASS');

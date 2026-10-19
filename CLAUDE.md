@@ -650,7 +650,12 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
   `cwKeyer.sendText(ch, {tone: false})` — the CHR-mode path — so the rig's
   keyer sends it, one character behind the fist. `tone: false` marks the
   units `noTone` so the text path never tones them a second time. Paddle input
-  is ignored outside CW / CW-R; the first contact opens the CW bar. Timing
+  is ignored outside CW / CW-R; the first contact opens the CW bar.
+  The radio's own sidetone (in the RX audio over USB) therefore trails the
+  fist by a character (~0.9 s at 20 WPM on the bench): `WfCwRxMute` cuts the
+  RX playback gain (`setRxPaddleMute`, `rxPlaybackGain()`) on the first
+  element and restores it once the radio's keying (`cwKeyer` model end) plus
+  the jitter buffer and 300 ms have passed, so only the browser tone is heard. Timing
   stays in `cw-paddle.js`, not in the pages (CW keyer rule).
 - Tests: `tests/cw_paddle_sim.mjs` (decode at several speeds, A vs B squeeze,
   swap, jittery straight key, sidetone on the paddle, rig text one character
