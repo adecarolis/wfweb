@@ -92,7 +92,7 @@ other.** No Direct/Server runtime gates: each `index.html` is single-purpose.
 |-----|---------|----------|
 | `resources/web/` | C++ server build (`wfweb.pro`) | Server-only `index.html`, `transport/websocket-transport.js`, `debug.html` |
 | `resources/web-standalone/` | Static bundle (`tools/build-static.sh`) | Standalone `index.html`, `transport/serial-transport.js`, `civ/`, `wasm/` |
-| `resources/web-shared/` | Both | `index.html`-side modules and pure assets: `theme.css` (design tokens + `.wf-*` kit), `packet.js`, `recorder.js` (+ vendored `lamejs/`), `needle-meter.js`, `rx-jitter.js`, `cw-keyer.js`, `transport/rig-transport.js` (base class), CW decoder JS family (+ `ort/` ONNX Runtime Web and `models/deepcw.onnx`), JS8 family (`js8.mjs`, `js8-panel.mjs`, `js8-panel.css`), `models/`, `digits/`, `digits-sprite.png` |
+| `resources/web-shared/` | Both | `index.html`-side modules and pure assets: `theme.css` (design tokens + `.wf-*` kit), `packet.js`, `recorder.js` (+ vendored `lamejs/`), `needle-meter.js`, `rx-jitter.js`, `cw-keyer.js`, `cw-paddle.js`, `midi.js`, `transport/rig-transport.js` (base class), CW decoder JS family (+ `ort/` ONNX Runtime Web and `models/deepcw.onnx`), JS8 family (`js8.mjs`, `js8-panel.mjs`, `js8-panel.css`), `models/`, `digits/`, `digits-sprite.png` |
 
 The CW decoder is the DeepCW neural model (`resources/web-shared/models/deepcw.onnx`
 + `.json` metadata, AGPL-3.0, from e04/deepcw-engine) run by ONNX Runtime Web
@@ -357,6 +357,8 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 | `resources/web-shared/needle-meter.js` | IC-7610-style needle meter face + needle ballistics; alternative to the tile-bar meter in `index.html` (both builds) |
 | `resources/web-shared/rx-jitter.js` | Adaptive RX jitter buffer (worklet + ScriptProcessor fallback, both builds); simulated by `tests/rx_jitter_sim.mjs` |
 | `resources/web-shared/cw-keyer.js` | CW keyer model: timing, pacing of the text to the rig's keyer, browser sidetone (both builds); `tests/cw_keyer_sim.mjs` under node, `tests/cw_bench.mjs` on the two-rig bench, both via `tests/test_cw_keyer.py` |
+| `resources/web-shared/cw-paddle.js` | Paddle / straight key as CW text entry: iambic A/B keyer, element decoder, adaptive straight-key decoder (both builds); `tests/cw_paddle_sim.mjs` |
+| `resources/web-shared/midi.js` | Web MIDI controller: CTR2-MIDI presets, MIDI learn, knob-tick tuner, MIDI window body (both builds); `tests/midi_sim.mjs`, `tests/midi_browser.mjs` via `tests/test_midi.py` |
 | `resources/web-shared/js8-panel.mjs` | JS8 messenger panel — markup + state machine, QSO tabs, RX/TX, CMD palette (both builds) |
 | `resources/web-shared/js8.mjs` | JS8 WASM codec bridge — 8-FSK synth + encode/decode wrapper (both builds) |
 | `resources/web-shared/` | Files shared by both builds (CW decoder + DeepCW model + ORT, sprites, models) |
@@ -615,6 +617,44 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
   emulates a 30-byte keyer buffer (`civEmulator::keyerPending`) and NGs an
   overflowing frame, so type-ahead bugs fail there. Run both after any change
   to the module (`pytest tests/test_cw_keyer.py`).
+
+### MIDI controller and paddle (`midi.js`, `cw-paddle.js`)
+- Browser-only, both builds, no server command of its own: the controller
+  drives the actions each `index.html` registers (`midi.register(name,
+  {kind, fn})` — `rel` knob ticks, `abs` 0..1 levels, `btn`, `gate`), which
+  call the same functions as the page's own controls (`stepBand` /
+  `recallBand`, `setMode`, `setCwSpeedValue`, the GAIN sliders driven by an
+  `input` event, `setSpan`, `midiPtt` = the PTT button's path). FUNC > MIDI
+  (only where `navigator.requestMIDIAccess` exists — no Safari/iOS) opens
+  `#midiOverlay`, whose body `WfMidiPanel` builds. Off until switched on:
+  `localStorage wfMidiEnabled`, the map in `wfMidiMap`, keyer options in
+  `wfMidiOpts`.
+- The map is a table, `[{type: 'cc'|'note', num, enc, action}]`, with
+  CTR2-MIDI presets and MIDI learn. CTR2 (manual v2.01, channel 1): knob CC
+  100/101 Home turn / push-turn (WheelA, 64 ± ticks, speed-sensitive ±1/10/50),
+  102-107 the other knob modes (SliderA 0..127 by default); buttons NoteOn on
+  release, 1-6 short / 11-16 long; paddle jack 20/21, extended paddle mode
+  30/31 (straight key / PTT). **Extended BTN mode** puts buttons on 1-48 and
+  moves the jack to 96-99 — hence the second preset, not one fixed table.
+- Knob ticks go through `WfMidiTuner` (one `setFrequency` per 40 ms, each
+  step from the last frequency sent while the readback trails): never send
+  one `setFrequency` per tick from the page.
+- A gate (paddle, key, PTT) is released on unplug, on disable and on a preset
+  load, so a controller pulled mid-TX cannot leave the rig keyed.
+- **The paddle is text entry, not keying.** Icom CI-V has no element-level
+  key-down, so the iambic keyer in `cw-paddle.js` (mode A / B, swap) is heard
+  through `cwSidetone` at once, its elements are decoded (character after a
+  2-dot gap, word after 5) and each character goes to
+  `cwKeyer.sendText(ch, {tone: false})` — the CHR-mode path — so the rig's
+  keyer sends it, one character behind the fist. `tone: false` marks the
+  units `noTone` so the text path never tones them a second time. Paddle input
+  is ignored outside CW / CW-R; the first contact opens the CW bar. Timing
+  stays in `cw-paddle.js`, not in the pages (CW keyer rule).
+- Tests: `tests/cw_paddle_sim.mjs` (decode at several speeds, A vs B squeeze,
+  swap, jittery straight key, sidetone on the paddle, rig text one character
+  behind), `tests/midi_sim.mjs` (encodings, presets, learn, hot-plug,
+  tuner), `tests/midi_browser.mjs` (Standalone on `?virtual=1` with a fake
+  `requestMIDIAccess`; never a real radio).
 
 ### Shared station callsign
 - One callsign in the gear dialog feeds CW, FT8/FT4, JS8, FreeDV Reporter, APRS, and

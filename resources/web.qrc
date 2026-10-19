@@ -26,6 +26,8 @@
         <file alias="recorder.js">web-shared/recorder.js</file>
         <file alias="rx-jitter.js">web-shared/rx-jitter.js</file>
         <file alias="cw-keyer.js">web-shared/cw-keyer.js</file>
+        <file alias="cw-paddle.js">web-shared/cw-paddle.js</file>
+        <file alias="midi.js">web-shared/midi.js</file>
         <file alias="lamejs/lame.min.js">web-shared/lamejs/lame.min.js</file>
         <file alias="theme.css">web-shared/theme.css</file>
         <file alias="js8-panel.css">web-shared/js8-panel.css</file>

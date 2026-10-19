@@ -99,6 +99,7 @@
         this.osc = null; this.env = null;
         this._idleTimer = null;
         this._end = 0;        // audio time of the furthest element scheduled
+        this._held = false;   // straight key down (keyDown / keyUp)
     }
 
     // Make (or wake) the audio graph.  Called from a keystroke or a tap, so
@@ -131,7 +132,8 @@
     // then would throw away the characters still pending).
     WfCwSidetone.prototype._idle = function () {
         var self = this;
-        if (this._idleTimer !== null) this._clearTimeout(this._idleTimer);
+        if (this._idleTimer !== null) { this._clearTimeout(this._idleTimer); this._idleTimer = null; }
+        if (this._held) return;
         var afterMs = Math.max(0, (this._end - this.ctx.currentTime) * 1000) + 500;
         this._idleTimer = this._setTimeout(function () {
             self._idleTimer = null;
@@ -176,6 +178,30 @@
         else { g.cancelScheduledValues(now); g.setValueAtTime(g.value, now); }
         g.linearRampToValueAtTime(0, now + CW_TONE_RAMP);
         this._end = now;
+        this._held = false;
+        this._idle();
+    };
+
+    // Straight key (cw-paddle.js): an open-ended tone, keyed down now and
+    // released by keyUp().  Same envelope; parked by _idle once released.
+    WfCwSidetone.prototype.keyDown = function () {
+        if (!this.enabled || !this._ensure()) return;
+        var now = this.ctx.currentTime, g = this.env.gain;
+        if (g.cancelAndHoldAtTime) g.cancelAndHoldAtTime(now);
+        else { g.cancelScheduledValues(now); g.setValueAtTime(g.value, now); }
+        g.linearRampToValueAtTime(1, now + CW_TONE_RAMP);
+        if (now > this._end) this._end = now;
+        this._held = true;      // never park while the key is held
+    };
+
+    WfCwSidetone.prototype.keyUp = function () {
+        if (!this.ctx || !this.env) return;
+        var now = this.ctx.currentTime, g = this.env.gain;
+        if (g.cancelAndHoldAtTime) g.cancelAndHoldAtTime(now);
+        else { g.cancelScheduledValues(now); g.setValueAtTime(g.value, now); }
+        g.linearRampToValueAtTime(0, now + CW_TONE_RAMP);
+        this._held = false;
+        if (now + CW_TONE_RAMP > this._end) this._end = now + CW_TONE_RAMP;
         this._idle();
     };
 
@@ -278,7 +304,11 @@
 
     // Append text to the model and hand it to the rig.  Returns the number
     // of units added (0 when nothing in the text can be keyed).
-    WfCwKeyer.prototype.sendText = function (text) {
+    // opts.tone === false: the operator already heard it (paddle text from
+    // cw-paddle.js, keyed live by its own sidetone) -- no tone for these
+    // units, now or when TONE is switched on mid-way.
+    WfCwKeyer.prototype.sendText = function (text, opts) {
+        var noTone = !!(opts && opts.tone === false);
         if (!text) return 0;
         var tokens = cwTokenize(text.toUpperCase()).filter(function (t) { return !!CW_MORSE[t]; });
         if (!tokens.length) return 0;
@@ -294,7 +324,9 @@
         var t = modelStart;
         var prev = startIndex > 0 ? this.characters[startIndex - 1].char : null;
         for (var i = 0; i < tokens.length; i++) {
-            this.characters.push({ char: tokens[i], status: 'pending', startTime: t, groupIndex: startIndex });
+            var c = { char: tokens[i], status: 'pending', startTime: t, groupIndex: startIndex };
+            if (noTone) c.noTone = true;
+            this.characters.push(c);
             t += cwTokenDuration(tokens[i], prev, dot);
             prev = tokens[i];
         }
@@ -302,7 +334,7 @@
 
         this._scheduleStatus(startIndex);
         this._queueFrames(startIndex, tokens);
-        if (this.sidetone && this.sidetone.enabled) this.sidetone.schedule(this.elements(startIndex));
+        if (this.sidetone && this.sidetone.enabled && !noTone) this.sidetone.schedule(this.elements(startIndex));
         this._onChange();
         return tokens.length;
     };
@@ -367,6 +399,7 @@
         var dot = this.dot();
         var out = [];
         for (var i = startIndex || 0; i < this.characters.length; i++) {
+            if (this.characters[i].noTone) continue;
             var pattern = CW_MORSE[this.characters[i].char];
             if (!pattern || pattern === ' ') continue;
             var t = this.base + this.characters[i].startTime;
