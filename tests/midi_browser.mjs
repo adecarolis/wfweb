@@ -8,7 +8,8 @@
 //   - button 2 steps the band, CC 102 (SliderA) sets AF gain;
 //   - in CW, a paddle-contact timeline spelling "CQ" is keyed by the browser
 //     keyer, decoded, and handed to the rig's keyer as sendCW text, shown in
-//     the CW transcript; outside CW the paddle does nothing.
+//     the CW transcript; outside CW the paddle does nothing;
+//   - the CW bar's BK-IN button cycles OFF / SEMI / FULL and fits a phone.
 // Needs playwright-core and a Chromium (found like cw_bench.mjs); `--probe`
 // exits 0 when both are found and 3 otherwise.  WFWEB_SHOT_DIR keeps a
 // screenshot of the MIDI window.
@@ -209,6 +210,23 @@ try {
   check((await page.locator('#cwDisplay').textContent()).replace(/\s/g, '') === 'CQ', 'CW transcript shows CQ');
   check(await page.evaluate(() => !!(window.cwSidetone.ctx)), 'paddle sidetone started');
   check(await page.evaluate(() => window.cwKeyer.characters.every(c => c.noTone)), 'paddle text carries no second tone');
+
+  // -- BK-IN in the CW bar: OFF -> BKIN -> F-BKIN, from the rig's reports --
+  const bk = page.locator('#cwBreakInBtn');
+  const bkLabel = () => bk.locator('.cw-wide').textContent();
+  check(await bk.isVisible() && await bkLabel() === 'BKIN', 'BK-IN button in the CW bar, reading BKIN (the virtual rig starts in semi break-in)');
+  const bkSeen = [];
+  for (let i = 0; i < 3; i++) { await bk.click(); await page.waitForTimeout(150); bkSeen.push(await bkLabel() + (await bk.evaluate(b => b.classList.contains('active')) ? '*' : '')); }
+  check(bkSeen.join() === 'F-BKIN*,BK-IN,BKIN*', 'BK-IN cycles like the radio key: ' + bkSeen.join(' -> ') + ' (* = lit)');
+  check((await cmds('setBreakIn')).map(c => c.value).join() === '2,0,1', 'and sends setBreakIn 2, 0, 1');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(300);
+  const hdr = await page.evaluate(() => {
+    const h = document.querySelector('#cwBar .cw-bar-header');
+    const c = document.getElementById('cwCloseBtn').getBoundingClientRect();
+    return { fits: h.scrollWidth <= h.clientWidth + 1, close: Math.round(c.width), bk: Math.round(document.getElementById('cwBreakInBtn').getBoundingClientRect().width) };
+  });
+  check(hdr.fits && hdr.close >= 28 && hdr.bk >= 24, `phone width: the CW header still fits with BK-IN (✕ ${hdr.close} px, BK ${hdr.bk} px)`);
 } finally {
   await browser.close();
   server.close();

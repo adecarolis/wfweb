@@ -48,6 +48,7 @@
         setMonitor:       'monitor',
         setPreamp:        'preamp',
         setAttenuator:    'attenuator',
+        setBreakIn:       'breakIn',
         setSplit:         'split',
         setDuplex:        'duplex',
         setDuplexOffset:  'duplexOffset',
@@ -133,6 +134,8 @@
                 // cycle button walks the caps lists from here.
                 preamp: 0,
                 attenuator: 0,
+                // CW break-in, SEMI like the C++ virtual rig (civemulator).
+                breakIn: 1,
                 // -54 dB = S0. The drawSMeter() scale treats 0 as S9, so a
                 // default of 0 would paint a permanent full-scale signal.
                 sMeter: -54,
@@ -590,6 +593,8 @@
                 // Same for the TUNE tile — the virtual rig echoes tuner
                 // state, so the bench can exercise it off-air.
                 hasTuner: true,
+                // The CW bar's BK-IN button, echoed like the rest.
+                hasBreakIn: true,
                 // Switchable bottom meter: borrow the IC-705's meter faces so
                 // the SWR / ALC / COMP / Vd / Id cycle can be exercised off-air.
                 txMeters: virtualTxMeters(),
@@ -631,6 +636,7 @@
                 rxAntenna: this.state.rxAntenna,
                 preamp: this.state.preamp,
                 attenuator: this.state.attenuator,
+                breakIn: this.state.breakIn,
                 duplex: this.state.duplex || 'OFF',
                 toneMode: this.state.toneMode || 'OFF',
                 toneFreq: this.state.toneFreq,

@@ -174,6 +174,7 @@
         0x40: 'nr',
         0x45: 'monitor',
         0x02: 'preamp',  // multi-state but reply still parses through here
+        0x47: 'breakIn', // CW break-in, multi-state: 0 OFF, 1 SEMI, 2 FULL
     };
 
     var HANDLED_CMDS = {
@@ -191,7 +192,7 @@
         setPBTOuter: true, setCWSpeed: true,
         // Bool toggles
         setAutoNotch: true, setNoiseBlanker: true, setNoiseReduction: true,
-        setMonitor: true, setPreamp: true, setAttenuator: true,
+        setMonitor: true, setPreamp: true, setAttenuator: true, setBreakIn: true,
         setAntenna: true,
         // VFO ops
         selectVFO: true, swapVFO: true, equalizeVFO: true, setSplit: true,
@@ -650,6 +651,14 @@
                     this.state.preamp = pre;
                     this._enqueue('setPreamp', civ.cmdSetPreamp(pre));
                     this._emit('update', { preamp: pre });
+                    return;
+                case 'setBreakIn':
+                    // CW break-in, 0x16 0x47: same three-state shape as the preamp.
+                    if (!this._hasBreakIn) return;
+                    var bk = Math.max(0, Math.min(2, obj.value | 0));
+                    this.state.breakIn = bk;
+                    this._enqueue('setBreakIn', civ.cmdSetBreakIn(bk));
+                    this._emit('update', { breakIn: bk });
                     return;
                 case 'setAttenuator':
                     var att = (typeof obj.value === 'number') ? obj.value : 0;
@@ -1298,6 +1307,7 @@
                 && this._antennas.length > 0;
             this._hasDuplex = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasDuplex);
             this._hasTuner = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasTuner);
+            this._hasBreakIn = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasBreakIn);
             this._hasSpectrum = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasSpectrum);
             // Keyer speed span of 0x14 0x0C's 0..255 (6-48 WPM on most Icoms,
             // 6-60 on the IC-7600 family), from the rig file (#141).
@@ -1377,6 +1387,7 @@
             this._enqueue('readSplit',      civ.cmdReadSplit());
             if (this._hasDuplex) this._enqueue('readDuplexOffset', civ.cmdReadDuplexOffset());
             if (this._hasTuner) this._enqueue('readTuner', civ.cmdReadTuner());
+            if (this._hasBreakIn) this._enqueue('readBreakIn', civ.cmdReadBreakIn());
             this._enqueueToneReads();
             this._enqueue('readScopeSpan',  civ.cmdReadScopeSpan());
             // Mod inputs: read the user's current settings first (the
@@ -1772,7 +1783,7 @@
                 if (bReply) {
                     var bField = BOOL_SUB_TO_FIELD[bReply.sub];
                     if (bField) {
-                        var bVal = (bReply.sub === 0x02) ? bReply.value : !!bReply.value;
+                        var bVal = (bReply.sub === 0x02 || bReply.sub === 0x47) ? bReply.value : !!bReply.value;
                         if (this.state[bField] !== bVal) {
                             this.state[bField] = bVal;
                             var bu = {}; bu[bField] = bVal;
@@ -2619,6 +2630,7 @@
                 hasMainSub: caps.numReceivers > 1,
                 hasDuplex: !!caps.hasDuplex,
                 hasTuner: !!caps.hasTuner,
+                hasBreakIn: !!caps.hasBreakIn,
                 // Switchable second meter bar: one descriptor per reading this
                 // rig can actually produce, carrying the rig's own calibration
                 // table so the SPA can draw the matching face.
@@ -2699,7 +2711,7 @@
             // Pass through any cached values so the UI populates fully.
             var passthrough = ['afGain', 'rfGain', 'rfPower', 'squelch',
                 'micGain', 'monitorGain', 'pbtInner', 'pbtOuter', 'cwSpeed', 'cwPitch',
-                'autoNotch', 'nb', 'nr', 'preamp', 'attenuator',
+                'autoNotch', 'nb', 'nr', 'preamp', 'attenuator', 'breakIn',
                 'antenna', 'rxAntenna',
                 'split', 'tuner', 'spanIndex', 'filterWidth', 'filterShape',
                 'duplex', 'duplexOffset'];
@@ -2751,6 +2763,8 @@
                 // panel — re-read on the same slow tick.
                 if ((this._tonePollTick = (this._tonePollTick || 0) + 1) % 5 === 0) {
                     this._enqueueToneReads();
+                    // BK-IN is a front-panel key too: keep the CW bar's button honest.
+                    if (this._hasBreakIn) this._enqueue('readBreakIn', civ.cmdReadBreakIn());
                 }
             }, 1000);
             // Slow refresh of the unselected/Sub VFO so dial motion on the

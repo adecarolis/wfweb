@@ -539,6 +539,8 @@ void webServer::receiveRigCaps(rigCapabilities *caps)
         // something to tune, so the TUNE tile and the FUNC TUNER button
         // follow that capability instead of appearing on every rig.
         obj["hasTuner"] = rigCaps->commands.contains(funcTunerStatus);
+        // CW break-in (OFF / SEMI / FULL): the BK-IN button in the CW bar.
+        obj["hasBreakIn"] = rigCaps->commands.contains(funcBreakIn);
         obj["hasPowerControl"] = rigCaps->commands.contains(funcPowerControl);
         obj["powerOnNeedsRemoteJack"] = powerOnNeedsRemoteJack(rigCaps);
         addToneCaps(obj);
@@ -2325,6 +2327,15 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             if (queue) queue->add(priorityImmediate, funcNoiseBlanker, false, 0);
         });
     }
+    else if (type == "setBreakIn") {
+        // 0 = OFF, 1 = SEMI, 2 = FULL break-in; read back so the CW bar's
+        // BK-IN button shows what the rig took.
+        uchar val = static_cast<uchar>(qBound(0, cmd["value"].toInt(), 2));
+        queue->addUnique(priorityImmediate, queueItem(funcBreakIn, QVariant::fromValue<uchar>(val), false, 0));
+        QTimer::singleShot(200, this, [this]() {
+            if (queue) queue->add(priorityImmediate, funcBreakIn, false, 0);
+        });
+    }
     else if (type == "setNoiseReduction") {
         bool on = cmd["value"].toBool();
         queue->addUnique(priorityImmediate, queueItem(funcNoiseReduction, QVariant::fromValue<uchar>(on ? 1 : 0), false, 0));
@@ -3702,6 +3713,7 @@ QJsonObject webServer::buildInfoJson() const
         // The IC-705 declares it for the optional AH-705 and refuses the
         // status read without one — tunerRejected tracks that.
         info["hasTuner"] = rigCaps->commands.contains(funcTunerStatus) && !tunerRejected;
+        info["hasBreakIn"] = rigCaps->commands.contains(funcBreakIn);
         addToneCaps(info);
         addBandCaps(info);
         addTxMeterCaps(info);
@@ -4078,6 +4090,13 @@ QJsonObject webServer::buildStatusJson()
     cacheItem nb = queue->getCache(funcNoiseBlanker, 0);
     if (nb.value.isValid()) status["nb"] = nb.value.toBool();
 
+    // CW break-in: 0 = OFF, 1 = SEMI, 2 = FULL. Only asked of rigs that have
+    // it, since getCache() requests a missing value from the rig.
+    if (rigCaps && rigCaps->commands.contains(funcBreakIn)) {
+        cacheItem bk = queue->getCache(funcBreakIn, 0);
+        if (bk.value.isValid()) status["breakIn"] = bk.value.toInt();
+    }
+
     // Noise Reduction
     cacheItem nr = queue->getCache(funcNoiseReduction, 0);
     if (nr.value.isValid()) status["nr"] = nr.value.toBool();
@@ -4403,6 +4422,9 @@ void webServer::receiveCache(cacheItem item)
         break;
     case funcNoiseBlanker:
         update["nb"] = item.value.toBool();
+        break;
+    case funcBreakIn:
+        update["breakIn"] = item.value.toInt();   // 0 = OFF, 1 = SEMI, 2 = FULL
         break;
     case funcNoiseReduction:
         update["nr"] = item.value.toBool();

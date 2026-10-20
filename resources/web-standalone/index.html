@@ -746,11 +746,11 @@ body.meter-needle #meterCanvas { width: auto; height: 128px; aspect-ratio: 611 /
 /* .cw-bar-header geometry is now .wf-panel-header; .cw-label is now .wf-badge.
    (Mobile overrides for these live in the @media block below.) */
 
-.cw-tone-btn .cw-narrow { display: none; }   /* the glyph form, phones only (below) */
+.cw-tone-btn .cw-narrow, .cw-bkin-btn .cw-narrow { display: none; }   /* the short forms, phones only (below) */
 /* Mobile portrait: more compact CW bar */
 @media (orientation: portrait) and (max-width: 600px) {
     .cw-bar-header {
-        gap: 3px;
+        gap: 2px;
         padding: 3px;
         font-size: 11px;
         flex-wrap: nowrap; /* one row: a wrapped ✕ costs a row the bar can't spare */
@@ -762,12 +762,13 @@ body.meter-needle #meterCanvas { width: auto; height: 128px; aspect-ratio: 611 /
        the strip above the bar (resizeCanvases) so tap-to-tune keeps working. */
     /* Touch targets: keep every header control >= 28px tall (WCAG floor is 24). */
     .cw-speed-btn { width: 28px; height: 28px; font-size: 15px; padding: 0; }
-    #cwSpeedInput { width: 32px; height: 28px; font-size: 12px; padding: 2px; }
+    .cw-bar #cwSpeedInput { width: 32px; height: 28px; font-size: 12px; padding: 2px; }   /* .cw-bar: outranks the base rule further down */
     .cw-wpm-label { display: none; } /* Hide "WPM" - obvious from context */
     .cw-mode-btn { padding: 5px 5px; font-size: 10px; min-height: 28px; }
-    .cw-stop-btn, .cw-close-btn, .cw-edit-btn, .cw-log-btn, .cw-tone-btn { padding: 5px 5px; font-size: 10px; min-height: 28px; }
-    .cw-tone-btn .cw-wide { display: none; }   /* TONE becomes a note glyph */
-    .cw-tone-btn .cw-narrow { display: inline; }
+    .cw-stop-btn, .cw-close-btn, .cw-edit-btn, .cw-log-btn, .cw-tone-btn, .cw-bkin-btn { padding: 5px 5px; font-size: 10px; min-height: 28px; }
+    .cw-close-btn { flex: 0 0 28px; }   /* the way out never shrinks below a touch target */
+    .cw-tone-btn .cw-wide, .cw-bkin-btn .cw-wide { display: none; }   /* TONE becomes a note glyph, BKIN reads BK */
+    .cw-tone-btn .cw-narrow, .cw-bkin-btn .cw-narrow { display: inline; }
     .cw-display { font-size: 11px; padding: 3px 4px; min-height: 18px; }
     .cw-input-field { font-size: 11px; padding: 3px 4px; }
     .cw-macro-grid { gap: 3px; padding: 4px 6px; }
@@ -2752,6 +2753,7 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
                     <button class="cw-mode-btn wf-btn" data-mode="words">WRD</button>
                     <button class="cw-mode-btn wf-btn" data-mode="lines">LN</button>
                 </div>
+                <button id="cwBreakInBtn" class="cw-bkin-btn wf-btn" style="display:none" title="Break-in, the radio's BK-IN key: OFF (the keyer only sounds its sidetone, nothing is transmitted), BKIN = semi break-in, F-BKIN = full break-in. Tap to step OFF, BKIN, F-BKIN."><span class="cw-wide">BK-IN</span><span class="cw-narrow">BK</span></button>
                 <button id="cwToneBtn" class="cw-tone-btn wf-btn" title="Sidetone made in the browser at the radio's CW pitch, at the VOL level. Switch it off if you key with a paddle and hear the radio's own sidetone over USB."><span class="cw-wide">TONE</span><span class="cw-narrow">&#9834;</span></button>
                 <button id="cwLogBtn" class="cw-log-btn wf-btn">LOG<span class="cw-wide"> QSO</span></button>
                 <button id="cwStopBtn" class="cw-stop-btn wf-btn danger">STOP</button>
@@ -3777,7 +3779,7 @@ function handleMessage(msg) {
                 if (msg.hasMainSub !== undefined) { hasMainSub = msg.hasMainSub; updateVfoDisplay(); }
                 if (msg.hasDuplex !== undefined) hasDuplex = !!msg.hasDuplex;
                 updateToneCaps(msg);
-                if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner);
+                if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner); if (msg.hasBreakIn !== undefined) updateHasBreakIn(!!msg.hasBreakIn);
                 if (msg.txMeters !== undefined) setTxMeterCaps(msg.txMeters, msg.poCal);
                 if (msg.cwSpeedRange) applyCwSpeedRange(msg.cwSpeedRange);
                 if (msg.manufacturer !== undefined) cwKeyerType = (msg.manufacturer === 'Icom') ? 'icom' : 'ideal';
@@ -3813,7 +3815,7 @@ function handleMessage(msg) {
             if (msg.hasMainSub !== undefined) { hasMainSub = msg.hasMainSub; updateVfoDisplay(); }
             if (msg.hasDuplex !== undefined) hasDuplex = !!msg.hasDuplex;
             updateToneCaps(msg);
-            if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner);
+            if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner); if (msg.hasBreakIn !== undefined) updateHasBreakIn(!!msg.hasBreakIn);
             if (msg.txMeters !== undefined) setTxMeterCaps(msg.txMeters, msg.poCal);
                 if (msg.cwSpeedRange) applyCwSpeedRange(msg.cwSpeedRange);
                 if (msg.manufacturer !== undefined) cwKeyerType = (msg.manufacturer === 'Icom') ? 'icom' : 'ideal';
@@ -3868,7 +3870,7 @@ function handleMessage(msg) {
             if (msg.nb !== undefined) updateToggle('nb', msg.nb);
             if (msg.nr !== undefined) updateToggle('nr', msg.nr);
             if (msg.autoNotch !== undefined) updateToggle('anf', msg.autoNotch);
-            if (msg.tuner !== undefined) updateTunerState(msg.tuner);
+            if (msg.tuner !== undefined) updateTunerState(msg.tuner); if (msg.breakIn !== undefined) updateBreakIn(msg.breakIn);
             if (msg.preamp !== undefined) updatePreampBtn(msg.preamp);
             if (msg.attenuator !== undefined) updateAttenuatorBtn(msg.attenuator);
             if (msg.antenna !== undefined || msg.rxAntenna !== undefined) updateAntennaState(msg.antenna, msg.rxAntenna);
@@ -3917,7 +3919,7 @@ function handleMessage(msg) {
             if (msg.nb !== undefined) updateToggle('nb', msg.nb);
             if (msg.nr !== undefined) updateToggle('nr', msg.nr);
             if (msg.autoNotch !== undefined) updateToggle('anf', msg.autoNotch);
-            if (msg.tuner !== undefined) updateTunerState(msg.tuner);
+            if (msg.tuner !== undefined) updateTunerState(msg.tuner); if (msg.breakIn !== undefined) updateBreakIn(msg.breakIn);
             if (msg.preamp !== undefined) updatePreampBtn(msg.preamp);
             if (msg.attenuator !== undefined) updateAttenuatorBtn(msg.attenuator);
             if (msg.antenna !== undefined || msg.rxAntenna !== undefined) updateAntennaState(msg.antenna, msg.rxAntenna);
@@ -9379,6 +9381,39 @@ function setCwPitch(hz) {
 
 function cwSidetoneOn() { return cwSidetone.enabled; }
 
+// Break-in, the radio's BK-IN key (CI-V 16 47): OFF -> BKIN (semi) -> F-BKIN
+// (full). OFF lets the keyer sound its sidetone without transmitting. The
+// button shows what the rig reports (breakIn in status / update), so the
+// radio's own key moves it too. Hidden on rigs without the command.
+var hasBreakIn = false;
+var breakInMode = null;   // 0 OFF, 1 SEMI, 2 FULL; null until the rig reports
+var BREAK_IN_LABELS = [['BK-IN', 'BK'], ['BKIN', 'BK'], ['F-BKIN', 'F-BK']];
+
+function cycleBreakIn() {
+    if (!hasBreakIn) return;
+    send({ cmd: 'setBreakIn', value: ((breakInMode || 0) + 1) % 3 });
+}
+
+function updateHasBreakIn(on) {
+    hasBreakIn = !!on;
+    updateBreakInUi();
+}
+
+function updateBreakIn(val) {
+    breakInMode = Math.max(0, Math.min(2, val | 0));
+    updateBreakInUi();
+}
+
+function updateBreakInUi() {
+    var btn = document.getElementById('cwBreakInBtn');
+    if (!btn) return;
+    btn.style.display = hasBreakIn ? '' : 'none';
+    var lbl = BREAK_IN_LABELS[breakInMode || 0];
+    btn.querySelector('.cw-wide').textContent = lbl[0];
+    btn.querySelector('.cw-narrow').textContent = lbl[1];
+    btn.classList.toggle('active', breakInMode > 0);
+}
+
 function setCwSidetone(on) {
     cwSidetone.setEnabled(on, cwKeyer.elements(0));   // joins a transmission under way
     try { localStorage.setItem('wfCwSidetone', cwSidetone.enabled ? '1' : '0'); } catch (e) {}
@@ -9504,6 +9539,7 @@ function midiSlider(name) {
     btn('nr', 'NR', function() { send({ cmd: 'setNoiseReduction', value: !nrOn }); });
     btn('notch', 'NOTCH', function() { send({ cmd: 'setAutoNotch', value: !anfOn }); });
     btn('tuner', 'TUNER', handleTunerPress);
+    btn('breakIn', 'BK-IN', cycleBreakIn);
     btn('cwCut', 'CW STOP', function() { cwPaddle.stop(); cwStopRig(); });
     btn('pttToggle', 'PTT toggle', function() { midiPtt(!midiPttHeld); });
     gate('paddleLeft', 'Paddle left', function(c) { midiCwContact(c, function(on) { cwPaddle.paddle('left', on); }); });
@@ -9626,6 +9662,13 @@ function initCWHandlers() {
     document.getElementById('cwStopBtn').addEventListener('click', function() {
         cwKeyer.stop();
         cwPendingText = '';
+    });
+
+    // Break-in OFF / SEMI / FULL
+    updateBreakInUi();
+    document.getElementById('cwBreakInBtn').addEventListener('click', function() {
+        cycleBreakIn();
+        document.getElementById('cwInput').focus();
     });
 
     // Browser sidetone on / off

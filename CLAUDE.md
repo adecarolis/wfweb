@@ -609,6 +609,14 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
   that follows a paddle and gives true full break-in, with TONE off. The
   browser tone never enters the RX chain, so the CW decoder and the recorder
   do not see it.
+- BK-IN in the CW bar header (between LN and TONE) is the radio's break-in key,
+  CI-V `16 47` = `funcBreakIn`: OFF (the keyer sounds its sidetone, nothing is
+  transmitted) -> BKIN (semi) -> F-BKIN (full), labels as on the radio's
+  screen. `setBreakIn {value}`, `breakIn` in status / update, `hasBreakIn` in
+  rigInfo (rig-file "Break-In Status"; Standalone: `hasBreakIn` in
+  `civ/rig-caps.js`, read at connect and on the slow tick). The commander
+  refuses a value above the rig file's `Max`, so FULL needs `Max=2` there
+  (IC-7300 fixed in 2.12; several other Icom files still say 1).
 - Tests: `tests/cw_keyer_sim.mjs` (node, virtual clock, fake AudioContext)
   checks timing, pacing, Backspace, unknown characters and the sidetone;
   `tests/cw_bench.mjs` runs on the two-rig bench and measures the model

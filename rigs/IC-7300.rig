@@ -1,5 +1,5 @@
 [General]
-Version=2.11
+Version=2.12
 
 [Rig]
 Manufacturer=0
@@ -540,7 +540,7 @@ Commands\57\Admin=false
 Commands\58\Type=Break-In Status
 Commands\58\String=\\x16\\x47
 Commands\58\Min=0
-Commands\58\Max=1
+Commands\58\Max=2
 Commands\58\Bytes=0
 Commands\58\Command29=false
 Commands\58\GetCommand=true
