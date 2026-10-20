@@ -33,7 +33,7 @@ function makeStation(clock, opts = {}) {
   st.paddle = new WfCwPaddle({
     dot: () => keyer.dot(), sidetone: tone, mode: opts.mode, swap: opts.swap, ...timers(clock),
     onChar: (ch) => { st.text += ch; keyer.sendText(ch, { tone: false }); },
-    onUnknown: (p) => st.unknown.push(p),
+    onUnknown: (p, ch) => st.unknown.push([p, ch]),
     onRxMute: (m) => st.mute.push({ t: clock.now(), m }),
     rigEnd: () => keyer.characters.length ? keyer.base + keyer.nextTime : 0,
     rxDelay: () => 400,
@@ -166,14 +166,25 @@ for (const [mode, want] of [['A', 'E'], ['B', 'A']]) {
   check(st.rig.stops === 0, 'the rig keyer is never cut');
 }
 
-// ---- 8. unknown pattern: reported, not sent -------------------------------
-{
+// ---- 8. a pattern that is no character goes out as its longest known head --
+for (const [pattern, want] of [['......', '5'], ['--.....', '7'], ['.-.-.-.-', '.'], ['.-...', '<AS>']]) {
   const clock = new Clock(), st = makeStation(clock, { wpm: 20 });
   const d = st.keyer.dot(), t0 = clock.now() + 100;
-  clock.run(t0); st.paddle.paddle('left', true);
-  clock.run(t0 + 11.5 * d); st.paddle.paddle('left', false);   // six dits: ...... is not a character
-  clock.run(t0 + 40 * d);
-  check(st.text === '' && st.unknown[0] === '......' && st.rig.frames.length === 0, 'six dits: reported as unknown, nothing sent (' + JSON.stringify(st.unknown) + ')');
+  // one paddle contact per element, pressed in the gap before it (as paddleTimeline)
+  let prevOff = null;
+  for (let k = 0; k < pattern.length; k++) {
+    const start = k === 0 ? t0 : prevOff + d, press = k === 0 ? start : prevOff + 0.5 * d;
+    const len = (pattern[k] === '.' ? 1 : 3) * d, side = pattern[k] === '.' ? 'left' : 'right';
+    clock.run(press); st.paddle.paddle(side, true);
+    clock.run(start + 0.5 * len); st.paddle.paddle(side, false);
+    prevOff = start + len;
+  }
+  clock.run(prevOff + 40 * d);
+  const sent = st.rig.frames.filter(f => f.text !== null).map(f => f.text).join('');
+  const known = !st.unknown.length;
+  check(st.text === want + ' ' && sent === want.replace(/<([A-Z]{2})>/, '^$1') + ' ',
+    `${pattern} -> ${want}${known ? ' (a known prosign)' : ' (no such character: its longest known head)'}, keyed as ${JSON.stringify(sent)}`);
+  if (!known) check(st.unknown[0][0] === pattern && st.unknown[0][1] === want, `${pattern}: reported with what was sent instead`);
 }
 
 // ---- 9. straight key: adaptive decode with jitter --------------------------

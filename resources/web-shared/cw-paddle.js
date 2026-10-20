@@ -36,6 +36,19 @@
         return cwPatternMap[pattern] || null;
     }
 
+    // A keyed pattern that is no character (a slip: six dits for a 5) still
+    // goes out as one: drop elements off the end until what is left is a
+    // character -- ...... -> 5, --..... -> 7.  A wrong character keeps the
+    // rhythm of the transmission; sending nothing left a hole in it.  Every
+    // pattern ends at E or T at worst, so something is always sent.
+    function cwNearestFromPattern(pattern) {
+        for (var p = pattern; p; p = p.slice(0, -1)) {
+            var ch = cwFromPattern(p);
+            if (ch) return ch;
+        }
+        return null;
+    }
+
     function timers(opts, self) {
         self._now = opts.now || function () { return Date.now(); };
         self._setTimeout = opts.setTimeout || function (f, ms) { return setTimeout(f, ms); };
@@ -52,7 +65,7 @@
         timers(opts, this);
         this._dot = opts.dot;                         // () -> ms
         this._onChar = opts.onChar || function () {};
-        this._onUnknown = opts.onUnknown || function () {};
+        this._onUnknown = opts.onUnknown || function () {};   // (pattern, sentInstead)
         this.charGap = opts.charGap || 2;
         this.wordGap = opts.wordGap || 5;
         this.pattern = '';
@@ -81,8 +94,11 @@
         var pattern = this.pattern;
         this.pattern = '';
         var ch = cwFromPattern(pattern);
+        if (!ch) {
+            ch = cwNearestFromPattern(pattern);
+            this._onUnknown(pattern, ch);
+        }
         if (ch) { this._spaceDue = true; this._onChar(ch); }
-        else this._onUnknown(pattern);
         if (!this._spaceDue) return;
         this._timer = this._setTimeout(function () {
             self._timer = null;
@@ -308,6 +324,7 @@
     };
 
     global.cwFromPattern = cwFromPattern;
+    global.cwNearestFromPattern = cwNearestFromPattern;
     global.WfCwElementDecoder = WfCwElementDecoder;
     global.WfPaddleKeyer = WfPaddleKeyer;
     global.WfStraightKey = WfStraightKey;
