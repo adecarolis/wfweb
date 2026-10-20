@@ -145,6 +145,16 @@
         border-color: var(--mode-accent);
     }
 }
+/* A state button (.toggle: on/off or one-of-several, e.g. CW TONE, BK-IN,
+   CHR/WRD/LN) reads its state from the fill, so hovering must not fill it:
+   just after a click the pointer is still on it, and OFF looked lit. */
+@media (hover: hover) {
+    .wf-btn.toggle:hover:not(:disabled):not(.active) {
+        background: var(--mode-accent-bg);
+        color: var(--mode-accent);
+        border-color: var(--mode-accent);
+    }
+}
 .wf-btn:active:not(:disabled) { transform: translateY(1px); }
 .wf-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
