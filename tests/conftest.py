@@ -140,7 +140,13 @@ def mock_radio(event_loop):
 
 
 @pytest.fixture(scope="session")
-def wfweb_instance(mock_radio, event_loop):
+def rigctld_port():
+    """TCP port of the rigctld server started with wfweb_instance (localhost only)."""
+    return _find_free_port()
+
+
+@pytest.fixture(scope="session")
+def wfweb_instance(mock_radio, event_loop, rigctld_port):
     """Start wfweb connected to mock_radio, yield (process, web_port), stop on teardown."""
 
     if not WFWEB_BIN.exists():
@@ -157,6 +163,7 @@ def wfweb_instance(mock_radio, event_loop):
         "--lan-user", "testuser",
         "--lan-pass", "testpass",
         "--civ", "0x98",
+        "--rigctld-port", str(rigctld_port),
     ]
 
     env = os.environ.copy()
