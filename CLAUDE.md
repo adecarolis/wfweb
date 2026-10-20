@@ -655,7 +655,9 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
   key-down, so the iambic keyer in `cw-paddle.js` (mode A / B, swap) is heard
   through `cwSidetone` at once, its elements are decoded (character after a
   2-dot gap, word after 5; a pattern that is no character is sent as its
-  longest known head, `......` -> 5, so a slip never leaves a hole) and
+  longest known head, one extra element dropped (`......` -> 5) and more
+  decoded as further characters (`..-.--` -> F M), so a slip never leaves
+  a hole) and
   each character goes to `cwKeyer.sendText(ch, {tone: false})` — the CHR-mode path — so the rig's
   keyer sends it, one character behind the fist. `tone: false` marks the
   units `noTone` so the text path never tones them a second time. Paddle input

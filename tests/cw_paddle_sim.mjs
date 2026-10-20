@@ -166,8 +166,9 @@ for (const [mode, want] of [['A', 'E'], ['B', 'A']]) {
   check(st.rig.stops === 0, 'the rig keyer is never cut');
 }
 
-// ---- 8. a pattern that is no character goes out as its longest known head --
-for (const [pattern, want] of [['......', '5'], ['--.....', '7'], ['.-.-.-.-', '.'], ['.-...', '<AS>']]) {
+// ---- 8. a pattern that is no character: its longest known head, then -----
+// one extra element dropped, two or more decoded as further characters
+for (const [pattern, want] of [['......', '5'], ['..-.-', 'F'], ['..-.--', 'FM'], ['--.....', '7I'], ['.-.-.-.-', '.A'], ['.-...', '<AS>']]) {
   const clock = new Clock(), st = makeStation(clock, { wpm: 20 });
   const d = st.keyer.dot(), t0 = clock.now() + 100;
   // one paddle contact per element, pressed in the gap before it (as paddleTimeline)
@@ -183,8 +184,26 @@ for (const [pattern, want] of [['......', '5'], ['--.....', '7'], ['.-.-.-.-', '
   const sent = st.rig.frames.filter(f => f.text !== null).map(f => f.text).join('');
   const known = !st.unknown.length;
   check(st.text === want + ' ' && sent === want.replace(/<([A-Z]{2})>/, '^$1') + ' ',
-    `${pattern} -> ${want}${known ? ' (a known prosign)' : ' (no such character: its longest known head)'}, keyed as ${JSON.stringify(sent)}`);
+    `${pattern} -> ${want}${known ? ' (a known prosign)' : ''}, keyed as ${JSON.stringify(sent)}`);
   if (!known) check(st.unknown[0][0] === pattern && st.unknown[0][1] === want, `${pattern}: reported with what was sent instead`);
+}
+
+// ---- 8b. K1FM with F and M run together: -.- .---- ..-.-- ----------------
+{
+  const clock = new Clock(), st = makeStation(clock, { wpm: 20 });
+  const d = st.keyer.dot();
+  let prevOff = null, t = clock.now() + 100;
+  for (const pattern of ['-.-', '.----', '..-.--']) {
+    for (let k = 0; k < pattern.length; k++) {
+      const start = k === 0 ? (prevOff === null ? t : prevOff + 3 * d) : prevOff + d, press = k === 0 ? start : prevOff + 0.5 * d;
+      const len = (pattern[k] === '.' ? 1 : 3) * d, side = pattern[k] === '.' ? 'left' : 'right';
+      clock.run(press); st.paddle.paddle(side, true);
+      clock.run(start + 0.5 * len); st.paddle.paddle(side, false);
+      prevOff = start + len;
+    }
+  }
+  clock.run(prevOff + 40 * d);
+  check(st.text === 'K1FM ' && st.rig.frames.filter(f => f.text !== null).map(f => f.text).join('') === 'K1FM ', '-.- .---- ..-.-- sends K1FM (got ' + JSON.stringify(st.text) + ')');
 }
 
 // ---- 9. straight key: adaptive decode with jitter --------------------------

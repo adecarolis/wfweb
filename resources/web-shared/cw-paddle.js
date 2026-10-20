@@ -36,17 +36,25 @@
         return cwPatternMap[pattern] || null;
     }
 
-    // A keyed pattern that is no character (a slip: six dits for a 5) still
-    // goes out as one: drop elements off the end until what is left is a
-    // character -- ...... -> 5, --..... -> 7.  A wrong character keeps the
-    // rhythm of the transmission; sending nothing left a hole in it.  Every
-    // pattern ends at E or T at worst, so something is always sent.
-    function cwNearestFromPattern(pattern) {
-        for (var p = pattern; p; p = p.slice(0, -1)) {
-            var ch = cwFromPattern(p);
-            if (ch) return ch;
+    // A keyed pattern that is no character still goes out: a wrong character
+    // keeps the rhythm of the transmission, sending nothing left a hole in
+    // it.  Its longest known head is sent; what is left after it is
+    //   - one element: a slip, dropped (...... -> 5);
+    //   - more: two characters run together, decoded the same way
+    //     (..-.-- -> F M, so -.- .---- ..-.-- still sends K1FM).
+    // Every pattern ends at E or T at worst, so something is always sent.
+    function cwSplitPattern(pattern) {
+        var out = [];
+        while (pattern) {
+            var ch = cwFromPattern(pattern);
+            if (ch) { out.push(ch); break; }
+            var head = pattern.slice(0, -1);
+            while (!cwFromPattern(head)) head = head.slice(0, -1);
+            out.push(cwFromPattern(head));
+            pattern = pattern.slice(head.length);
+            if (pattern.length < 2) break;   // a single extra element: dropped
         }
-        return null;
+        return out;
     }
 
     function timers(opts, self) {
@@ -94,11 +102,9 @@
         var pattern = this.pattern;
         this.pattern = '';
         var ch = cwFromPattern(pattern);
-        if (!ch) {
-            ch = cwNearestFromPattern(pattern);
-            this._onUnknown(pattern, ch);
-        }
-        if (ch) { this._spaceDue = true; this._onChar(ch); }
+        var chars = ch ? [ch] : cwSplitPattern(pattern);
+        if (!ch) this._onUnknown(pattern, chars.join(''));
+        for (var i = 0; i < chars.length; i++) { this._spaceDue = true; this._onChar(chars[i]); }
         if (!this._spaceDue) return;
         this._timer = this._setTimeout(function () {
             self._timer = null;
@@ -324,7 +330,7 @@
     };
 
     global.cwFromPattern = cwFromPattern;
-    global.cwNearestFromPattern = cwNearestFromPattern;
+    global.cwSplitPattern = cwSplitPattern;
     global.WfCwElementDecoder = WfCwElementDecoder;
     global.WfPaddleKeyer = WfPaddleKeyer;
     global.WfStraightKey = WfStraightKey;
