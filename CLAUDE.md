@@ -178,7 +178,12 @@ Standalone virtual rig).
   Locking closes the open panel. `resizeCanvases()` lifts the padlock above
   the CW bar; the FT8/JS8/packet panels hide it while unlocked (`:has()`).
 - **PTT row**: in portrait `#bottomBar` wraps, the four soft keys on top and
-  PTT (or CW's KEY) full-width underneath; in landscape PTT is double width.
+  PTT full-width underneath; in landscape PTT is double width. Only where a
+  mic PTT means something (`pttApplicable()`): voice modes with no digital
+  panel open. CW keeps a plain KEY soft key; RTTY and the FT8/JS8/packet
+  panels get the four soft keys alone (a `MutationObserver` on `#scopeArea`
+  re-renders the bar as those panels open and close, and a latched TX is
+  released when its key goes away). The desktop keeps PTT in every mode.
   The button carries a `.ptt-hint` sub-label and, latched, a `.ptt-timer`.
 - **PTT latch**: hold PTT, slide the finger `PTT_LATCH_SLIDE_PX` up into
   `#pttLockCap` (a child of `#radio`, not of the bar, which

@@ -2140,8 +2140,10 @@ body.digi-open #bottomBar { grid-row: 5; }
      resizeCanvases() lifts it above the CW bar; the FT8/JS8/packet panels
      hide it while unlocked since it would sit on their controls.
    - .ptt-btn takes a full-width row of its own in portrait and double
-     width in landscape. Slide the held finger up into #pttLockCap and let
-     go to latch TX; the latched button is the STOP key. */
+     width in landscape, in voice modes only (pttApplicable()): CW keeps a
+     plain KEY soft key, RTTY and the FT8/JS8/packet panels get the four
+     soft keys alone. Slide the held finger up into #pttLockCap and let go
+     to latch TX; the latched button is the STOP key. */
 #uiLockBtn {
     display: none;
     position: absolute; right: 8px; bottom: 8px;
@@ -2215,7 +2217,7 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
        (then it must stay reachable to unlock). */
     body:not(.ui-locked) #scopeArea:has(.digi-bar:not(.hidden), .js8-bar:not(.hidden), .packet-bar:not(.hidden)) #uiLockBtn { display: none; }
     #bottomBar { touch-action: none; }
-    .softBtn.ptt-btn, .softBtn.key-btn {
+    .softBtn.ptt-btn {
         flex: 2;
         position: relative;
         display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -2245,9 +2247,9 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
         padding-bottom: calc(6px + env(safe-area-inset-bottom));
         gap: 5px;
     }
-    .softBtn { flex: 1 1 20%; height: 38px; }
+    .softBtn { flex: 1 1 0; height: 38px; }
     .softBtn:only-child { flex-basis: 100%; }
-    .softBtn.ptt-btn, .softBtn.key-btn {
+    .softBtn.ptt-btn {
         flex: 1 1 100%; order: 2;
         height: 62px;
         font-size: 17px; letter-spacing: 2px;
@@ -5185,6 +5187,9 @@ function hideAllOverlays() {
 }
 
 function renderBottomBar() {
+    // A latched TX cannot outlive its PTT key: the mode changed away from
+    // voice or a digital panel opened over it.
+    if (pttLatched && !pttApplicable()) { unlatchPTT(); return; }
     var bar = document.getElementById('bottomBar');
     bar.innerHTML = '';
     var btns = getBottomButtons();
@@ -5223,22 +5228,27 @@ function getBottomButtons() {
         case 'func':
         case 'span':
         case 'gain':
-            return [
+            var keys = [
                 { label: 'MODE', active: currentPanel === 'mode', action: function() { setPanel('mode'); } },
                 { label: 'BAND', active: currentPanel === 'band', action: function() { setPanel('band'); } },
                 { label: 'FUNC', active: currentPanel === 'func', action: function() { setPanel('func'); } },
 
-                { label: 'GAIN', active: currentPanel === 'gain', action: function() { setPanel('gain'); } },
+                { label: 'GAIN', active: currentPanel === 'gain', action: function() { setPanel('gain'); } }
+            ];
+            if (isCW) {
+                keys.push({ label: 'KEY', txActive: isTransmitting, cls: 'key-btn', disabled: currentPanel !== 'default', action: currentPanel !== 'default' ? null : toggleCWBar });
+            } else if (pttApplicable()) {
                 // Touch devices get a sub-label under PTT and, once latched,
                 // the button becomes the STOP key and stays enabled under any
                 // panel (#144).
-                { label: isCW ? 'KEY' : (pttLatched ? 'TX LOCKED' : 'PTT'), txActive: isTransmitting,
-                  cls: isCW ? 'key-btn' : ('ptt-btn' + (pttLatched ? ' latched' : '')),
-                  hint: (!isCW && touchUi) ? (pttLatched ? 'tap to stop' : (isTransmitting ? 'release to stop' : 'hold \u00b7 slide up to lock')) : null,
-                  timer: !isCW && pttLatched,
+                keys.push({ label: pttLatched ? 'TX LOCKED' : 'PTT', txActive: isTransmitting,
+                  cls: 'ptt-btn' + (pttLatched ? ' latched' : ''),
+                  hint: touchUi ? (pttLatched ? 'tap to stop' : (isTransmitting ? 'release to stop' : 'hold \u00b7 slide up to lock')) : null,
+                  timer: pttLatched,
                   disabled: currentPanel !== 'default' && !pttLatched,
-                  action: (currentPanel !== 'default' || pttLatched) ? null : (isCW ? toggleCWBar : function() { handlePTTPress(); }) }
-            ];
+                  action: (currentPanel !== 'default' || pttLatched) ? null : function() { handlePTTPress(); } });
+            }
+            return keys;
         case 'audiomiс':
         case 'freqinp':
         case 'memory':
@@ -6834,6 +6844,31 @@ function tickPttLatch() {
 
 // A latched TX never outlives the page.
 document.addEventListener('visibilitychange', function() { if (document.hidden) unlatchPTT(true); });
+
+// Touch devices show the PTT row only where a mic PTT means something: the
+// voice modes (FreeDV / RADE included) with no digital panel open. RTTY and
+// the FT8 / JS8 / packet panels, which drive their own TX, get the four soft
+// keys alone (CW keeps its KEY key). The desktop keeps PTT in every mode.
+function digitalPanelOpen() {
+    return !!document.querySelector('#scopeArea .digi-bar:not(.hidden), #scopeArea .js8-bar:not(.hidden), #scopeArea .packet-bar:not(.hidden)');
+}
+function pttApplicable() {
+    if (!touchUi) return true;
+    if (String(currentMode || '').indexOf('RTTY') === 0) return false;
+    return !digitalPanelOpen();
+}
+// The panels open and close from their own modules, so watch them rather
+// than hook every path.
+(function() {
+    if (!touchUi || !window.MutationObserver) return;
+    var was = digitalPanelOpen();
+    new MutationObserver(function() {
+        var now = digitalPanelOpen();
+        if (now === was) return;
+        was = now;
+        renderBottomBar();
+    }).observe(document.getElementById('scopeArea'), { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
+})();
 window.addEventListener('pagehide', function() { unlatchPTT(true); });
 
 // ============================================================
