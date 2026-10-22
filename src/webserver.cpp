@@ -1770,6 +1770,17 @@ void webServer::onWsDisconnected()
     QWebSocket *pClient = qobject_cast<QWebSocket *>(sender());
     if (pClient) {
         qInfo() << "Web client disconnected:" << pClient->peerAddress().toString();
+        // A browser that keyed the rig and vanished (phone lost the network,
+        // tab killed) must not leave it transmitting until the rig's own
+        // time-out timer, if any, fires.
+        if (pClient == pttClient) {
+            pttClient = nullptr;
+            if (queue) {
+                queue->add(priorityImmediate, queueItem(funcTransceiverStatus, QVariant::fromValue<bool>(false), false, uchar(0)));
+                queue->del(funcALCMeter, 0);
+            }
+            qInfo() << "Web: PTT released (keying client disconnected)";
+        }
         if (pClient == micActiveClient) {
             micStatsLog("client disconnected");
             micDeviceLabel.clear();
@@ -2230,6 +2241,10 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             return;
         }
         queue->add(priorityImmediate, queueItem(funcTransceiverStatus, QVariant::fromValue<bool>(on), false, uchar(0)));
+        // Remember who keyed the rig so onWsDisconnected can unkey it if that
+        // browser drops mid-over (a latched touch PTT can hold an over for
+        // minutes, #144). nullptr for rigctld, which has its own lifetime.
+        pttClient = on ? client : nullptr;
         // Start/stop ALC meter polling for web clients
         if (on) {
             queue->addUnique(priorityHighest, queueItem(funcALCMeter, true, 0));

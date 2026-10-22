@@ -601,7 +601,7 @@ jobs:
 
       - name: Run tests
         run: |
-          pip3 install --break-system-packages pytest requests
+          pip3 install --break-system-packages pytest requests websockets
           python3 -m pytest tests/ -v
 
       - name: Package zip

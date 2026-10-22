@@ -397,6 +397,7 @@ private:
     rigInput savedDataOffMod;
     bool dataOffModSaved = false;
     QWebSocket *micActiveClient = nullptr;
+    QWebSocket *pttClient = nullptr;   // browser that last keyed the rig; unkeyed if it vanishes (#144)
 
     // Browser-mic diagnostics.  A browser whose default input is the rig's
     // own USB codec streams the receiver audio back into the transmitter,

@@ -163,6 +163,35 @@ restore sends `setMode {value, filter}` as one command on purpose: a trailing
 `setFilter` rebuilds from the server's mode cache before the mode reply is
 back and would undo the mode. Packet and FreeDV do not use this.
 
+### Touch operating controls (#144)
+Phones and touch tablets only, gated on `(pointer: coarse)` in CSS and
+`touchUi` in JS; the desktop keeps five equal soft keys and hold-to-talk.
+Identical in both `index.html` forks (Web Serial has no mobile browser, but
+Windows touch tablets run Standalone and the phone-layout bench drives the
+Standalone virtual rig).
+- **Key lock** (`#uiLockBtn`, `body.ui-locked`, `localStorage wfUiLock`): the
+  HT-style lock in the scope's bottom-right corner. A tap locks, a ~0.8 s
+  hold unlocks (the ring fills). A capture-phase guard on `document` swallows
+  every pointer/touch/click/wheel outside `.ptt-btn`, the padlock, the
+  AUDIO/MIC overlay (PTT opens it when the mic is off) and the start /
+  power-off overlays, and nudges the padlock with a "hold to unlock" pill.
+  Locking closes the open panel. `resizeCanvases()` lifts the padlock above
+  the CW bar; the FT8/JS8/packet panels hide it while unlocked (`:has()`).
+- **PTT row**: in portrait `#bottomBar` wraps, the four soft keys on top and
+  PTT (or CW's KEY) full-width underneath; in landscape PTT is double width.
+  The button carries a `.ptt-hint` sub-label and, latched, a `.ptt-timer`.
+- **PTT latch**: hold PTT, slide the finger `PTT_LATCH_SLIDE_PX` up into
+  `#pttLockCap` (a child of `#radio`, not of the bar, which
+  `renderBottomBar()` rebuilds mid-press) and release there. `pttLatched`
+  keeps the rig keyed; the button becomes "TX LOCKED · tap to stop". A tap
+  can never latch. Ends on a tap, Escape / space, `visibilitychange` hidden
+  or `pagehide` (immediate unkey, no 300 ms drain), the transport closing
+  (`dropPttLatch()`), or `PTT_LATCH_MAX_MS` (3 min, `.warn` pulse for the
+  last 15 s). Server side, `pttClient` remembers which browser keyed the
+  rig and `onWsDisconnected` unkeys it if that client vanishes
+  (`tests/test_ptt.py::test_ptt_released_when_keying_client_disconnects`,
+  needs the `websockets` pip package).
+
 ### Meter faces
 The top-bar meter (`#meterCanvas`) has two faces, picked in `drawMeter()`:
 - **Bar** — the IC-7300 tile bar, inline in each `index.html` (`drawSMeter` /

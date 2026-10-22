@@ -2132,6 +2132,129 @@ body.digi-open #bottomBar { grid-row: 5; }
        GAIN readouts) that stacks down the left edge of the scope area. */
     #freedvIndicator { flex-wrap: wrap; justify-content: flex-end; row-gap: 2px; max-width: calc(100% - 150px); }
 }
+/* ============ TOUCH OPERATING CONTROLS (#144) ============
+   Phones and tablets only ((pointer: coarse)); the desktop keeps its five
+   equal soft keys and plain hold-to-talk.
+   - #uiLockBtn is the HT-style key lock in the scope's bottom-right corner:
+     a tap locks everything but PTT, a ~0.8 s hold unlocks (the ring fills).
+     resizeCanvases() lifts it above the CW bar; the FT8/JS8/packet panels
+     hide it while unlocked since it would sit on their controls.
+   - .ptt-btn takes a full-width row of its own in portrait and double
+     width in landscape. Slide the held finger up into #pttLockCap and let
+     go to latch TX; the latched button is the STOP key. */
+#uiLockBtn {
+    display: none;
+    position: absolute; right: 8px; bottom: 8px;
+    width: 40px; height: 40px; padding: 0;
+    border-radius: 50%;
+    border: 1px solid #444;
+    background: rgba(18,18,18,0.85);
+    color: #888;
+    z-index: 230;            /* above the overlays (220) and the mode bars (200) */
+    touch-action: none;
+    cursor: pointer;
+    transition: color .15s, border-color .15s, background .15s;
+}
+#uiLockBtn svg { width: 18px; height: 18px; display: block; margin: 0 auto; pointer-events: none; }
+#uiLockBtn .lock-closed { display: none; }
+body.ui-locked #uiLockBtn { border-color: #0aa; color: #0cc; background: rgba(8,36,36,0.92); }
+body.ui-locked #uiLockBtn .lock-open { display: none; }
+body.ui-locked #uiLockBtn .lock-closed { display: block; }
+/* hold-to-unlock progress: a ring that fills clockwise, --p set by JS */
+#uiLockBtn::before {
+    content: ''; position: absolute; inset: -5px; border-radius: 50%;
+    background: conic-gradient(#0cc var(--p, 0%), transparent 0);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+    opacity: 0; transition: opacity .1s;
+}
+#uiLockBtn.holding::before { opacity: 1; }
+#uiLockBtn.pulse { animation: lockNudge .4s ease; }
+@keyframes lockNudge {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-4px); } 40% { transform: translateX(4px); }
+    60% { transform: translateX(-3px); } 80% { transform: translateX(3px); }
+}
+#uiLockHint {
+    position: absolute; right: 56px; bottom: 17px;
+    padding: 4px 9px; border-radius: 12px;
+    background: rgba(8,36,36,0.92); border: 1px solid #0aa; color: #0cc;
+    font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; white-space: nowrap;
+    opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 230;
+}
+#uiLockHint.show { opacity: 1; }
+/* Locked: everything but PTT and the padlock reads as inert. The frequency,
+   the meter and the scope stay at full brightness — they are what you look
+   at while the lock is on. */
+body.ui-locked #topBar > :not(#txIndicator):not(#clock):not(#connDot):not(.flex-space),
+body.ui-locked #spanIndicator,
+body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
+#pttLockCap {
+    position: absolute; left: 50%; bottom: 0;
+    transform: translate(-50%, 14px);
+    width: 58px; height: 58px; border-radius: 50%;
+    border: 1px solid #a33; background: rgba(50,0,0,0.92); color: #f99;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; z-index: 350;
+    transition: opacity .18s, transform .18s, background .15s, border-color .15s;
+}
+#pttLockCap svg { width: 26px; height: 26px; }
+#pttLockCap::after {
+    content: 'slide up to lock';
+    position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+    white-space: nowrap; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: #f99;
+}
+#pttLockCap.show { opacity: 1; transform: translate(-50%, 0); }
+#pttLockCap.armed { background: #c00; border-color: #f66; color: #fff; transform: translate(-50%, 0) scale(1.12); }
+#pttLockCap.armed::after { content: 'release to lock'; color: #fff; }
+.ptt-hint, .ptt-timer { display: none; }
+@media (pointer: coarse) {
+    #uiLockBtn { display: block; }
+    /* The FT8 / JS8 / packet panels replace the scope and put their own
+       controls where the padlock sits: hide it there unless it is locked
+       (then it must stay reachable to unlock). */
+    body:not(.ui-locked) #scopeArea:has(.digi-bar:not(.hidden), .js8-bar:not(.hidden), .packet-bar:not(.hidden)) #uiLockBtn { display: none; }
+    #bottomBar { touch-action: none; }
+    .softBtn.ptt-btn, .softBtn.key-btn {
+        flex: 2;
+        position: relative;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .ptt-hint {
+        display: block;
+        font-size: 9px; font-weight: normal; letter-spacing: 1px; text-transform: uppercase;
+        margin-top: 2px; pointer-events: none; color: #855;
+    }
+    .softBtn.ptt-btn.tx-active .ptt-hint, .softBtn.ptt-btn.latched .ptt-hint { color: #fcc; }
+    .softBtn.ptt-btn.latched { background: #a00; border-color: #f33; color: #fff; }
+    .softBtn.ptt-btn.latched.warn { animation: pttLatchWarn .7s infinite; }
+    @keyframes pttLatchWarn { 50% { background: #500; border-color: #a00; } }
+    .ptt-timer {
+        display: block;
+        position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+        font-family: var(--font-mono); font-size: 13px; font-weight: normal; letter-spacing: 0; color: #fdd;
+        pointer-events: none;
+    }
+}
+@media (pointer: coarse) and (orientation: portrait) {
+    #radio, body.meter-needle #radio { grid-template-rows: 32px 72px 18px 1fr auto; }
+    body.meter-needle #radio { grid-template-rows: 32px 84px 18px 1fr auto; }
+    #bottomBar {
+        flex-wrap: wrap;
+        padding: 5px 6px;
+        padding-bottom: calc(6px + env(safe-area-inset-bottom));
+        gap: 5px;
+    }
+    .softBtn { flex: 1 1 20%; height: 38px; }
+    .softBtn:only-child { flex-basis: 100%; }
+    .softBtn.ptt-btn, .softBtn.key-btn {
+        flex: 1 1 100%; order: 2;
+        height: 62px;
+        font-size: 17px; letter-spacing: 2px;
+        border-radius: 10px;
+    }
+    .ptt-hint { font-size: 10px; margin-top: 3px; }
+}
 </style>
 <!-- JS8 messenger panel styles — shared with the standalone build via
      resources/web-shared/js8-panel.css. -->
@@ -2246,6 +2369,8 @@ body.digi-open #bottomBar { grid-row: 5; }
         <canvas id="waterfallCanvas" width="800" height="200"></canvas>
         <span id="spanEdgeLeft"></span>
         <span id="spanEdgeRight"></span>
+        <button id="uiLockBtn" title="Lock controls" aria-label="Lock controls"><svg class="lock-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.6-1.7"/></svg><svg class="lock-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>
+        <span id="uiLockHint">hold to unlock</span>
 
         <!-- Mode overlay -->
         <div id="modeOverlay" class="overlay">
@@ -2770,6 +2895,9 @@ body.digi-open #bottomBar { grid-row: 5; }
 
     <!-- Row 5: Bottom bar -->
     <div id="bottomBar"></div>
+    <!-- Slide-up target for the touch PTT latch (#144); outside #bottomBar
+         because renderBottomBar() rebuilds that element mid-press. -->
+    <div id="pttLockCap"><svg class="lock-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
 </div>
 
 <script src="transport/rig-transport.js"></script>
@@ -3286,6 +3414,7 @@ function onTransportOpen() {
 }
 
 function onTransportClose() {
+    dropPttLatch();
     document.getElementById('connDot').classList.remove('connected');
     document.getElementById('connDot').title = 'Disconnected';
     if (micEnabled || micStarting) stopMic();
@@ -5065,8 +5194,19 @@ function renderBottomBar() {
         el.className = 'softBtn';
         if (b.active) el.classList.add('active');
         if (b.txActive) el.classList.add('tx-active');
-        if (b.cls) el.classList.add(b.cls);
+        if (b.cls) b.cls.split(' ').forEach(function(c) { el.classList.add(c); });
         el.textContent = b.label;
+        if (b.hint) {
+            var hint = document.createElement('small');
+            hint.className = 'ptt-hint';
+            hint.textContent = b.hint;
+            el.appendChild(hint);
+        }
+        if (b.timer) {
+            var timer = document.createElement('span');
+            timer.className = 'ptt-timer';
+            el.appendChild(timer);
+        }
         if (b.disabled) el.disabled = true;
         if (b.action) el.onclick = b.action;
         bar.appendChild(el);
@@ -5089,7 +5229,15 @@ function getBottomButtons() {
                 { label: 'FUNC', active: currentPanel === 'func', action: function() { setPanel('func'); } },
 
                 { label: 'GAIN', active: currentPanel === 'gain', action: function() { setPanel('gain'); } },
-                { label: isCW ? 'KEY' : 'PTT', txActive: isTransmitting, cls: isCW ? 'key-btn' : 'ptt-btn', disabled: currentPanel !== 'default', action: currentPanel !== 'default' ? null : (isCW ? toggleCWBar : function() { handlePTTPress(); }) }
+                // Touch devices get a sub-label under PTT and, once latched,
+                // the button becomes the STOP key and stays enabled under any
+                // panel (#144).
+                { label: isCW ? 'KEY' : (pttLatched ? 'TX LOCKED' : 'PTT'), txActive: isTransmitting,
+                  cls: isCW ? 'key-btn' : ('ptt-btn' + (pttLatched ? ' latched' : '')),
+                  hint: (!isCW && touchUi) ? (pttLatched ? 'tap to stop' : (isTransmitting ? 'release to stop' : 'hold \u00b7 slide up to lock')) : null,
+                  timer: !isCW && pttLatched,
+                  disabled: currentPanel !== 'default' && !pttLatched,
+                  action: (currentPanel !== 'default' || pttLatched) ? null : (isCW ? toggleCWBar : function() { handlePTTPress(); }) }
             ];
         case 'audiomiс':
         case 'freqinp':
@@ -6575,18 +6723,40 @@ function releasePTT() {
 // renderBottomBar() destroys the button DOM mid-press; document-level pointerup
 // always fires regardless. touch-action:none on .ptt-btn prevents browser
 // from stealing the touch for scrolling.
+//
+// Touch latch (#144): while a finger holds PTT, #pttLockCap fades in above
+// the bar; sliding the finger PTT_LATCH_SLIDE_PX up arms it, and releasing
+// there latches TX. A tap, however long, can only ever key while held. The
+// latch ends on a tap of the button (now the STOP key), Escape / space, the
+// page being hidden, the transport dropping, or PTT_LATCH_MAX_MS.
+var touchUi = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+var pttLatched = false, pttLatchStart = 0, pttLatchTimer = null;
+var PTT_LATCH_MAX_MS = 180000, PTT_LATCH_WARN_MS = 15000, PTT_LATCH_SLIDE_PX = 60;
+
 (function() {
     var bar = document.getElementById('bottomBar');
-    var pttPointerActive = false;
-    function isPTT(e) { return e.target && e.target.classList && e.target.classList.contains('ptt-btn'); }
+    var cap = document.getElementById('pttLockCap');
+    var pttPointerActive = false, pttPointerId = null, pttStartY = 0, capArmed = false, slideOk = false;
+    function isPTT(e) { return !!(e.target && e.target.closest && e.target.closest('.ptt-btn')); }
+    function showCap() {
+        var radio = document.getElementById('radio').getBoundingClientRect();
+        cap.style.bottom = (radio.bottom - bar.getBoundingClientRect().top + 28) + 'px';
+        cap.classList.add('show');
+    }
+    function hideCap() { cap.classList.remove('show', 'armed'); capArmed = false; }
     function pttOn(e) {
         e.preventDefault();
+        if (pttLatched) { unlatchPTT(); return; }
         if (!handlePTTPress()) return;
         if (pttReleaseTimer) {
             clearTimeout(pttReleaseTimer);
             pttReleaseTimer = null;
         }
         pttPointerActive = true;
+        pttPointerId = e.pointerId;
+        pttStartY = e.clientY;
+        slideOk = touchUi && e.pointerType !== 'mouse';
+        if (slideOk) showCap();
         flushAudio();
         send({ cmd: 'setPTT', value: true });
     }
@@ -6594,14 +6764,176 @@ function releasePTT() {
     bar.addEventListener('pointerdown', function(e) {
         if (isPTT(e)) pttOn(e);
     });
+    document.addEventListener('pointermove', function(e) {
+        if (!pttPointerActive || !slideOk || e.pointerId !== pttPointerId) return;
+        var armed = (pttStartY - e.clientY) >= PTT_LATCH_SLIDE_PX;
+        if (armed === capArmed) return;
+        capArmed = armed;
+        cap.classList.toggle('armed', armed);
+        if (armed && navigator.vibrate) { try { navigator.vibrate(20); } catch (err) {} }
+    });
+    function pttEnd(latchable) {
+        if (!pttPointerActive) return;
+        pttPointerActive = false;
+        var latch = latchable && capArmed;
+        hideCap();
+        if (latch) latchPTT(); else releasePTT();
+    }
     // Release: on document so it fires even if button DOM was recreated
-    document.addEventListener('pointerup', function() {
-        if (pttPointerActive) { pttPointerActive = false; releasePTT(); }
-    });
-    document.addEventListener('pointercancel', function() {
-        if (pttPointerActive) { pttPointerActive = false; releasePTT(); }
-    });
+    document.addEventListener('pointerup', function() { pttEnd(true); });
+    document.addEventListener('pointercancel', function() { pttEnd(false); });
 })();
+
+function latchPTT() {
+    pttLatched = true;
+    pttLatchStart = Date.now();
+    if (pttReleaseTimer) { clearTimeout(pttReleaseTimer); pttReleaseTimer = null; }
+    clearInterval(pttLatchTimer);
+    pttLatchTimer = setInterval(tickPttLatch, 250);
+    renderBottomBar();
+    tickPttLatch();
+}
+
+// immediate: unkey now rather than after the 300 ms TX audio drain — for the
+// page going away, when a timer may never fire.
+function unlatchPTT(immediate) {
+    if (!pttLatched) return;
+    pttLatched = false;
+    clearInterval(pttLatchTimer);
+    pttLatchTimer = null;
+    if (immediate) {
+        if (pttReleaseTimer) { clearTimeout(pttReleaseTimer); pttReleaseTimer = null; }
+        send({ cmd: 'setPTT', value: false });
+    } else {
+        releasePTT();
+    }
+    renderBottomBar();
+}
+
+// The link is gone: nothing to send, just stop showing a latch that no
+// longer keys anything (the server drops PTT for a vanished client itself).
+function dropPttLatch() {
+    if (!pttLatched) return;
+    pttLatched = false;
+    clearInterval(pttLatchTimer);
+    pttLatchTimer = null;
+    renderBottomBar();
+}
+
+function tickPttLatch() {
+    var elapsed = Date.now() - pttLatchStart;
+    var left = PTT_LATCH_MAX_MS - elapsed;
+    if (left <= 0) { unlatchPTT(); return; }
+    var btn = document.querySelector('#bottomBar .ptt-btn');
+    if (!btn) return;
+    var t = btn.querySelector('.ptt-timer');
+    var s = Math.floor(elapsed / 1000);
+    if (t) t.textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+    btn.classList.toggle('warn', left <= PTT_LATCH_WARN_MS);
+}
+
+// A latched TX never outlives the page.
+document.addEventListener('visibilitychange', function() { if (document.hidden) unlatchPTT(true); });
+window.addEventListener('pagehide', function() { unlatchPTT(true); });
+
+// ============================================================
+// KEY LOCK (#144) — touch devices only
+// ============================================================
+// An HT-style lock: a tap on the padlock locks every control but PTT (and
+// the padlock), a ~0.8 s hold unlocks. Touches on anything else are
+// swallowed at the capture phase and nudge the padlock, so a locked screen
+// never reads as a dead one. The AUDIO / MIC overlay stays reachable because
+// the PTT itself opens it when the mic is off; the power-off and start
+// overlays because nothing else can be done from them.
+var uiLocked = false;
+var UI_LOCK_HOLD_MS = 800;
+
+function setUiLock(on) {
+    on = !!on;
+    if (uiLocked === on) return;
+    uiLocked = on;
+    document.body.classList.toggle('ui-locked', on);
+    try { localStorage.setItem('wfUiLock', on ? '1' : '0'); } catch (e) {}
+    // Nothing but PTT is reachable under the lock, so an open panel would be stuck.
+    if (on && currentPanel !== 'default') setPanel('default');
+    document.getElementById('uiLockBtn').title = on ? 'Hold to unlock controls' : 'Lock controls';
+}
+
+var uiLockHintTimer = null;
+function pulseUiLock(hint) {
+    var btn = document.getElementById('uiLockBtn');
+    btn.classList.remove('pulse');
+    void btn.offsetWidth;   // restart the animation
+    btn.classList.add('pulse');
+    if (navigator.vibrate) { try { navigator.vibrate(15); } catch (e) {} }
+    if (hint) {
+        var h = document.getElementById('uiLockHint');
+        h.textContent = hint;
+        h.classList.add('show');
+        clearTimeout(uiLockHintTimer);
+        uiLockHintTimer = setTimeout(function() { h.classList.remove('show'); }, 1400);
+    }
+}
+
+(function() {
+    var btn = document.getElementById('uiLockBtn');
+    var holdPid = null, holdStart = 0, holdRaf = null;
+    function allowed(t) {
+        return !!(t && t.closest && t.closest('.ptt-btn, #uiLockBtn, #audioMicOverlay, #startupOverlay, #powerOffOverlay'));
+    }
+    function guard(e) {
+        if (!uiLocked || allowed(e.target)) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        if (e.type === 'pointerdown') pulseUiLock('hold to unlock');
+    }
+    // touchstart/touchend cover the handlers that still listen to touch
+    // events (TUNE long-press, sliders); pointerup is left alone so the
+    // document-level PTT release always arrives.
+    ['pointerdown', 'mousedown', 'touchstart', 'touchend', 'click', 'dblclick', 'contextmenu', 'wheel'].forEach(function(ev) {
+        document.addEventListener(ev, guard, { capture: true, passive: false });
+    });
+
+    function stopHold() {
+        if (holdRaf) cancelAnimationFrame(holdRaf);
+        holdRaf = null;
+        holdPid = null;
+        btn.classList.remove('holding');
+        btn.style.removeProperty('--p');
+    }
+    btn.addEventListener('pointerdown', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!uiLocked) { setUiLock(true); pulseUiLock('locked'); return; }
+        holdPid = e.pointerId;
+        holdStart = performance.now();
+        try { btn.setPointerCapture(e.pointerId); } catch (err) {}
+        btn.classList.add('holding');
+        (function tick() {
+            var p = Math.min(1, (performance.now() - holdStart) / UI_LOCK_HOLD_MS);
+            btn.style.setProperty('--p', (p * 100).toFixed(1) + '%');
+            if (p < 1) { holdRaf = requestAnimationFrame(tick); return; }
+            stopHold();
+            setUiLock(false);
+        })();
+    });
+    function end(e) {
+        if (holdPid === null || e.pointerId !== holdPid) return;
+        var held = performance.now() - holdStart;
+        stopHold();
+        if (uiLocked && held < UI_LOCK_HOLD_MS) pulseUiLock('hold to unlock');
+    }
+    btn.addEventListener('pointerup', end);
+    btn.addEventListener('pointercancel', end);
+    btn.addEventListener('click', function(e) { e.preventDefault(); e.stopPropagation(); });
+})();
+
+// A reload in the car mount keeps the lock on.
+function restoreUiLock() {
+    var saved = false;
+    try { saved = localStorage.getItem('wfUiLock') === '1'; } catch (e) {}
+    if (touchUi && saved) setUiLock(true);
+}
 
 // ============================================================
 // COMMANDS
@@ -7776,6 +8108,10 @@ function resizeCanvases() {
     }
     var spectH = Math.round(availH * 0.35);
     var wfH = Math.round(availH * 0.65);
+    // The key lock and its hint sit in the strip's corner, not the bar's.
+    var lockLift = Math.round(areaRect.height - availH);
+    document.getElementById('uiLockBtn').style.bottom = (8 + lockLift) + 'px';
+    document.getElementById('uiLockHint').style.bottom = (17 + lockLift) + 'px';
     spectCanvas.style.height = spectH + 'px';
     wfCanvas.style.top = spectH + 'px';
     wfCanvas.style.height = wfH + 'px';
@@ -8485,6 +8821,7 @@ document.addEventListener('keydown', function(e) {
     else if (e.key === 'ArrowLeft') { e.preventDefault(); tuneDownHz(); }
     else if (e.key === 'Escape') {
         e.preventDefault();
+        unlatchPTT();
         // Stop CW transmission first
         cwStopRig();
         // If a digi-mode TX (FT8/JS8/FreeDV) is in flight, halt it
@@ -8498,6 +8835,7 @@ document.addEventListener('keydown', function(e) {
     }
     else if (e.key === ' ' && !e.repeat) {
         e.preventDefault();
+        if (pttLatched) { unlatchPTT(); return; }
         if (!spacebarPTTActive && handlePTTPress()) {
             spacebarPTTActive = true;
             // Cancel any pending PTT release
@@ -12403,6 +12741,7 @@ Recorder.init({
 });
 renderBottomBar();
 applyMeterStyle();
+restoreUiLock();
 updateClock();
 setInterval(updateClock, 10000);
 
