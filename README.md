@@ -8,6 +8,8 @@ wfweb turns your transceiver into a web-accessible station. Waterfall, SSB, CW d
 
 **SSB** — spectrum scope and waterfall, with the browser's own microphone keying the rig.
 
+> **Squelch.** The GAIN panel's **SQL** slider sets the radio's squelch, and an **SQL n%** tile on the spectrum shows it whenever it is above 0. The radio squelches its own speaker, but the audio it sends over USB, which is what wfweb plays in the browser, is squelched only if the radio is set up for it: on the IC-7300 that is **MENU › SET › Connectors › ACC/USB AF SQL** ON (other Icoms have a similar USB AF SQL setting). It ships OFF (OPEN), and then squelch makes no difference to what you hear in wfweb.
+
 ![FT8 digital mode panel](ft8.png)
 
 **FT8 / FT4** — decode, call and log without leaving the page; every decode is marked on the waterfall and tagged with its DXCC entity, with stars for new ones.
