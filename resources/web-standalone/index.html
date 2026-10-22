@@ -2031,6 +2031,14 @@ body.digi-open #bottomBar { grid-row: 5; }
     top: 144px;  /* clears the 14px-tall RFG readout above (118 + 26) */
     font-size: 14px;
 }
+/* Squelch set above 0 mutes the rig whenever the signal is under it. Usually
+   on purpose (FM), so it is a grey readout like P.AMP/DUP/TONE rather than an
+   orange warning; one tap opens the GAIN panel. Hidden at 0. */
+#squelchIndicator {
+    top: 170px;  /* clears the 14px-tall VOL readout above (144 + 26) */
+    font-size: 14px;
+    color: #888;
+}
 
 /* ============ RESPONSIVE ============ */
 @media (max-height: 450px) {
@@ -3114,6 +3122,7 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
         <div id="toneIndicator" class="spectrum-warning" style="display: none;" onclick="openToneModal()"></div>
         <div id="rfGainIndicator" class="spectrum-warning" style="display: none;" onclick="setPanel('gain')"></div>
         <div id="rxVolIndicator" class="spectrum-warning" style="display: none;" onclick="setPanel('gain')"></div>
+        <div id="squelchIndicator" class="spectrum-warning" style="display: none;" onclick="setPanel('gain')"></div>
     </div>
 
     <!-- Row 5: Bottom bar -->
@@ -4536,6 +4545,17 @@ function updateRfGainIndicator(val) {
     el.style.display = '';
 }
 
+function updateSquelchIndicator(val) {
+    var el = document.getElementById('squelchIndicator');
+    if (!el) return;
+    if (!(val > 0)) {
+        el.style.display = 'none';
+        return;
+    }
+    el.textContent = 'SQL ' + Math.max(1, Math.round(val / 255 * 100)) + '%';
+    el.style.display = '';
+}
+
 function updateDspIndicators() {
     var el = document.getElementById('dspIndicators');
     var tags = [];
@@ -4569,7 +4589,7 @@ function initSliderTracking() {
             if (name === 'afGain') throttledSend('afGain', 'setAfGain', val);
             else if (name === 'rfGain') { throttledSend('rfGain', 'setRfGain', val); updateRfGainIndicator(val); }
             else if (name === 'rfPower') throttledSend('rfPower', 'setRfPower', val);
-            else if (name === 'squelch') throttledSend('squelch', 'setSquelch', val);
+            else if (name === 'squelch') { throttledSend('squelch', 'setSquelch', val); updateSquelchIndicator(val); }
             else if (name === 'micGain') throttledSend('micGain', 'setMicGain', val);
         });
     });
@@ -4684,6 +4704,7 @@ function updateSlider(name, val) {
     var fill = document.getElementById(fillId);
     if (fill) fill.style.width = (val / 255 * 100) + '%';
     if (name === 'rfGain') updateRfGainIndicator(val);
+    if (name === 'squelch') updateSquelchIndicator(val);
 }
 
 var sliderTimers = {};
