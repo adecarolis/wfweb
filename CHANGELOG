@@ -6,6 +6,113 @@ a built-in web interface. See https://gitlab.com/eliggett/wfview for the
 upstream wfview history.
 
 
+v0.9.3 (2026-10-17)
+--------------------
+
+Windows launcher:
+- The Windows zip ships wfweb-launcher.exe, a small window for starting
+  the server without a command line: pick the serial port or LAN rig,
+  audio device, CI-V address, web port and name tag, press Start, and
+  the browser opens once the server answers. It follows the server's
+  log, sits in the tray with start/stop, can start with Windows, and
+  stops the server cleanly. When the web port is already taken it names
+  the program holding it, and offers to stop it only when that is
+  another wfweb. The server itself is unchanged and stays CLI-only.
+
+Audio:
+- RX audio gets an adaptive jitter buffer. It used to have a fixed
+  40 ms pre-buffer and bumped on every network stall longer than that;
+  now an underrun fades out instead of clicking, and the buffer grows
+  to the stalls it measures and shrinks back once they stop, so a
+  jittery link settles on the smallest buffer that stops the bumps. It
+  also absorbs the rig's clock drift. FUNC > AUDIO opens the AUDIO / TX
+  panel, whose BUFFER tile shows the size (AUTO) or pins it to
+  50/100/200/400 ms. Stale audio queued before playback started is
+  dropped instead of played late.
+- New VOL control, in the GAIN panel and the AUDIO / TX panel: the
+  browser's own RX volume, for when the rig's AF GAIN does not reach
+  the USB audio (Icom USB AF level is a menu setting). Remembered per
+  browser; a "VOL n%" readout shows while it is below 100 %. Recordings
+  and the decoders are not affected by it. (#141)
+- One MIC button for TX audio, OFF by default, in both builds. It
+  cycles OFF, the last input used, each other input, then OFF, and
+  starts TX audio straight away so the browser's permission prompt
+  shows. A failed start says MIC BLOCKED / BUSY / NOT FOUND / FAILED
+  instead of a silent OFF, and a double tap no longer opens two mics.
+- Windows: browser TX audio over USB came out chopped and robotic. The
+  server now writes it to the sound device one period at a time.
+  (#136)
+- The browser mic never picks the rig's own USB Audio CODEC (often
+  Windows' default communications input), which made the transmission
+  go out silent. The server warns, and the page shows MIC = RADIO RX,
+  if it is chosen anyway. (#136)
+- iOS: the speaker no longer stays several times quieter after the mic
+  has been used, until Safari was killed.
+
+CW (#141, thanks va2bbw):
+- Macros longer than 30 characters are keyed. The Icom keyer rejects a
+  longer frame, so anything over 29 characters keyed nothing.
+- Typing ahead in CHR mode no longer overflows the radio's keyer: text
+  is handed over as the keyer is ready for it.
+- New TONE button (on by default): a sidetone made in the browser at the
+  radio's CW pitch and the VOL level, in step with the keyed text. It
+  works over LAN, where the radio's own sidetone never reaches the
+  browser. Turn it off to use the radio's sidetone over USB for true
+  full break-in with a paddle (IC-7300: ACC/USB AF Beep/Speech Output
+  ON).
+- The transcript highlight and the sidetone stay in step with the
+  radio. Word gaps were three dots too long, and the Icom keyer does
+  not key the textbook 1200 / WPM: wfweb now keys the dot lengths
+  measured off an IC-7300.
+- Backspace in CHR mode no longer leaves the next text silent until
+  STOP; characters the keyer cannot send are dropped instead of being
+  keyed as "?".
+- The speed range comes from the rig (6-48 WPM by default) instead of a
+  fixed 10-35, and the WPM box's spinner no longer hides the digits.
+- Server build: the CW macros are kept in the settings file and shared
+  by every browser (also GET/PUT /api/v1/cw/macros).
+
+Band / VFO:
+- The BAND keys recall the rig's band stacking register, like the
+  front-panel key: frequency, mode and filter follow the band (40 m
+  LSB, 20 m USB), a repeated press steps through the band's three
+  slots, and the slot you leave is updated first. Icom only; other rigs
+  keep the plain frequency jump.
+- Closing the FT8/FT4 or JS8 panel puts the rig back on the frequency,
+  mode and filter it had before the panel opened, unless you changed
+  band inside the panel.
+- F-INP takes the keyboard: digits and "." type, Backspace deletes,
+  Delete clears, Enter tunes, Escape closes. With nothing open, F or a
+  digit opens it (not while a CW, DIGI, JS8 or packet panel takes typed
+  text). (#142)
+
+FT8 / FT4 / JS8:
+- 60 m in the band selectors: FT8/FT4 on 5.357, JS8 on 5.363, offered
+  when the rig has the band. (#116)
+- The report of an R-report ("R-07") is logged as -07, as WSJT-X does.
+  (#140)
+
+Memory mode:
+- Server build: FIL1/2/3, mode and status follow the recalled channel
+  in memory mode. The filter buttons did nothing, and the status, REST
+  and WSJT-X status had no frequency or mode. (#138)
+
+Logbook:
+- QSOs logged while FreeDV / RADE is active get mode FREEDV, not the
+  rig's USB/LSB.
+
+Web UI:
+- The crosshair over the scopes and waterfalls is our own outlined
+  pointer; the system one vanished on the waterfall on Raspberry Pi OS.
+  (#135)
+- On a phone the small needle meter numbers the scale of the selected
+  reading instead of S only.
+
+Docs:
+- README: a Standalone vs Server feature matrix, and the settings-file
+  keys corrected to the ones the server actually reads.
+
+
 v0.9.2 (2026-10-04)
 --------------------
 
