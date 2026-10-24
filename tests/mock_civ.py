@@ -107,6 +107,7 @@ class CivRadioBase:
         self._frequency: int = 14_074_000
         self._mode: int = 0x01  # USB
         self._filter: int = 1
+        self._data: int = 0  # DATA-mode byte of the 26 0N slot (0 = off, 1 = DATA)
         self._af_gain: int = 128
         self._rf_gain: int = 255
         self._rf_power: int = 100
@@ -134,6 +135,12 @@ class CivRadioBase:
     def set_mode(self, mode: int, filt: int = 1) -> None:
         self._mode = mode
         self._filter = filt
+
+    @property
+    def data_mode(self) -> int:
+        """DATA-mode byte of the last 26 0N write (0 = off, 1 = DATA); the
+        plain 06 mode set has no such byte and leaves it alone."""
+        return self._data
 
     def set_s_meter(self, value: int) -> None:
         self._s_meter = value
@@ -237,16 +244,19 @@ class CivRadioBase:
             receiver = payload[0] if payload else 0
             rest = payload[1:]
             if rest:
+                # 26 0N <mode> <data> <filter>: the layout a real Icom uses
                 self._mode = rest[0]
                 if len(rest) > 1:
-                    self._filter = rest[1]
+                    self._data = rest[1]
+                if len(rest) > 2:
+                    self._filter = rest[2]
                 return self.civ_ack(to, frm)
             else:
                 if self.blank_channel:
                     return self.civ_frame(to, frm, CMD_RX_MODE,
                                           data=bytes([receiver, 0xFF]))
                 return self.civ_frame(to, frm, CMD_RX_MODE,
-                                      data=bytes([receiver, self._mode, self._filter]))
+                                      data=bytes([receiver, self._mode, self._data, self._filter]))
 
         if cmd in (CMD_ACK, CMD_NAK):
             return None

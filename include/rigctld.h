@@ -204,6 +204,7 @@ private:
     QString getAntName(quint8 ant);
     quint8 antFromName(QString name);
     rigStateType vfoFromName(QString vfo);
+    rigStateType currentState();
     QString getVfoName(vfo_t vfo);
     funcs getFreqFunc(vfo_t, bool set=false);
     funcs getModeFunc(vfo_t, bool set=false);

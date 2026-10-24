@@ -275,6 +275,38 @@ vfoCommandType cachingQueue::getVfoCommand(vfo_t vfo,uchar rx, bool set)
     return cmd;
 }
 
+// Operating frequency / mode. In memory mode the per-VFO cache never fills
+// while the periodic 25 00 / 26 00 poll keeps the Selected one live with the
+// recalled channel (IC-7300, measured); anything that only looked at the
+// named slot saw nothing there: setFilter silently did nothing (#138) and the
+// status went out with null freq/mode. rigctld had the same hole from the
+// other side: a slot nothing polls answered the last value *set* (#147).
+// The named slot first, then the Selected one, then the plain read. Only
+// funcs the rig has are consulted: getCache() re-requests an empty slot.
+cacheItem cachingQueue::operatingFreqCache(const vfoCommandType &t)
+{
+    if (rigCaps == Q_NULLPTR || t.freqFunc == funcNone) return cacheItem();
+    cacheItem c = getCache(t.freqFunc, t.receiver);
+    if (!c.value.isValid() && rigCaps->commands.contains(funcSelectedFreq))
+        c = getCache(funcSelectedFreq, 0);
+    for (funcs f : {funcFreq, funcFreqGet})
+        if (!c.value.isValid() && rigCaps->commands.contains(f))
+            c = getCache(f, t.receiver);
+    return c;
+}
+
+cacheItem cachingQueue::operatingModeCache(const vfoCommandType &t)
+{
+    if (rigCaps == Q_NULLPTR || t.modeFunc == funcNone) return cacheItem();
+    cacheItem c = getCache(t.modeFunc, t.receiver);
+    if (!c.value.isValid() && rigCaps->commands.contains(funcSelectedMode))
+        c = getCache(funcSelectedMode, 0);
+    for (funcs f : {funcMode, funcModeGet})
+        if (!c.value.isValid() && rigCaps->commands.contains(f))
+            c = getCache(f, t.receiver);
+    return c;
+}
+
 queuePriority cachingQueue::del(funcs func, uchar receiver)
 {
     // This will immediately delete any matching commands.

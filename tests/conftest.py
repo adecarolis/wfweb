@@ -117,21 +117,68 @@ def _wait_for_cache(status_url: str, timeout: float = 30.0) -> bool:
 # ---------------------------------------------------------------------------
 
 
+_loop_thread = None
+
+
+def _ensure_loop_thread(event_loop):
+    """Run the shared asyncio loop in a daemon thread, started once per session.
+
+    The mock radios need the loop pumped while wfweb handshakes; the thread
+    outlives every wfweb instance and is stopped by the event_loop fixture.
+    """
+    global _loop_thread
+    if _loop_thread is None:
+        import threading
+        started = threading.Event()
+
+        def run_loop():
+            asyncio.set_event_loop(event_loop)
+            started.set()
+            event_loop.run_forever()
+
+        _loop_thread = threading.Thread(target=run_loop, daemon=True)
+        _loop_thread.start()
+        started.wait()
+    return _loop_thread
+
+
+def _run_on_loop(event_loop, coro):
+    """Run a coroutine on the shared loop, whether or not its thread is up yet."""
+    if event_loop.is_running():
+        return asyncio.run_coroutine_threadsafe(coro, event_loop).result(timeout=10)
+    return event_loop.run_until_complete(coro)
+
+
 @pytest.fixture(scope="session")
 def event_loop():
-    """Session-scoped event loop for the mock radio."""
+    """Session-scoped event loop for the mock radios."""
+    global _loop_thread
     loop = asyncio.new_event_loop()
     yield loop
+    if _loop_thread is not None:
+        loop.call_soon_threadsafe(loop.stop)
+        _loop_thread.join(timeout=2)
+        _loop_thread = None
     loop.close()
 
 
 @pytest.fixture(scope="session")
 def mock_radio(event_loop):
-    """Start a MockIcomRadio for the entire test session."""
+    """Start a MockIcomRadio (IC-7610) for the entire test session."""
     server = MockIcomRadio()
-    event_loop.run_until_complete(server.start())
+    _run_on_loop(event_loop, server.start())
     yield server
-    event_loop.run_until_complete(server.stop())
+    _run_on_loop(event_loop, server.stop())
+
+
+@pytest.fixture(scope="session")
+def mock_radio_7300(event_loop):
+    """A second mock answering as an IC-7300 (CI-V 0x94): no command 29, so
+    the server addresses the operating VFO through the 25 00 / 26 00 slots."""
+    server = MockIcomRadio(radio_addr=0x94)
+    _run_on_loop(event_loop, server.start())
+    yield server
+    _run_on_loop(event_loop, server.stop())
 
 
 # ---------------------------------------------------------------------------
@@ -146,9 +193,14 @@ def rigctld_port():
 
 
 @pytest.fixture(scope="session")
-def wfweb_instance(mock_radio, event_loop, rigctld_port):
-    """Start wfweb connected to mock_radio, yield (process, web_port), stop on teardown."""
+def rigctld_7300_port():
+    """TCP port of the rigctld server started with wfweb_7300_instance."""
+    return _find_free_port()
 
+
+def _launch_wfweb(mock, event_loop, rigctld_port, civ, home):
+    """Start wfweb LAN-connected to mock; return (process, web_port) once the
+    rig is connected and its frequency / mode caches are live."""
     if not WFWEB_BIN.exists():
         pytest.skip(f"wfweb binary not found at {WFWEB_BIN} — run 'qmake wfweb.pro && make' first")
 
@@ -159,17 +211,17 @@ def wfweb_instance(mock_radio, event_loop, rigctld_port):
         str(WFWEB_BIN),
         "-p", str(web_port),
         "--lan", "127.0.0.1",
-        "--lan-control", str(mock_radio.control_port),
+        "--lan-control", str(mock.control_port),
         "--lan-user", "testuser",
         "--lan-pass", "testpass",
-        "--civ", "0x98",
+        "--civ", civ,
         "--rigctld-port", str(rigctld_port),
     ]
 
     env = os.environ.copy()
     # Avoid wfweb loading the user's real settings
-    env["HOME"] = "/tmp/wfweb-test"
-    os.makedirs("/tmp/wfweb-test", exist_ok=True)
+    env["HOME"] = home
+    os.makedirs(home, exist_ok=True)
 
     proc = subprocess.Popen(
         cmd,
@@ -178,41 +230,26 @@ def wfweb_instance(mock_radio, event_loop, rigctld_port):
         env=env,
     )
 
-    # Let the mock's event loop run in the background to handle handshake
-    # We need to pump the asyncio loop while waiting for wfweb to connect
-    import threading
-
-    loop_running = threading.Event()
-
-    def run_loop():
-        asyncio.set_event_loop(event_loop)
-        loop_running.set()
-        event_loop.run_forever()
-
-    loop_thread = threading.Thread(target=run_loop, daemon=True)
-    loop_thread.start()
-    loop_running.wait()
+    # The mock's event loop must run in the background to handle the handshake
+    loop_thread = _ensure_loop_thread(event_loop)
 
     rest_base = f"http://127.0.0.1:{rest_port}"
     info_url = f"{rest_base}/api/v1/radio/info"
 
-    connected = _wait_for_connected(info_url, timeout=15.0)
-
-    if not connected:
+    if not _wait_for_connected(info_url, timeout=15.0):
         _dump_and_fail(proc, event_loop, loop_thread,
                        "wfweb did not connect within timeout", info_url)
 
     # Wait for the first poll cycle to populate frequency AND mode caches
     status_url = f"{rest_base}/api/v1/radio/status"
-    cache_ready = _wait_for_cache(status_url)
-
-    if not cache_ready:
+    if not _wait_for_cache(status_url):
         _dump_and_fail(proc, event_loop, loop_thread,
                        "wfweb cache not populated within timeout", status_url)
 
-    yield proc, web_port
+    return proc, web_port
 
-    # Teardown
+
+def _stop_wfweb(proc):
     proc.terminate()
     try:
         proc.wait(timeout=5)
@@ -220,8 +257,22 @@ def wfweb_instance(mock_radio, event_loop, rigctld_port):
         proc.kill()
         proc.wait(timeout=2)
 
-    event_loop.call_soon_threadsafe(event_loop.stop)
-    loop_thread.join(timeout=2)
+
+@pytest.fixture(scope="session")
+def wfweb_instance(mock_radio, event_loop, rigctld_port):
+    """Start wfweb connected to mock_radio, yield (process, web_port), stop on teardown."""
+    proc, web_port = _launch_wfweb(mock_radio, event_loop, rigctld_port, "0x98", "/tmp/wfweb-test")
+    yield proc, web_port
+    _stop_wfweb(proc)
+
+
+@pytest.fixture(scope="session")
+def wfweb_7300_instance(mock_radio_7300, event_loop, rigctld_7300_port):
+    """wfweb connected to the IC-7300 mock: for the rigctld tests that need the
+    Selected / Unselected VFO slots and a mode set that carries the data byte."""
+    proc, web_port = _launch_wfweb(mock_radio_7300, event_loop, rigctld_7300_port, "0x94", "/tmp/wfweb-test-7300")
+    yield proc, web_port
+    _stop_wfweb(proc)
 
 
 @pytest.fixture(scope="session")

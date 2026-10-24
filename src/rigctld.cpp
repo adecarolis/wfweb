@@ -428,6 +428,8 @@ void rigCtlClient::socketReadyRead()
         }
         else if (commands[0].toLower() == 'q')
         {
+            // rigctld acknowledges q; Hamlib's netrigctl_close waits for it.
+            sendData("RPRT 0\n");
             closeSocket();
             return;
         }
@@ -765,9 +767,23 @@ quint8 rigCtlClient::antFromName(QString name) {
     return ret;
 }
 
+// The queue only learns the VFO when something selects one; until then it
+// is vfoUnknown and getVfoCommand() falls back to the plain set slots (CI-V
+// 05 / 06 on an Icom). Those drop the data byte of a mode (WSJT-X's PKTUSB
+// never reached the rig as USB-D) and are never polled, so a read answered
+// the last value *set*, 0 before any, not the dial (pat, #147). A client
+// that names no VFO means the operating one.
+rigStateType rigCtlClient::currentState()
+{
+    rigStateType s = queue->getState();
+    if (s.vfo == vfoUnknown)
+        s.vfo = vfoA;
+    return s;
+}
+
 rigStateType rigCtlClient::vfoFromName(QString vfo) {
 
-    rigStateType state = queue->getState();
+    rigStateType state = currentState();
     if (vfo.toUpper() == "VFOA")
     {
         if (rigCaps->commands.contains(funcVFOASelect))
@@ -882,7 +898,7 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
     // This is a main command
     int ret = -RIG_EINVAL;
     funcs func = cmd.func;
-    rigStateType state=queue->getState();
+    rigStateType state = currentState();
 
 
     if (rigCaps == Q_NULLPTR)
@@ -1061,14 +1077,22 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
             state.vfo = splitVfo;
         }
 
+        // A read names the polled slot (set=false): the set slot is never
+        // polled, it would answer the last value set rather than the dial.
+        // The operating VFO ('f' / 'm') takes the same fallback chain as the
+        // web status (#138); the split ones ('i') stay on their own slot.
+        bool operating = (cmd.sstr != 'i' && cmd.sstr != 'x');
+        vfoCommandType vc = queue->getVfoCommand(state.vfo,state.receiver,false);
         if (func == funcFreqGet) {
-            func = queue->getVfoCommand(state.vfo,state.receiver,true).freqFunc;
+            func = vc.freqFunc;
+            if (operating) item = queue->operatingFreqCache(vc);
         } else if (func == funcModeGet) {
-            func = queue->getVfoCommand(state.vfo,state.receiver,true).modeFunc;
+            func = vc.modeFunc;
+            if (operating) item = queue->operatingModeCache(vc);
         }
 
         //qInfo() << "getting Cache Value for func" << funcString[func] << "on rx" << state.receiver;
-        if (rigCaps->commands.contains(func))
+        if (!item.value.isValid() && rigCaps->commands.contains(func))
             item = queue->getCache(func,state.receiver);
 
         if (cmd.type != typeVFOInfo && prefixes.length() && params.length())
@@ -1116,8 +1140,10 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
         }
         case typeFreq:
         { // Frequency
+            // Hamlib prints the frequency as an integer ("%lld"); pat's
+            // rigctld client parses it with Atoi and chokes on a tail (#147).
             freqt f = item.value.value<freqt>();
-            response.append(QString("%0%1.000000").arg(prefixes[prefixes.length()-1],QString::number(f.Hz)));
+            response.append(QString("%0%1").arg(prefixes[prefixes.length()-1],QString::number(f.Hz)));
             break;
         }
         case typeVFO:
@@ -1138,17 +1164,15 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
 
         case typeVFOInfo:
         {
-            funcs freqFunc = queue->getVfoCommand(state.vfo,state.receiver,true).freqFunc;
-            funcs modeFunc = queue->getVfoCommand(state.vfo,state.receiver,true).modeFunc;
-
             if (rigCaps->numReceiver > 1 && params.size() && params[0] == "Sub") {
                 state.receiver=1;
             }
+            vfoCommandType vc = queue->getVfoCommand(state.vfo,state.receiver,false);
 
             if (prefixes.length()>1)
-                response.append(QString("%0%1").arg(prefixes[1],QString::number(queue->getCache(freqFunc,state.receiver).value.value<freqt>().Hz)));
+                response.append(QString("%0%1").arg(prefixes[1],QString::number(queue->operatingFreqCache(vc).value.value<freqt>().Hz)));
             if (prefixes.length()>2)
-                response.append(QString("%0%1").arg(prefixes[2],getMode(queue->getCache(modeFunc,state.receiver).value.value<modeInfo>())));
+                response.append(QString("%0%1").arg(prefixes[2],getMode(queue->operatingModeCache(vc).value.value<modeInfo>())));
             if (prefixes.length()>3)
                     response.append(QString("%0%1").arg(prefixes[3],QString::number(queue->getCache(rigCaps->commands.contains(funcFilterWidth)?funcFilterWidth:funcNone,state.receiver).value.value<ushort>())));
             if (prefixes.length()>4) /* Split is only ever on the first rx */
@@ -1202,7 +1226,7 @@ int rigCtlClient::getSubCommand(QStringList& response, bool extended, const comm
     if (rigCaps == Q_NULLPTR)
         return ret;
 
-    rigStateType state = queue->getState();
+    rigStateType state = currentState();
 
     QString resp;
     // Get the required subCommand and process it
@@ -1555,7 +1579,7 @@ int rigCtlClient::power2mW(QStringList& response, bool extended, const commandSt
 {
     int ret=RIG_OK;
     QStringList prefixes = buildPrefixes(cmd,extended);
-    rigStateType state = queue->getState();
+    rigStateType state = currentState();
     if (params.size() >= 2)
     {
         bool ok=false;
@@ -1595,7 +1619,7 @@ int rigCtlClient::mW2power(QStringList& response, bool extended, const commandSt
 {
     int ret=RIG_OK;
     QStringList prefixes = buildPrefixes(cmd,extended);
-    rigStateType state = queue->getState();
+    rigStateType state = currentState();
     if (params.size() > 2)
     {
         bool ok=false;

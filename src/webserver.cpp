@@ -3808,35 +3808,16 @@ void webServer::sendCurrentState(QWebSocket *client)
     }
 }
 
-// The frequency / mode the rig is operating with. getVfoCommand() names the
-// per-VFO cache (funcSelectedFreq / funcSelectedMode on an A/B rig); in
-// memory mode it names the plain 03 / 04 reads instead, and the Icom
-// commander files those replies under the Selected funcs too, so the named
-// cache never fills there while the periodic 25 00 / 26 00 poll keeps the
-// Selected one live with the recalled channel (IC-7300, measured). Anything
-// that only looked at the named cache saw nothing in memory mode: setFilter
-// silently did nothing (#138) and the status went out with null freq/mode.
-// Only funcs the rig has are consulted: getCache() re-requests an empty slot.
+// Operating freq / mode with the memory-mode fallbacks (#138); the chain
+// lives in cachingQueue so rigctld reads the same values as the web status.
 cacheItem webServer::operatingFreqCache(const vfoCommandType &t)
 {
-    if (!queue || !rigCaps || t.freqFunc == funcNone) return cacheItem();
-    cacheItem c = queue->getCache(t.freqFunc, t.receiver);
-    if (!c.value.isValid() && rigCaps->commands.contains(funcSelectedFreq))
-        c = queue->getCache(funcSelectedFreq, 0);
-    if (!c.value.isValid() && rigCaps->commands.contains(funcFreq))
-        c = queue->getCache(funcFreq, t.receiver);
-    return c;
+    return queue ? queue->operatingFreqCache(t) : cacheItem();
 }
 
 cacheItem webServer::operatingModeCache(const vfoCommandType &t)
 {
-    if (!queue || !rigCaps || t.modeFunc == funcNone) return cacheItem();
-    cacheItem c = queue->getCache(t.modeFunc, t.receiver);
-    if (!c.value.isValid() && rigCaps->commands.contains(funcSelectedMode))
-        c = queue->getCache(funcSelectedMode, 0);
-    if (!c.value.isValid() && rigCaps->commands.contains(funcMode))
-        c = queue->getCache(funcMode, t.receiver);
-    return c;
+    return queue ? queue->operatingModeCache(t) : cacheItem();
 }
 
 QJsonObject webServer::buildStatusJson()

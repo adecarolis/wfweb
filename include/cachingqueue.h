@@ -169,6 +169,10 @@ public:
     rigCapabilities* getRigCaps() { return rigCaps; }
     vfoCommandType getVfoCommand(vfo_t vfo, uchar rx, bool set=false);
     rigStateType getState() { QMutexLocker locker(&mutex); return rigState ;}
+    // Operating freq / mode with the fallbacks memory mode needs (#138);
+    // shared by the web status and rigctld. Call without the mutex held.
+    cacheItem operatingFreqCache(const vfoCommandType &t);
+    cacheItem operatingModeCache(const vfoCommandType &t);
 };
 
 Q_DECLARE_METATYPE(queueItem)
