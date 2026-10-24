@@ -2274,7 +2274,8 @@ body.digi-open #bottomBar { grid-row: 5; }
     border: 1px solid #444;
     background: rgba(18,18,18,0.85);
     color: #888;
-    z-index: 230;            /* above the overlays (220) and the mode bars (200) */
+    z-index: 210;            /* above the mode bars (200), under the panel overlays (220):
+                                MODE/BAND/FUNC/GAIN put their back key in this corner */
     touch-action: none;
     cursor: pointer;
     transition: color .15s, border-color .15s, background .15s;
@@ -2304,7 +2305,7 @@ body.ui-locked #uiLockBtn .lock-closed { display: block; }
     padding: 4px 9px; border-radius: 12px;
     background: rgba(8,36,36,0.92); border: 1px solid #0aa; color: #0cc;
     font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; white-space: nowrap;
-    opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 230;
+    opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 210;
 }
 #uiLockHint.show { opacity: 1; }
 /* Locked: everything but PTT and the padlock reads as inert. The frequency,
