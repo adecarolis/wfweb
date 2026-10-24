@@ -178,7 +178,9 @@ Standalone virtual rig).
   Locking closes the open panel. `resizeCanvases()` lifts the padlock above
   the CW bar; the FT8/JS8/packet panels hide it while unlocked (`:has()`).
 - **PTT row**: in portrait `#bottomBar` wraps, the four soft keys on top and
-  PTT full-width underneath; in landscape PTT is double width. Only where a
+  PTT full-width underneath, 96 px tall and 16 px off the bottom edge (on
+  Android that edge is the navigation gesture and the safe-area inset is 0,
+  YO3GWM in #144); in landscape PTT is double width. Only where a
   mic PTT means something (`pttApplicable()`): voice modes with no digital
   panel open. CW keeps a plain KEY soft key; RTTY and the FT8/JS8/packet
   panels get the four soft keys alone (a `MutationObserver` on `#scopeArea`

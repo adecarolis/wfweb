@@ -2249,17 +2249,20 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
 @media (pointer: coarse) and (orientation: portrait) {
     #radio, body.meter-needle #radio { grid-template-rows: 32px 72px 18px 1fr auto; }
     body.meter-needle #radio { grid-template-rows: 32px 84px 18px 1fr auto; }
+    /* The PTT keeps clear of the screen's bottom edge: on Android that edge
+       is the system navigation gesture (and env(safe-area-inset-bottom) is 0
+       there), so a thumb landing low pulled up the nav bar mid-over. */
     #bottomBar {
         flex-wrap: wrap;
         padding: 5px 6px;
-        padding-bottom: calc(6px + env(safe-area-inset-bottom));
+        padding-bottom: calc(16px + env(safe-area-inset-bottom));
         gap: 5px;
     }
     .softBtn { flex: 1 1 0; height: 38px; }
     .softBtn:only-child { flex-basis: 100%; }
     .softBtn.ptt-btn {
         flex: 1 1 100%; order: 2;
-        height: 62px;
+        height: 96px;
         font-size: 17px; letter-spacing: 2px;
         border-radius: 10px;
     }
