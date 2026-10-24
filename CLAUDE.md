@@ -163,6 +163,15 @@ restore sends `setMode {value, filter}` as one command on purpose: a trailing
 `setFilter` rebuilds from the server's mode cache before the mode reply is
 back and would undo the mode. Packet and FreeDV do not use this.
 
+### Scope click-to-tune step
+A click, tap or drag on the scope lands on `scopeTuneStep()` (identical in
+both `index.html` forks, used by `scopeFreqFromClientX`, the drag path and
+`scopeFreqFromDragDeltaX`): 1 Hz in CW/CW-R, 100 Hz in every other mode. The
+backends pass Hz through untouched (CI-V `05` is 1 Hz). The live click path
+is the no-drag branch of `scopePointerEnd`; `scopeClick` is not wired. The
+scope message carries its edges as float32 MHz, about 1 Hz at 14 MHz but
+15 Hz at 144 MHz and 30 Hz at 432 MHz, which bounds a 1 Hz click up there.
+
 ### Touch operating controls (#144)
 Phones and touch tablets only, gated on `(pointer: coarse)` in CSS and
 `touchUi` in JS; the desktop keeps five equal soft keys and hold-to-talk.

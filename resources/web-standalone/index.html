@@ -8853,14 +8853,22 @@ function drawWaterfall() {
     return p < 1;
 }
 
+// Step a scope click, tap or drag lands on: 1 Hz in CW, where the dial has
+// to sit on the signal for the beat note to come out at the pitch, 100 Hz
+// in every other mode.
+function scopeTuneStep() {
+    return (currentMode === 'CW' || currentMode === 'CW-R') ? 1 : 100;
+}
+
 function scopeFreqFromClientX(target, clientX) {
     if (!target || spectStartFreq <= 0 || spectEndFreq <= spectStartFreq) return 0;
     var rect = target.getBoundingClientRect();
     if (rect.width <= 0) return 0;
     var frac = (clientX - rect.left) / rect.width;
     frac = Math.max(0, Math.min(1, frac));
-    // Scope tuning lands on 100 Hz steps, like a drag (scopeFreqFromDragDeltaX).
-    return Math.round((spectStartFreq + (spectEndFreq - spectStartFreq) * frac) * 1e6 / 100) * 100;
+    // Scope tuning lands on scopeTuneStep(), like a drag (scopeFreqFromDragDeltaX).
+    var step = scopeTuneStep();
+    return Math.round((spectStartFreq + (spectEndFreq - spectStartFreq) * frac) * 1e6 / step) * step;
 }
 
 function scopeSetVisualPan(px) {
@@ -8880,7 +8888,8 @@ function scopeFreqFromDragDeltaX(deltaX) {
     var spanHz = (spectEndFreq - spectStartFreq) * 1e6;
     var hzPerPx = spanHz / scopeDragRectWidth;
     // Left pan (negative deltaX) should increase frequency.
-    return Math.max(100, Math.round((scopeDragStartFreq - deltaX * hzPerPx) / 100) * 100);
+    var step = scopeTuneStep();
+    return Math.max(step, Math.round((scopeDragStartFreq - deltaX * hzPerPx) / step) * step);
 }
 
 // X of the VFO on the glass. CENTER pins it mid-screen (compensating the
@@ -8925,7 +8934,8 @@ function scopeDragTuneFreq(clientX, deltaX, release) {
     } else {
         frac = Math.max(0, Math.min(1, frac));
     }
-    var f = Math.round((spectStartFreq + (spectEndFreq - spectStartFreq) * frac) * 1e6 / 100) * 100;
+    var step = scopeTuneStep();
+    var f = Math.round((spectStartFreq + (spectEndFreq - spectStartFreq) * frac) * 1e6 / step) * step;
     if (f > 0) scopeDragFreq = f;
     return f;
 }
@@ -9076,7 +9086,12 @@ var spacebarPTTActive = false;
 
 document.addEventListener('keydown', function(e) {
     // Don't handle shortcuts when editing macros or in input fields
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    // The CW input holds focus while the CW bar is open and has no use for
+    // Up/Down, so those keep tuning the VFO from there (Left/Right still
+    // move its caret).
+    var inField = (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA');
+    var cwTune = (e.target.id === 'cwInput' && (e.key === 'ArrowUp' || e.key === 'ArrowDown'));
+    if (inField && !cwTune) return;
 
     // Don't handle shortcuts when macro editor is open
     var macroEditor = document.getElementById('cwMacroEditor');
