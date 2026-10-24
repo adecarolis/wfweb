@@ -236,10 +236,6 @@
             #cwDecoderToggle.loading { background: #1a1a00 !important; border-color: #aa0 !important; color: #aa0 !important; }
             @media (orientation: portrait) and (max-width: 600px) {
                 #cwDecoderToggle { font-size: 10px !important; padding: 6px 5px !important; margin-left: 0 !important; min-height: 28px; letter-spacing: 0; }
-                /* The tone spectrogram is a luxury on a phone: the RF
-                   waterfall above shows the same signal, and the whole bar
-                   must fit under 65% of the scope area. Keep the text line. */
-                .cw-scope-container { display: none; }
             }
             .cw-scope-container { position: relative; width: 100%; height: 48px; }
             #cwScopeCanvas { display: block; background: #000; width: 100%; height: 48px; border-radius: 4px; border: 1px solid #0a0; }
@@ -255,10 +251,15 @@
             #cwDecoderTextInner { white-space: pre; display: inline; }
             .cw-decoded-call { color: #ff0; cursor: pointer; text-decoration: underline; }
             .cw-decoded-call:hover { color: #000; background: #ff0; }
-            /* Phone portrait: with the spectrogram hidden, auto-tune is the
-               only way left to centre a signal, so keep the button - just
-               narrow enough to leave the decoded text room to read. */
+            /* Phone portrait: keep the auto-tune button, just narrow enough
+               to leave the decoded text room to read. */
             @media (orientation: portrait) and (max-width: 600px) {
+                /* The whole bar must fit under 65% of the scope area, so the
+                   tone spectrogram shrinks here (after the 48px rules above):
+                   800 Hz over 30 px still shows where a signal sits against
+                   the filter band, which the RF waterfall cannot at any
+                   normal span. */
+                .cw-scope-container, #cwScopeCanvas { height: 30px; }
                 #cwAutoTune { min-width: 0; height: 28px; padding: 0 8px; font-size: 10px; }
                 #cwAutoTune .cw-wide { display: none; }   /* "AUTOTUNE" reads "AUTO" */
                 #cwDecoderText { height: 28px; line-height: 28px; font-size: 16px; }
