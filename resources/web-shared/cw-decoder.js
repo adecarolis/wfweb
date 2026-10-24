@@ -1,5 +1,7 @@
-// CW Decoder for wfweb - Based on web-deep-cw-decoder
-// This implementation copies the demo as closely as possible
+// CW Decoder for wfweb - page side, based on web-deep-cw-decoder.
+// The decoding itself happens in cw-decoder-worker.js (DeepCW model on
+// ONNX Runtime Web); this file owns the spectrogram, the audio tap, the
+// text line and the tuning helpers.
 
 (function() {
     'use strict';
@@ -12,9 +14,27 @@
     const DECODABLE_MIN_FREQ_HZ = 400;
     const DECODABLE_MAX_FREQ_HZ = 800;
     const BUFFER_DURATION_S = 12;
-    const INFERENCE_INTERVAL_MS = 800;  // Even slower updates for readability
-    const SAMPLE_RATE = 4000;
+    const INFERENCE_INTERVAL_MS = 1000; // one pass over the pending audio per second
+    const SAMPLE_RATE = 3200;           // the DeepCW model's input rate (deepcw.onnx.json)
     const BUFFER_SAMPLES = BUFFER_DURATION_S * SAMPLE_RATE;  // 38400
+    const MODEL_LOAD_TIMEOUT_MS = 180000; // model + runtime are ~27 MB on first load
+
+    // Two engines.  DeepCW (cw-decoder-worker.js, neural, ~27 MB, WASM SIMD,
+    // ~0.6 s of CPU per second of audio) is the decoder; ggmorse
+    // (cw-decoder-worker-ggmorse.js, Goertzel, 78 KB, runs on anything) is
+    // the fallback where DeepCW cannot run: no WebAssembly SIMD (Safari
+    // before 16.4, Firefox before 114, Chromium before 91), the worker fails
+    // to load, or the passes average slower than SLOW_TICK_MS (a Pi-class
+    // browser).  localStorage wfCwDecoder = 'deepcw' | 'ggmorse' forces one;
+    // the default 'auto' is the rule above.
+    const ENGINE_KEY = 'wfCwDecoder';
+    const SLOW_TICKS = 4;            // passes averaged for the "cannot keep up" test
+    let slowTickMs = 2500;           // CWDecoder.slowTickMs: a pass budget; 12 s of audio takes ~0.6 s on a laptop
+
+    // TEMPORARY: also run ggmorse alongside DeepCW and show its copy on a
+    // second line, to compare the two on the air.  Turn off once decided;
+    // the fallback above keeps the ggmorse worker in the tree either way.
+    const COMPARE_GGMORSE = true;
 
     // Decoder state
     const decoderState = {
@@ -24,7 +44,13 @@
         gain: 0,
         filterWidth: 250,
         filterFreq: null,
-        textBuffer: '',       // accumulated decoded text (rolling)
+        textBuffer: '',       // committed decoded text (rolling)
+        pendingText: '',      // the worker's current read of the uncommitted tail
+        loadProgress: 0,
+        lastTick: null,       // { ms, audioS } of the last worker pass (diagnostics)
+        ggText: '',           // the ggmorse comparison line (COMPARE_GGMORSE)
+        engine: 'deepcw',     // engine behind the main line: 'deepcw' | 'ggmorse'
+        engineReason: '',     // why ggmorse, when it is
     };
 
     const TEXT_BUFFER_MAX = 500; // characters to keep in rolling buffer
@@ -63,6 +89,11 @@
     // Track new samples accumulated since last inference send
     let totalSamplesAccumulated = 0;
     let lastSentTotal = 0;
+    let inferenceBusy = false;   // a tick is in the worker; skip until it answers
+    let ggWorker = null;         // the ggmorse worker (fallback engine, or the comparison line), fed on its own account
+    let ggLoaded = false;
+    let ggLastSentTotal = 0;
+    let tickMs = [];             // the last SLOW_TICKS DeepCW pass times
 
     // Canvas
     let canvas = null;
@@ -201,10 +232,15 @@
                 <div id="cwFilterBand"></div>
             </div>
             <div class="cw-decoder-row">
+                <span class="cw-decoder-tag" id="cwDecoderTag"${COMPARE_GGMORSE ? '' : ' hidden'}>DEEPCW</span>
                 <div id="cwDecoderText"><span id="cwDecoderTextInner"></span></div>
                 <button id="cwAutoTune" class="wf-btn"
                         title="Auto-tune: move the dial so the loudest CW signal sits at ${BEAT_FREQ_HZ} Hz, the centre of the decode window"></button>
             </div>
+            ${COMPARE_GGMORSE ? `<div class="cw-decoder-row cw-compare-row">
+                <span class="cw-decoder-tag">GGMORSE</span>
+                <div id="cwDecoderTextGg"><span id="cwDecoderTextGgInner"></span></div>
+            </div>` : ''}
         `;
 
         // Insert decoder section BEFORE the macro grids (transmit section)
@@ -246,9 +282,12 @@
             #cwAutoTune.busy { opacity: 0.6; cursor: progress; }
             #cwAutoTune.ok { background: var(--mode-accent-dim); color: var(--on-accent); border-color: var(--mode-accent); }
             #cwAutoTune.warn { background: #1a1a00; border-color: #aa0; color: #aa0; }
-            #cwDecoderText { flex: 1 1 auto; min-width: 0; font-size: 20px; background: #000; border-radius: 4px; border: 1px solid #0a0; height: 32px; color: #0f0; overflow-x: scroll; overflow-y: hidden; scrollbar-width: none; -ms-overflow-style: none; box-sizing: border-box; font-family: 'Courier New', monospace; line-height: 32px; padding: 0 8px; }
-            #cwDecoderText::-webkit-scrollbar { display: none; }
-            #cwDecoderTextInner { white-space: pre; display: inline; }
+            #cwDecoderText, #cwDecoderTextGg { flex: 1 1 auto; min-width: 0; font-size: 20px; background: #000; border-radius: 4px; border: 1px solid #0a0; height: 32px; color: #0f0; overflow-x: scroll; overflow-y: hidden; scrollbar-width: none; -ms-overflow-style: none; box-sizing: border-box; font-family: 'Courier New', monospace; line-height: 32px; padding: 0 8px; }
+            #cwDecoderText::-webkit-scrollbar, #cwDecoderTextGg::-webkit-scrollbar { display: none; }
+            #cwDecoderTextInner, #cwDecoderTextGgInner { white-space: pre; display: inline; }
+            .cw-decoder-tag { flex: 0 0 auto; align-self: center; width: 58px; font-size: 10px; letter-spacing: 1px; color: #6a6; font-family: monospace; }
+            #cwDecoderTextGg { color: #8c8; }
+            .cw-pending { color: #6a6; }
             .cw-decoded-call { color: #ff0; cursor: pointer; text-decoration: underline; }
             .cw-decoded-call:hover { color: #000; background: #ff0; }
             /* Phone portrait: keep the auto-tune button, just narrow enough
@@ -291,7 +330,7 @@
         if (canvas) resizeObserver.observe(canvas);
 
         // Callsign click: populate QSO field (event delegation on stable container)
-        document.getElementById('cwDecoderText')?.addEventListener('click', function(e) {
+        for (const id of ['cwDecoderText', 'cwDecoderTextGg']) document.getElementById(id)?.addEventListener('click', function(e) {
             const span = e.target.closest('.cw-decoded-call');
             if (!span) return;
             const qsoInput = document.getElementById('cwQsoInput');
@@ -385,22 +424,24 @@
             // Connect nodes
             connectAudioNodes();
 
-            // Start worker — cache-bust: fingerprinter can't see new Worker(literal); append ?v=… by hand.
-            decoderWorker = new Worker('cw-decoder-worker.js' + (self.__WFWEB_V__ ? '?v=' + self.__WFWEB_V__ : ''));
-            decoderWorker.onmessage = handleWorkerMessage;
-            decoderWorker.postMessage({ type: 'loadModel' });
+            // Pick the engine and start its worker(s).
+            const [engine, reason] = chooseEngine();
+            setEngine(engine, reason);
+            if (engine === 'deepcw') startDeepWorker();
+            if (engine === 'ggmorse' || COMPARE_GGMORSE) startGgWorker();
 
-            // Wait for model
-            await new Promise((resolve, reject) => {
-                const timeout = setTimeout(() => reject(new Error('Timeout')), 30000);
-                const check = setInterval(() => {
-                    if (decoderState.loaded) {
-                        clearInterval(check);
-                        clearTimeout(timeout);
-                        resolve();
-                    }
-                }, 100);
-            });
+            // Wait for the engine behind the main line.  A DeepCW load that
+            // times out falls back to ggmorse unless the user pinned DeepCW.
+            try {
+                await waitLoaded(MODEL_LOAD_TIMEOUT_MS);
+            } catch (err) {
+                if (decoderState.engine === 'deepcw' && enginePreference() !== 'deepcw') {
+                    fallbackToGgmorse('model load timed out');
+                    await waitLoaded(15000);
+                } else {
+                    throw err;
+                }
+            }
 
             decoderState.enabled = true;
             setupCanvasSizing();
@@ -502,6 +543,15 @@
             decoderWorker.terminate();
             decoderWorker = null;
         }
+        if (ggWorker) {
+            ggWorker.terminate();
+            ggWorker = null;
+        }
+        ggLoaded = false;
+        ggLastSentTotal = 0;
+        tickMs = [];
+        decoderState.ggText = '';
+        updateGgText();
 
         cancelAutoTune();
 
@@ -509,8 +559,11 @@
         decoderState.loaded = false;
         decoderState.loading = false;
         decoderState.textBuffer = '';
+        decoderState.pendingText = '';
+        decoderState.loadProgress = 0;
         totalSamplesAccumulated = 0;
         lastSentTotal = 0;
+        inferenceBusy = false;
         updateText();
         updateButtons();
     }
@@ -518,10 +571,25 @@
     function handleWorkerMessage(event) {
         const msg = event.data;
         switch (msg.type) {
+            case 'loadProgress':
+                decoderState.loadProgress = msg.progress || 0;
+                updateButtons();
+                break;
             case 'modelLoaded':
-                decoderState.loaded = true;
+                if (decoderState.engine === 'deepcw') decoderState.loaded = true;
                 break;
             case 'inferenceResult':
+                inferenceBusy = false;
+                if (decoderState.engine !== 'deepcw') break;   // a late answer after a fallback
+                if (msg.ms !== undefined && decoderState.enabled) {
+                    tickMs.push(msg.ms);
+                    if (tickMs.length > SLOW_TICKS) tickMs.shift();
+                    const avg = tickMs.reduce((a, b) => a + b, 0) / tickMs.length;
+                    if (tickMs.length === SLOW_TICKS && avg > slowTickMs && enginePreference() !== 'deepcw') {
+                        fallbackToGgmorse('too slow: ' + avg.toFixed(0) + ' ms per pass');
+                        break;
+                    }
+                }
                 if (msg.segments && msg.segments.length > 0) {
                     const newText = msg.segments.map(s => s.text).join('');
                     if (newText.length > 0) {
@@ -529,17 +597,142 @@
                         if (decoderState.textBuffer.length > TEXT_BUFFER_MAX) {
                             decoderState.textBuffer = decoderState.textBuffer.slice(-TEXT_BUFFER_MAX);
                         }
-                        updateText();
                     }
                 }
-                if (msg.speed_wpm > 0 || msg.frequency_hz > 0) {
-                    console.log('[CW Decoder] Detected: ' + msg.frequency_hz.toFixed(0) + ' Hz, ' + msg.speed_wpm.toFixed(1) + ' WPM');
-                }
+                decoderState.pendingText = msg.pending || '';
+                if (msg.ms !== undefined) decoderState.lastTick = { ms: msg.ms, audioS: msg.audioS };
+                updateText();
                 break;
             case 'error':
+                inferenceBusy = false;
                 console.error('[CW Decoder Worker] Error:', msg.error);
+                // A failure before the model is up (fetch, wasm instantiation,
+                // import) means DeepCW cannot run here: hand over.
+                if (!decoderState.loaded && decoderState.engine === 'deepcw' && enginePreference() !== 'deepcw') {
+                    fallbackToGgmorse('load failed: ' + msg.error);
+                }
                 break;
         }
+    }
+
+    function handleGgMessage(event) {
+        const msg = event.data;
+        if (msg.type === 'modelLoaded') {
+            ggLoaded = true;
+            if (decoderState.engine === 'ggmorse') decoderState.loaded = true;
+        } else if (msg.type === 'inferenceResult') {
+            const text = (msg.segments || []).map(s => s.text).join('');
+            if (!text) return;
+            if (decoderState.engine === 'ggmorse') {
+                decoderState.textBuffer = (decoderState.textBuffer + text).slice(-TEXT_BUFFER_MAX);
+                updateText();
+            } else {
+                decoderState.ggText = (decoderState.ggText + text).slice(-TEXT_BUFFER_MAX);
+                updateGgText();
+            }
+        } else if (msg.type === 'error') {
+            console.error('[CW Decoder ggmorse] Error:', msg.error);
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Engine selection
+    // ------------------------------------------------------------------
+
+    function enginePreference() {
+        try { return localStorage.getItem(ENGINE_KEY) || 'auto'; } catch (e) { return 'auto'; }
+    }
+
+    // The standard WASM SIMD probe (wasm-feature-detect): a module with one
+    // v128 op.  ONNX Runtime Web ships SIMD builds only.
+    function wasmSimdSupported() {
+        try {
+            return typeof WebAssembly === 'object' && WebAssembly.validate(new Uint8Array([
+                0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 123, 3, 2, 1, 0,
+                10, 10, 1, 8, 0, 65, 0, 253, 15, 253, 98, 11]));
+        } catch (e) { return false; }
+    }
+
+    function chooseEngine() {
+        const pref = enginePreference();
+        if (pref === 'ggmorse') return ['ggmorse', 'set by wfCwDecoder'];
+        if (pref === 'deepcw') return ['deepcw', ''];
+        if (!wasmSimdSupported()) return ['ggmorse', 'no WebAssembly SIMD in this browser'];
+        return ['deepcw', ''];
+    }
+
+    function setEngine(engine, reason) {
+        decoderState.engine = engine;
+        decoderState.engineReason = reason || '';
+        const tag = document.getElementById('cwDecoderTag');
+        if (tag) {
+            tag.textContent = engine === 'ggmorse' ? 'GGMORSE' : 'DEEPCW';
+            tag.title = reason || '';
+            tag.hidden = !(COMPARE_GGMORSE || engine === 'ggmorse');
+        }
+        // With ggmorse on the main line the comparison line would repeat it.
+        const row = document.querySelector('.cw-compare-row');
+        if (row) row.style.display = engine === 'ggmorse' ? 'none' : '';
+        if (engine === 'ggmorse') console.log('[CW Decoder] engine: ggmorse (' + (reason || 'chosen') + ')');
+    }
+
+    function startDeepWorker() {
+        // Cache-bust: the fingerprinter can't see new Worker(literal); append ?v=… by hand.
+        decoderWorker = new Worker('cw-decoder-worker.js' + (self.__WFWEB_V__ ? '?v=' + self.__WFWEB_V__ : ''),
+                                   { type: 'module' });
+        decoderWorker.onmessage = handleWorkerMessage;
+        decoderWorker.onerror = (e) => {
+            console.error('[CW Decoder Worker] ' + (e.message || e));
+            // Module workers or the import failed outright (old browser).
+            if (!decoderState.loaded && decoderState.engine === 'deepcw' && enginePreference() !== 'deepcw') {
+                fallbackToGgmorse('worker failed: ' + (e.message || 'error'));
+            }
+        };
+        decoderWorker.postMessage({ type: 'loadModel' });
+    }
+
+    function startGgWorker() {
+        if (ggWorker) return;
+        ggWorker = new Worker('cw-decoder-worker-ggmorse.js' + (self.__WFWEB_V__ ? '?v=' + self.__WFWEB_V__ : ''));
+        ggWorker.onmessage = handleGgMessage;
+        ggWorker.onerror = (e) => { console.error('[CW Decoder ggmorse] ' + (e.message || e)); };
+        ggWorker.postMessage({ type: 'loadModel' });
+    }
+
+    function fallbackToGgmorse(reason) {
+        if (decoderState.engine === 'ggmorse') return;
+        console.warn('[CW Decoder] falling back to ggmorse: ' + reason);
+        if (decoderWorker) {
+            decoderWorker.terminate();
+            decoderWorker = null;
+        }
+        inferenceBusy = false;
+        tickMs = [];
+        // Keep what DeepCW had read so far: its pending words would otherwise
+        // vanish at the handover, and ggmorse only starts hearing from now.
+        if (decoderState.pendingText) {
+            decoderState.textBuffer = (decoderState.textBuffer + decoderState.pendingText + ' ').slice(-TEXT_BUFFER_MAX);
+            decoderState.pendingText = '';
+        }
+        decoderState.loadProgress = 0;
+        setEngine('ggmorse', reason);
+        startGgWorker();
+        if (ggLoaded) decoderState.loaded = true;
+        updateText();
+        updateButtons();
+    }
+
+    function waitLoaded(timeoutMs) {
+        return new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => { clearInterval(check); reject(new Error('Timeout')); }, timeoutMs);
+            const check = setInterval(() => {
+                if (decoderState.loaded) {
+                    clearInterval(check);
+                    clearTimeout(timeout);
+                    resolve();
+                }
+            }, 100);
+        });
     }
 
     // Spectrogram rendering (exactly like demo)
@@ -621,9 +814,23 @@
     }
 
     function runInference() {
-        if (!decoderState.enabled || !decoderWorker || !decoderState.loaded) return;
+        if (!decoderState.enabled || !decoderState.loaded) return;
 
-        // Send only samples accumulated since last call (ggmorse maintains internal state)
+        // ggmorse (fallback engine or comparison line) gets every tick on its
+        // own account; it is cheap, and DeepCW's pacing below must not starve it.
+        if (ggWorker && ggLoaded) {
+            const ggCount = Math.min(totalSamplesAccumulated - ggLastSentTotal, BUFFER_SAMPLES);
+            if (ggCount > 0) {
+                const ggSamples = audioBuffer.slice(BUFFER_SAMPLES - ggCount);
+                ggLastSentTotal = totalSamplesAccumulated;
+                ggWorker.postMessage({ type: 'runInference', audioBuffer: ggSamples }, [ggSamples.buffer]);
+            }
+        }
+
+        if (!decoderWorker) return;  // ggmorse is the engine: nothing more to feed
+        if (inferenceBusy) return;   // the worker is still on the last tick; the samples keep queuing here
+
+        // Send only samples accumulated since last call (the worker keeps the pending audio)
         const newCount = Math.min(totalSamplesAccumulated - lastSentTotal, BUFFER_SAMPLES);
         if (newCount <= 0) return;
 
@@ -631,6 +838,7 @@
         const newSamples = audioBuffer.slice(start);
         lastSentTotal = totalSamplesAccumulated;
 
+        inferenceBusy = true;
         decoderWorker.postMessage({
             type: 'runInference',
             audioBuffer: newSamples
@@ -653,19 +861,15 @@
         return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
-    // Text display - rolling teleprinter style, newest text on the right
+    // Text display - rolling teleprinter style, newest text on the right.
+    // Committed text first; the worker's current read of the uncommitted
+    // tail follows in a dimmer colour and is redrawn on every pass.
     // Words matching callsign format (and differing from CALL field) become clickable links
-    function updateText() {
-        const container = document.getElementById('cwDecoderText');
-        const inner = document.getElementById('cwDecoderTextInner');
-        if (!container || !inner) return;
-
+    // Decoded text as HTML: callsigns (other than the CALL field) become links.
+    function renderDecoded(text) {
         const myCall = (document.getElementById('cwCallInput')?.value || '').trim().toUpperCase();
-        const text = decoderState.textBuffer;
-
         // Split on runs of alphanumeric chars (preserving separators between them)
         const parts = text.split(/([A-Z0-9]+)/);
-
         let html = '';
         for (const part of parts) {
             if (/^[A-Z0-9]+$/.test(part) && isCallsign(part) && part !== myCall) {
@@ -674,7 +878,27 @@
                 html += escapeHtml(part);
             }
         }
+        return html;
+    }
 
+    function updateGgText() {
+        const container = document.getElementById('cwDecoderTextGg');
+        const inner = document.getElementById('cwDecoderTextGgInner');
+        if (!container || !inner) return;
+        inner.innerHTML = renderDecoded(decoderState.ggText);
+        container.scrollLeft = container.scrollWidth;
+    }
+
+    function updateText() {
+        const container = document.getElementById('cwDecoderText');
+        const inner = document.getElementById('cwDecoderTextInner');
+        if (!container || !inner) return;
+
+        let html = renderDecoded(decoderState.textBuffer);
+
+        if (decoderState.pendingText) {
+            html += '<span class="cw-pending">' + escapeHtml(decoderState.pendingText) + '</span>';
+        }
         inner.innerHTML = html;
         container.scrollLeft = container.scrollWidth;
     }
@@ -685,7 +909,8 @@
 
         if (toggleBtn) {
             if (decoderState.loading) {
-                toggleBtn.textContent = 'LOADING...';
+                const pct = Math.round(decoderState.loadProgress * 100);
+                toggleBtn.textContent = pct > 0 && pct < 100 ? 'LOADING ' + pct + '%' : 'LOADING...';
                 toggleBtn.className = 'loading';
             } else if (decoderState.enabled) {
                 toggleBtn.textContent = 'DECODE';
@@ -897,7 +1122,11 @@
     // Expose API
     window.CWDecoder = {
         init: init,
-        get state() { return decoderState; }
+        get state() { return decoderState; },
+        // 'auto' | 'deepcw' | 'ggmorse'; takes effect the next time the decoder starts.
+        preferEngine(pref) { try { if (pref === 'auto') localStorage.removeItem(ENGINE_KEY); else localStorage.setItem(ENGINE_KEY, pref); } catch (e) {} },
+        get slowTickMs() { return slowTickMs; },
+        set slowTickMs(v) { slowTickMs = v; }
     };
 
     // Auto-init

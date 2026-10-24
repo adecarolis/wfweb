@@ -791,7 +791,7 @@ void webServer::onHttpReadyRead()
         path = "/index.html";
     }
 
-    serveStaticFile(socket, path);
+    serveStaticFile(socket, path, headerSection);
 }
 
 void webServer::onHttpDisconnected()
@@ -803,7 +803,7 @@ void webServer::onHttpDisconnected()
     }
 }
 
-void webServer::serveStaticFile(QTcpSocket *socket, const QString &path)
+void webServer::serveStaticFile(QTcpSocket *socket, const QString &path, const QByteArray &headerSection)
 {
     // Serve from Qt resource system
     QString resourcePath = ":/web" + path;
@@ -812,6 +812,30 @@ void webServer::serveStaticFile(QTcpSocket *socket, const QString &path)
     if (!file.exists() || !file.open(QIODevice::ReadOnly)) {
         sendHttpResponse(socket, 404, "Not Found", "text/plain", "Not Found");
         return;
+    }
+
+    // The CW decoder's model and ONNX runtime (~27 MB together) only change
+    // with a release, and the decoder fetches them on every page that opens
+    // in CW.  Every other resource goes out no-store (see sendHttpResponse);
+    // these two directories get a version+size ETag and "no-cache", which
+    // lets the browser keep the bytes and revalidate with one small round
+    // trip, answered 304 here.
+    const bool revalidable = path.startsWith("/models/") || path.startsWith("/ort/");
+    QByteArray extraHeaders;
+    if (revalidable) {
+        const QByteArray etag = "\"" WFWEB_VERSION "-" + QByteArray::number(file.size()) + "\"";
+        extraHeaders = "ETag: " + etag + "\r\nCache-Control: no-cache\r\n";
+        const QByteArray lower = headerSection.toLower();
+        const int inm = lower.indexOf("if-none-match:");
+        if (inm >= 0) {
+            const int end = lower.indexOf("\r\n", inm);
+            const QByteArray given = headerSection.mid(inm + 14, (end >= 0 ? end : headerSection.size()) - inm - 14).trimmed();
+            if (given == etag || given == "*") {
+                file.close();
+                sendHttpResponse(socket, 304, "Not Modified", "application/octet-stream", QByteArray(), extraHeaders);
+                return;
+            }
+        }
     }
 
     QByteArray body = file.readAll();
@@ -830,7 +854,7 @@ void webServer::serveStaticFile(QTcpSocket *socket, const QString &path)
     else if (path.endsWith(".wasm")) contentType = "application/wasm"; // required for WebAssembly streaming compile
     else if (path.endsWith(".onnx")) contentType = "application/octet-stream";
 
-    sendHttpResponse(socket, 200, "OK", contentType, body);
+    sendHttpResponse(socket, 200, "OK", contentType, body, extraHeaders);
 }
 
 void webServer::serveRestInfoPage(QTcpSocket *socket, const QByteArray &headerSection)
@@ -888,7 +912,8 @@ void webServer::serveRestInfoPage(QTcpSocket *socket, const QByteArray &headerSe
 }
 
 void webServer::sendHttpResponse(QTcpSocket *socket, int statusCode, const QString &statusText,
-                                  const QByteArray &contentType, const QByteArray &body)
+                                  const QByteArray &contentType, const QByteArray &body,
+                                  const QByteArray &extraHeaders)
 {
     QByteArray response;
     response.append(QString("HTTP/1.1 %1 %2\r\n").arg(statusCode).arg(statusText).toUtf8());
@@ -900,9 +925,14 @@ void webServer::sendHttpResponse(QTcpSocket *socket, int statusCode, const QStri
     response.append("Access-Control-Allow-Origin: *\r\n");
     // The resources are embedded in the binary and change every build;
     // there's no CDN in front.  Tell browsers not to cache so a wfweb
-    // rebuild never serves stale JS/CSS to a reloaded page.
-    response.append("Cache-Control: no-store, no-cache, must-revalidate\r\n");
-    response.append("Pragma: no-cache\r\n");
+    // rebuild never serves stale JS/CSS to a reloaded page.  A caller that
+    // supplies its own Cache-Control (serveStaticFile, for the CW model and
+    // runtime) replaces this block.
+    if (!extraHeaders.contains("Cache-Control:")) {
+        response.append("Cache-Control: no-store, no-cache, must-revalidate\r\n");
+        response.append("Pragma: no-cache\r\n");
+    }
+    response.append(extraHeaders);
     response.append("\r\n");
     response.append(body);
 

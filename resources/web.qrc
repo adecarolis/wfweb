@@ -10,10 +10,15 @@
         <file alias="ctcss.js">web-shared/ctcss.js</file>
         <file alias="dxcc.js">web-shared/dxcc.js</file>
         <file alias="cw-decoder-worker.js">web-shared/cw-decoder-worker.js</file>
+        <file alias="cw-decoder-worker-ggmorse.js">web-shared/cw-decoder-worker-ggmorse.js</file>
+        <file alias="ggmorse-wasm.js">web-shared/ggmorse-wasm.js</file>
         <file alias="cw-decoder-stft.js">web-shared/cw-decoder-stft.js</file>
         <file alias="cw-decoder-utils.js">web-shared/cw-decoder-utils.js</file>
-        <file alias="model.onnx">web-shared/models/model.onnx</file>
-        <file alias="ggmorse-wasm.js">web-shared/ggmorse-wasm.js</file>
+        <file alias="models/deepcw.onnx">web-shared/models/deepcw.onnx</file>
+        <file alias="models/deepcw.onnx.json">web-shared/models/deepcw.onnx.json</file>
+        <file alias="ort/ort.wasm.min.mjs">web-shared/ort/ort.wasm.min.mjs</file>
+        <file alias="ort/ort-wasm-simd-threaded.mjs">web-shared/ort/ort-wasm-simd-threaded.mjs</file>
+        <file alias="ort/ort-wasm-simd-threaded.wasm">web-shared/ort/ort-wasm-simd-threaded.wasm</file>
         <file alias="reporters.js">web-shared/reporters.js</file>
         <file alias="urltune.js">web-shared/urltune.js</file>
         <file alias="wf-canvas.js">web-shared/wf-canvas.js</file>

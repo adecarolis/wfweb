@@ -50,7 +50,7 @@ wfweb keeps wfview's radio engine and replaces the desktop GUI with a built-in w
 | Browser-based remote control | — | ✓ |
 | Browser RX audio streaming | — | ✓ |
 | Browser TX audio (mic to rig) | — | ✓ |
-| CW decoder (ggmorse / Goertzel) | — | ✓ |
+| CW decoder (DeepCW neural model in-browser; ggmorse fallback) | — | ✓ |
 | FT8/FT4 DIGI panel (full QSO) | — | ✓ |
 | JS8 messenger (chat-style, QSO tabs) | — | ✓ |
 | RADE (Radio Autoencoder) | — | ✓ |
@@ -574,7 +574,7 @@ Please support the original project at **https://wfview.org** and **https://www.
 
 The FT8/FT4 DIGI panel is powered by [ft8ts](https://github.com/e04/ft8ts) by e04.
 JS8 weak-signal messaging uses a WebAssembly build of [JS8Call-improved](https://github.com/JS8Call-improved/JS8Call-improved), itself a fork of JS8Call by Jordan Sherer KN4CRD.
-The CW decoder uses [ggmorse](https://github.com/ggerganov/ggmorse) by Georgi Gerganov.
+The CW decoder runs the [DeepCW](https://github.com/e04/deepcw-engine) neural model by e04 (AGPL-3.0) on [ONNX Runtime Web](https://github.com/microsoft/onnxruntime) in the browser, and falls back to [ggmorse](https://github.com/ggerganov/ggmorse) by Georgi Gerganov where that cannot run (no WebAssembly SIMD, or a browser too slow to keep up).
 FreeDV digital voice uses [codec2](https://github.com/drowe67/codec2) by David Rowe VK5DGR and contributors, and [radae_nopy](https://github.com/peterbmarks/radae_nopy) by Peter Marks VK5APM (a standalone C implementation of the RADE Radio Autoencoder).
 AX.25 packet — modems, framing, link control, APRS, and YAPP — is powered by [Direwolf](https://github.com/wb2osz/direwolf) by John Langner WB2OSZ.
 MP3 recording uses [lamejs](https://github.com/zhuker/lamejs), a JavaScript port of the [LAME](https://lame.sourceforge.io) encoder (LGPL).

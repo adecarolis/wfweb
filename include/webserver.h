@@ -195,13 +195,14 @@ private slots:
 
 
 private:
-    void serveStaticFile(QTcpSocket *socket, const QString &path);
+    void serveStaticFile(QTcpSocket *socket, const QString &path, const QByteArray &headerSection);
     // Issue #69: the plain-HTTP REST port used to hand back the SPA for any
     // non-/api/v1 GET, which left a browser stuck retrying a WebSocket that
     // only exists on the HTTPS port.  Serve a human-readable signpost instead.
     void serveRestInfoPage(QTcpSocket *socket, const QByteArray &headerSection);
     void sendHttpResponse(QTcpSocket *socket, int statusCode, const QString &statusText,
-                         const QByteArray &contentType, const QByteArray &body);
+                          const QByteArray &contentType, const QByteArray &body,
+                          const QByteArray &extraHeaders = QByteArray());
     void handleRestRequest(QTcpSocket *socket, const QString &method,
                            const QString &path, const QUrlQuery &query,
                            const QByteArray &body);

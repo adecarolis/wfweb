@@ -92,13 +92,38 @@ other.** No Direct/Server runtime gates: each `index.html` is single-purpose.
 |-----|---------|----------|
 | `resources/web/` | C++ server build (`wfweb.pro`) | Server-only `index.html`, `transport/websocket-transport.js`, `debug.html` |
 | `resources/web-standalone/` | Static bundle (`tools/build-static.sh`) | Standalone `index.html`, `transport/serial-transport.js`, `civ/`, `wasm/` |
-| `resources/web-shared/` | Both | `index.html`-side modules and pure assets: `theme.css` (design tokens + `.wf-*` kit), `packet.js`, `recorder.js` (+ vendored `lamejs/`), `needle-meter.js`, `rx-jitter.js`, `cw-keyer.js`, `transport/rig-transport.js` (base class), CW decoder JS family, `ggmorse-wasm.js`, JS8 family (`js8.mjs`, `js8-panel.mjs`, `js8-panel.css`), `models/`, `digits/`, `digits-sprite.png` |
+| `resources/web-shared/` | Both | `index.html`-side modules and pure assets: `theme.css` (design tokens + `.wf-*` kit), `packet.js`, `recorder.js` (+ vendored `lamejs/`), `needle-meter.js`, `rx-jitter.js`, `cw-keyer.js`, `transport/rig-transport.js` (base class), CW decoder JS family (+ `ort/` ONNX Runtime Web and `models/deepcw.onnx`), JS8 family (`js8.mjs`, `js8-panel.mjs`, `js8-panel.css`), `models/`, `digits/`, `digits-sprite.png` |
 
-Build inputs for `ggmorse-wasm.js` (the `.cpp` wrapper + license) live in
-`resources/ggmorse-src/`, alongside `resources/build-ggmorse-wasm.sh`. The
-script fetches upstream ggmorse itself at the commit pinned in `GGMORSE_COMMIT`
-(no submodule; bump the hash to update, rebuild, commit the WASM). None of
-these are browser assets, so they're kept out of the SPA dirs entirely.
+The CW decoder is the DeepCW neural model (`resources/web-shared/models/deepcw.onnx`
++ `.json` metadata, AGPL-3.0, from e04/deepcw-engine) run by ONNX Runtime Web
+(`resources/web-shared/ort/`, vendored from the `onnxruntime-web` npm package,
+no CDN) inside `cw-decoder-worker.js`, an ES module worker. The model is a
+window CTC decoder with context on both sides, not a streaming one: the
+worker keeps a 12 s sliding window, decodes all of it every tick (~50 ms per
+second of audio single-threaded on a laptop) and puts every label on an
+absolute sample timeline. Labels younger than 3 s are the pending text (dim,
+redrawn every tick, free to correct itself); a word older than that which the
+model closed with a space, or followed with 1.5 s of silence, is committed
+once by position and never revisited. **Never cut the audio on an energy
+guess** — the first version did, and QSB fades read as key-up gaps, so the
+windows started mid-character and whole words came out wrong (2026-10-22).
+Both files are fetched lazily on the first DECODE press (~27 MB, cached by
+the browser). `tests/cw_decoder_sim.mjs` (via `tests/test_cw_decoder.py`)
+runs the real worker under node on synthesized CW at clean / -6 dB / -10 dB
+and checks the committed text; **ggmorse stays as the fallback engine** (`cw-decoder-worker-ggmorse.js`,
+a classic worker that upsamples the 3200 Hz tap to the 4000 Hz ggmorse needs):
+the page probes WebAssembly SIMD before downloading anything (ONNX Runtime
+ships SIMD builds only — Safari < 16.4, Firefox < 114, Chromium < 91 have
+none), falls back when the DeepCW worker fails or times out loading, and when
+`SLOW_TICKS` passes average more than `slowTickMs` (2.5 s; a Pi-class browser).
+`localStorage wfCwDecoder` = `deepcw` | `ggmorse` pins an engine
+(`CWDecoder.preferEngine()`); a GGMORSE tag on the text line says the fallback
+is in use. Server side, `/models/` and `/ort/` are the only resources not sent
+`no-store`: they carry a version+size ETag and answer 304 to `If-None-Match`
+(`serveStaticFile`), otherwise every CW page load would fetch 27 MB again.
+**Temporary**: `COMPARE_GGMORSE` in `cw-decoder.js` also runs ggmorse next to
+DeepCW and shows its copy on a second GGMORSE line for the on-air comparison;
+drop the flag (not the worker) once decided. run it after any change to the worker's streaming logic.
 
 Build mechanics:
 - **Server**: `web.qrc` aliases keep runtime URLs at `/web/...` regardless of
@@ -334,7 +359,7 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 | `resources/web-shared/cw-keyer.js` | CW keyer model: timing, pacing of the text to the rig's keyer, browser sidetone (both builds); `tests/cw_keyer_sim.mjs` under node, `tests/cw_bench.mjs` on the two-rig bench, both via `tests/test_cw_keyer.py` |
 | `resources/web-shared/js8-panel.mjs` | JS8 messenger panel — markup + state machine, QSO tabs, RX/TX, CMD palette (both builds) |
 | `resources/web-shared/js8.mjs` | JS8 WASM codec bridge — 8-FSK synth + encode/decode wrapper (both builds) |
-| `resources/web-shared/` | Files shared by both builds (CW decoder, ggmorse, sprites, models) |
+| `resources/web-shared/` | Files shared by both builds (CW decoder + DeepCW model + ORT, sprites, models) |
 | `resources/web.qrc` | Qt resource file for the server build |
 | `tools/build-static.sh` | Builds the Standalone static bundle into `dist/` |
 | `tools/serve-static.py` | Local HTTP server for `dist/` with `Cache-Control: no-store` |
