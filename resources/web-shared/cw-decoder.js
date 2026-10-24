@@ -34,7 +34,7 @@
     // TEMPORARY: also run ggmorse alongside DeepCW and show its copy on a
     // second line, to compare the two on the air.  Turn off once decided;
     // the fallback above keeps the ggmorse worker in the tree either way.
-    const COMPARE_GGMORSE = true;
+    const COMPARE_GGMORSE = false;
 
     // Decoder state
     const decoderState = {
