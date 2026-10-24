@@ -8869,11 +8869,11 @@ var spacebarPTTActive = false;
 
 document.addEventListener('keydown', function(e) {
     // Don't handle shortcuts when editing macros or in input fields
-    // The CW input holds focus while the CW bar is open and has no use for
-    // Up/Down, so those keep tuning the VFO from there (Left/Right still
-    // move its caret).
+    // The CW input holds focus while the CW bar is open; the arrow keys keep
+    // tuning the VFO from there (the box is cleared as it is keyed, so the
+    // caret has nothing to move through).
     var inField = (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA');
-    var cwTune = (e.target.id === 'cwInput' && (e.key === 'ArrowUp' || e.key === 'ArrowDown'));
+    var cwTune = (e.target.id === 'cwInput' && e.key.indexOf('Arrow') === 0);
     if (inField && !cwTune) return;
 
     // Don't handle shortcuts when macro editor is open
