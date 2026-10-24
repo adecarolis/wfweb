@@ -9,7 +9,50 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  # One build id for the whole run. A release build (v* tag) is the bare
+  # version from include/wfweb_version.h; a dev build appends
+  # +dev.<UTC date>.<short sha>, which Debian sorts above the release it was
+  # cut from and below the next one, so apt installs each dev build over the
+  # previous and the next release still replaces it. Computed once so the
+  # .deb Version, every file name and the release page agree even when the
+  # run straddles midnight UTC.
+  meta:
+    name: Build id
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.id.outputs.version }}
+      pkg_version: ${{ steps.id.outputs.pkg_version }}
+      dev_id: ${{ steps.id.outputs.dev_id }}
+      zip_suffix: ${{ steps.id.outputs.zip_suffix }}
+      sha_short: ${{ steps.id.outputs.sha_short }}
+      date: ${{ steps.id.outputs.date }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Compute build id
+        id: id
+        run: |
+          VERSION=$(grep '#define WFWEB_VERSION' include/wfweb_version.h | grep -oP '[\d.]+')
+          SHA_SHORT=$(git rev-parse --short HEAD)   # same width as wfweb --version prints
+          DATE=$(date -u +%Y-%m-%d)
+          case "${{ github.ref }}" in
+            refs/tags/v*) DEV_ID="" ;;
+            *) DEV_ID="dev.${DATE//-/}.${SHA_SHORT}" ;;
+          esac
+          {
+            echo "version=${VERSION}"
+            echo "sha_short=${SHA_SHORT}"
+            echo "date=${DATE}"
+            echo "dev_id=${DEV_ID}"
+            echo "pkg_version=${VERSION}${DEV_ID:++${DEV_ID}}"
+            echo "zip_suffix=${DEV_ID:+-${DEV_ID}}"
+          } >> "$GITHUB_OUTPUT"
+          echo "Building ${VERSION}${DEV_ID:++${DEV_ID}}"
+
   build-linux-ubuntu2404:
+    needs: meta
     strategy:
       fail-fast: false
       matrix:
@@ -65,13 +108,9 @@ jobs:
           sudo apt-get install -y python3-pytest python3-requests
           python3 -m pytest tests/ -v
 
-      - name: Get version
-        id: version
-        run: echo "version=$(grep '#define WFWEB_VERSION' include/wfweb_version.h | grep -oP '[\d.]+')" >> $GITHUB_OUTPUT
-
       - name: Build .deb
         run: |
-          VERSION=${{ steps.version.outputs.version }}
+          VERSION=${{ needs.meta.outputs.pkg_version }}
           DEB_ROOT=$(pwd)/deb-build/wfweb_${VERSION}_${{ matrix.deb_arch }}
 
           sudo make install INSTALL_ROOT=${DEB_ROOT}
@@ -119,13 +158,8 @@ jobs:
 
           dpkg-deb --build --root-owner-group ${DEB_ROOT}
 
-          BRANCH_SAFE=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9-]/-/g')
-          case "${{ github.ref }}" in
-            refs/tags/v*) DEV_SUFFIX="" ;;
-            *) DEV_SUFFIX="-dev-${BRANCH_SAFE}" ;;
-          esac
           mv deb-build/wfweb_${VERSION}_${{ matrix.deb_arch }}.deb \
-             wfweb_${VERSION}${DEV_SUFFIX}-ubuntu2404_${{ matrix.deb_arch }}.deb
+             wfweb_${VERSION}-ubuntu2404_${{ matrix.deb_arch }}.deb
 
       - name: Upload deb artifact
         uses: actions/upload-artifact@v7
@@ -135,6 +169,7 @@ jobs:
           retention-days: 30
 
   build-linux-debian12:
+    needs: meta
     strategy:
       fail-fast: false
       matrix:
@@ -195,13 +230,9 @@ jobs:
           apt-get install -y python3-pytest python3-requests
           python3 -m pytest tests/ -v
 
-      - name: Get version
-        id: version
-        run: echo "version=$(grep '#define WFWEB_VERSION' include/wfweb_version.h | grep -oP '[\d.]+')" >> $GITHUB_OUTPUT
-
       - name: Build .deb
         run: |
-          VERSION=${{ steps.version.outputs.version }}
+          VERSION=${{ needs.meta.outputs.pkg_version }}
           DEB_ROOT=$(pwd)/deb-build/wfweb_${VERSION}_${{ matrix.deb_arch }}
 
           make install INSTALL_ROOT=${DEB_ROOT}
@@ -248,13 +279,8 @@ jobs:
 
           dpkg-deb --build --root-owner-group ${DEB_ROOT}
 
-          BRANCH_SAFE=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9-]/-/g')
-          case "${{ github.ref }}" in
-            refs/tags/v*) DEV_SUFFIX="" ;;
-            *) DEV_SUFFIX="-dev-${BRANCH_SAFE}" ;;
-          esac
           mv deb-build/wfweb_${VERSION}_${{ matrix.deb_arch }}.deb \
-             wfweb_${VERSION}${DEV_SUFFIX}-debian12_${{ matrix.deb_arch }}.deb
+             wfweb_${VERSION}-debian12_${{ matrix.deb_arch }}.deb
 
       - name: Upload deb artifact
         uses: actions/upload-artifact@v7
@@ -264,6 +290,7 @@ jobs:
           retention-days: 30
 
   build-linux-debian13:
+    needs: meta
     strategy:
       fail-fast: false
       matrix:
@@ -324,13 +351,9 @@ jobs:
           apt-get install -y python3-pytest python3-requests
           python3 -m pytest tests/ -v
 
-      - name: Get version
-        id: version
-        run: echo "version=$(grep '#define WFWEB_VERSION' include/wfweb_version.h | grep -oP '[\d.]+')" >> $GITHUB_OUTPUT
-
       - name: Build .deb
         run: |
-          VERSION=${{ steps.version.outputs.version }}
+          VERSION=${{ needs.meta.outputs.pkg_version }}
           DEB_ROOT=$(pwd)/deb-build/wfweb_${VERSION}_${{ matrix.deb_arch }}
 
           make install INSTALL_ROOT=${DEB_ROOT}
@@ -377,13 +400,8 @@ jobs:
 
           dpkg-deb --build --root-owner-group ${DEB_ROOT}
 
-          BRANCH_SAFE=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9-]/-/g')
-          case "${{ github.ref }}" in
-            refs/tags/v*) DEV_SUFFIX="" ;;
-            *) DEV_SUFFIX="-dev-${BRANCH_SAFE}" ;;
-          esac
           mv deb-build/wfweb_${VERSION}_${{ matrix.deb_arch }}.deb \
-             wfweb_${VERSION}${DEV_SUFFIX}-debian13_${{ matrix.deb_arch }}.deb
+             wfweb_${VERSION}-debian13_${{ matrix.deb_arch }}.deb
 
       - name: Upload deb artifact
         uses: actions/upload-artifact@v7
@@ -393,6 +411,7 @@ jobs:
           retention-days: 30
 
   build-linux-appimage:
+    needs: meta
     strategy:
       fail-fast: false
       matrix:
@@ -450,10 +469,6 @@ jobs:
           qmake wfweb.pro PREFIX=/usr
           make -j$(nproc)
 
-      - name: Get version
-        id: version
-        run: echo "version=$(grep '#define WFWEB_VERSION' include/wfweb_version.h | grep -oP '[\d.]+')" >> $GITHUB_OUTPUT
-
       - name: Fetch linuxdeploy
         run: |
           curl -fsSL -O \
@@ -472,12 +487,7 @@ jobs:
           ARCH: ${{ matrix.arch }}
           EXTRA_PLATFORM_PLUGINS: libqoffscreen.so
         run: |
-          VERSION=${{ steps.version.outputs.version }}
-          BRANCH_SAFE=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9-]/-/g')
-          case "${{ github.ref }}" in
-            refs/tags/v*) DEV_SUFFIX="" ;;
-            *) DEV_SUFFIX="-dev-${BRANCH_SAFE}" ;;
-          esac
+          VERSION=${{ needs.meta.outputs.pkg_version }}
 
           make install INSTALL_ROOT=$(pwd)/AppDir
           # The unit file hardcodes /usr/local/bin; it means nothing inside the bundle
@@ -509,7 +519,7 @@ jobs:
 
           export LD_LIBRARY_PATH=$(pwd)/resources/radae_nopy/build/src
           export LDAI_RUNTIME_FILE=$(pwd)/appimage-runtime
-          export LDAI_OUTPUT=wfweb_${VERSION}${DEV_SUFFIX}-${{ matrix.arch }}.AppImage
+          export LDAI_OUTPUT=wfweb_${VERSION}-${{ matrix.arch }}.AppImage
           PATH=$(pwd):$PATH ./linuxdeploy-${{ matrix.arch }}.AppImage \
             --appdir AppDir \
             --desktop-file wfweb.desktop \
@@ -568,6 +578,7 @@ jobs:
           retention-days: 30
 
   build-macos:
+    needs: meta
     name: macOS (Apple Silicon)
     runs-on: macos-14
 
@@ -606,17 +617,12 @@ jobs:
 
       - name: Package zip
         run: |
-          BRANCH_SAFE=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9-]/-/g')
-          case "${{ github.ref }}" in
-            refs/tags/v*) DEV_SUFFIX="" ;;
-            *) DEV_SUFFIX="-dev-${BRANCH_SAFE}" ;;
-          esac
           mkdir -p wfweb-macos-arm64
           cp wfweb wfweb-macos-arm64/
           cp -r rigs wfweb-macos-arm64/
           cp LICENSE THIRD_PARTY_LICENSES wfweb-macos-arm64/
           # RADE is compiled directly into the binary on macOS (no dylibs needed)
-          zip -r wfweb${DEV_SUFFIX}-macos-arm64.zip wfweb-macos-arm64
+          zip -r "wfweb${{ needs.meta.outputs.zip_suffix }}-macos-arm64.zip" wfweb-macos-arm64
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
@@ -626,6 +632,7 @@ jobs:
           retention-days: 30
 
   build-windows:
+    needs: meta
     name: Windows x86_64
     runs-on: windows-latest
 
@@ -783,9 +790,7 @@ jobs:
       - name: Create ZIP
         shell: pwsh
         run: |
-          $branchSafe = "${{ github.ref_name }}" -replace '[^a-zA-Z0-9-]', '-'
-          $devSuffix = if ("${{ github.ref }}" -like "refs/tags/v*") { "" } else { "-dev-$branchSafe" }
-          Compress-Archive -Path wfweb-release -DestinationPath "wfweb${devSuffix}-windows-x86_64.zip"
+          Compress-Archive -Path wfweb-release -DestinationPath "wfweb${{ needs.meta.outputs.zip_suffix }}-windows-x86_64.zip"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
@@ -796,22 +801,66 @@ jobs:
 
   release:
     name: Publish release
-    needs: [build-linux-ubuntu2404, build-linux-debian12, build-linux-debian13, build-linux-appimage, build-macos, build-windows]
+    needs: [meta, build-linux-ubuntu2404, build-linux-debian12, build-linux-debian13, build-linux-appimage, build-macos, build-windows]
     runs-on: ubuntu-24.04
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     permissions:
       contents: write
+    env:
+      IS_RELEASE: ${{ startsWith(github.ref, 'refs/tags/v') }}
+      # One rolling pre-release per branch, so its URL stays stable; what
+      # changes on every build is its name, its notes, its assets and where
+      # the tag points.
+      TAG: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('dev-{0}', github.ref_name) }}
 
     steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
       - name: Download artifacts
         uses: actions/download-artifact@v8
+
+      # The release action only creates a tag that does not exist yet (at the
+      # repository's default branch, not at the built commit), so a reused dev
+      # tag would stay on whatever it was first created at. Move it to the
+      # commit these assets were built from.
+      - name: Point the dev tag at this commit
+        if: env.IS_RELEASE == 'false'
+        run: git push --force origin "${GITHUB_SHA}:refs/tags/${TAG}"
+
+      # The release action overwrites same-named assets only; a dev build of
+      # the next version would otherwise pile up next to the previous one.
+      - name: Drop the previous dev build's assets
+        if: env.IS_RELEASE == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # No release yet on a new branch: nothing to prune (the shell runs with pipefail).
+          { gh release view "$TAG" --json assets --jq '.assets[].name' 2>/dev/null || true; } \
+            | xargs -r -n1 gh release delete-asset "$TAG" --yes
+
+      - name: Write dev release notes
+        if: env.IS_RELEASE == 'false'
+        run: |
+          {
+            echo "Development build of \`${{ github.ref_name }}\` at ${{ needs.meta.outputs.sha_short }}, ${{ needs.meta.outputs.date }}."
+            echo
+            echo '```'
+            git log -1 --format='%h %s' HEAD
+            echo '```'
+            echo
+            echo "Packages are versioned \`${{ needs.meta.outputs.pkg_version }}\`: \`apt install ./<file>.deb\` upgrades the previous dev build, and the next release upgrades this one."
+            echo "Built by [run ${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})."
+          } > release-notes.md
+          cat release-notes.md
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('dev-{0}', github.ref_name) }}
-          name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || format('Development Build ({0})', github.ref_name) }}
-          prerelease: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+          tag_name: ${{ env.TAG }}
+          name: "${{ env.IS_RELEASE == 'true' && github.ref_name || format('Development build: {0} @ {1} ({2})', github.ref_name, needs.meta.outputs.sha_short, needs.meta.outputs.date) }}"
+          body_path: ${{ env.IS_RELEASE == 'false' && 'release-notes.md' || '' }}
+          prerelease: ${{ env.IS_RELEASE == 'false' }}
           files: |
             wfweb-x86_64-ubuntu2404-deb/*.deb
             wfweb-arm64-ubuntu2404-deb/*.deb
@@ -823,5 +872,5 @@ jobs:
             wfweb-aarch64-appimage/*.AppImage
             wfweb-macos-arm64/wfweb*-macos-arm64.zip
             wfweb-windows-x86_64/wfweb*-windows-x86_64.zip
-          generate_release_notes: ${{ startsWith(github.ref, 'refs/tags/v') }}
+          generate_release_notes: ${{ env.IS_RELEASE == 'true' }}
           overwrite: true
