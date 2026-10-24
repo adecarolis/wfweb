@@ -23,7 +23,6 @@ jobs:
       version: ${{ steps.id.outputs.version }}
       pkg_version: ${{ steps.id.outputs.pkg_version }}
       dev_id: ${{ steps.id.outputs.dev_id }}
-      zip_suffix: ${{ steps.id.outputs.zip_suffix }}
       sha_short: ${{ steps.id.outputs.sha_short }}
       date: ${{ steps.id.outputs.date }}
 
@@ -47,7 +46,6 @@ jobs:
             echo "date=${DATE}"
             echo "dev_id=${DEV_ID}"
             echo "pkg_version=${VERSION}${DEV_ID:++${DEV_ID}}"
-            echo "zip_suffix=${DEV_ID:+-${DEV_ID}}"
           } >> "$GITHUB_OUTPUT"
           echo "Building ${VERSION}${DEV_ID:++${DEV_ID}}"
 
@@ -622,7 +620,7 @@ jobs:
           cp -r rigs wfweb-macos-arm64/
           cp LICENSE THIRD_PARTY_LICENSES wfweb-macos-arm64/
           # RADE is compiled directly into the binary on macOS (no dylibs needed)
-          zip -r "wfweb${{ needs.meta.outputs.zip_suffix }}-macos-arm64.zip" wfweb-macos-arm64
+          zip -r "wfweb_${{ needs.meta.outputs.pkg_version }}-macos-arm64.zip" wfweb-macos-arm64
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
@@ -790,7 +788,7 @@ jobs:
       - name: Create ZIP
         shell: pwsh
         run: |
-          Compress-Archive -Path wfweb-release -DestinationPath "wfweb${{ needs.meta.outputs.zip_suffix }}-windows-x86_64.zip"
+          Compress-Archive -Path wfweb-release -DestinationPath "wfweb_${{ needs.meta.outputs.pkg_version }}-windows-x86_64.zip"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7
