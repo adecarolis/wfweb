@@ -202,8 +202,45 @@ function textOf(chars) {
 // ---------------------------------------------------------------------------
 // Loading
 // ---------------------------------------------------------------------------
-async function fetchWithProgress(url, onBytes) {
-    const resp = await fetch(url);
+// The model and the runtime are 27 MB, and the browser's HTTP cache cannot be
+// counted on to keep them: Chrome stores nothing for an origin whose
+// certificate it was told to accept, i.e. any wfweb server on its
+// self-signed certificate -- every DECODE press downloaded all 27 MB again
+// (2026-10-25).  So they are kept in Cache Storage with the ETag they came
+// with, and each load asks the server with If-None-Match: a 304 (the server
+// and GitHub Pages both answer one) means the stored copy is current, a 200
+// replaces it.  A server that cannot be reached falls back to the stored copy.
+const MODEL_CACHE = 'wfweb-cw-model';
+
+async function cachedFetch(url, onBytes) {
+    let cache = null, hit = null;
+    try {
+        if (typeof caches !== 'undefined') { cache = await caches.open(MODEL_CACHE); hit = await cache.match(url.href); }
+    } catch (e) { cache = null; hit = null; }   // no Cache Storage here: download as before
+    const etag = hit && hit.headers.get('ETag');
+    let resp = null;
+    try {
+        resp = await fetch(url, etag ? { headers: { 'If-None-Match': etag } } : undefined);
+    } catch (e) {
+        if (!hit) throw e;
+    }
+    if (hit && (!resp || resp.status === 304)) {
+        const b = new Uint8Array(await hit.arrayBuffer());
+        onBytes(b.length);
+        return b;
+    }
+    const bytes = await fetchWithProgress(resp, url, onBytes);
+    const newTag = resp.headers.get('ETag');
+    if (cache && newTag) {
+        try {
+            await cache.put(url.href, new Response(bytes, { headers: {
+                'ETag': newTag, 'Content-Type': resp.headers.get('Content-Type') || 'application/octet-stream' } }));
+        } catch (e) { console.warn('[CW Decoder Worker] could not store ' + url.pathname + ': ' + e.message); }
+    }
+    return bytes;
+}
+
+async function fetchWithProgress(resp, url, onBytes) {
     if (!resp.ok) throw new Error('fetch ' + url.pathname + ': ' + resp.status);
     if (!resp.body) { const b = new Uint8Array(await resp.arrayBuffer()); onBytes(b.length); return b; }
     const reader = resp.body.getReader();
@@ -245,8 +282,8 @@ async function loadModel() {
 
     const [metaResp, wasmBytes, modelBytes] = await Promise.all([
         fetch(META_URL).then(r => { if (!r.ok) throw new Error('metadata ' + r.status); return r.json(); }),
-        fetchWithProgress(ORT_WASM_URL, onBytes),
-        fetchWithProgress(MODEL_URL, onBytes),
+        cachedFetch(ORT_WASM_URL, onBytes),
+        cachedFetch(MODEL_URL, onBytes),
     ]);
     meta = metaResp;
     sampleRate = meta.sample_rate;
