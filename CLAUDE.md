@@ -609,6 +609,17 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
   that follows a paddle and gives true full break-in, with TONE off. The
   browser tone never enters the RX chain, so the CW decoder and the recorder
   do not see it.
+- The tone's delay is the output device's (`baseLatency + outputLatency`):
+  ~30 ms on Mac speakers, ~170 ms on AirPods, where a paddle cannot be sent
+  by ear. An AudioContext keeps the latency of the device it opened on (168
+  ms after the AirPods, while a fresh one on the speakers had 32 ms), so a
+  change of output calls `cwSidetone.reset()`: a new context at once, which
+  measures itself (deferred while keying); TONE off / on rebuilds it too.
+  On a Mac the switch gives no `devicechange` and no device labels (no mic
+  permission); the RX context's `outputLatency` follows it (168 -> 40 ms), so
+  a jump of more than 20 ms there is the trigger, checked every second.
+  `onLatency` reports the delay once a context plays; above
+  `CW_TONE_SLOW_MS` (80) TONE turns amber (`.wf-btn.lag`) and says why.
 - BK-IN in the CW bar header (between LN and TONE) is the radio's break-in key,
   CI-V `16 47` = `funcBreakIn`: OFF (the keyer sounds its sidetone, nothing is
   transmitted) -> BKIN (semi) -> F-BKIN (full), labels as on the radio's

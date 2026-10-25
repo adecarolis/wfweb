@@ -182,5 +182,43 @@ for (const wpm of [20, 6, 48]) {
   check(b.length >= future && b.length < k.elements(0).length, 'TONE on mid-way: only the remaining elements are scheduled (' + b.length + ')');
 }
 
+// ---- 9. the output device changes: a new context, never mid-tone ----------
+{
+  const clock = new Clock(), rig = makeRig(clock);
+  const lat = [];
+  const tone = new WfCwSidetone({
+    enabled: true, createContext: () => fakeContext(clock), pitch: () => 600, gain: () => 0.2, onLatency: (ms) => lat.push(ms),
+    now: () => clock.now(), setTimeout: (f, ms) => clock.setTimeout(f, ms), clearTimeout: (t) => clock.clearTimeout(t),
+  });
+  const k = new WfCwKeyer({ wpm: () => 20, send: rig.send, stopRig: rig.stop, sidetone: tone,
+    now: () => clock.now(), setTimeout: (f, ms) => clock.setTimeout(f, ms), clearTimeout: (t) => clock.clearTimeout(t) });
+  k.sendText('PARIS');
+  const first = tone.ctx;
+  clock.advance(1100);
+  check(lat.length === 1 && lat[0] === 174, 'tone delay reported once the context plays (' + lat.join() + ' ms: 6 base + 168 output)');
+  tone.reset();
+  check(tone.ctx === first && first.state === 'running', 'device change while keying: the context is kept until the tone is out');
+  const end = k.base + k.nextTime;
+  clock.run(end + 600);
+  check(tone.ctx !== first && first.state === 'closed' && tone.ctx && tone.ctx.oscillators.length === 0, 'and replaced when the oscillator parks (a new context, nothing playing on it)');
+  clock.advance(1100);
+  check(lat.length === 2, 'the new device is measured at once, without keying (' + lat.join() + ')');
+  const b = bursts(first.lastGain._ev);
+  check(b.length === k.elements(0).length, 'no element lost to the deferred rebuild (' + b.length + ' of ' + k.elements(0).length + ')');
+  const rebuilt = tone.ctx;
+  k.sendText('E');
+  check(tone.ctx === rebuilt && tone.ctx.oscillators.length === 1, 'the next element plays on the rebuilt context');
+  clock.run(clock.now() + 2000);
+  const second = tone.ctx;
+  tone.reset();
+  check(second.state === 'closed' && tone.ctx && tone.ctx !== second, 'device change while idle: replaced at once');
+  clock.advance(1100);
+  check(lat.length === 3, 'and measured without keying');
+  k.sendText('E'); clock.advance(200);
+  const third = tone.ctx;
+  tone.setEnabled(false);
+  check(tone.ctx === null && third.state === 'closed', 'TONE off releases the context (off / on rebuilds it)');
+}
+
 console.log(failures ? 'FAILED ' + failures : 'ALL PASS');
 process.exit(failures ? 1 : 0);

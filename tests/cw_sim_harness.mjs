@@ -21,7 +21,8 @@ export class Clock {
 
 // ---- fake AudioContext: records envelope automation ------------------------
 export function fakeContext(clock) {
-  const ctx = { state: 'running', destination: {}, resume() { this.state = 'running'; } };
+  const ctx = { state: 'running', destination: {}, resume() { this.state = 'running'; }, close() { this.state = 'closed'; },
+    baseLatency: 0.006, outputLatency: 0.168 };
   Object.defineProperty(ctx, 'currentTime', { get: () => (clock.now() - 1_000_000) / 1000 + 10 });
   const param = (events) => ({
     value: 0,

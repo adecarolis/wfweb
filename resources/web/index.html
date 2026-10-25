@@ -9157,8 +9157,66 @@ var cwSidetone = new WfCwSidetone({
     enabled: (function() { try { return localStorage.getItem('wfCwSidetone') !== '0'; } catch (e) { return true; } })(),
     createContext: function() { return new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' }); },
     pitch: function() { return cwPitchHz; },
-    gain: function() { return 0.2 * rxVolumeGain(); }
+    gain: function() { return 0.2 * rxVolumeGain(); },
+    onLatency: function(ms) {
+        cwToneLatencyMs = ms;
+        if (ms > CW_TONE_SLOW_MS) console.warn('[CW] tone delay ' + ms + ' ms: the audio output is slow (Bluetooth?)');
+        updateCwSidetoneUi();
+    }
 });
+// The tone's delay is the output device's: ~170 ms on AirPods, ~30 ms on the
+// Mac speakers. Past CW_TONE_SLOW_MS a paddle cannot be sent by ear, so TONE
+// turns amber and says why. A context keeps the latency of the device it
+// opened on, so a device change rebuilds it (cw-keyer.js reset()).
+var CW_TONE_SLOW_MS = 80;
+var cwToneLatencyMs = null;
+// Rebuilding measures the new device at once, so the TONE colour follows a
+// device change without keying. What tells us the output changed, on a Mac
+// switching AirPods -> speakers (2026-10-25): no devicechange event, and no
+// device labels without microphone permission -- but the RX audio context
+// follows the new device (its outputLatency went 168 -> 40 ms) while the
+// tone's stayed at 176. So a jump in the RX latency is the trigger; the
+// devicechange event and the default output's name are kept for browsers
+// that do give them.
+var cwOutputSig = null;
+var cwRxLatency = null;
+var cwOutputTick = 0;
+function cwReadOutputSig() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return Promise.resolve(null);
+    return navigator.mediaDevices.enumerateDevices().then(function(list) {
+        var outs = list.filter(function(d) { return d.kind === 'audiooutput'; });
+        var d = outs.filter(function(x) { return x.deviceId === 'default'; })[0] || outs[0];
+        return (d && (d.label || d.groupId)) ? { sig: d.label + '|' + d.groupId, label: d.label } : null;
+    }).catch(function() { return null; });
+}
+function cwAudioOutputChanged(why) {
+    console.info('[CW] audio output changed (' + why + '): rebuilding the tone');
+    cwSidetone.reset();
+}
+if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+    navigator.mediaDevices.addEventListener('devicechange', function() {
+        cwAudioOutputChanged('devicechange');
+        cwReadOutputSig().then(function(o) { if (o) cwOutputSig = o.sig; });   // the watch below must not rebuild it again
+    });
+}
+setInterval(function() {
+    var rx = (audioCtx && audioCtx.state === 'running' && audioCtx.outputLatency) ? audioCtx.outputLatency : null;
+    var prev = cwRxLatency;
+    cwRxLatency = rx;
+    if (!cwSidetone.enabled || !cwSidetone.ctx) return;
+    if (rx !== null && prev !== null && Math.abs(rx - prev) > 0.02) {
+        cwAudioOutputChanged('RX audio latency ' + Math.round(prev * 1000) + ' -> ' + Math.round(rx * 1000) + ' ms');
+        return;
+    }
+    if (++cwOutputTick % 3) return;
+    var bar = document.getElementById('cwBar');
+    if (!bar || bar.classList.contains('hidden')) return;
+    cwReadOutputSig().then(function(o) {
+        if (!o) return;
+        if (cwOutputSig !== null && o.sig !== cwOutputSig) cwAudioOutputChanged('default output now ' + (o.label || 'another device'));
+        cwOutputSig = o.sig;
+    });
+}, 1000);
 var cwKeyer = new WfCwKeyer({
     wpm: function() { return cwSpeed; },
     keyer: function() { return cwKeyerType; },
@@ -9219,7 +9277,14 @@ function setCwSidetone(on) {
 
 function updateCwSidetoneUi() {
     var btn = document.getElementById('cwToneBtn');
-    if (btn) btn.classList.toggle('active', cwSidetone.enabled);
+    if (!btn) return;
+    btn.classList.toggle('active', cwSidetone.enabled);
+    if (btn.dataset.title === undefined) btn.dataset.title = btn.title;
+    var slow = cwSidetone.enabled && cwToneLatencyMs > CW_TONE_SLOW_MS;
+    btn.classList.toggle('lag', slow);
+    btn.title = slow
+        ? 'Tone delay ' + cwToneLatencyMs + ' ms: the audio output is slow (Bluetooth headphones?). Sending with a paddle needs the speakers or wired headphones. After switching, tap TONE off and on.'
+        : btn.dataset.title;
 }
 
 // Stop keying now, keep what was sent (Escape).

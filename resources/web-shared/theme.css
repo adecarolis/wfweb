@@ -156,6 +156,10 @@
     }
 }
 .wf-btn:active:not(:disabled) { transform: translateY(1px); }
+/* A control whose output arrives too late to be useful (CW TONE on a
+   Bluetooth output): amber instead of the mode tint, lit when on. */
+.wf-btn.lag { border-color: var(--state-warn); color: var(--state-warn); }
+.wf-btn.lag.active { background: var(--state-warn); color: #000; border-color: var(--state-warn); }
 .wf-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* Button variants (modifiers on .wf-btn) */

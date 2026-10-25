@@ -95,22 +95,69 @@
         this._now = opts.now || function () { return Date.now(); };
         this._setTimeout = opts.setTimeout || function (f, ms) { return setTimeout(f, ms); };
         this._clearTimeout = opts.clearTimeout || function (t) { clearTimeout(t); };
+        this._onLatency = opts.onLatency || function () {};   // (ms) once a new context is playing
         this.ctx = null; this.master = null;
         this.osc = null; this.env = null;
         this._idleTimer = null;
         this._end = 0;        // audio time of the furthest element scheduled
         this._held = false;   // straight key down (keyDown / keyUp)
+        this._resetPending = false;
     }
+
+    // What the operator hears the tone behind its keying, in ms, or null.
+    WfCwSidetone.prototype.latencyMs = function () {
+        if (!this.ctx) return null;
+        return Math.round(((this.ctx.baseLatency || 0) + (this.ctx.outputLatency || 0)) * 1000);
+    };
+
+    // The audio output changed (AirPods on or off, another default device).
+    // A context keeps the latency of the device it opened on -- 168 ms after
+    // AirPods, while a fresh one on the Mac speakers had 32 ms (2026-10-25)
+    // -- so build a new one on the new device straight away, which also
+    // measures it (onLatency) without waiting for the next element.  Never
+    // mid-tone: while keying, the old context is replaced when it parks.
+    WfCwSidetone.prototype.reset = function () {
+        if (!this.ctx) return;
+        if (this._held || (this.osc && this._end > this.ctx.currentTime)) { this._resetPending = true; return; }
+        this._close();
+        if (this.enabled) this._ensureContext();
+    };
+
+    WfCwSidetone.prototype._close = function () {
+        if (this._idleTimer !== null) { this._clearTimeout(this._idleTimer); this._idleTimer = null; }
+        if (this.osc) {
+            try { this.osc.stop(); } catch (e) {}
+            this.osc.disconnect();
+            this.env.disconnect();
+        }
+        if (this.master) this.master.disconnect();
+        try { if (this.ctx.close) this.ctx.close(); } catch (e) {}
+        this.ctx = null; this.master = null;
+        this.osc = null; this.env = null;
+        this._end = 0;
+        this._resetPending = false;
+    };
 
     // Make (or wake) the audio graph.  Called from a keystroke or a tap, so
     // the context has its user activation.
+    // The context and its master gain, made on first use or after a reset.
+    WfCwSidetone.prototype._ensureContext = function () {
+        var self = this;
+        if (this.ctx) return true;
+        try { this.ctx = this._createContext(); } catch (e) { this.ctx = null; }
+        if (!this.ctx) return false;
+        this.master = this.ctx.createGain();
+        this.master.connect(this.ctx.destination);
+        if (this.ctx.state === 'suspended' && this.ctx.resume) this.ctx.resume();
+        // outputLatency is only known once the context plays: report it
+        // then, so a slow output (Bluetooth) can be flagged.
+        var ctx = this.ctx;
+        this._setTimeout(function () { if (self.ctx === ctx) self._onLatency(self.latencyMs()); }, 1000);
+        return true;
+    };
+
     WfCwSidetone.prototype._ensure = function () {
-        if (!this.ctx) {
-            try { this.ctx = this._createContext(); } catch (e) { this.ctx = null; }
-            if (!this.ctx) return false;
-            this.master = this.ctx.createGain();
-            this.master.connect(this.ctx.destination);
-        }
+        if (!this._ensureContext()) return false;
         this.master.gain.value = this._gain();
         if (this.ctx.state === 'suspended' && this.ctx.resume) this.ctx.resume();
         if (!this.osc) {
@@ -144,6 +191,7 @@
             }
             self.osc = null;
             self.env = null;
+            if (self._resetPending) { self._close(); if (self.enabled) self._ensureContext(); }
         }, afterMs);
     };
 
@@ -222,7 +270,7 @@
     WfCwSidetone.prototype.setEnabled = function (on, elements) {
         this.enabled = !!on;
         if (this.enabled) { if (elements) this.schedule(elements); this.preview(); }
-        else this.stop();
+        else { this.stop(); this.reset(); }   // TONE off / on also rebuilds the audio
     };
 
     // The rig's CW pitch changed: retune a running tone too.
