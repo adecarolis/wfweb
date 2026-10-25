@@ -775,7 +775,8 @@ body.meter-needle #meterCanvas { width: auto; height: 128px; aspect-ratio: 611 /
     .cw-macro-btn { padding: 6px 3px; font-size: 9px; min-height: 28px; }
     .cw-callsign-row { padding: 3px 6px; gap: 4px; }
     .cw-callsign-label { font-size: 10px; }
-    .cw-callsign-input { font-size: 12px; padding: 5px 4px; max-width: 120px; min-height: 28px; box-sizing: border-box; }
+    .cw-callsign-input { font-size: 12px; padding: 5px 4px; max-width: 120px; min-height: 28px; box-sizing: border-box; min-width: 0; flex: 1 1 0; }   /* shrink to leave PADDLE room */
+    .cw-paddle-btn { padding: 5px 5px; font-size: 10px; min-height: 28px; }
 }
 .cw-speed-ctrl {
     display: flex;
@@ -906,6 +907,7 @@ body.meter-needle #meterCanvas { width: auto; height: 128px; aspect-ratio: 611 /
     font-weight: bold;
     text-transform: uppercase;
 }
+.cw-paddle-btn { margin-left: auto; flex: 0 0 auto; }
 .cw-callsign-input:focus {
     outline: none;
     background: #002a00;
@@ -2689,6 +2691,16 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
             </div>
             <div id="midiPanel"></div>
         </div>
+        <!-- PADDLE window (CW bar, CALL row): keyer options and the paddle's
+             adapter -- a MIDI controller's jack (mapped in FUNC > MIDI) or a
+             USB keyboard adapter. Body built by WfPaddlePanel (paddle-panel.js). -->
+        <div id="paddleOverlay" class="mem-modal">
+            <div class="mem-modal-title">
+                <span>Paddle</span>
+                <button class="digi-settings-close" style="width:auto;margin:0;padding:2px 12px" onclick="closePaddleModal()">&#x2715; Close</button>
+            </div>
+            <div id="paddlePanel"></div>
+        </div>
 
         <!-- TONE window (the DUP window's twin). Access mode on top, then the
              tone each half of that mode actually uses, then Scan — a sweep of
@@ -2770,6 +2782,7 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
                 <input type="text" id="cwCallInput" class="cw-callsign-input wf-field" maxlength="10" placeholder="">
                 <span class="cw-callsign-label">QSO:</span>
                 <input type="text" id="cwQsoInput" class="cw-callsign-input wf-field" maxlength="10" placeholder="">
+                <button id="cwPaddleBtn" class="cw-paddle-btn wf-btn" title="Paddle: keyer options (iambic A / B, swap) and the adapter it comes through -- a MIDI controller's paddle jack or a USB keyboard adapter (VBand).">PADDLE</button>
             </div>
 
             <div class="cw-display" id="cwDisplay"></div>
@@ -3164,6 +3177,7 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
 <script src="cw-keyer.js"></script>
 <script src="cw-paddle.js"></script>
 <script src="midi.js"></script>
+<script src="paddle-panel.js"></script>
 <script>
 // ============================================================
 // STATE
@@ -9607,22 +9621,63 @@ function midiSlider(name) {
     btn('breakIn', 'BK-IN', cycleBreakIn);
     btn('cwCut', 'CW STOP', function() { cwPaddle.stop(); cwStopRig(); });
     btn('pttToggle', 'PTT toggle', function() { midiPtt(!midiPttHeld); });
-    gate('paddleLeft', 'Paddle left', function(c) { midiCwContact(c, function(on) { cwPaddle.paddle('left', on); }); });
-    gate('paddleRight', 'Paddle right', function(c) { midiCwContact(c, function(on) { cwPaddle.paddle('right', on); }); });
-    gate('straightKey', 'Straight key', function(c) { midiCwContact(c, function(on) { cwPaddle.straightKey(on); }); });
+    gate('paddleLeft', 'Paddle left', function(c) { paddleContact('left', c); });
+    gate('paddleRight', 'Paddle right', function(c) { paddleContact('right', c); });
+    gate('straightKey', 'Straight key', function(c) { paddleContact('straight', c); });
     gate('ptt', 'PTT (hold)', midiPtt);
 })();
 
 var midiPanel = new WfMidiPanel(document.getElementById('midiPanel'), midi);
 midi.subscribe(function(m, what) {
     if (what === 'message') return;
-    cwPaddle.setMode(m.opts.keyerMode);
-    cwPaddle.setSwap(m.opts.swap);
     if (currentPanel === 'func') renderFuncOverlay();
+    if (document.getElementById('paddleOverlay').classList.contains('visible')) paddlePanel.render();
 });
-cwPaddle.setMode(midi.opts.keyerMode);
-cwPaddle.setSwap(midi.opts.swap);
 if (midi.enabled) midi.enable();
+
+// The paddle: keyer options and the keyboard adapter (paddle-panel.js), the
+// PADDLE window in the CW bar's CALL row. A contact from either adapter --
+// MIDI jack or USB keys -- comes through paddleContact().
+var paddleSettings = new WfPaddleSettings();
+function applyPaddleSettings() {
+    cwPaddle.setMode(paddleSettings.get('keyerMode'));
+    cwPaddle.setSwap(paddleSettings.get('swap'));
+}
+paddleSettings.subscribe(applyPaddleSettings);
+applyPaddleSettings();
+
+// Every contact lights its lamp in the PADDLE window; it keys only in CW.
+function paddleContact(role, closed) {
+    paddlePanel.lamp(role, closed);
+    midiCwContact(closed, function(on) {
+        if (role === 'straight') cwPaddle.straightKey(on); else cwPaddle.paddle(role, on);
+    });
+}
+var keyboardPaddle = new WfKeyboardPaddle({
+    settings: paddleSettings,
+    target: window,
+    onContact: paddleContact,
+    isActive: function() { return currentMode === 'CW' || currentMode === 'CW-R'; },
+    onLearn: function() { paddlePanel.render(); }
+});
+var paddlePanel = new WfPaddlePanel(document.getElementById('paddlePanel'), paddleSettings, keyboardPaddle, {
+    midiStatus: function() {
+        if (!WfMidi.supported()) return 'not in this browser';
+        if (!midi.enabled) return 'OFF';
+        if (midi.status !== 'ready') return midi.status;
+        return midi.devices.length ? 'ON \u00b7 ' + midi.devices.join(', ') : 'ON \u00b7 no device';
+    },
+    openMidi: function() { closePaddleModal(); openMidiModal(); }
+});
+function openPaddleModal() {
+    document.getElementById('paddleOverlay').classList.add('visible');
+    paddlePanel.render();
+}
+function closePaddleModal() {
+    keyboardPaddle.learn(null);
+    document.getElementById('paddleOverlay').classList.remove('visible');
+}
+document.getElementById('cwPaddleBtn').addEventListener('click', openPaddleModal);
 
 function midiTileState() {
     if (midi.status === 'unsupported') return 'N/A';

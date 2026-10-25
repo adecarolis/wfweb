@@ -95,7 +95,7 @@
         var saved = null;
         try { saved = JSON.parse(load(this._storage, 'wfMidiMap') || 'null'); } catch (e) {}
         this.bindings = saved && saved.bindings ? saved.bindings : MIDI_PRESETS.ctr2.bindings.map(function (b) { return Object.assign({}, b); });
-        this.opts = { keyerMode: 'B', swap: false, fineStep: 10 };
+        this.opts = { fineStep: 10 };   // the paddle keyer's options live in paddle-panel.js
         try { Object.assign(this.opts, JSON.parse(load(this._storage, 'wfMidiOpts') || '{}')); } catch (e) {}
         this.enabled = load(this._storage, 'wfMidiEnabled') === '1';
     }
@@ -454,10 +454,6 @@
         this.el.appendChild(pre);
 
         var key = h('div', 'midi-row');
-        key.appendChild(h('span', 'midi-label', 'KEYER'));
-        key.appendChild(btn('IAMBIC A', midi.opts.keyerMode === 'A', function () { midi.setOpt('keyerMode', 'A'); }));
-        key.appendChild(btn('IAMBIC B', midi.opts.keyerMode !== 'A', function () { midi.setOpt('keyerMode', 'B'); }));
-        key.appendChild(btn('SWAP', !!midi.opts.swap, function () { midi.setOpt('swap', !midi.opts.swap); }));
         key.appendChild(h('span', 'midi-label', 'KNOB'));
         var step = h('select', 'wf-field');
         [10, 50, 100].forEach(function (hz) {
@@ -468,6 +464,7 @@
         });
         step.onchange = function () { midi.setOpt('fineStep', +step.value); };
         key.appendChild(step);
+        key.appendChild(h('span', 'midi-hint', 'Paddle keyer: CW bar \u203a PADDLE'));
         this.el.appendChild(key);
 
         var map = h('div', 'midi-map');

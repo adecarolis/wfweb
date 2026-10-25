@@ -59,6 +59,21 @@ def test_cw_paddle_sim():
     assert result.returncode == 0, result.stdout + result.stderr
 
 
+def test_paddle_input_sim():
+    """USB keyboard paddle adapter (VBand: left / right Ctrl) and the paddle
+    settings (paddle-panel.js): off by default, repeats ignored, keys held
+    back mid-character, focus loss, straight key, LEARN, a keyed CQ."""
+    if not shutil.which("node"):
+        pytest.skip("node unavailable")
+    result = subprocess.run(
+        ["node", str(ROOT / "tests" / "paddle_input_sim.mjs")],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
 def test_both_pages_load_cw_keyer():
     """Both forks load the shared module and no longer carry the model inline."""
     for fork in ("web", "web-standalone"):

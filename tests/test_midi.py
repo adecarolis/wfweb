@@ -44,6 +44,8 @@ def test_both_pages_load_midi():
         page = (ROOT / "resources" / fork / "index.html").read_text(encoding="utf-8")
         assert '<script src="cw-paddle.js"></script>' in page, fork
         assert '<script src="midi.js"></script>' in page, fork
+        assert '<script src="paddle-panel.js"></script>' in page, fork
+        assert 'id="paddleOverlay"' in page and 'id="cwPaddleBtn"' in page, fork
         assert "new WfMidi(" in page and "new WfCwPaddle(" in page, fork
         assert 'id="midiOverlay"' in page, fork
 
@@ -52,7 +54,7 @@ def test_build_plumbing():
     """Server qrc aliases and the Standalone copy list carry both modules."""
     qrc = (ROOT / "resources" / "web.qrc").read_text(encoding="utf-8")
     build = (ROOT / "tools" / "build-static.sh").read_text(encoding="utf-8")
-    for name in ("midi.js", "cw-paddle.js"):
+    for name in ("midi.js", "cw-paddle.js", "paddle-panel.js"):
         assert f'<file alias="{name}">web-shared/{name}</file>' in qrc, name
         assert name in build, name
 

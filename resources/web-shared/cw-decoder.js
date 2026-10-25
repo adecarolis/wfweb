@@ -910,7 +910,11 @@
         if (toggleBtn) {
             if (decoderState.loading) {
                 const pct = Math.round(decoderState.loadProgress * 100);
-                toggleBtn.textContent = pct > 0 && pct < 100 ? 'LOADING ' + pct + '%' : 'LOADING...';
+                // A phone's CW header has no room for "LOADING 35%": the
+                // close button would be pushed off the screen while the
+                // model downloads. The amber button carries the meaning.
+                const narrow = window.matchMedia && window.matchMedia('(orientation: portrait) and (max-width: 600px)').matches;
+                toggleBtn.textContent = pct > 0 && pct < 100 ? (narrow ? pct + '%' : 'LOADING ' + pct + '%') : (narrow ? 'LOAD' : 'LOADING...');
                 toggleBtn.className = 'loading';
             } else if (decoderState.enabled) {
                 toggleBtn.textContent = 'DECODE';

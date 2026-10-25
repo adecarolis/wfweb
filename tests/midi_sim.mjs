@@ -137,10 +137,10 @@ async function makeMidi(storage = memStorage({ wfMidiEnabled: '1' }), access = f
   check(m.bindingsOf('afGain').length === 0 && m.bindingsOf('rfGain')[0].num === 102 && m.bindingsOf('rfGain')[0].enc === 'slider', 'a learnt CC moves off the action that had it; levels learn as slider');
   m.clear('cwWpm');
   check(m.bindingsOf('cwWpm').length === 0, 'clear removes the binding');
-  m.setOpt('keyerMode', 'A'); m.setOpt('swap', true);
+  m.setOpt('fineStep', 50);
   const again = await makeMidi(storage);
   check(JSON.stringify(again.m.bindings) === JSON.stringify(m.bindings), 'map persists in localStorage (wfMidiMap)');
-  check(again.m.opts.keyerMode === 'A' && again.m.opts.swap === true && again.m.opts.fineStep === 10, 'keyer options persist (wfMidiOpts)');
+  check(again.m.opts.fineStep === 50, 'knob options persist (wfMidiOpts)');
   m.disable();
   check(storage._m.wfMidiEnabled === '0' && m.status === 'off', 'disable persists and stops');
   access.send('CTR2-MIDI', ON(60));

@@ -320,6 +320,11 @@
 .midi-action { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .midi-binding { color: var(--text-dim); white-space: nowrap; }
 .midi-monitor { color: var(--text-faint); font-size: var(--fs-xs); }
+.midi-hint { color: var(--text-faint); font-size: var(--fs-xs); }
+.paddle-label { min-width: 5.5em; }
+.paddle-key { min-width: 7em; color: var(--field-text); }
+.paddle-lamp { padding: 2px 8px; border: var(--border-w) solid var(--mode-accent-dim); border-radius: var(--radius); color: var(--text-faint); }
+.paddle-lamp.on { background: var(--mode-accent); border-color: var(--mode-accent); color: var(--on-accent); }
 @media (max-width: 420px) {
     .midi-map-row { grid-template-columns: minmax(0, 1fr) 6em auto auto; }
     .midi-map-row .midi-enc { display: none; }

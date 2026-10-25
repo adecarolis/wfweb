@@ -227,6 +227,59 @@ try {
     return { fits: h.scrollWidth <= h.clientWidth + 1, close: Math.round(c.width), bk: Math.round(document.getElementById('cwBreakInBtn').getBoundingClientRect().width) };
   });
   check(hdr.fits && hdr.close >= 28 && hdr.bk >= 24, `phone width: the CW header still fits with BK-IN (✕ ${hdr.close} px, BK ${hdr.bk} px)`);
+  const row = await page.evaluate(() => {
+    const r = document.querySelector('#cwBar .cw-callsign-row'), b = document.getElementById('cwPaddleBtn').getBoundingClientRect();
+    return { fits: r.scrollWidth <= r.clientWidth + 1, w: Math.round(b.width), right: Math.round(b.right), vw: innerWidth };
+  });
+  check(row.fits && row.w >= 24 && row.right <= row.vw, `phone width: PADDLE fits the CALL row (${row.w} px wide, right edge ${row.right} of ${row.vw})`);
+  await page.setViewportSize({ width: 1100, height: 800 });
+  await page.waitForTimeout(300);
+
+  // -- PADDLE window: keyer options moved here, USB keyboard adapter (VBand) --
+  check(!(await page.evaluate(() => { window.openMidiModal(); const t = document.getElementById('midiPanel').textContent; window.closeMidiModal(); return /IAMBIC/.test(t); })), 'the MIDI window no longer carries the keyer options');
+  await page.click('#cwPaddleBtn');
+  check(await page.locator('#paddleOverlay.visible').count() === 1, 'CW bar > PADDLE opens the paddle window');
+  const pp = page.locator('#paddlePanel');
+  check(/IAMBIC B/.test(await pp.textContent()) && /Left Ctrl/.test(await pp.textContent()) && /Right Ctrl/.test(await pp.textContent()), 'it shows the keyer and the adapter keys (left / right Ctrl)');
+  const usbOff = pp.locator('.midi-row', { hasText: 'USB KEYS' }).locator('.wf-btn', { hasText: 'OFF' });
+  const cwBefore = (await cmds('sendCW')).length;
+  await page.keyboard.down('ControlLeft'); await page.keyboard.up('ControlLeft');
+  await page.waitForTimeout(800);
+  check((await cmds('sendCW')).length === cwBefore, 'adapter off: a Ctrl key keys nothing');
+  await usbOff.click();
+  check(await page.evaluate(() => window.paddleSettings.get('keyboard') === true), 'USB KEYS on');
+  await page.keyboard.down('ControlLeft');
+  const lit = await page.evaluate(() => document.querySelector('#paddlePanel .paddle-lamp.on') && document.querySelector('#paddlePanel .paddle-lamp.on').textContent);
+  await page.keyboard.up('ControlLeft');
+  const unlit = await page.evaluate(() => !document.querySelector('#paddlePanel .paddle-lamp.on'));
+  check(/^LEFT/.test(lit || '') && unlit, 'a real left-Ctrl key event lights the LEFT lamp while held (' + lit + ')');
+  await pp.locator('.midi-row', { hasText: 'RIGHT' }).locator('.wf-btn', { hasText: 'LEARN' }).click();
+  await page.keyboard.press('BracketRight');
+  check(await page.evaluate(() => window.paddleSettings.get('keyRight') === 'BracketRight') && /BracketRight/.test(await pp.textContent()), 'LEARN binds the next key (] for the right contact)');
+  await page.evaluate(() => window.paddleSettings.set('keyRight', 'ControlRight'));
+  await page.evaluate(() => window.closePaddleModal());
+  await page.waitForTimeout(2500);   // the dit above (and its space) are keyed and gone
+  const before = (await cmds('sendCW')).map(c => c.text).join('');
+  // "CQ" on the Ctrl keys, timed in the page like the MIDI timeline above
+  await page.evaluate((dot) => new Promise((done) => {
+    const M = window.CW_MORSE, ev = [];
+    let prevOff = null;
+    for (const ch of 'CQ') {
+      const p = M[ch];
+      for (let k = 0; k < p.length; k++) {
+        const start = k === 0 ? (prevOff === null ? 50 : prevOff + 3 * dot) : prevOff + dot;
+        const press = k === 0 ? start : prevOff + 0.5 * dot;
+        const len = (p[k] === '.' ? 1 : 3) * dot, code = p[k] === '.' ? 'ControlLeft' : 'ControlRight';
+        ev.push([press, 'keydown', code], [start + 0.5 * len, 'keyup', code]);
+        prevOff = start + len;
+      }
+    }
+    for (const [t, type, code] of ev) setTimeout(() => window.dispatchEvent(new KeyboardEvent(type, { code, key: 'Control', ctrlKey: type === 'keydown', bubbles: true })), t);
+    setTimeout(done, prevOff + 10 * dot);
+  }), dot);
+  await page.waitForTimeout(1500);
+  const after = (await cmds('sendCW')).map(c => c.text).join('').slice(before.length);
+  check(after === 'CQ ', `"CQ" on left / right Ctrl reaches the rig keyer (${JSON.stringify(after)})`);
 } finally {
   await browser.close();
   server.close();

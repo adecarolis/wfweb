@@ -92,7 +92,7 @@ other.** No Direct/Server runtime gates: each `index.html` is single-purpose.
 |-----|---------|----------|
 | `resources/web/` | C++ server build (`wfweb.pro`) | Server-only `index.html`, `transport/websocket-transport.js`, `debug.html` |
 | `resources/web-standalone/` | Static bundle (`tools/build-static.sh`) | Standalone `index.html`, `transport/serial-transport.js`, `civ/`, `wasm/` |
-| `resources/web-shared/` | Both | `index.html`-side modules and pure assets: `theme.css` (design tokens + `.wf-*` kit), `packet.js`, `recorder.js` (+ vendored `lamejs/`), `needle-meter.js`, `rx-jitter.js`, `cw-keyer.js`, `cw-paddle.js`, `midi.js`, `transport/rig-transport.js` (base class), CW decoder JS family (+ `ort/` ONNX Runtime Web and `models/deepcw.onnx`), JS8 family (`js8.mjs`, `js8-panel.mjs`, `js8-panel.css`), `models/`, `digits/`, `digits-sprite.png` |
+| `resources/web-shared/` | Both | `index.html`-side modules and pure assets: `theme.css` (design tokens + `.wf-*` kit), `packet.js`, `recorder.js` (+ vendored `lamejs/`), `needle-meter.js`, `rx-jitter.js`, `cw-keyer.js`, `cw-paddle.js`, `midi.js`, `paddle-panel.js`, `transport/rig-transport.js` (base class), CW decoder JS family (+ `ort/` ONNX Runtime Web and `models/deepcw.onnx`), JS8 family (`js8.mjs`, `js8-panel.mjs`, `js8-panel.css`), `models/`, `digits/`, `digits-sprite.png` |
 
 The CW decoder is the DeepCW neural model (`resources/web-shared/models/deepcw.onnx`
 + `.json` metadata, AGPL-3.0, from e04/deepcw-engine) run by ONNX Runtime Web
@@ -121,6 +121,13 @@ none), falls back when the DeepCW worker fails or times out loading, and when
 is in use. Server side, `/models/` and `/ort/` are the only resources not sent
 `no-store`: they carry a version+size ETag and answer 304 to `If-None-Match`
 (`serveStaticFile`), otherwise every CW page load would fetch 27 MB again.
+That is not enough on its own: Chrome keeps nothing in its HTTP cache for an
+origin whose certificate it was told to accept -- any wfweb server on its
+self-signed certificate re-downloaded all 27 MB on every DECODE press
+(2026-10-25). So the worker keeps both files in Cache Storage
+(`wfweb-cw-model`, `cachedFetch`) with the ETag they came with and asks with
+`If-None-Match` on each load: 304 = use the stored copy, 200 = replace it,
+unreachable server = the stored copy.
 **Temporary**: `COMPARE_GGMORSE` in `cw-decoder.js` also runs ggmorse next to
 DeepCW and shows its copy on a second GGMORSE line for the on-air comparison;
 drop the flag (not the worker) once decided. run it after any change to the worker's streaming logic.
@@ -358,6 +365,7 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 | `resources/web-shared/rx-jitter.js` | Adaptive RX jitter buffer (worklet + ScriptProcessor fallback, both builds); simulated by `tests/rx_jitter_sim.mjs` |
 | `resources/web-shared/cw-keyer.js` | CW keyer model: timing, pacing of the text to the rig's keyer, browser sidetone (both builds); `tests/cw_keyer_sim.mjs` under node, `tests/cw_bench.mjs` on the two-rig bench, both via `tests/test_cw_keyer.py` |
 | `resources/web-shared/cw-paddle.js` | Paddle / straight key as CW text entry: iambic A/B keyer, element decoder, adaptive straight-key decoder (both builds); `tests/cw_paddle_sim.mjs` |
+| `resources/web-shared/paddle-panel.js` | Paddle settings (keyer A/B, swap, `wfPaddleOpts`), USB keyboard paddle adapter (VBand: left / right Ctrl), the PADDLE window of the CW bar (both builds); `tests/paddle_input_sim.mjs` |
 | `resources/web-shared/midi.js` | Web MIDI controller: CTR2-MIDI presets, MIDI learn, knob-tick tuner, MIDI window body (both builds); `tests/midi_sim.mjs`, `tests/midi_browser.mjs` via `tests/test_midi.py` |
 | `resources/web-shared/js8-panel.mjs` | JS8 messenger panel — markup + state machine, QSO tabs, RX/TX, CMD palette (both builds) |
 | `resources/web-shared/js8.mjs` | JS8 WASM codec bridge — 8-FSK synth + encode/decode wrapper (both builds) |
@@ -679,11 +687,29 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
   element and restores it once the radio's keying (`cwKeyer` model end) plus
   the jitter buffer and 300 ms have passed, so only the browser tone is heard. Timing
   stays in `cw-paddle.js`, not in the pages (CW keyer rule).
+- **PADDLE window** (`paddle-panel.js`, button at the end of the CW bar's
+  CALL/QSO row; the CW header has no room left on a phone): the keyer
+  options (iambic A / B, swap -- they moved here from the MIDI window,
+  `wfMidiOpts` values carried over once into `wfPaddleOpts`) and the
+  paddle's adapter. FUNC > MIDI stays the MIDI controller (knob, buttons,
+  its paddle-jack notes). The **USB keyboard adapter** (VBand, Vail adapter
+  in keyboard mode) is a keyboard whose paddle contacts are the left and
+  right Ctrl keys (`KeyboardEvent.code` `ControlLeft` / `ControlRight`,
+  LEARN for others; straight-key mode uses the left one). Keyboard events
+  reach every browser, phones included, where Web MIDI does not. Opt-in
+  (USB KEYS), because those are ordinary Ctrl keys: `WfKeyboardPaddle`
+  listens on `window` in the capture phase, ignores key repeat, and while a
+  contact is down in CW holds every other key back (no Ctrl+letter shortcut
+  mid-character; the browser's own Ctrl+W / Ctrl+T on Windows and Linux
+  cannot be held back by a page); a lost focus releases what is held. Every
+  contact, MIDI or keyboard, goes through the page's `paddleContact()`, which
+  lights the window's CHECK lamps in any mode and keys only in CW / CW-R.
 - Tests: `tests/cw_paddle_sim.mjs` (decode at several speeds, A vs B squeeze,
   swap, jittery straight key, sidetone on the paddle, rig text one character
   behind), `tests/midi_sim.mjs` (encodings, presets, learn, hot-plug,
-  tuner), `tests/midi_browser.mjs` (Standalone on `?virtual=1` with a fake
-  `requestMIDIAccess`; never a real radio).
+  tuner), `tests/paddle_input_sim.mjs` (keyboard adapter, settings, a CQ on
+  the Ctrl keys), `tests/midi_browser.mjs` (Standalone on `?virtual=1` with a
+  fake `requestMIDIAccess` and real key events; never a real radio).
 
 ### Shared station callsign
 - One callsign in the gear dialog feeds CW, FT8/FT4, JS8, FreeDV Reporter, APRS, and
