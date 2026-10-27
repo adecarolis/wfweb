@@ -90,22 +90,11 @@ void cachingQueue::run()
             //if (it != queue.end() && it.key() == prio)
             auto it = queue.find(prio);
             if (it != queue.end()) {
-                // The oldest item of this priority goes out (QMultiMap keeps
-                // the newest first, so it is the last one), except that at
-                // immediate priority the oldest set goes before any read:
-                // getCache() keeps tens of refresh reads waiting there, and a
-                // key or a COMP switch queued behind them reached the rig
-                // seconds late.
-                auto pick = it;
-                bool pickIsSet = false;
-                for (; it != queue.end() && it.key() == prio; ++it) {
-                    bool isSet = it.value().param.isValid();
-                    if (prio != priorityImmediate || isSet || !pickIsSet) {
-                        pick = it;
-                        pickIsSet = isSet;
-                    }
+                while (it != queue.end() && it.key() == prio)
+                {
+                    it++;
                 }
-                it = pick;
+                it--;
                 auto item = it.value();
 
                 // A recurring read the rig keeps refusing sits out its retry
@@ -116,8 +105,11 @@ void cachingQueue::run()
                     auto cv = findCache(item.command, item.receiver);
                     held = (cv != cache.end() && cv->backedOff());
                 }
-                if (!held)
+                if (!held) {
+                    if (!item.param.isValid())
+                        countUnanswered(item.command, item.receiver);
                     emit haveCommand(item.command,item.param,item.receiver);
+                }
                 it=queue.erase(it);
                 //queue.remove(prio,it.value()); // Will remove ALL matching commands which breaks some things (memory bulk write)
 
@@ -126,8 +118,10 @@ void cachingQueue::run()
                     queue.insert(prio,item);
                 }
 
-                // Immediate will be updated by the add command, any other commands should update the cache
-                if (!held && prio != priorityImmediate) {
+                // An immediate set was put in the cache by add(); everything
+                // else is stamped here, as it goes out, so that a read's req
+                // is the time it was last asked (countUnanswered).
+                if (!held && (prio != priorityImmediate || !item.param.isValid())) {
                     updateCache(false,item.command,item.param,item.receiver);
                 }
             }
@@ -250,8 +244,9 @@ void cachingQueue::add(queuePriority prio ,queueItem item, bool unique)
 
                 }
             }
-            //Immediately update the cache (even if we aren't sending a value)
-            if (!item.recurring && prio == priorityImmediate)
+            // An immediate set goes into the cache now, before the rig has
+            // answered; a read is stamped when it is sent (run()).
+            if (!item.recurring && prio == priorityImmediate && item.param.isValid())
             {
                 updateCache(false,item.command,item.param,item.receiver);
             }
@@ -489,6 +484,7 @@ int cachingQueue::receiveNak(funcs func, uchar receiver)
             cv = cache.insert(func, c);
         }
         count = ++cv->nak;
+        cv->reply = QDateTime::currentDateTime(); // an NG is an answer: not unanswered
         if (count == CACHE_NAK_LIMIT)
             tripped = *cv;
         mutex.unlock();
@@ -498,6 +494,27 @@ int cachingQueue::receiveNak(funcs func, uchar receiver)
     if (count == CACHE_NAK_LIMIT)
         emit cacheRejected(tripped);
     return count;
+}
+
+// Called as a read goes out, with the mutex held.  If the same read went
+// out before and nothing came back since — no value, no NG — that silence
+// counts as a refusal, so a rig that ignores a command is backed off like
+// one that answers FA (CACHE_NAK_LIMIT) instead of being asked again on
+// every status build for as long as it runs.  A refresh of a value the rig
+// did answer once is not counted: a lost reply there costs nothing.
+void cachingQueue::countUnanswered(funcs func, uchar receiver)
+{
+    auto cv = findCache(func, receiver);
+    if (cv == cache.end() || cv->value.isValid() || !cv->req.isValid())
+        return;
+    if (cv->reply.isValid() && cv->reply >= cv->req)
+        return;
+    int count = ++cv->nak;
+    if (count == CACHE_NAK_LIMIT) {
+        qInfo(logRig()) << "Rig has not answered" << count << "consecutive reads of" << funcString[func]
+                        << "- backing off to one attempt every" << CACHE_NAK_RETRY_SECS << "s";
+        emit cacheRejected(*cv);
+    }
 }
 
 void cachingQueue::updateCache(bool reply, queueItem item)

@@ -22,7 +22,7 @@ from pathlib import Path
 import pytest
 import requests
 
-from conftest import wfweb_output_tail
+from conftest import wfweb_output_tail, ws_connect
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -32,30 +32,15 @@ PTT_ON = bytes([0x1C, 0x00, 0x01])
 PTT_OFF = bytes([0x1C, 0x00, 0x00])
 
 
-def _ws_connect(web_port):
-    """Browser-style WebSocket: WSS on the web port when TLS is on (the
-    default), plain WS on the REST port otherwise."""
-    import ssl
-    pytest.importorskip("websockets")
-    from websockets.sync.client import connect
-
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-    try:
-        return connect(f"wss://127.0.0.1:{web_port}", ssl=ctx, open_timeout=5)
-    except Exception:
-        return connect(f"ws://127.0.0.1:{web_port + 1}", open_timeout=5)
-
-
 def _wait(predicate, timeout=6.0, what="condition", detail=None):
     # One look a second. Every status build re-queues each missing or stale
-    # value (getCache()) as an immediate read, which keeps the queue busy. A
-    # re-queued read used to go to the back of the line, so the compressor,
-    # last in the status, was never read when the status was asked faster
-    # than that backlog drained (0 reads of 16 44 in 12 s at 2 Hz here, and
-    # on the macOS runner at 1 Hz); cachingQueue::add() now leaves a pending
-    # read where it is, and run() sends a pending set before the reads.
+    # value (getCache()) as an immediate read. The mock ACKs the reads it does
+    # not implement, which carries no value, so those were asked again on
+    # every status build for good; a re-queued read went to the back of the
+    # line and the compressor, last in the status, was never read (0 reads
+    # of 16 44 in 12 s at 2 Hz here, at 1 Hz on the macOS runner). Now the
+    # queue leaves a pending read where it is and backs off a read nobody
+    # answers after three asks (countUnanswered), see test_queue.py.
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if predicate():
@@ -100,7 +85,7 @@ def rig(wfweb_7300_instance, mock_radio_7300):
                 f"mock: compressor={mock.compressor}, 16 44 frames received={comp_reads}\n"
                 f"--- wfweb output (tail) ---\n{wfweb_output_tail(proc)}")
     _wait(ready, timeout=30.0, what="status reports USB and COMP on", detail=why)
-    ws = _ws_connect(web_port)
+    ws = ws_connect(web_port, proc)
 
     def send(**cmd):
         ws.send(json.dumps(cmd))
@@ -170,12 +155,20 @@ def test_voice_over_leaves_comp_alone(rig):
     assert mock.compressor == 1
 
 
-def test_set_goes_before_the_refresh_reads(rig):
-    """getCache() keeps tens of refresh reads waiting at immediate priority,
-    70 ms each on LAN; a set queued behind them reached the rig ~2 s late
-    here and past 6 s on the macOS runner. Sets now go first."""
+def test_set_is_not_held_up_by_refresh_reads(rig):
+    """A set reaches the rig promptly while the status is polled. Before the
+    queue backed off reads nobody answers, getCache() kept ~30 of them queued
+    at immediate priority, 70 ms each on LAN, and a set behind them reached
+    the rig ~2 s late here, past 6 s on the macOS runner. The backoff takes
+    three asks of each read to set in, so the status is polled for a while
+    first, as a browser would have been."""
     mock, send, status, _ = rig
-    for on in (False, True):
+    settle = time.monotonic() + 8.0
+    while time.monotonic() < settle:
+        status()
+        time.sleep(0.25)
+    total = 0.0
+    for on in (False, True, False, True):
         want = COMP_ON if on else COMP_OFF
         mark = len(mock.civ_log)
         t0 = time.monotonic()
@@ -184,7 +177,9 @@ def test_set_goes_before_the_refresh_reads(rig):
             status()
             time.sleep(0.05)
         took = time.monotonic() - t0
-        assert want in _frames_since(mock, mark) and took < 1.0, f"COMP set took {took:.2f} s"
+        assert want in _frames_since(mock, mark) and took < 2.0, f"COMP set took {took:.2f} s"
+        total += took
+    assert total < 4.0, f"four COMP sets took {total:.2f} s together"
 
 
 def test_comp_left_off_is_never_switched_on(rig):
@@ -247,9 +242,9 @@ def test_first_key_after_connect_reaches_the_rig(wfweb_7300_instance, mock_radio
     """A status read of the PTT state must not delete a queued key. The mock
     never answers that read, so the 5 Hz status re-queues it on every tick;
     before the queue fix a key sent right after connecting was lost."""
-    _, web_port = wfweb_7300_instance
+    proc, web_port = wfweb_7300_instance
     mock = mock_radio_7300
-    ws = _ws_connect(web_port)
+    ws = ws_connect(web_port, proc)
     try:
         mark = len(mock.civ_log)
         ws.send(json.dumps({"cmd": "setPTT", "value": True}))

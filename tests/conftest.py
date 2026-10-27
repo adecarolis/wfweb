@@ -82,6 +82,30 @@ def wfweb_output_tail(proc, lines: int = 60) -> str:
         return "".join(f.readlines()[-lines:])
 
 
+def ws_connect(web_port, proc=None, timeout=10.0):
+    """A browser-style WebSocket to a test server: WSS on the web port (TLS
+    is on by default), plain WS on the next port only where the server runs
+    without TLS. An upgrade the server leaves unanswered fails here with the
+    server's log tail: it used to fall through to the plain port, whose HTTP
+    200 signpost page said nothing about what the WSS path did (macOS CI,
+    2026-10-27). Needs the websockets package; skips without it."""
+    import ssl
+    pytest.importorskip("websockets")
+    from websockets.sync.client import connect
+
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    try:
+        return connect(f"wss://127.0.0.1:{web_port}", ssl=ctx, open_timeout=timeout)
+    except TimeoutError as e:
+        tail = wfweb_output_tail(proc) if proc is not None else "(no server handle)"
+        pytest.fail(f"WSS upgrade on port {web_port} unanswered for {timeout} s: {e}\n"
+                    f"--- wfweb output (tail) ---\n{tail}")
+    except (ssl.SSLError, OSError):
+        return connect(f"ws://127.0.0.1:{web_port + 1}", open_timeout=timeout)
+
+
 def _dump_and_fail(proc, event_loop, loop_thread, message, url):
     """Kill wfweb, dump its output, stop the event loop, and fail the test."""
     proc.terminate()

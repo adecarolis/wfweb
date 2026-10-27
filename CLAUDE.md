@@ -357,9 +357,16 @@ modeInfo.filter = 1;
 // 5 Hz status read of the PTT state ate keys (#147) — and moved a pending
 // read to the back of the line, so a value getCache() re-asked faster than
 // the backlog drained was never read (COMP on the macOS CI runner).
-// At immediate priority run() sends the oldest pending set before any read:
-// getCache() keeps tens of refresh reads waiting there (70 ms each on LAN),
-// and a set behind them reached the rig seconds late.
+
+// A read nobody answers is backed off like one the rig refuses: run() counts
+// a read sent again with neither a value nor an NG since its last ask as a
+// NAK (countUnanswered), three in a row and getCache() stops re-asking it for
+// CACHE_NAK_RETRY_SECS (+ a per-command spread, so the retries do not all
+// land on one status build). The test mocks ACK reads they do not implement — an
+// FB to a read is no answer — and without this the ~30 of them stayed queued
+// at immediate priority for the life of the server, putting every set 2 s
+// behind (6 s+ on the macOS runner). Not FA in the mock: five FAs in a row
+// read as "radio powered off" (consecutiveFAErrors) and polling stops.
 
 // EXCEPTION: funcMemoryContents is addressed by channel, so two of them are
 // never duplicates. Use add() — addUnique() compares command+receiver only
