@@ -109,6 +109,41 @@ function makeKb(opts = {}) {
   check(paddleKeyName('ControlLeft') === 'Left Ctrl' && paddleKeyName('ControlRight') === 'Right Ctrl' && paddleKeyName('KeyX') === 'X', 'key names for the window');
 }
 
+// ---- 2b. Safari: a Ctrl release lost while the other Ctrl is held ------------
+// Both Ctrl keys are one Control flag on a Mac; WebKit can drop (or put on
+// the wrong side) the release of the first one let go.  Every event carries
+// the modifier state, and a contact whose modifier is no longer down is
+// released.  `ctrl` is getModifierState('Control') after the event.
+{
+  const ev = (t, type, code, ctrl) => t.fire(type, code, { getModifierState: (m) => m === 'Control' && ctrl });
+  // a. the dah's release never arrives; the dit's keyup says no Ctrl is down
+  let { settings, target, contacts, kb } = makeKb();
+  settings.set('keyboard', true);
+  ev(target, 'keydown', 'ControlRight', true);
+  ev(target, 'keydown', 'ControlLeft', true);
+  ev(target, 'keyup', 'ControlLeft', false);            // right was let go first: no event for it
+  check(contacts.join() === 'right:true,left:true,left:false,right:false' && !kb.held.left && !kb.held.right,
+    'lost release: the last Ctrl keyup (no Control down) releases the stuck dah too (' + contacts.join() + ')');
+  // b. the release is reported on the wrong side
+  ({ settings, target, contacts, kb } = makeKb());
+  settings.set('keyboard', true);
+  ev(target, 'keydown', 'ControlRight', true);
+  ev(target, 'keydown', 'ControlLeft', true);
+  ev(target, 'keyup', 'ControlLeft', true);             // the dah let go, reported as the dit
+  ev(target, 'keyup', 'ControlLeft', false);            // the dit let go: no Control down
+  check(!kb.held.left && !kb.held.right && contacts[contacts.length - 1] === 'right:false',
+    'wrong side: still nothing held once no Ctrl is down (' + contacts.join() + ')');
+  // c. Chromium-correct events are unchanged
+  ({ settings, target, contacts, kb } = makeKb());
+  settings.set('keyboard', true);
+  ev(target, 'keydown', 'ControlRight', true);
+  ev(target, 'keydown', 'ControlLeft', true);
+  ev(target, 'keyup', 'ControlRight', true);
+  ev(target, 'keyup', 'ControlLeft', false);
+  check(contacts.join() === 'right:true,left:true,right:false,left:false', 'correct events: released in the order they come');
+  check(kb.trace.length === 4 && /Right Ctrl/.test(kb.trace[0]) && /Control still down/.test(kb.trace[2]), 'the key monitor records them (' + kb.trace.join(' | ') + ')');
+}
+
 // ---- 3. a keyboard-keyed CQ through the real keyer -------------------------------
 {
   const clock = new Clock(), rig = makeRig(clock);

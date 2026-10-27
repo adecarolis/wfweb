@@ -9724,7 +9724,8 @@ var keyboardPaddle = new WfKeyboardPaddle({
     target: window,
     onContact: paddleContact,
     isActive: function() { return currentMode === 'CW' || currentMode === 'CW-R'; },
-    onLearn: function() { paddlePanel.render(); }
+    onLearn: function() { paddlePanel.render(); },
+    onTrace: function(t) { paddlePanel.showTrace(t); }
 });
 var paddlePanel = new WfPaddlePanel(document.getElementById('paddlePanel'), paddleSettings, keyboardPaddle, {
     midiStatus: function() {

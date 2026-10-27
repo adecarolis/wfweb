@@ -84,7 +84,9 @@
         this._onContact = opts.onContact || function () {};
         this._isActive = opts.isActive || function () { return true; };
         this._onLearn = opts.onLearn || function () {};
+        this._onTrace = opts.onTrace || function () {};
         this.held = {};
+        this.trace = [];         // the last key events of the paddle keys, for the window
         this.learning = null;    // 'keyLeft' | 'keyRight' while a key is being learnt
         this._down = function (e) { self._keydown(e); };
         this._up = function (e) { self._keyup(e); };
@@ -100,6 +102,43 @@
         if (code === s.get('keyLeft')) return 'left';
         if (code === s.get('keyRight')) return 'right';
         return null;
+    };
+
+    // Safari (WebKit) loses a Ctrl key's release while the other Ctrl key is
+    // held -- both are one "Control" flag on a Mac -- and a squeezed dah
+    // stayed keyed until it was pressed again (VBand, 2026-10-26; Chromium
+    // reports each side).  Every key event also carries the modifier state:
+    // a contact on a modifier key that the event says is no longer down was
+    // released, whatever events went missing.
+    var MODIFIER_OF = { Control: 'Control', Shift: 'Shift', Alt: 'Alt', Meta: 'Meta' };
+    function modifierOf(code) {
+        var m = /^(Control|Shift|Alt|Meta)(Left|Right)$/.exec(code || '');
+        return m ? MODIFIER_OF[m[1]] : null;
+    }
+
+    WfKeyboardPaddle.prototype._codeOf = function (role) {
+        var s = this.settings;
+        return role === 'right' ? s.get('keyRight') : s.get('keyLeft');
+    };
+
+    WfKeyboardPaddle.prototype._resync = function (e) {
+        if (!e.getModifierState) return;
+        for (var r in this.held) {
+            if (!this.held[r]) continue;
+            var mod = modifierOf(this._codeOf(r));
+            if (mod && !e.getModifierState(mod)) { this.held[r] = false; this._onContact(r, false); }
+        }
+    };
+
+    WfKeyboardPaddle.prototype._log = function (e) {
+        var code = e.code || '';
+        if (!modifierOf(code) && !this._role(code)) return;   // never the text being typed
+        var mod = modifierOf(code);
+        this.trace.push((e.type === 'keydown' ? '\u2193' : '\u2191') + keyName(code)
+            + (mod && e.getModifierState && e.getModifierState(mod) && e.type === 'keyup' ? ' (' + mod + ' still down)' : '')
+            + (e.repeat ? ' rep' : ''));
+        if (this.trace.length > 8) this.trace.shift();
+        this._onTrace(this.trace);
     };
 
     WfKeyboardPaddle.prototype._anyHeld = function () {
@@ -122,6 +161,8 @@
             return;
         }
         if (!this.settings.get('keyboard')) return;
+        this._log(e);
+        this._resync(e);
         var role = this._role(e.code);
         if (role) {
             if (!e.repeat && !this.held[role]) {
@@ -135,11 +176,13 @@
     };
 
     WfKeyboardPaddle.prototype._keyup = function (e) {
+        if (!this.settings.get('keyboard')) return;
+        this._log(e);
         var role = this._role(e.code);
-        if (!role || !this.held[role]) return;
-        this.held[role] = false;
-        this._onContact(role, false);
-        if (this._isActive()) { e.preventDefault(); e.stopPropagation(); }
+        var had = role && this.held[role];
+        if (had) { this.held[role] = false; this._onContact(role, false); }
+        this._resync(e);
+        if (had && this._isActive()) { e.preventDefault(); e.stopPropagation(); }
     };
 
     WfKeyboardPaddle.prototype.releaseAll = function () {
@@ -247,8 +290,16 @@
             r.appendChild(l);
         });
 
+        this.traceEl = h('div', 'midi-monitor paddle-trace');
+        this.el.appendChild(this.traceEl);
+        this.showTrace(kb.trace);
         this.el.appendChild(h('div', 'midi-monitor',
             'Keys only in CW / CW-R. While a paddle key is down, other keys are held back (no Ctrl shortcuts mid-character).'));
+    };
+
+    // The last key events of the paddle keys, as the browser reported them.
+    WfPaddlePanel.prototype.showTrace = function (trace) {
+        if (this.traceEl) this.traceEl.textContent = 'Keys: ' + (trace && trace.length ? trace.join('  ') : '\u2014');
     };
 
     // A contact opened or closed: light its lamp.
