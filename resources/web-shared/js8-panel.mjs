@@ -1718,7 +1718,8 @@ const JS8_PANEL_MARKUP = `
                 renderFeed();
             },
             function () {
-                send({ cmd: 'setPTT', value: true });
+                // digital: the backend takes the voice COMP out for the over (#147)
+                send({ cmd: 'setPTT', value: true, digital: true });
                 startMs = Date.now();
                 if (S.activeTx) S.activeTx.timer = setInterval(tickProgress, 200);
             }
@@ -2917,7 +2918,7 @@ const JS8_PANEL_MARKUP = `
         streamDigiAudio(samples,
             function () { if (typeof digiTxActive !== 'undefined') digiTxActive = false;
                           send({ cmd: 'setPTT', value: false }); },
-            function () { send({ cmd: 'setPTT', value: true }); });
+            function () { send({ cmd: 'setPTT', value: true, digital: true }); });
     };
 
     console.log('[JS8] messenger panel ready');

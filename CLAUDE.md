@@ -195,6 +195,27 @@ restore sends `setMode {value, filter}` as one command on purpose: a trailing
 `setFilter` rebuilds from the server's mode cache before the mode reply is
 back and would undo the mode. Packet and FreeDV do not use this.
 
+### Speech compressor: COMP controls and the digital-TX hold (#147)
+FUNC has a COMP tile (CI-V `16 44`, `setCompressor`, `compressor` in status /
+update, gated on `hasCompressor`) and GAIN a COMP row (`14 0E`,
+`setCompLevel`, `compLevel`, shown 0-10 like the radio, gated on
+`hasCompLevel`). wfweb's digital modes transmit in plain USB / LSB, where
+Icom keeps the voice COMP in the path (the older rigs force it off only in
+the SSB data modes, IC-7600/7100/9100/785x manuals; the IC-7300-generation
+manuals state no such rule, so even USB-D would not reliably take it out),
+so every key wfweb modulates itself is flagged
+`setPTT {value: true, digital: true}` (FT8/FT4, JS8, TUNE; FreeDV / RADE and
+packet are known to the backend) and the backend switches COMP off before
+the key and back on after the unkey: `holdCompressorForDigitalTx` /
+`releaseCompressorHold` on the server (every unkey site calls the release,
+including the vanished-client and shutdown paths), `_holdCompressor` /
+`_releaseCompressor` in `serial-transport.js` (`_restoreCompressorDirect`
+on close) and its mirror in `virtual-transport.js`. SSB only, never on an
+unread state, never switched on if it was off, and a `setCompressor` during
+the over wins. A new digital TX path must send `digital: true`.
+Tests: `tests/test_compressor.py` (server, IC-7300 mock) and
+`tests/comp_browser.mjs` (Standalone virtual rig).
+
 ### Scope click-to-tune step
 A click, tap or drag on the scope lands on `scopeTuneStep()` (identical in
 both `index.html` forks, used by `scopeFreqFromClientX`, the drag path and
@@ -328,6 +349,11 @@ modeInfo.data = 0;
 
 // modeInfo.filter should default to 1 (FIL1)
 modeInfo.filter = 1;
+
+// A read never evicts a pending set: queueItem equality ignores the value,
+// so addUnique(read) used to delete a queued set of the same command — the
+// 5 Hz status read of the PTT state ate keys (#147). cachingQueue::add()
+// now drops the read instead; the commander reads a set back anyway.
 
 // EXCEPTION: funcMemoryContents is addressed by channel, so two of them are
 // never duplicates. Use add() — addUnique() compares command+receiver only

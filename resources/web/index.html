@@ -2831,6 +2831,15 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
                     <input type="range" id="monitorLevelSlider" min="0" max="255" value="128"></div>
                 <span class="gain-val" id="monitorLevelVal">50%</span>
             </div>
+            <!-- Speech compressor level, 0-10 as on the radio's screen; COMP on /
+                 off is the FUNC tile. Dimmed while COMP is off. Hidden on rigs
+                 without the level command. -->
+            <div class="gain-row tx" id="compLevelRow" style="display:none;" title="Speech compressor level. Switch COMP on or off in FUNC.">
+                <span class="gain-label">COMP</span>
+                <div class="gain-bar-bg"><div class="gain-bar-fill" id="compLevelFill" style="width:50%"></div>
+                    <input type="range" id="compLevelSlider" min="0" max="255" value="128"></div>
+                <span class="gain-val" id="compLevelVal">5</span>
+            </div>
             <div class="gain-back-row">
                 <button class="ov-btn back-btn" onclick="setPanel('default')">&#x21A9;</button>
             </div>
@@ -3132,6 +3141,11 @@ var micDeviceId = '';       // TX AUDIO button choice; '' = AUTO (browser defaul
 try { micDeviceId = localStorage.getItem('wfMicDeviceId') || ''; } catch (e) {}
 var monitorEnabled = false;
 var monitorLevel = 128; // 0-255 (radio gain)
+// Speech compressor: the FUNC COMP tile (on / off) and the GAIN COMP row (level).
+var hasCompressor = false;
+var hasCompLevel = false;
+var compOn = false;
+var compLevel = null;   // 0-255, null until the rig reports it
 
 var nbOn = false;
 var nrOn = false;
@@ -3566,7 +3580,7 @@ function handleMessage(msg) {
                 if (msg.hasMainSub !== undefined) { hasMainSub = msg.hasMainSub; updateVfoDisplay(); }
                 if (msg.hasDuplex !== undefined) hasDuplex = !!msg.hasDuplex;
                 updateToneCaps(msg);
-                if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner); if (msg.hasBreakIn !== undefined) updateHasBreakIn(!!msg.hasBreakIn);
+                if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner); if (msg.hasBreakIn !== undefined) updateHasBreakIn(!!msg.hasBreakIn); if (msg.hasCompressor !== undefined || msg.hasCompLevel !== undefined) updateHasCompressor(msg);
                 if (msg.txMeters !== undefined) setTxMeterCaps(msg.txMeters, msg.poCal);
                 if (msg.cwSpeedRange) applyCwSpeedRange(msg.cwSpeedRange);
                 if (msg.manufacturer !== undefined) cwKeyerType = (msg.manufacturer === 'Icom') ? 'icom' : 'ideal';
@@ -3605,7 +3619,7 @@ function handleMessage(msg) {
             if (msg.hasMainSub !== undefined) { hasMainSub = msg.hasMainSub; updateVfoDisplay(); }
             if (msg.hasDuplex !== undefined) hasDuplex = !!msg.hasDuplex;
             updateToneCaps(msg);
-            if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner); if (msg.hasBreakIn !== undefined) updateHasBreakIn(!!msg.hasBreakIn);
+            if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner); if (msg.hasBreakIn !== undefined) updateHasBreakIn(!!msg.hasBreakIn); if (msg.hasCompressor !== undefined || msg.hasCompLevel !== undefined) updateHasCompressor(msg);
             if (msg.txMeters !== undefined) setTxMeterCaps(msg.txMeters, msg.poCal);
                 if (msg.cwSpeedRange) applyCwSpeedRange(msg.cwSpeedRange);
                 if (msg.manufacturer !== undefined) cwKeyerType = (msg.manufacturer === 'Icom') ? 'icom' : 'ideal';
@@ -3666,6 +3680,8 @@ function handleMessage(msg) {
             if (msg.micGain !== undefined) updateSlider('micGain', msg.micGain);
             if (msg.monitor !== undefined) { monitorEnabled = msg.monitor; if (currentPanel === 'func') renderFuncOverlay(); }
             if (msg.monitorGain !== undefined) { monitorLevel = msg.monitorGain; updateSlider('monitorLevel', msg.monitorGain); if (currentPanel === 'func') renderFuncOverlay(); }
+            if (msg.compressor !== undefined) updateCompressor(msg.compressor);
+            if (msg.compLevel !== undefined) updateCompLevel(msg.compLevel);
             if (msg.split !== undefined) updateSplit(msg.split);
             if (msg.duplex !== undefined) updateDuplex(msg.duplex);
             updateToneStatus(msg);
@@ -3715,6 +3731,8 @@ function handleMessage(msg) {
             if (msg.micGain !== undefined) updateSlider('micGain', msg.micGain);
             if (msg.monitor !== undefined) { monitorEnabled = msg.monitor; if (currentPanel === 'func') renderFuncOverlay(); }
             if (msg.monitorGain !== undefined) { monitorLevel = msg.monitorGain; updateSlider('monitorLevel', msg.monitorGain); if (currentPanel === 'func') renderFuncOverlay(); }
+            if (msg.compressor !== undefined) updateCompressor(msg.compressor);
+            if (msg.compLevel !== undefined) updateCompLevel(msg.compLevel);
             if (msg.split !== undefined) updateSplit(msg.split);
             if (msg.duplex !== undefined) updateDuplex(msg.duplex);
             updateToneStatus(msg);
@@ -3726,7 +3744,7 @@ function handleMessage(msg) {
             if (msg.autoNotch !== undefined) updateToggle('anf', msg.autoNotch);
             // hasTuner arrives here when the server learns, after the fact, that the
             // rig refuses (or has started answering) the tuner status read.
-            if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner); if (msg.hasBreakIn !== undefined) updateHasBreakIn(!!msg.hasBreakIn);
+            if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner); if (msg.hasBreakIn !== undefined) updateHasBreakIn(!!msg.hasBreakIn); if (msg.hasCompressor !== undefined || msg.hasCompLevel !== undefined) updateHasCompressor(msg);
             if (msg.tuner !== undefined) updateTunerState(msg.tuner); if (msg.breakIn !== undefined) updateBreakIn(msg.breakIn);
             if (msg.preamp !== undefined) updatePreampBtn(msg.preamp);
             if (msg.attenuator !== undefined) updateAttenuatorBtn(msg.attenuator);
@@ -4358,6 +4376,35 @@ function updateSplit(on) {
     document.getElementById('splitBadge').classList.toggle('hidden', !on);
 }
 
+// Speech compressor (SSB). wfweb takes it out for the length of its own
+// digital overs (FT8/FT4, JS8, TUNE, FreeDV/RADE, packet) and puts it back
+// (#147), so the tile can read OFF while one of them transmits.
+function updateHasCompressor(msg) {
+    if (msg.hasCompressor !== undefined) hasCompressor = !!msg.hasCompressor;
+    if (msg.hasCompLevel !== undefined) hasCompLevel = !!msg.hasCompLevel;
+    var row = document.getElementById('compLevelRow');
+    if (row) row.style.display = hasCompLevel ? '' : 'none';
+    if (currentPanel === 'func') renderFuncOverlay();
+}
+
+function updateCompressor(on) {
+    compOn = !!on;
+    var row = document.getElementById('compLevelRow');
+    if (row) row.style.opacity = compOn ? '' : '0.55';
+    if (currentPanel === 'func') renderFuncOverlay();
+}
+
+function updateCompLevel(val) {
+    compLevel = val;
+    updateSlider('compLevel', val);
+    if (currentPanel === 'func') renderFuncOverlay();
+}
+
+// The radio shows the level 0-10; the CI-V value is 0-255.
+function compLevelText(val) {
+    return String(Math.round(val / 255 * 10));
+}
+
 function updateToggle(name, state) {
     if (name === 'nb') nbOn = !!state;
     else if (name === 'nr') nrOn = !!state;
@@ -4458,7 +4505,7 @@ var sliderDragging = {};
 var SLIDER_DEBOUNCE_MS = 1500;
 
 function initSliderTracking() {
-    ['afGain', 'rfGain', 'rfPower', 'squelch', 'micGain'].forEach(function(name) {
+    ['afGain', 'rfGain', 'rfPower', 'squelch', 'micGain', 'compLevel'].forEach(function(name) {
         var slider = document.getElementById(name + 'Slider');
         if (!slider) return;
         slider.addEventListener('mousedown', function() { sliderDragging[name] = true; });
@@ -4470,7 +4517,8 @@ function initSliderTracking() {
         slider.addEventListener('input', function() {
             var val = slider.value;
             sliderSetTimes[name] = Date.now();
-            document.getElementById(name + 'Val').textContent = toPercent(val, 255);
+            document.getElementById(name + 'Val').textContent =
+                name === 'compLevel' ? compLevelText(val) : toPercent(val, 255);
             var fill = document.getElementById(name.replace(/([A-Z])/g, function(m) { return m; }) + 'Fill');
             if (fill) fill.style.width = (val / 255 * 100) + '%';
             if (name === 'afGain') throttledSend('afGain', 'setAfGain', val);
@@ -4478,6 +4526,11 @@ function initSliderTracking() {
             else if (name === 'rfPower') throttledSend('rfPower', 'setRfPower', val);
             else if (name === 'squelch') { throttledSend('squelch', 'setSquelch', val); updateSquelchIndicator(val); }
             else if (name === 'micGain') throttledSend('micGain', 'setMicGain', val);
+            else if (name === 'compLevel') {
+                compLevel = parseInt(val);
+                throttledSend('compLevel', 'setCompLevel', val);
+                if (currentPanel === 'func') renderFuncOverlay();
+            }
         });
     });
     // Monitor level slider (CI-V, 0-255)
@@ -4585,7 +4638,8 @@ function updateSlider(name, val) {
         showPBT(name, val);
         return;
     }
-    if (valSpan) valSpan.textContent = toPercent(val, parseInt((slider || {}).max) || 255);
+    if (valSpan) valSpan.textContent = name === 'compLevel' ? compLevelText(val)
+                                    : toPercent(val, parseInt((slider || {}).max) || 255);
     // Update fill bars
     var fillId = name + 'Fill';
     var fill = document.getElementById(fillId);
@@ -5555,6 +5609,18 @@ function renderFuncOverlay() {
         send({ cmd: 'setMonitor', value: monitorEnabled });
         renderFuncOverlay();
     }));
+
+    // Speech compressor, next to MON: the two TX audio functions. The tile
+    // carries the level when it is on; the level itself is GAIN's COMP row.
+    if (hasCompressor) {
+        var compState = !compOn ? 'OFF' : (hasCompLevel && compLevel !== null ? compLevelText(compLevel) : 'ON');
+        grid.appendChild(makeFuncBtn('COMP', compState, compOn, function() {
+            // Decide once: a transport may echo the new state back inside send().
+            var want = !compOn;
+            send({ cmd: 'setCompressor', value: want });
+            updateCompressor(want);
+        }));
+    }
 
     // Meter face: follow the radio, or force the tile bar / the needle
     grid.appendChild(makeFuncBtn('METER', meterStyle.toUpperCase(), meterStyle !== 'auto', function() {
@@ -11726,7 +11792,8 @@ function executeDigiTx(slotPhase) {
         }, function() {
             // onFirstChunk: ~100 ms of audio buffered in ALSA — safe to key TX
             console.log('[DIGI TX] PTT ON for: "' + txMsgCapture + '"');
-            send({ cmd: 'setPTT', value: true });
+            // digital: the backend takes the voice COMP out for the over (#147)
+            send({ cmd: 'setPTT', value: true, digital: true });
         });
     } catch(e) {
         console.error('[DIGI TX] encode/stream error:', e);
@@ -11794,7 +11861,7 @@ function startDigiTune(overrideFreq) {
         sendTxAudio(frame);
         chunksSent++;
         if (chunksSent === PTT_AFTER_CHUNKS) {
-            send({ cmd: 'setPTT', value: true });
+            send({ cmd: 'setPTT', value: true, digital: true });
         }
     }
 

@@ -395,6 +395,8 @@ def extract_caps(props: dict[str, str], cmd_meta: dict[str, dict]) -> dict:
     has_duplex = False
     has_tuner = False
     has_break_in = False
+    has_compressor = False
+    has_comp_level = False
     has_memory_mode = False
     tone_cmds: set[str] = set()
     tx_meters: set[str] = set()
@@ -412,6 +414,10 @@ def extract_caps(props: dict[str, str], cmd_meta: dict[str, dict]) -> dict:
             has_tuner = True
         elif v.strip() == "Break-In Status":   # CI-V 0x16 0x47: the CW bar's BK-IN
             has_break_in = True
+        elif v.strip() == "Compressor Status":  # CI-V 0x16 0x44: FUNC COMP
+            has_compressor = True
+        elif v.strip() == "Compressor Level":   # CI-V 0x14 0x0E: GAIN COMP
+            has_comp_level = True
         elif v.strip() == "Memory Mode":
             has_memory_mode = True
         elif v.strip() in TONE_CMD_LABELS:
@@ -432,6 +438,8 @@ def extract_caps(props: dict[str, str], cmd_meta: dict[str, dict]) -> dict:
         "hasDuplex": has_duplex,
         "hasTuner": has_tuner,
         "hasBreakIn": has_break_in,
+        "hasCompressor": has_compressor,
+        "hasCompLevel": has_comp_level,
         "hasCTCSS": can_engage_tone and bool(extract_tones(props, "CTCSS")),
         "hasDTCS": (can_engage_tone and bool(extract_tones(props, "DTCS"))
                     and "DTCS Code/Polarity" in tone_cmds),

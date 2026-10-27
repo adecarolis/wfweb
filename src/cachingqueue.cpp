@@ -202,6 +202,18 @@ void cachingQueue::add(queuePriority prio ,queueItem item, bool unique)
                     qWarning() << "cachingQueue::add() Warning, cannot add recurring command with immediate priority!" << funcString[item.command];
                 } else {
                     if (unique) {
+                        // A read must never evict a pending set of the same
+                        // command: queueItem equality ignores the value, so
+                        // the 5 Hz status read of the PTT state deleted a
+                        // queued key before it went out (#147). The set is
+                        // read back by the commander anyway; drop the read.
+                        if (!item.param.isValid()) {
+                            for (auto it = queue.constFind(prio); it != queue.cend() && it.key() == prio; ++it) {
+                                if (it.value().command == item.command && it.value().receiver == item.receiver
+                                        && it.value().recurring == item.recurring && it.value().param.isValid())
+                                    return;
+                            }
+                        }
                         int count=queue.remove(prio,item);
                         if (count>0)
                             qDebug() << "cachingQueue::add() deleted" << count << "entries from queue for" << funcString[item.command] << "on receiver" << item.receiver;

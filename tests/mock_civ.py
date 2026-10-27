@@ -27,6 +27,7 @@ CMD_MODE_READ = 0x04
 CMD_FREQ_SET = 0x05
 CMD_MODE_SET = 0x06
 CMD_LEVEL = 0x14
+CMD_FUNC = 0x16
 CMD_METER = 0x15
 CMD_POWER_CTRL = 0x18
 CMD_TRANSCEIVER_ID = 0x19
@@ -42,6 +43,8 @@ SUB_RF_GAIN = 0x02
 SUB_SQUELCH = 0x03
 SUB_RF_POWER = 0x0A
 SUB_MIC_GAIN = 0x0B
+SUB_COMP_LEVEL = 0x0E
+SUB_COMPRESSOR = 0x44  # under CMD_FUNC
 SUB_S_METER = 0x02
 SUB_SWR_METER = 0x12
 SUB_ALC_METER = 0x13
@@ -113,6 +116,9 @@ class CivRadioBase:
         self._rf_power: int = 100
         self._squelch: int = 0
         self._mic_gain: int = 128
+        # Speech compressor ON at level 5 (128 of 255), as a voice operator leaves it.
+        self.compressor: int = 1
+        self._comp_level: int = 128
         self._s_meter: int = 120
         self._swr: int = 10
         self._alc: int = 0
@@ -223,6 +229,13 @@ class CivRadioBase:
                 return self.civ_ack(to, frm)
             return self._handle_meter(to, frm, payload[0])
 
+        if cmd == CMD_FUNC and payload and payload[0] == SUB_COMPRESSOR:
+            if len(payload) > 1:
+                self.compressor = payload[1]
+                return self.civ_ack(to, frm)
+            return self.civ_frame(to, frm, CMD_FUNC, sub=SUB_COMPRESSOR,
+                                  data=bytes([self.compressor]))
+
         if cmd == CMD_POWER_CTRL:
             return self.civ_ack(to, frm)
 
@@ -306,6 +319,7 @@ class CivRadioBase:
             SUB_SQUELCH: ("_squelch", self._squelch),
             SUB_RF_POWER: ("_rf_power", self._rf_power),
             SUB_MIC_GAIN: ("_mic_gain", self._mic_gain),
+            SUB_COMP_LEVEL: ("_comp_level", self._comp_level),
         }
         if sub not in levels:
             return self.civ_ack(to, frm)
