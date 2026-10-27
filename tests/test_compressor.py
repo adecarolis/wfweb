@@ -22,6 +22,8 @@ from pathlib import Path
 import pytest
 import requests
 
+from conftest import wfweb_output_tail
+
 ROOT = Path(__file__).resolve().parents[1]
 
 COMP_OFF = bytes([0x16, 0x44, 0x00])
@@ -46,7 +48,7 @@ def _ws_connect(web_port):
         return connect(f"ws://127.0.0.1:{web_port + 1}", open_timeout=5)
 
 
-def _wait(predicate, timeout=6.0, what="condition"):
+def _wait(predicate, timeout=6.0, what="condition", detail=None):
     # One look a second. Every status build re-queues each value the mock
     # never answers (getCache() on a miss) as an immediate read; asked twice
     # a second, those keep the queue busy and the compressor read, and the
@@ -56,7 +58,7 @@ def _wait(predicate, timeout=6.0, what="condition"):
         if predicate():
             return
         time.sleep(1.0)
-    pytest.fail(f"{what} not met within {timeout} s")
+    pytest.fail(f"{what} not met within {timeout} s" + (f"\n{detail()}" if detail else ""))
 
 
 def _frames_since(mock, mark):
@@ -73,8 +75,9 @@ def _index(frames, cmd):
 def rig(wfweb_7300_instance, mock_radio_7300):
     """The IC-7300 mock in USB with COMP on, the server's cache aware of it,
     and a WebSocket client. Leaves the mock in that state afterwards."""
-    _, web_port = wfweb_7300_instance
+    proc, web_port = wfweb_7300_instance
     status_url = f"http://127.0.0.1:{web_port + 1}/api/v1/radio/status"
+    info_url = f"http://127.0.0.1:{web_port + 1}/api/v1/radio/info"
     mock = mock_radio_7300
     mock.set_mode(0x01)
     mock.compressor = 1
@@ -85,7 +88,15 @@ def rig(wfweb_7300_instance, mock_radio_7300):
     def ready():
         st = status()
         return st.get("mode") == "USB" and st.get("compressor") is True
-    _wait(ready, timeout=30.0, what="status reports USB and COMP on")
+    def why():
+        info = requests.get(info_url, timeout=2).json()
+        info = info.get("info", info)
+        comp_reads = sum(1 for f in mock.civ_log if bytes(f[4:6]) == bytes([0x16, 0x44]))
+        return (f"status: {status()}\n"
+                f"info: hasCompressor={info.get('hasCompressor')} rig={info.get('model', info.get('rigName'))}\n"
+                f"mock: compressor={mock.compressor}, 16 44 frames received={comp_reads}\n"
+                f"--- wfweb output (tail) ---\n{wfweb_output_tail(proc)}")
+    _wait(ready, timeout=30.0, what="status reports USB and COMP on", detail=why)
     ws = _ws_connect(web_port)
 
     def send(**cmd):
