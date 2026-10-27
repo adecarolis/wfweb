@@ -955,7 +955,7 @@
     }
 
     // Build the CI-V payload that WRITES a memory channel from `mem`.
-    // `mem` mirrors src/wfwebtypes.h memoryType; only the fields we need
+    // `mem` mirrors include/wfwebtypes.h memoryType; only the fields we need
     // for a basic VFO-A snapshot are populated by the caller.
     function cmdWriteMemoryContents(mem, memFormat) {
         var data = [0x1A, 0x00];

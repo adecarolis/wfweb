@@ -11,8 +11,8 @@ Context for working on web features:
 
 ## Backend
 - Server: `src/webserver.cpp` / `include/webserver.h`
-- Runs in separate QThread, initialized in `src/wfmain.cpp` (search for `webServer`)
-- MIME types for new file extensions must be added in `src/webserver.cpp` (search for `mimeTypes`)
+- Runs in separate QThread, initialized in `src/servermain.cpp` (search for `webServer`)
+- Content types for new file extensions must be added in `src/webserver.cpp` (search for `contentType` in `serveStaticFile`)
 
 ## WebSocket JSON Protocol
 - Commands from browser: `{"cmd":"setFrequency","value":14074000}`

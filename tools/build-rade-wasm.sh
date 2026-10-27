@@ -3,7 +3,7 @@
 # to a WASM ES module so the browser-only wfweb build can encode/decode RADE
 # voice without the C++ server in the loop.
 #
-# Output: resources/web/wasm/rade.mjs + resources/web/wasm/rade.wasm
+# Output: resources/web-standalone/wasm/rade.mjs + resources/web-standalone/wasm/rade.wasm
 #
 # Note: NOT SINGLE_FILE — the .wasm payload is ~15-25 MB once weights are
 # baked in. Keeping it as a separate file lets the browser cache it across
@@ -30,7 +30,7 @@ WASM_BUILD_DIR="$REPO_ROOT/build-wasm/rade"
 OPUS_NATIVE_SRC="$RADAE_DIR/build/build_opus-prefix/src/build_opus"
 OPUS_WASM_SRC="$WASM_BUILD_DIR/build_opus"
 OPUS_WASM_LIB="$OPUS_WASM_SRC/.libs/libopus.a"
-OUT_DIR="$REPO_ROOT/resources/web/wasm"
+OUT_DIR="$REPO_ROOT/resources/web-standalone/wasm"
 OUT_MJS="$OUT_DIR/rade.mjs"
 
 if ! command -v emcc >/dev/null 2>&1; then

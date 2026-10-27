@@ -27,7 +27,7 @@ const Module    = await createJS8({ wasmBinary: wasmBytes });
 const sharedJs8 = await import(path.join(__dirname, "..", "resources", "web-shared", "js8.mjs"));
 const synthesize = sharedJs8.synthesize;
 
-// JS8 8-FSK synthesis lives in resources/web-shared/js8.js — imported
+// JS8 8-FSK synthesis lives in resources/web-shared/js8.mjs — imported
 // above as `synthesize`. Constants used by the test reporter:
 const SAMPLE_RATE = 12000;
 

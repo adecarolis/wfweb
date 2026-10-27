@@ -90,7 +90,7 @@ other.** No Direct/Server runtime gates: each `index.html` is single-purpose.
 
 | Dir | Used by | Contents |
 |-----|---------|----------|
-| `resources/web/` | C++ server build (`wfweb.pro`) | Server-only `index.html`, `transport/websocket-transport.js`, `debug.html` |
+| `resources/web/` | C++ server build (`wfweb.pro`) | Server-only `index.html`, `transport/websocket-transport.js` |
 | `resources/web-standalone/` | Static bundle (`tools/build-static.sh`) | Standalone `index.html`, `transport/serial-transport.js`, `civ/`, `wasm/` |
 | `resources/web-shared/` | Both | `index.html`-side modules and pure assets: `theme.css` (design tokens + `.wf-*` kit), `packet.js`, `recorder.js` (+ vendored `lamejs/`), `needle-meter.js`, `rx-jitter.js`, `cw-keyer.js`, `cw-paddle.js`, `midi.js`, `paddle-panel.js`, `transport/rig-transport.js` (base class), CW decoder JS family (+ `ort/` ONNX Runtime Web and `models/deepcw.onnx`), JS8 family (`js8.mjs`, `js8-panel.mjs`, `js8-panel.css`), `models/`, `digits/`, `digits-sprite.png` |
 
@@ -128,9 +128,10 @@ self-signed certificate re-downloaded all 27 MB on every DECODE press
 (`wfweb-cw-model`, `cachedFetch`) with the ETag they came with and asks with
 `If-None-Match` on each load: 304 = use the stored copy, 200 = replace it,
 unreachable server = the stored copy.
-**Temporary**: `COMPARE_GGMORSE` in `cw-decoder.js` also runs ggmorse next to
-DeepCW and shows its copy on a second GGMORSE line for the on-air comparison;
-drop the flag (not the worker) once decided. run it after any change to the worker's streaming logic.
+`COMPARE_GGMORSE` in `cw-decoder.js` is off (91e673f7): set to true, it also
+runs ggmorse next to DeepCW and shows its copy on a second GGMORSE line for an
+on-air comparison. Run `tests/test_cw_decoder.py` after any change to the
+worker's streaming logic.
 
 Build mechanics:
 - **Server**: `web.qrc` aliases keep runtime URLs at `/web/...` regardless of

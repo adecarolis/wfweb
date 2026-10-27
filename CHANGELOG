@@ -20,8 +20,7 @@ CW decoder:
 - The old ggmorse decoder stays as the fallback: on browsers without
   WebAssembly SIMD (Safari < 16.4, Firefox < 114), when the model fails
   to load, or when the machine is too slow for it. A GGMORSE tag shows
-  when it is in use. For now a second GGMORSE line also shows its copy
-  next to DeepCW, for comparison on the air.
+  when it is in use.
 
 CW keying:
 - Paddle input: a paddle or straight key is sent as text through the
