@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build the Windows launcher's icon files from wfweb's favicon.
 
-Renders resources/web-standalone/favicon.svg, the one wfweb mark there is,
+Renders resources/web-shared/favicon.svg, the one wfweb mark there is,
 into launcher/res/wfweb.png (256x256, window and tray icon) and
 launcher/res/wfweb.ico (16..256 px, the exe icon qmake embeds through
 RC_ICONS).
@@ -25,7 +25,7 @@ except ImportError as exc:
     sys.exit(f"{exc.name} is required: pip install resvg-py pillow (see the docstring)")
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / "resources" / "web-standalone" / "favicon.svg"
+SOURCE = ROOT / "resources" / "web-shared" / "favicon.svg"
 OUT_DIR = ROOT / "launcher" / "res"
 MASTER = 256
 ICO_SIZES = [16, 24, 32, 48, 64, 128, 256]

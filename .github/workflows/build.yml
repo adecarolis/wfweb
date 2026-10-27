@@ -521,7 +521,7 @@ jobs:
           PATH=$(pwd):$PATH ./linuxdeploy-${{ matrix.arch }}.AppImage \
             --appdir AppDir \
             --desktop-file wfweb.desktop \
-            --icon-file resources/web-standalone/favicon.svg --icon-filename wfweb \
+            --icon-file resources/web-shared/favicon.svg --icon-filename wfweb \
             $EXTRA_LIBS \
             --plugin qt \
             --output appimage

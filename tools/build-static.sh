@@ -38,13 +38,12 @@ mkdir -p "$DIST/transport" "$DIST/civ" "$DIST/models" "$DIST/digits" "$DIST/wasm
 
 # Standalone-only files (index + serial transport + CI-V).
 cp "$SRC/index.html"     "$DIST/"
-cp "$SRC/favicon.svg"    "$DIST/"
 cp "$SRC"/transport/*.js "$DIST/transport/"
 cp "$SRC"/civ/*.js       "$DIST/civ/"
 
 # Shared assets (CW decoder family, sprites, models, packet UI,
 # rig-transport base class).
-cp "$SHARED/digits-sprite.png" "$DIST/"
+cp "$SHARED/digits-sprite.png" "$SHARED/favicon.svg" "$DIST/"
 for f in cw-decoder.js cw-decoder-stft.js cw-decoder-utils.js cw-decoder-worker.js \
          cw-decoder-worker-ggmorse.js ggmorse-wasm.js packet.js reporters.js airbus.js wf-canvas.js urltune.js \
          ctcss.js dxcc.js recorder.js needle-meter.js rx-jitter.js cw-keyer.js \

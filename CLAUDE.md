@@ -92,7 +92,7 @@ other.** No Direct/Server runtime gates: each `index.html` is single-purpose.
 |-----|---------|----------|
 | `resources/web/` | C++ server build (`wfweb.pro`) | Server-only `index.html`, `transport/websocket-transport.js` |
 | `resources/web-standalone/` | Static bundle (`tools/build-static.sh`) | Standalone `index.html`, `transport/serial-transport.js`, `civ/`, `wasm/` |
-| `resources/web-shared/` | Both | `index.html`-side modules and pure assets: `theme.css` (design tokens + `.wf-*` kit), `packet.js`, `recorder.js` (+ vendored `lamejs/`), `needle-meter.js`, `rx-jitter.js`, `cw-keyer.js`, `cw-paddle.js`, `midi.js`, `paddle-panel.js`, `transport/rig-transport.js` (base class), CW decoder JS family (+ `ort/` ONNX Runtime Web and `models/deepcw.onnx`), JS8 family (`js8.mjs`, `js8-panel.mjs`, `js8-panel.css`), `models/`, `digits/`, `digits-sprite.png` |
+| `resources/web-shared/` | Both | `index.html`-side modules and pure assets: `favicon.svg`, `theme.css` (design tokens + `.wf-*` kit), `packet.js`, `recorder.js` (+ vendored `lamejs/`), `needle-meter.js`, `rx-jitter.js`, `cw-keyer.js`, `cw-paddle.js`, `midi.js`, `paddle-panel.js`, `transport/rig-transport.js` (base class), CW decoder JS family (+ `ort/` ONNX Runtime Web and `models/deepcw.onnx`), JS8 family (`js8.mjs`, `js8-panel.mjs`, `js8-panel.css`), `models/`, `digits/`, `digits-sprite.png` |
 
 The CW decoder is the DeepCW neural model (`resources/web-shared/models/deepcw.onnx`
 + `.json` metadata, AGPL-3.0, from e04/deepcw-engine) run by ONNX Runtime Web
@@ -407,7 +407,7 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 | `launcher/src/logparser.cpp` | Parses the server's `-l` log lines and classifies the ones the launcher reacts to (pure Qt5Core, unit-tested) |
 | `launcher/src/serverprocess.cpp` | QProcess wrapper: `q` on stdin to stop, Windows Job Object, no console window |
 | `tests/launcher_test.cpp` | Unit test for the two pure launcher helpers (`tests/test_cpp_units.py`, Linux CI) |
-| `tools/make-launcher-icon.py` | Regenerates `launcher/res/wfweb.{png,ico}` from `resources/web-standalone/favicon.svg` (resvg-py + Pillow; outputs are committed) |
+| `tools/make-launcher-icon.py` | Regenerates `launcher/res/wfweb.{png,ico}` from `resources/web-shared/favicon.svg` (resvg-py + Pillow; outputs are committed) |
 | `tools/build-rade-wasm.sh` / `tools/build-direwolf-wasm.sh` / `tools/build-js8-wasm.sh` | Emscripten rebuilds of the browser modems (only when their C/C++ source changes) |
 | `.github/workflows/pages.yml` | Publishes Standalone to wfweb.k1fm.us |
 | `resources/ft8ts/dist/ft8ts.mjs` | FT8/FT4 decoder module |
