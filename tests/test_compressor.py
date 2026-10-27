@@ -49,13 +49,13 @@ def _ws_connect(web_port):
 
 
 def _wait(predicate, timeout=6.0, what="condition", detail=None):
-    # One look a second. Every status build re-queues each value the mock
-    # never answers (getCache() on a miss) as an immediate read, which keeps
-    # the queue busy. A re-queued read used to go to the back of the line, so
-    # the compressor, last in the status, was never read when the status was
-    # asked faster than that backlog drained (0 reads of 16 44 in 12 s at
-    # 2 Hz here, and on the macOS runner at 1 Hz); cachingQueue::add() now
-    # leaves a pending read where it is.
+    # One look a second. Every status build re-queues each missing or stale
+    # value (getCache()) as an immediate read, which keeps the queue busy. A
+    # re-queued read used to go to the back of the line, so the compressor,
+    # last in the status, was never read when the status was asked faster
+    # than that backlog drained (0 reads of 16 44 in 12 s at 2 Hz here, and
+    # on the macOS runner at 1 Hz); cachingQueue::add() now leaves a pending
+    # read where it is, and run() sends a pending set before the reads.
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if predicate():
@@ -168,6 +168,23 @@ def test_voice_over_leaves_comp_alone(rig):
     time.sleep(0.5)
     assert COMP_OFF not in _frames_since(mock, mark)
     assert mock.compressor == 1
+
+
+def test_set_goes_before_the_refresh_reads(rig):
+    """getCache() keeps tens of refresh reads waiting at immediate priority,
+    70 ms each on LAN; a set queued behind them reached the rig ~2 s late
+    here and past 6 s on the macOS runner. Sets now go first."""
+    mock, send, status, _ = rig
+    for on in (False, True):
+        want = COMP_ON if on else COMP_OFF
+        mark = len(mock.civ_log)
+        t0 = time.monotonic()
+        send(cmd="setCompressor", value=on)
+        while want not in _frames_since(mock, mark) and time.monotonic() - t0 < 10:
+            status()
+            time.sleep(0.05)
+        took = time.monotonic() - t0
+        assert want in _frames_since(mock, mark) and took < 1.0, f"COMP set took {took:.2f} s"
 
 
 def test_comp_left_off_is_never_switched_on(rig):

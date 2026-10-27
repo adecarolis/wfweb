@@ -90,11 +90,22 @@ void cachingQueue::run()
             //if (it != queue.end() && it.key() == prio)
             auto it = queue.find(prio);
             if (it != queue.end()) {
-                while (it != queue.end() && it.key() == prio)
-                {
-                    it++;
+                // The oldest item of this priority goes out (QMultiMap keeps
+                // the newest first, so it is the last one), except that at
+                // immediate priority the oldest set goes before any read:
+                // getCache() keeps tens of refresh reads waiting there, and a
+                // key or a COMP switch queued behind them reached the rig
+                // seconds late.
+                auto pick = it;
+                bool pickIsSet = false;
+                for (; it != queue.end() && it.key() == prio; ++it) {
+                    bool isSet = it.value().param.isValid();
+                    if (prio != priorityImmediate || isSet || !pickIsSet) {
+                        pick = it;
+                        pickIsSet = isSet;
+                    }
                 }
-                it--;
+                it = pick;
                 auto item = it.value();
 
                 // A recurring read the rig keeps refusing sits out its retry

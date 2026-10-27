@@ -357,6 +357,9 @@ modeInfo.filter = 1;
 // 5 Hz status read of the PTT state ate keys (#147) — and moved a pending
 // read to the back of the line, so a value getCache() re-asked faster than
 // the backlog drained was never read (COMP on the macOS CI runner).
+// At immediate priority run() sends the oldest pending set before any read:
+// getCache() keeps tens of refresh reads waiting there (70 ms each on LAN),
+// and a set behind them reached the rig seconds late.
 
 // EXCEPTION: funcMemoryContents is addressed by channel, so two of them are
 // never duplicates. Use add() — addUnique() compares command+receiver only
