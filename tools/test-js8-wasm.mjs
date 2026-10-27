@@ -1,7 +1,6 @@
 // Day-4 gate smoke test: load js8.wasm, encode a JS8 message, verify
 // the 79 tones include the Costas arrays at the right offsets and are
-// all in [0,7]. Mirrors tools/js8-spike/test_encode_raw.mjs but against
-// the production js8.wasm rather than the spike's standalone build.
+// all in [0,7], against the production js8.wasm.
 //
 // Run: node tools/test-js8-wasm.mjs
 

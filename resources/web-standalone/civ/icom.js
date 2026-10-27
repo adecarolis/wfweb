@@ -260,6 +260,11 @@
     function cmdSetPreamp(level) {
         return new Uint8Array([0x16, 0x02, level & 0xFF]);
     }
+    // CW break-in is three-state too: 0 = OFF, 1 = SEMI, 2 = FULL.
+    function cmdReadBreakIn() { return new Uint8Array([0x16, 0x47]); }
+    function cmdSetBreakIn(mode) {
+        return new Uint8Array([0x16, 0x47, Math.max(0, Math.min(2, mode | 0))]);
+    }
     function parseBoolFuncReply(payload) {
         // [0x16, sub, value]
         if (payload.length < 3 || payload[0] !== 0x16) return null;
@@ -950,7 +955,7 @@
     }
 
     // Build the CI-V payload that WRITES a memory channel from `mem`.
-    // `mem` mirrors src/wfwebtypes.h memoryType; only the fields we need
+    // `mem` mirrors include/wfwebtypes.h memoryType; only the fields we need
     // for a basic VFO-A snapshot are populated by the caller.
     function cmdWriteMemoryContents(mem, memFormat) {
         var data = [0x1A, 0x00];
@@ -1470,6 +1475,8 @@
         cmdReadBoolFunc: cmdReadBoolFunc,
         cmdSetBoolFunc: cmdSetBoolFunc,
         cmdSetPreamp: cmdSetPreamp,
+        cmdReadBreakIn: cmdReadBreakIn,
+        cmdSetBreakIn: cmdSetBreakIn,
         cmdReadAttenuator: cmdReadAttenuator,
         cmdSetAttenuator: cmdSetAttenuator,
         cmdReadAntenna: cmdReadAntenna,

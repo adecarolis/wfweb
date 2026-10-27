@@ -18,9 +18,7 @@ wfweb turns your transceiver into a web-accessible station. Waterfall, SSB, CW d
 
 ![CW mode with decoder](cw.png)
 
-**CW** — built-in decoder and keyer, with editable macros (kept on the server, so every browser has the same set) and one-click QSO logging.
-
-> **Sidetone.** The CW bar's **TONE** button (on by default) plays a sidetone made in the browser, at the radio's CW pitch and at the VOL level, in step with the text as it is keyed. It is a stand-in: it follows the text wfweb sends, not a paddle, and over LAN it is the only sidetone there is. For true full break-in on a USB-connected radio, switch TONE off and let the radio send its own sidetone over the audio channel: on the IC-7300 and other USB-connected Icoms that is **MENU › SET › Connectors › ACC/USB AF Beep/Speech… Output** ON (it ships OFF; the radio's beeps come along too). You then hear the sidetone exactly as the radio keys it, paddle included, with the received signal between the elements, delayed only by the RX audio buffer. Keep just one of the two on, or you hear every element twice.
+**CW** — built-in decoder and keyer, editable macros, break-in, a paddle through a MIDI controller or USB keyboard adapter, and one-click QSO logging.
 
 ![AX.25 packet — connected session with a BBS, YAPP file transfer available](packet.png)
 
@@ -48,7 +46,9 @@ wfweb keeps wfview's radio engine and replaces the desktop GUI with a built-in w
 | Browser-based remote control | — | ✓ |
 | Browser RX audio streaming | — | ✓ |
 | Browser TX audio (mic to rig) | — | ✓ |
-| CW decoder (ggmorse / Goertzel) | — | ✓ |
+| CW decoder (DeepCW neural model in-browser; ggmorse fallback) | — | ✓ |
+| CW paddle input (MIDI controller or USB keyboard adapter) | — | ✓ |
+| MIDI controller (CTR2-MIDI presets, MIDI learn) | — | ✓ |
 | FT8/FT4 DIGI panel (full QSO) | — | ✓ |
 | JS8 messenger (chat-style, QSO tabs) | — | ✓ |
 | RADE (Radio Autoencoder) | — | ✓ |
@@ -56,7 +56,7 @@ wfweb keeps wfview's radio engine and replaces the desktop GUI with a built-in w
 | AX.25 packet — 300/1200/9600, APRS, terminal, YAPP | — | ✓ |
 | Server-side ADIF logbook, remote logging (GridTracker, JTAlert, Log4OM…) | — | ✓ |
 | Recording — MP3 audio, or video of the waterfall with frequency and settings | — | ✓ |
-| Mobile-responsive UI | — | ✓ |
+| Mobile-responsive UI, touch key lock and latching PTT | — | ✓ |
 | Headless / no-display operation | — | ✓ |
 
 ---
@@ -289,6 +289,30 @@ Open the **JS8** panel, pick a submode, and decodes stream into the Heard list a
 
 ---
 
+## CW keyer, paddle and MIDI controller
+
+All of this works in either build, entirely in the browser.
+
+**Keyer.** Text typed in the CW bar or sent from a macro is keyed by the radio's own keyer. On the Server build the macros are kept on the server, so every browser has the same set. **BK-IN** in the CW bar is the radio's break-in key (OFF / semi / full), and **TONE** is a sidetone made in the browser (see [Troubleshooting](#troubleshooting) for when to use the radio's own instead).
+
+**Paddle.** Icom's CI-V has no key-down command, so wfweb treats a paddle as text entry: the built-in keyer (iambic A or B, paddles swappable, or a straight key with an adaptive speed) sounds through TONE at once, decodes your elements into characters and hands each one to the radio's keyer, which sends it one character behind your fist. A slip goes out as its nearest character instead of a gap. The radio's own sidetone, which comes back late in the RX audio, is muted while you send. Paddle input is ignored outside CW / CW-R.
+
+The **PADDLE** button at the end of the CW bar's CALL/QSO row opens the paddle settings, with a lamp for each contact to check the wiring. A paddle reaches wfweb through:
+- **a USB keyboard adapter** (VBand, Vail adapter in keyboard mode), whose contacts are the left and right Ctrl keys. It works in every browser, phones included. Switch it on with **USB KEYS**: while it is on and a contact is down in CW, other keys are held back.
+- **a MIDI controller's paddle jack** (below).
+
+**MIDI controller** (Chrome, Edge and other Chromium browsers; Firefox asks for a site permission; no Safari). FUNC › **MIDI** shows while a controller is plugged in and sets it up: presets for the CTR2-MIDI (normal and Extended BTN mode) or MIDI learn for any other controller. The knob tunes (fine and coarse); knobs, sliders and buttons can also drive AF / RF gain, squelch, TX power, CW speed, band, mode, span, P.AMP/ATT, NB, NR, notch, tuner, BK-IN, CW stop and PTT. Until the browser has been given MIDI access once, the window is reached from **PADDLE › MIDI…**. A controller unplugged in the middle of a transmission unkeys the radio.
+
+---
+
+## Phones and tablets
+
+On a touch screen the operating controls change; a desktop keeps its five soft keys and hold-to-talk.
+- **Key lock** — the padlock in the scope's bottom-right corner locks every control but PTT, as on a handheld. Tap to lock, hold about a second to unlock.
+- **PTT** — in voice modes, a full-width row under the soft keys (double width in landscape). Hold it to talk, or hold, slide up into the lock and release to keep the radio keyed: the button shows a timer, and a tap stops it (3 minutes at most). The radio is also unkeyed if the page is hidden or, on the Server build, if the browser that keyed it disconnects.
+
+---
+
 ## Logbook and remote logging
 
 Every QSO logged from FT8/FT4, JS8, CW or by hand goes into one ADIF logbook.
@@ -397,7 +421,7 @@ Without the filename argument, `--debug` writes to the default log location (`/t
 
 ### Hamlib rigctld (server build)
 
-The Server build can expose a Hamlib `rigctld` TCP interface so external tools — WSJT-X, fldigi, gpredict, POTACAT, and anything else that speaks the Hamlib net protocol — can drive the rig. It's disabled by default; enable it on the standard port with:
+The Server build can expose a Hamlib `rigctld` TCP interface so external tools — WSJT-X, fldigi, gpredict, POTACAT, and anything else that speaks the Hamlib net protocol — can drive the rig. Pat (Winlink) works through it as well. It's disabled by default; enable it on the standard port with:
 
 ```bash
 wfweb --rigctld-port 4532
@@ -543,6 +567,16 @@ See **[BUILDING.md](BUILDING.md)** for platform-specific prerequisites and build
 
 ---
 
+## Troubleshooting
+
+**Squelch makes no difference to what I hear.** The GAIN panel's **SQL** slider sets the radio's squelch, and an **SQL n%** tile on the spectrum shows it whenever it is above 0. The radio squelches its own speaker, but the audio it sends over USB, which is what wfweb plays in the browser, is squelched only if the radio is set up for it: on the IC-7300 that is **MENU › SET › Connectors › ACC/USB AF SQL** ON (other Icoms have a similar USB AF SQL setting). It ships OFF (OPEN).
+
+**COMP goes off while I transmit FT8 (or JS8, FreeDV…).** That is on purpose. wfweb's digital modes (FT8/FT4, JS8, TUNE, FreeDV / RADE, packet) transmit in plain USB / LSB, where the radio keeps the speech compressor in the path and distorts the signal, so wfweb switches COMP off just before it keys for one of them and back on after; the **COMP n** tile on the spectrum disappears for that time. It never switches COMP on if it was off, and pressing FUNC › **COMP** during the transmission takes over. GAIN › **COMP** sets the level (0-10, as on the radio).
+
+**The CW sidetone is late, or I hear every element twice.** The CW bar's **TONE** button (on by default) plays a sidetone made in the browser, at the radio's CW pitch and at the VOL level, in step with the text as it is keyed and with a paddle connected to wfweb. Over LAN it is the only sidetone there is. Its delay is that of the audio output: through Bluetooth headphones it is too late to send a paddle by ear, and TONE turns amber to say so. A paddle plugged into the radio's own key jack is not heard through TONE. For true full break-in with that paddle on a USB-connected radio, switch TONE off and let the radio send its own sidetone over the audio channel: on the IC-7300 and other USB-connected Icoms that is **MENU › SET › Connectors › ACC/USB AF Beep/Speech… Output** ON (it ships OFF; the radio's beeps come along too). You then hear the sidetone exactly as the radio keys it, paddle included, with the received signal between the elements, delayed only by the RX audio buffer. Keep just one of the two on, or you hear every element twice.
+
+---
+
 ## Bugs and feature requests
 
 Two ways to report a bug or ask for a new feature:
@@ -572,7 +606,7 @@ Please support the original project at **https://wfview.org** and **https://www.
 
 The FT8/FT4 DIGI panel is powered by [ft8ts](https://github.com/e04/ft8ts) by e04.
 JS8 weak-signal messaging uses a WebAssembly build of [JS8Call-improved](https://github.com/JS8Call-improved/JS8Call-improved), itself a fork of JS8Call by Jordan Sherer KN4CRD.
-The CW decoder uses [ggmorse](https://github.com/ggerganov/ggmorse) by Georgi Gerganov.
+The CW decoder runs the [DeepCW](https://github.com/e04/deepcw-engine) neural model by e04 (AGPL-3.0) on [ONNX Runtime Web](https://github.com/microsoft/onnxruntime) in the browser, and falls back to [ggmorse](https://github.com/ggerganov/ggmorse) by Georgi Gerganov where that cannot run (no WebAssembly SIMD, or a browser too slow to keep up).
 FreeDV digital voice uses [codec2](https://github.com/drowe67/codec2) by David Rowe VK5DGR and contributors, and [radae_nopy](https://github.com/peterbmarks/radae_nopy) by Peter Marks VK5APM (a standalone C implementation of the RADE Radio Autoencoder).
 AX.25 packet — modems, framing, link control, APRS, and YAPP — is powered by [Direwolf](https://github.com/wb2osz/direwolf) by John Langner WB2OSZ.
 MP3 recording uses [lamejs](https://github.com/zhuker/lamejs), a JavaScript port of the [LAME](https://lame.sourceforge.io) encoder (LGPL).

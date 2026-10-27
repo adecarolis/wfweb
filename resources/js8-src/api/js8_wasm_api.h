@@ -1,5 +1,5 @@
 // C-callable entry points exported from js8.wasm. The JS Worker
-// harness in resources/web-shared/js8.js does ccall/cwrap against
+// harness in resources/web-shared/js8.mjs does ccall/cwrap against
 // these and nothing else — JS never touches the C++ side directly.
 #pragma once
 

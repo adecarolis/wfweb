@@ -90,15 +90,48 @@ other.** No Direct/Server runtime gates: each `index.html` is single-purpose.
 
 | Dir | Used by | Contents |
 |-----|---------|----------|
-| `resources/web/` | C++ server build (`wfweb.pro`) | Server-only `index.html`, `transport/websocket-transport.js`, `debug.html` |
+| `resources/web/` | C++ server build (`wfweb.pro`) | Server-only `index.html`, `transport/websocket-transport.js` |
 | `resources/web-standalone/` | Static bundle (`tools/build-static.sh`) | Standalone `index.html`, `transport/serial-transport.js`, `civ/`, `wasm/` |
-| `resources/web-shared/` | Both | `index.html`-side modules and pure assets: `theme.css` (design tokens + `.wf-*` kit), `packet.js`, `recorder.js` (+ vendored `lamejs/`), `needle-meter.js`, `rx-jitter.js`, `cw-keyer.js`, `transport/rig-transport.js` (base class), CW decoder JS family, `ggmorse-wasm.js`, JS8 family (`js8.mjs`, `js8-panel.mjs`, `js8-panel.css`), `models/`, `digits/`, `digits-sprite.png` |
+| `resources/web-shared/` | Both | `index.html`-side modules and pure assets: `favicon.svg`, `theme.css` (design tokens + `.wf-*` kit), `packet.js`, `recorder.js` (+ vendored `lamejs/`), `needle-meter.js`, `rx-jitter.js`, `cw-keyer.js`, `cw-paddle.js`, `midi.js`, `paddle-panel.js`, `transport/rig-transport.js` (base class), CW decoder JS family (+ `ort/` ONNX Runtime Web and `models/deepcw.onnx`), JS8 family (`js8.mjs`, `js8-panel.mjs`, `js8-panel.css`), `models/`, `digits/`, `digits-sprite.png` |
 
-Build inputs for `ggmorse-wasm.js` (the `.cpp` wrapper + license) live in
-`resources/ggmorse-src/`, alongside `resources/build-ggmorse-wasm.sh`. The
-script fetches upstream ggmorse itself at the commit pinned in `GGMORSE_COMMIT`
-(no submodule; bump the hash to update, rebuild, commit the WASM). None of
-these are browser assets, so they're kept out of the SPA dirs entirely.
+The CW decoder is the DeepCW neural model (`resources/web-shared/models/deepcw.onnx`
++ `.json` metadata, AGPL-3.0, from e04/deepcw-engine) run by ONNX Runtime Web
+(`resources/web-shared/ort/`, vendored from the `onnxruntime-web` npm package,
+no CDN) inside `cw-decoder-worker.js`, an ES module worker. The model is a
+window CTC decoder with context on both sides, not a streaming one: the
+worker keeps a 12 s sliding window, decodes all of it every tick (~50 ms per
+second of audio single-threaded on a laptop) and puts every label on an
+absolute sample timeline. Labels younger than 3 s are the pending text (dim,
+redrawn every tick, free to correct itself); a word older than that which the
+model closed with a space, or followed with 1.5 s of silence, is committed
+once by position and never revisited. **Never cut the audio on an energy
+guess** — the first version did, and QSB fades read as key-up gaps, so the
+windows started mid-character and whole words came out wrong (2026-10-22).
+Both files are fetched lazily on the first DECODE press (~27 MB, cached by
+the browser). `tests/cw_decoder_sim.mjs` (via `tests/test_cw_decoder.py`)
+runs the real worker under node on synthesized CW at clean / -6 dB / -10 dB
+and checks the committed text; **ggmorse stays as the fallback engine** (`cw-decoder-worker-ggmorse.js`,
+a classic worker that upsamples the 3200 Hz tap to the 4000 Hz ggmorse needs):
+the page probes WebAssembly SIMD before downloading anything (ONNX Runtime
+ships SIMD builds only — Safari < 16.4, Firefox < 114, Chromium < 91 have
+none), falls back when the DeepCW worker fails or times out loading, and when
+`SLOW_TICKS` passes average more than `slowTickMs` (2.5 s; a Pi-class browser).
+`localStorage wfCwDecoder` = `deepcw` | `ggmorse` pins an engine
+(`CWDecoder.preferEngine()`); a GGMORSE tag on the text line says the fallback
+is in use. Server side, `/models/` and `/ort/` are the only resources not sent
+`no-store`: they carry a version+size ETag and answer 304 to `If-None-Match`
+(`serveStaticFile`), otherwise every CW page load would fetch 27 MB again.
+That is not enough on its own: Chrome keeps nothing in its HTTP cache for an
+origin whose certificate it was told to accept -- any wfweb server on its
+self-signed certificate re-downloaded all 27 MB on every DECODE press
+(2026-10-25). So the worker keeps both files in Cache Storage
+(`wfweb-cw-model`, `cachedFetch`) with the ETag they came with and asks with
+`If-None-Match` on each load: 304 = use the stored copy, 200 = replace it,
+unreachable server = the stored copy.
+`COMPARE_GGMORSE` in `cw-decoder.js` is off (91e673f7): set to true, it also
+runs ggmorse next to DeepCW and shows its copy on a second GGMORSE line for an
+on-air comparison. Run `tests/test_cw_decoder.py` after any change to the
+worker's streaming logic.
 
 Build mechanics:
 - **Server**: `web.qrc` aliases keep runtime URLs at `/web/...` regardless of
@@ -162,6 +195,72 @@ straight over the other (`vfoSnapshotHandoff` in `closeOtherModes`). The
 restore sends `setMode {value, filter}` as one command on purpose: a trailing
 `setFilter` rebuilds from the server's mode cache before the mode reply is
 back and would undo the mode. Packet and FreeDV do not use this.
+
+### Speech compressor: COMP controls and the digital-TX hold (#147)
+FUNC has a COMP tile (CI-V `16 44`, `setCompressor`, `compressor` in status /
+update, gated on `hasCompressor`) and GAIN a COMP row (`14 0E`,
+`setCompLevel`, `compLevel`, shown 0-10 like the radio, gated on
+`hasCompLevel`). wfweb's digital modes transmit in plain USB / LSB, where
+Icom keeps the voice COMP in the path (the older rigs force it off only in
+the SSB data modes, IC-7600/7100/9100/785x manuals; the IC-7300-generation
+manuals state no such rule, so even USB-D would not reliably take it out),
+so every key wfweb modulates itself is flagged
+`setPTT {value: true, digital: true}` (FT8/FT4, JS8, TUNE; FreeDV / RADE and
+packet are known to the backend) and the backend switches COMP off before
+the key and back on after the unkey: `holdCompressorForDigitalTx` /
+`releaseCompressorHold` on the server (every unkey site calls the release,
+including the vanished-client and shutdown paths), `_holdCompressor` /
+`_releaseCompressor` in `serial-transport.js` (`_restoreCompressorDirect`
+on close) and its mirror in `virtual-transport.js`. SSB only, never on an
+unread state, never switched on if it was off, and a `setCompressor` during
+the over wins. A new digital TX path must send `digital: true`.
+Tests: `tests/test_compressor.py` (server, IC-7300 mock) and
+`tests/comp_browser.mjs` (Standalone virtual rig).
+
+### Scope click-to-tune step
+A click, tap or drag on the scope lands on `scopeTuneStep()` (identical in
+both `index.html` forks, used by `scopeFreqFromClientX`, the drag path and
+`scopeFreqFromDragDeltaX`): 1 Hz in CW/CW-R, 100 Hz in every other mode. The
+backends pass Hz through untouched (CI-V `05` is 1 Hz). The live click path
+is the no-drag branch of `scopePointerEnd`; `scopeClick` is not wired. The
+scope message carries its edges as float32 MHz, about 1 Hz at 14 MHz but
+15 Hz at 144 MHz and 30 Hz at 432 MHz, which bounds a 1 Hz click up there.
+
+### Touch operating controls (#144)
+Phones and touch tablets only, gated on `(pointer: coarse)` in CSS and
+`touchUi` in JS; the desktop keeps five equal soft keys and hold-to-talk.
+Identical in both `index.html` forks (Web Serial has no mobile browser, but
+Windows touch tablets run Standalone and the phone-layout bench drives the
+Standalone virtual rig).
+- **Key lock** (`#uiLockBtn`, `body.ui-locked`, `localStorage wfUiLock`): the
+  HT-style lock in the scope's bottom-right corner. A tap locks, a ~0.8 s
+  hold unlocks (the ring fills). A capture-phase guard on `document` swallows
+  every pointer/touch/click/wheel outside `.ptt-btn`, the padlock, the
+  AUDIO/MIC overlay (PTT opens it when the mic is off) and the start /
+  power-off overlays, and nudges the padlock with a "hold to unlock" pill.
+  Locking closes the open panel. `resizeCanvases()` lifts the padlock above
+  the CW bar; the FT8/JS8/packet panels hide it while unlocked (`:has()`).
+- **PTT row**: in portrait `#bottomBar` wraps, the four soft keys on top and
+  PTT full-width underneath, 96 px tall and 16 px off the bottom edge (on
+  Android that edge is the navigation gesture and the safe-area inset is 0,
+  YO3GWM in #144); in landscape PTT is double width. Only where a
+  mic PTT means something (`pttApplicable()`): voice modes with no digital
+  panel open. CW keeps a plain KEY soft key; RTTY and the FT8/JS8/packet
+  panels get the four soft keys alone (a `MutationObserver` on `#scopeArea`
+  re-renders the bar as those panels open and close, and a latched TX is
+  released when its key goes away). The desktop keeps PTT in every mode.
+  The button carries a `.ptt-hint` sub-label and, latched, a `.ptt-timer`.
+- **PTT latch**: hold PTT, slide the finger `PTT_LATCH_SLIDE_PX` up into
+  `#pttLockCap` (a child of `#radio`, not of the bar, which
+  `renderBottomBar()` rebuilds mid-press) and release there. `pttLatched`
+  keeps the rig keyed; the button becomes "TX LOCKED · tap to stop". A tap
+  can never latch. Ends on a tap, Escape / space, `visibilitychange` hidden
+  or `pagehide` (immediate unkey, no 300 ms drain), the transport closing
+  (`dropPttLatch()`), or `PTT_LATCH_MAX_MS` (3 min, `.warn` pulse for the
+  last 15 s). Server side, `pttClient` remembers which browser keyed the
+  rig and `onWsDisconnected` unkeys it if that client vanishes
+  (`tests/test_ptt.py::test_ptt_released_when_keying_client_disconnects`,
+  needs the `websockets` pip package).
 
 ### Meter faces
 The top-bar meter (`#meterCanvas`) has two faces, picked in `drawMeter()`:
@@ -252,6 +351,23 @@ modeInfo.data = 0;
 // modeInfo.filter should default to 1 (FIL1)
 modeInfo.filter = 1;
 
+// A read never replaces a pending item of the same command: add() drops the
+// new read and the pending set or read keeps its place. queueItem equality
+// ignores the value, so addUnique(read) used to delete a queued set — the
+// 5 Hz status read of the PTT state ate keys (#147) — and moved a pending
+// read to the back of the line, so a value getCache() re-asked faster than
+// the backlog drained was never read (COMP on the macOS CI runner).
+
+// A read nobody answers is backed off like one the rig refuses: run() counts
+// a read sent again with neither a value nor an NG since its last ask as a
+// NAK (countUnanswered), three in a row and getCache() stops re-asking it for
+// CACHE_NAK_RETRY_SECS (+ a per-command spread, so the retries do not all
+// land on one status build). The test mocks ACK reads they do not implement — an
+// FB to a read is no answer — and without this the ~30 of them stayed queued
+// at immediate priority for the life of the server, putting every set 2 s
+// behind (6 s+ on the macOS runner). Not FA in the mock: five FAs in a row
+// read as "radio powered off" (consecutiveFAErrors) and polling stops.
+
 // EXCEPTION: funcMemoryContents is addressed by channel, so two of them are
 // never duplicates. Use add() — addUnique() compares command+receiver only
 // and would evict a queued read/write for a *different* channel (#108).
@@ -287,9 +403,12 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 | `resources/web-shared/needle-meter.js` | IC-7610-style needle meter face + needle ballistics; alternative to the tile-bar meter in `index.html` (both builds) |
 | `resources/web-shared/rx-jitter.js` | Adaptive RX jitter buffer (worklet + ScriptProcessor fallback, both builds); simulated by `tests/rx_jitter_sim.mjs` |
 | `resources/web-shared/cw-keyer.js` | CW keyer model: timing, pacing of the text to the rig's keyer, browser sidetone (both builds); `tests/cw_keyer_sim.mjs` under node, `tests/cw_bench.mjs` on the two-rig bench, both via `tests/test_cw_keyer.py` |
+| `resources/web-shared/cw-paddle.js` | Paddle / straight key as CW text entry: iambic A/B keyer, element decoder, adaptive straight-key decoder (both builds); `tests/cw_paddle_sim.mjs` |
+| `resources/web-shared/paddle-panel.js` | Paddle settings (keyer A/B, swap, `wfPaddleOpts`), USB keyboard paddle adapter (VBand: left / right Ctrl), the PADDLE window of the CW bar (both builds); `tests/paddle_input_sim.mjs` |
+| `resources/web-shared/midi.js` | Web MIDI controller: CTR2-MIDI presets, MIDI learn, knob-tick tuner, MIDI window body (both builds); `tests/midi_sim.mjs`, `tests/midi_browser.mjs` via `tests/test_midi.py` |
 | `resources/web-shared/js8-panel.mjs` | JS8 messenger panel — markup + state machine, QSO tabs, RX/TX, CMD palette (both builds) |
 | `resources/web-shared/js8.mjs` | JS8 WASM codec bridge — 8-FSK synth + encode/decode wrapper (both builds) |
-| `resources/web-shared/` | Files shared by both builds (CW decoder, ggmorse, sprites, models) |
+| `resources/web-shared/` | Files shared by both builds (CW decoder + DeepCW model + ORT, sprites, models) |
 | `resources/web.qrc` | Qt resource file for the server build |
 | `tools/build-static.sh` | Builds the Standalone static bundle into `dist/` |
 | `tools/serve-static.py` | Local HTTP server for `dist/` with `Cache-Control: no-store` |
@@ -300,7 +419,7 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 | `launcher/src/logparser.cpp` | Parses the server's `-l` log lines and classifies the ones the launcher reacts to (pure Qt5Core, unit-tested) |
 | `launcher/src/serverprocess.cpp` | QProcess wrapper: `q` on stdin to stop, Windows Job Object, no console window |
 | `tests/launcher_test.cpp` | Unit test for the two pure launcher helpers (`tests/test_cpp_units.py`, Linux CI) |
-| `tools/make-launcher-icon.py` | Regenerates `launcher/res/wfweb.{png,ico}` from `resources/web-standalone/favicon.svg` (resvg-py + Pillow; outputs are committed) |
+| `tools/make-launcher-icon.py` | Regenerates `launcher/res/wfweb.{png,ico}` from `resources/web-shared/favicon.svg` (resvg-py + Pillow; outputs are committed) |
 | `tools/build-rade-wasm.sh` / `tools/build-direwolf-wasm.sh` / `tools/build-js8-wasm.sh` | Emscripten rebuilds of the browser modems (only when their C/C++ source changes) |
 | `.github/workflows/pages.yml` | Publishes Standalone to wfweb.k1fm.us |
 | `resources/ft8ts/dist/ft8ts.mjs` | FT8/FT4 decoder module |
@@ -537,6 +656,25 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
   that follows a paddle and gives true full break-in, with TONE off. The
   browser tone never enters the RX chain, so the CW decoder and the recorder
   do not see it.
+- The tone's delay is the output device's (`baseLatency + outputLatency`):
+  ~30 ms on Mac speakers, ~170 ms on AirPods, where a paddle cannot be sent
+  by ear. An AudioContext keeps the latency of the device it opened on (168
+  ms after the AirPods, while a fresh one on the speakers had 32 ms), so a
+  change of output calls `cwSidetone.reset()`: a new context at once, which
+  measures itself (deferred while keying); TONE off / on rebuilds it too.
+  On a Mac the switch gives no `devicechange` and no device labels (no mic
+  permission); the RX context's `outputLatency` follows it (168 -> 40 ms), so
+  a jump of more than 20 ms there is the trigger, checked every second.
+  `onLatency` reports the delay once a context plays; above
+  `CW_TONE_SLOW_MS` (80) TONE turns amber (`.wf-btn.lag`) and says why.
+- BK-IN in the CW bar header (between LN and TONE) is the radio's break-in key,
+  CI-V `16 47` = `funcBreakIn`: OFF (the keyer sounds its sidetone, nothing is
+  transmitted) -> BKIN (semi) -> F-BKIN (full), labels as on the radio's
+  screen. `setBreakIn {value}`, `breakIn` in status / update, `hasBreakIn` in
+  rigInfo (rig-file "Break-In Status"; Standalone: `hasBreakIn` in
+  `civ/rig-caps.js`, read at connect and on the slow tick). The commander
+  refuses a value above the rig file's `Max`, so FULL needs `Max=2` there
+  (IC-7300 fixed in 2.12; several other Icom files still say 1).
 - Tests: `tests/cw_keyer_sim.mjs` (node, virtual clock, fake AudioContext)
   checks timing, pacing, Backspace, unknown characters and the sidetone;
   `tests/cw_bench.mjs` runs on the two-rig bench and measures the model
@@ -545,6 +683,77 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
   emulates a 30-byte keyer buffer (`civEmulator::keyerPending`) and NGs an
   overflowing frame, so type-ahead bugs fail there. Run both after any change
   to the module (`pytest tests/test_cw_keyer.py`).
+
+### MIDI controller and paddle (`midi.js`, `cw-paddle.js`)
+- Browser-only, both builds, no server command of its own: the controller
+  drives the actions each `index.html` registers (`midi.register(name,
+  {kind, fn})` — `rel` knob ticks, `abs` 0..1 levels, `btn`, `gate`), which
+  call the same functions as the page's own controls (`stepBand` /
+  `recallBand`, `setMode`, `setCwSpeedValue`, the GAIN sliders driven by an
+  `input` event, `setSpan`, `midiPtt` = the PTT button's path). FUNC > MIDI
+  opens `#midiOverlay`, whose body `WfMidiPanel` builds. The tile shows
+  only while a controller is plugged in (`midi.devices`, hot-plug
+  re-renders FUNC). `midi.watch()` at load sees one without switching MIDI
+  on, but only where `permissions.query({name: 'midi'})` is already
+  `granted` — Chrome prompts for any MIDI access, and a prompt at every
+  page load is worse than no tile. Until that first grant (and in Safari /
+  iOS, plain http) the window is reached from CW bar > PADDLE > MIDI...,
+  which also says why there is no MIDI. Off until switched on:
+  `localStorage wfMidiEnabled`, the map in `wfMidiMap`, knob options in
+  `wfMidiOpts`; switched off, MIDI still lists the controllers but acts on
+  no message.
+- The map is a table, `[{type: 'cc'|'note', num, enc, action}]`, with
+  CTR2-MIDI presets and MIDI learn. CTR2 (manual v2.01, channel 1): knob CC
+  100/101 Home turn / push-turn (WheelA, 64 ± ticks, speed-sensitive ±1/10/50),
+  102-107 the other knob modes (SliderA 0..127 by default); buttons NoteOn on
+  release, 1-6 short / 11-16 long; paddle jack 20/21, extended paddle mode
+  30/31 (straight key / PTT). **Extended BTN mode** puts buttons on 1-48 and
+  moves the jack to 96-99 — hence the second preset, not one fixed table.
+- Knob ticks go through `WfMidiTuner` (one `setFrequency` per 40 ms, each
+  step from the last frequency sent while the readback trails): never send
+  one `setFrequency` per tick from the page.
+- A gate (paddle, key, PTT) is released on unplug, on disable and on a preset
+  load, so a controller pulled mid-TX cannot leave the rig keyed.
+- **The paddle is text entry, not keying.** Icom CI-V has no element-level
+  key-down, so the iambic keyer in `cw-paddle.js` (mode A / B, swap) is heard
+  through `cwSidetone` at once, its elements are decoded (character after a
+  2-dot gap, word after 5; a pattern that is no character is sent as its
+  longest known head, one extra element dropped (`......` -> 5) and more
+  decoded as further characters (`..-.--` -> F M), so a slip never leaves
+  a hole) and
+  each character goes to `cwKeyer.sendText(ch, {tone: false})` — the CHR-mode path — so the rig's
+  keyer sends it, one character behind the fist. `tone: false` marks the
+  units `noTone` so the text path never tones them a second time. Paddle input
+  is ignored outside CW / CW-R; the first contact opens the CW bar.
+  The radio's own sidetone (in the RX audio over USB) therefore trails the
+  fist by a character (~0.9 s at 20 WPM on the bench): `WfCwRxMute` cuts the
+  RX playback gain (`setRxPaddleMute`, `rxPlaybackGain()`) on the first
+  element and restores it once the radio's keying (`cwKeyer` model end) plus
+  the jitter buffer and 300 ms have passed, so only the browser tone is heard. Timing
+  stays in `cw-paddle.js`, not in the pages (CW keyer rule).
+- **PADDLE window** (`paddle-panel.js`, button at the end of the CW bar's
+  CALL/QSO row; the CW header has no room left on a phone): the keyer
+  options (iambic A / B, swap -- they moved here from the MIDI window,
+  `wfMidiOpts` values carried over once into `wfPaddleOpts`) and the
+  paddle's adapter. FUNC > MIDI stays the MIDI controller (knob, buttons,
+  its paddle-jack notes). The **USB keyboard adapter** (VBand, Vail adapter
+  in keyboard mode) is a keyboard whose paddle contacts are the left and
+  right Ctrl keys (`KeyboardEvent.code` `ControlLeft` / `ControlRight`,
+  LEARN for others; straight-key mode uses the left one). Keyboard events
+  reach every browser, phones included, where Web MIDI does not. Opt-in
+  (USB KEYS), because those are ordinary Ctrl keys: `WfKeyboardPaddle`
+  listens on `window` in the capture phase, ignores key repeat, and while a
+  contact is down in CW holds every other key back (no Ctrl+letter shortcut
+  mid-character; the browser's own Ctrl+W / Ctrl+T on Windows and Linux
+  cannot be held back by a page); a lost focus releases what is held. Every
+  contact, MIDI or keyboard, goes through the page's `paddleContact()`, which
+  lights the window's CHECK lamps in any mode and keys only in CW / CW-R.
+- Tests: `tests/cw_paddle_sim.mjs` (decode at several speeds, A vs B squeeze,
+  swap, jittery straight key, sidetone on the paddle, rig text one character
+  behind), `tests/midi_sim.mjs` (encodings, presets, learn, hot-plug,
+  tuner), `tests/paddle_input_sim.mjs` (keyboard adapter, settings, a CQ on
+  the Ctrl keys), `tests/midi_browser.mjs` (Standalone on `?virtual=1` with a
+  fake `requestMIDIAccess` and real key events; never a real radio).
 
 ### Shared station callsign
 - One callsign in the gear dialog feeds CW, FT8/FT4, JS8, FreeDV Reporter, APRS, and

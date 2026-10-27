@@ -6,6 +6,92 @@ a built-in web interface. See https://gitlab.com/eliggett/wfview for the
 upstream wfview history.
 
 
+v0.9.4 (2026-10-26)
+--------------------
+
+CW decoder:
+- New decoder: DeepCW, a neural model (e04/deepcw-engine) run in the
+  browser. It decodes a 12 s window with context on both sides, so the
+  newest few seconds show dim and correct themselves, then each word is
+  committed once. On synthesized CW it stays exact down to -10 dB,
+  where the old decoder fails. The model and its runtime (~27 MB) load
+  on the first DECODE press and are kept by the browser, also on a
+  server with a self-signed certificate.
+- The old ggmorse decoder stays as the fallback: on browsers without
+  WebAssembly SIMD (Safari < 16.4, Firefox < 114), when the model fails
+  to load, or when the machine is too slow for it. A GGMORSE tag shows
+  when it is in use.
+
+CW keying:
+- Paddle input: a paddle or straight key is sent as text through the
+  rig's keyer (Icom CI-V has no key-down command). The browser tone
+  follows the fist at once, the decoded characters go to the radio one
+  character behind. Iambic A / B and swap, a straight key with an
+  adaptive speed; a slip goes out as its nearest character, and
+  characters run together are split instead of dropped. The radio's own
+  late sidetone in the RX audio is muted while the paddle sends.
+- New PADDLE window at the end of the CW bar's CALL/QSO row: keyer
+  options, the adapter, and CHECK lamps for each contact. A USB keyboard
+  paddle adapter (VBand, Vail adapter in keyboard mode: left and right
+  Ctrl) works in every browser, phones included (opt-in, USB KEYS).
+- New BK-IN button in the CW bar: OFF / BKIN / F-BKIN, the radio's
+  break-in key, following the radio. The IC-7300 rig file now allows
+  full break-in.
+- The browser tone follows a change of audio output (e.g. AirPods to
+  speakers) instead of keeping the old device's delay until a browser
+  restart. TONE turns amber when the output is too slow to send a
+  paddle by ear (Bluetooth headphones).
+- A click on the scope tunes to 1 Hz in CW (100 Hz in other modes), and
+  the arrow keys tune while the CW input has the focus.
+- The CW decoder's tone spectrogram is back on phones; hovering a CW
+  toggle no longer makes it look switched on.
+
+MIDI controller:
+- Web MIDI controller support (Chromium browsers; Firefox with a site
+  permission; not Safari), with presets for
+  the CTR2-MIDI (normal and Extended BTN) and MIDI learn: the knob
+  tunes, buttons drive band, mode, CW speed, gains, span, PTT, BK-IN,
+  and the controller's paddle jack keys CW. FUNC > MIDI shows while a
+  controller is plugged in; the first time, it is reached from the CW
+  bar's PADDLE > MIDI... A controller unplugged mid-over unkeys.
+
+Speech compressor (#147):
+- FUNC has a COMP tile and GAIN a COMP level row (0-10 as on the
+  radio); a COMP n tile on the spectrum shows while it is on.
+- wfweb switches COMP off for its own digital transmissions (FT8/FT4,
+  JS8, TUNE, FreeDV / RADE, packet) and back on after, in both builds.
+  These go out in plain USB / LSB, where the compressor stayed in the
+  path and distorted RADE and the FT8 tones. Only in SSB, never
+  switched on if it was off, and a COMP press during the over wins.
+- Server build: the first PTT key after connecting could be lost; the
+  periodic status read of a command deleted a pending set of it.
+
+rigctld (#147):
+- Frequency and mode reads answer the dial instead of 0 or the last
+  value set, PKTUSB selects USB-D, frequencies are printed as integer
+  Hz the way Hamlib does, and `q` is acknowledged. Pat (Winlink) and
+  WSJT-X now work through wfweb's rigctld.
+- get_clock and wait_morse no longer crash the server.
+
+Touch screens (#144, thanks YO3GWM):
+- Key lock: a padlock in the scope's corner locks every control but
+  PTT, like an HT. Tap to lock, hold to unlock.
+- In voice modes, PTT is a full-width row under the soft keys, 96 px
+  tall and clear of Android's navigation edge; double width in
+  landscape. Hold PTT and slide up into the lock to latch TX (tap to
+  stop, 3-minute limit). CW keeps a plain KEY key; RTTY and the
+  FT8 / JS8 / packet panels get the four soft keys.
+- Server build: if the browser that keyed the rig disconnects, the rig
+  is unkeyed.
+
+Web UI:
+- A SQL n% tile on the spectrum while squelch is above 0. (#146)
+
+Packaging:
+- The macOS and Windows zip names carry the version, like the
+  packages.
+
+
 v0.9.3 (2026-10-17)
 --------------------
 

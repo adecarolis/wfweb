@@ -87,7 +87,8 @@
     --field-text:      #cfc;
     --panel-bg:        #00140c;          /* panel frame: faint green on near-black */
 }
-.mode-digi {                            /* WSJT-X cyan/blue */
+.mode-digi,
+.mode-midi {                            /* WSJT-X cyan/blue; MIDI matches the .mem-modal shell */
     --mode-accent:     #08f;
     --mode-accent-dim: #048;
     --mode-accent-bg:  #001020;
@@ -144,7 +145,21 @@
         border-color: var(--mode-accent);
     }
 }
+/* A state button (.toggle: on/off or one-of-several, e.g. CW TONE, BK-IN,
+   CHR/WRD/LN) reads its state from the fill, so hovering must not fill it:
+   just after a click the pointer is still on it, and OFF looked lit. */
+@media (hover: hover) {
+    .wf-btn.toggle:hover:not(:disabled):not(.active) {
+        background: var(--mode-accent-bg);
+        color: var(--mode-accent);
+        border-color: var(--mode-accent);
+    }
+}
 .wf-btn:active:not(:disabled) { transform: translateY(1px); }
+/* A control whose output arrives too late to be useful (CW TONE on a
+   Bluetooth output): amber instead of the mode tint, lit when on. */
+.wf-btn.lag { border-color: var(--state-warn); color: var(--state-warn); }
+.wf-btn.lag.active { background: var(--state-warn); color: #000; border-color: var(--state-warn); }
 .wf-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
 /* Button variants (modifiers on .wf-btn) */
@@ -288,6 +303,31 @@
     border-top: 2px solid var(--mode-accent-dim);
     color: var(--field-text);
     font-family: var(--font-mono);
+}
+
+/* -- MIDI window ------------------------------------------------------------ *
+ * Body of the MIDI controller window (midi.js WfMidiPanel), inside the       *
+ * page's .mem-modal shell. Tinted by .mode-midi.                             */
+.midi-panel { display: flex; flex-direction: column; gap: var(--space-2); min-height: 0; font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--field-text); }
+.midi-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.midi-label { color: var(--mode-accent); font-weight: var(--fw-bold); font-size: var(--fs-xs); letter-spacing: 1px; }
+.midi-status { color: var(--text-dim); }
+.midi-status.ok { color: var(--state-ok); }
+.midi-unsupported { color: var(--state-warn); line-height: 1.4; }
+.midi-panel select.wf-field { font-size: var(--fs-sm); padding: 2px 4px; }
+.midi-map { overflow-y: auto; flex: 1 1 auto; min-height: 80px; max-height: 40vh; border-top: var(--border-w) solid var(--mode-accent-dim); }
+.midi-map-row { display: grid; grid-template-columns: minmax(0, 1fr) 7em 6em auto auto; align-items: center; gap: var(--space-1) var(--space-2); padding: 2px 0; border-bottom: var(--border-w) solid var(--border-col); }
+.midi-action { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.midi-binding { color: var(--text-dim); white-space: nowrap; }
+.midi-monitor { color: var(--text-faint); font-size: var(--fs-xs); }
+.midi-hint { color: var(--text-faint); font-size: var(--fs-xs); }
+.paddle-label { min-width: 5.5em; }
+.paddle-key { min-width: 7em; color: var(--field-text); }
+.paddle-lamp { padding: 2px 8px; border: var(--border-w) solid var(--mode-accent-dim); border-radius: var(--radius); color: var(--text-faint); }
+.paddle-lamp.on { background: var(--mode-accent); border-color: var(--mode-accent); color: var(--on-accent); }
+@media (max-width: 420px) {
+    .midi-map-row { grid-template-columns: minmax(0, 1fr) 6em auto auto; }
+    .midi-map-row .midi-enc { display: none; }
 }
 
 /* -- Recorder --------------------------------------------------------------- *

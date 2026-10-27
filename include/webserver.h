@@ -195,13 +195,14 @@ private slots:
 
 
 private:
-    void serveStaticFile(QTcpSocket *socket, const QString &path);
+    void serveStaticFile(QTcpSocket *socket, const QString &path, const QByteArray &headerSection);
     // Issue #69: the plain-HTTP REST port used to hand back the SPA for any
     // non-/api/v1 GET, which left a browser stuck retrying a WebSocket that
     // only exists on the HTTPS port.  Serve a human-readable signpost instead.
     void serveRestInfoPage(QTcpSocket *socket, const QByteArray &headerSection);
     void sendHttpResponse(QTcpSocket *socket, int statusCode, const QString &statusText,
-                         const QByteArray &contentType, const QByteArray &body);
+                          const QByteArray &contentType, const QByteArray &body,
+                          const QByteArray &extraHeaders = QByteArray());
     void handleRestRequest(QTcpSocket *socket, const QString &method,
                            const QString &path, const QUrlQuery &query,
                            const QByteArray &body);
@@ -396,7 +397,13 @@ private:
     // DATA MOD OFF auto-switch to USB when web mic is active
     rigInput savedDataOffMod;
     bool dataOffModSaved = false;
+    // Speech compressor taken out for wfweb's own digital TX (#147): the
+    // over runs in plain USB/LSB, where the rig keeps the voice COMP on.
+    // compRestoreOn = turn it back on when the over ends.
+    bool compHeld = false;
+    bool compRestoreOn = false;
     QWebSocket *micActiveClient = nullptr;
+    QWebSocket *pttClient = nullptr;   // browser that last keyed the rig; unkeyed if it vanishes (#144)
 
     // Browser-mic diagnostics.  A browser whose default input is the rig's
     // own USB codec streams the receiver audio back into the transmitter,
@@ -423,6 +430,8 @@ private:
     // enableMic step, so nothing else routes the modulator to the audio
     // transport — without it the radio keys a dead carrier (silent FM).
     void queuePacketModInput();
+    void holdCompressorForDigitalTx(const char *why);
+    void releaseCompressorHold();
     bool packetModInputLogged = false;
 
     // One-shot log guard for the LAN web-mic TX path (issue #72): logs once per

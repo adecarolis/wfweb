@@ -53,7 +53,7 @@ unit-tested by `tests/launcher_test.cpp` through `tests/test_cpp_units.py`.
 ## Icon
 
 `res/wfweb.png` and `res/wfweb.ico` are rendered from wfweb's favicon,
-`resources/web-standalone/favicon.svg`, by `tools/make-launcher-icon.py`
+`resources/web-shared/favicon.svg`, by `tools/make-launcher-icon.py`
 (needs resvg-py and Pillow). They are committed; rerun the script only when
 the favicon changes.
 After regenerating, delete `launcher/release/wfweb-launcher_resource.res`

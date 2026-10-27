@@ -24,13 +24,18 @@ enum queuePriority {
 
 inline QMap<QString,int> priorityMap = {{"None",0},{"Immediate",1},{"Highest",2},{"High",3},{"Medium High",5},{"Medium",7},{"Medium Low",11},{"Low",19},{"Lowest",23}};
 
-// A read the rig keeps refusing (Icom FA/NG) is backed off once it has failed
-// CACHE_NAK_LIMIT times in a row: getCache() stops refreshing it and the run
-// loop skips its recurring poll, each retrying once per CACHE_NAK_RETRY_SECS
-// so a read that starts working again (band or mode change) still recovers.
-// A valid reply clears the count.  Explicit one-shot requests are never held.
+// A read the rig keeps refusing (Icom FA/NG), or never answers at all
+// (countUnanswered), is backed off once it has failed CACHE_NAK_LIMIT times
+// in a row: getCache() stops refreshing it and the run loop skips its
+// recurring poll, each retrying once per CACHE_NAK_RETRY_SECS so a read that
+// starts working again (band or mode change) still recovers. The windows are
+// spread per command over CACHE_NAK_RETRY_SPREAD seconds: reads backed off
+// together would otherwise all retry on the same status build, a burst every
+// set behind it had to wait out. A valid reply clears the count. Explicit
+// one-shot requests are never held.
 #define CACHE_NAK_LIMIT 3
 #define CACHE_NAK_RETRY_SECS 30
+#define CACHE_NAK_RETRY_SPREAD 15
 
 // Command with no param is a get by default
 struct queueItem {
@@ -67,7 +72,8 @@ struct cacheItem {
     // True while a refused read is sitting out its retry window.
     bool backedOff() const {
         return nak >= CACHE_NAK_LIMIT && req.isValid()
-            && req.secsTo(QDateTime::currentDateTime()) < CACHE_NAK_RETRY_SECS;
+            && req.secsTo(QDateTime::currentDateTime())
+                < CACHE_NAK_RETRY_SECS + int(command) % CACHE_NAK_RETRY_SPREAD;
     }
     cacheItem &operator=(const cacheItem &i) {
         this->receiver=i.receiver;
@@ -156,6 +162,7 @@ public:
 
     cacheItem getCache(funcs func, uchar receiver=0);
     int receiveNak(funcs func, uchar receiver=0);
+    void countUnanswered(funcs func, uchar receiver); // a read going out; mutex held
 
     queuePriority getQueued(funcs func, uchar receiver=0);
 
@@ -169,6 +176,10 @@ public:
     rigCapabilities* getRigCaps() { return rigCaps; }
     vfoCommandType getVfoCommand(vfo_t vfo, uchar rx, bool set=false);
     rigStateType getState() { QMutexLocker locker(&mutex); return rigState ;}
+    // Operating freq / mode with the fallbacks memory mode needs (#138);
+    // shared by the web status and rigctld. Call without the mutex held.
+    cacheItem operatingFreqCache(const vfoCommandType &t);
+    cacheItem operatingModeCache(const vfoCommandType &t);
 };
 
 Q_DECLARE_METATYPE(queueItem)

@@ -143,6 +143,7 @@
         setRfPower:     0x0A,
         setMicGain:     0x0B,
         setMonitorGain: 0x15,
+        setCompLevel:   0x0E,  // speech compressor level (GAIN COMP row)
         setPBTInner:    0x07,
         setPBTOuter:    0x08,
         setCWSpeed:     0x0C,
@@ -155,6 +156,7 @@
         0x0A: 'rfPower',
         0x0B: 'micGain',
         0x15: 'monitorGain',  // 0x0F is Break-in delay, NOT monitor — common confusion
+        0x0E: 'compLevel',
         0x07: 'pbtInner',
         0x08: 'pbtOuter',
         0x0C: 'cwSpeed',
@@ -167,13 +169,16 @@
         setNoiseBlanker:   0x22,
         setNoiseReduction: 0x40,
         setMonitor:        0x45,
+        setCompressor:     0x44,  // speech compressor (FUNC COMP tile)
     };
     var BOOL_SUB_TO_FIELD = {
         0x41: 'autoNotch',
         0x22: 'nb',
         0x40: 'nr',
         0x45: 'monitor',
+        0x44: 'compressor',
         0x02: 'preamp',  // multi-state but reply still parses through here
+        0x47: 'breakIn', // CW break-in, multi-state: 0 OFF, 1 SEMI, 2 FULL
     };
 
     var HANDLED_CMDS = {
@@ -187,11 +192,11 @@
         enableMic: true, enableAudio: true,
         // Analog levels
         setAfGain: true, setRfGain: true, setRfPower: true, setSquelch: true,
-        setMicGain: true, setMonitorGain: true, setPBTInner: true,
+        setMicGain: true, setMonitorGain: true, setCompLevel: true, setPBTInner: true,
         setPBTOuter: true, setCWSpeed: true,
         // Bool toggles
         setAutoNotch: true, setNoiseBlanker: true, setNoiseReduction: true,
-        setMonitor: true, setPreamp: true, setAttenuator: true,
+        setMonitor: true, setCompressor: true, setPreamp: true, setAttenuator: true, setBreakIn: true,
         setAntenna: true,
         // VFO ops
         selectVFO: true, swapVFO: true, equalizeVFO: true, setSplit: true,
@@ -383,6 +388,12 @@
             this._savedDataOffMod = null;
             this._savedDataMod = null;
 
+            // Speech compressor taken out for wfweb's own digital overs
+            // (#147): they run in plain USB/LSB, where the rig keeps the
+            // voice COMP. _compRestoreOn = turn it back on when the over ends.
+            this._compHeld = false;
+            this._compRestoreOn = false;
+
             // Per-rig MOD INPUT command bytes + USB/MIC register values.
             // Filled in once we identify the rig (default = IC-7300 layout
             // until we have a CI-V address).
@@ -472,6 +483,7 @@
             // Put the rig's mod inputs back the way the user had them
             // before we drop the link (issue #79). The command queue is
             // about to be cleared, so the frames are written directly.
+            await this._restoreCompressorDirect();
             await this._restoreModInputsDirect();
             this._stopPolling();
             this._open = false;
@@ -523,6 +535,9 @@
 
             // Bool toggles — uniform 0x16 NN <0/1> shape.
             if (BOOL_SUB.hasOwnProperty(obj.cmd)) {
+                // The operator's word wins over a digital-TX hold: the end of
+                // the over must not put the old state back on top of it.
+                if (obj.cmd === 'setCompressor' && this._compHeld) this._compRestoreOn = false;
                 var bSub = BOOL_SUB[obj.cmd];
                 var bOn = !!obj.value;
                 var bField = BOOL_SUB_TO_FIELD[bSub];
@@ -625,6 +640,11 @@
                     // the request silently rather than NAK the bus.
                     if (!this._rigCanTransmit()) return;
                     var ptt = !!obj.value;
+                    // What wfweb modulates itself is a digital signal: the page
+                    // flags FT8/FT4, JS8 and TUNE, packet flags its own keys,
+                    // and RADE voice is a modem too. COMP goes out first.
+                    if (ptt && (obj.digital || (this._rade.enabled && this._rade.modem)))
+                        this._holdCompressor();
                     if (this._rade.enabled && this._rade.modem) {
                         // RADE intercept: on PTT-off, ship the EOO frame
                         // (carries the encoded callsign) before unkeying so
@@ -644,12 +664,21 @@
                     this.state.transmitting = ptt;
                     this._enqueue('setPTT', civ.cmdSetPTT(ptt));
                     this._emit('update', { transmitting: ptt });
+                    if (!ptt) this._releaseCompressor();
                     return;
                 case 'setPreamp':
                     var pre = (typeof obj.value === 'number') ? obj.value : 0;
                     this.state.preamp = pre;
                     this._enqueue('setPreamp', civ.cmdSetPreamp(pre));
                     this._emit('update', { preamp: pre });
+                    return;
+                case 'setBreakIn':
+                    // CW break-in, 0x16 0x47: same three-state shape as the preamp.
+                    if (!this._hasBreakIn) return;
+                    var bk = Math.max(0, Math.min(2, obj.value | 0));
+                    this.state.breakIn = bk;
+                    this._enqueue('setBreakIn', civ.cmdSetBreakIn(bk));
+                    this._emit('update', { breakIn: bk });
                     return;
                 case 'setAttenuator':
                     var att = (typeof obj.value === 'number') ? obj.value : 0;
@@ -1298,6 +1327,9 @@
                 && this._antennas.length > 0;
             this._hasDuplex = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasDuplex);
             this._hasTuner = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasTuner);
+            this._hasBreakIn = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasBreakIn);
+            this._hasCompressor = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasCompressor);
+            this._hasCompLevel = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasCompLevel);
             this._hasSpectrum = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasSpectrum);
             // Keyer speed span of 0x14 0x0C's 0..255 (6-48 WPM on most Icoms,
             // 6-60 on the IC-7600 family), from the rig file (#141).
@@ -1359,6 +1391,7 @@
             // rig's current values rather than zeros).
             for (var cmdName in ANALOG_SUB) {
                 if (cmdName === 'setCWSpeed') continue;  // CW speed is rare; skip
+                if (cmdName === 'setCompLevel' && !this._hasCompLevel) continue;
                 var sub = ANALOG_SUB[cmdName];
                 this._enqueue('read_' + cmdName, civ.cmdReadAnalogLevel(sub));
             }
@@ -1367,6 +1400,7 @@
 
             // Initial reads — bool toggles + multi-state preamp.
             for (var cmdName2 in BOOL_SUB) {
+                if (cmdName2 === 'setCompressor' && !this._hasCompressor) continue;
                 this._enqueue('read_' + cmdName2, civ.cmdReadBoolFunc(BOOL_SUB[cmdName2]));
             }
             this._enqueue('readPreamp',     civ.cmdReadBoolFunc(0x02));
@@ -1377,6 +1411,7 @@
             this._enqueue('readSplit',      civ.cmdReadSplit());
             if (this._hasDuplex) this._enqueue('readDuplexOffset', civ.cmdReadDuplexOffset());
             if (this._hasTuner) this._enqueue('readTuner', civ.cmdReadTuner());
+            if (this._hasBreakIn) this._enqueue('readBreakIn', civ.cmdReadBreakIn());
             this._enqueueToneReads();
             this._enqueue('readScopeSpan',  civ.cmdReadScopeSpan());
             // Mod inputs: read the user's current settings first (the
@@ -1772,7 +1807,7 @@
                 if (bReply) {
                     var bField = BOOL_SUB_TO_FIELD[bReply.sub];
                     if (bField) {
-                        var bVal = (bReply.sub === 0x02) ? bReply.value : !!bReply.value;
+                        var bVal = (bReply.sub === 0x02 || bReply.sub === 0x47) ? bReply.value : !!bReply.value;
                         if (this.state[bField] !== bVal) {
                             this.state[bField] = bVal;
                             var bu = {}; bu[bField] = bVal;
@@ -2619,6 +2654,9 @@
                 hasMainSub: caps.numReceivers > 1,
                 hasDuplex: !!caps.hasDuplex,
                 hasTuner: !!caps.hasTuner,
+                hasBreakIn: !!caps.hasBreakIn,
+                hasCompressor: !!caps.hasCompressor,
+                hasCompLevel: !!caps.hasCompLevel,
                 // Switchable second meter bar: one descriptor per reading this
                 // rig can actually produce, carrying the rig's own calibration
                 // table so the SPA can draw the matching face.
@@ -2699,7 +2737,8 @@
             // Pass through any cached values so the UI populates fully.
             var passthrough = ['afGain', 'rfGain', 'rfPower', 'squelch',
                 'micGain', 'monitorGain', 'pbtInner', 'pbtOuter', 'cwSpeed', 'cwPitch',
-                'autoNotch', 'nb', 'nr', 'preamp', 'attenuator',
+                'autoNotch', 'nb', 'nr', 'preamp', 'attenuator', 'breakIn',
+                'compressor', 'compLevel',
                 'antenna', 'rxAntenna',
                 'split', 'tuner', 'spanIndex', 'filterWidth', 'filterShape',
                 'duplex', 'duplexOffset'];
@@ -2751,6 +2790,11 @@
                 // panel — re-read on the same slow tick.
                 if ((this._tonePollTick = (this._tonePollTick || 0) + 1) % 5 === 0) {
                     this._enqueueToneReads();
+                    // BK-IN is a front-panel key too: keep the CW bar's button honest.
+                    if (this._hasBreakIn) this._enqueue('readBreakIn', civ.cmdReadBreakIn());
+                    // So is COMP; skipped while transmitting, when wfweb may hold it.
+                    if (this._hasCompressor && !this.state.transmitting)
+                        this._enqueue('read_setCompressor', civ.cmdReadBoolFunc(0x44));
                 }
             }, 1000);
             // Slow refresh of the unselected/Sub VFO so dial motion on the
@@ -3234,7 +3278,7 @@
                 // Now key the rig. Route through sendCommand so
                 // state.transmitting flips and the SPA's PTT indicator
                 // lights up — same path FT8 / voice use.
-                this.sendCommand({ cmd: 'setPTT', value: true });
+                this.sendCommand({ cmd: 'setPTT', value: true, digital: true });
 
                 // Push the rest of the audio.
                 while (off < audio.length) {
@@ -3511,7 +3555,7 @@
                     this._packetSendChunk(audio, off, n, seq++);
                     off += n;
                 }
-                this.sendCommand({ cmd: 'setPTT', value: true });
+                this.sendCommand({ cmd: 'setPTT', value: true, digital: true });
                 while (off < audio.length) {
                     var rest = Math.min(CHUNK, audio.length - off);
                     this._packetSendChunk(audio, off, rest, seq++);
@@ -3625,6 +3669,7 @@
                 this._enqueue('setPTT', civ.cmdSetPTT(false));
                 this._emit('update', { transmitting: false });
                 this._rade.txActive = false;
+                this._releaseCompressor();
                 return;
             }
             this._rade.txActive = false;
@@ -3648,7 +3693,53 @@
                 self.state.transmitting = false;
                 self._enqueue('setPTT', civ.cmdSetPTT(false));
                 self._emit('update', { transmitting: false });
+                self._releaseCompressor();
             }, 300);
+        }
+
+        // wfweb's digital modes transmit in plain USB / LSB, where the rig
+        // keeps the operator's voice processing, so a COMP left on for voice
+        // stays in the path: it distorts RADE's OFDM and shifts the level of
+        // an FT8 tone. Older Icoms force it OFF in the SSB data modes; the
+        // IC-7300 generation does not say so. Off for the over, back on
+        // after it (#147).
+        // SSB only, and never on a guess: an unread state is left alone.
+        _holdCompressor() {
+            if (this._compHeld || !this._hasCompressor) return;
+            if (this.state.mode !== 'USB' && this.state.mode !== 'LSB') return;
+            if (this.state.compressor === undefined || this.state.compressor === null) return;
+            this._compHeld = true;
+            this._compRestoreOn = !!this.state.compressor;
+            if (this._compRestoreOn) {
+                this.state.compressor = false;
+                this._enqueue('setCompressor', civ.cmdSetBoolFunc(0x44, false));
+                this._emit('update', { compressor: false });
+            }
+        }
+
+        // Called after the unkey is queued, so COMP returns on receive.
+        _releaseCompressor() {
+            if (!this._compHeld) return;
+            this._compHeld = false;
+            if (this._compRestoreOn) {
+                this.state.compressor = true;
+                this._enqueue('setCompressor', civ.cmdSetBoolFunc(0x44, true));
+                this._emit('update', { compressor: true });
+            }
+            this._compRestoreOn = false;
+        }
+
+        // close(): the queue is about to be dropped, so write it directly.
+        async _restoreCompressorDirect() {
+            var on = this._compHeld && this._compRestoreOn;
+            this._compHeld = false;
+            this._compRestoreOn = false;
+            if (!on || !this.writer) return;
+            try {
+                var frame = civ.buildFrame(this.civAddr, this.controllerAddr,
+                    civ.cmdSetBoolFunc(0x44, true));
+                await withDeadline(this.writer.write(frame), 1000, 'Compressor restore write');
+            } catch (e) { /* best effort — the link may already be gone */ }
         }
     }
 

@@ -147,6 +147,9 @@ webServer::webServer(QObject *parent) :
 webServer::~webServer()
 {
     wsjtxSendClose();
+    // A digital over cut short by the shutdown: put the compressor back.
+    // Same dispatch-before-close guarantee as the DATA MOD OFF restore below.
+    releaseCompressorHold();
     // Restore DATA MOD OFF setting if mic was active.  ~servermain() waits
     // for the queue to dispatch this before it closes the rig port.
     if (dataOffModSaved && queue) {
@@ -539,6 +542,11 @@ void webServer::receiveRigCaps(rigCapabilities *caps)
         // something to tune, so the TUNE tile and the FUNC TUNER button
         // follow that capability instead of appearing on every rig.
         obj["hasTuner"] = rigCaps->commands.contains(funcTunerStatus);
+        // CW break-in (OFF / SEMI / FULL): the BK-IN button in the CW bar.
+        obj["hasBreakIn"] = rigCaps->commands.contains(funcBreakIn);
+        // Speech compressor: the FUNC COMP tile and the GAIN COMP level row.
+        obj["hasCompressor"] = rigCaps->commands.contains(funcCompressor);
+        obj["hasCompLevel"] = rigCaps->commands.contains(funcCompressorLevel);
         obj["hasPowerControl"] = rigCaps->commands.contains(funcPowerControl);
         obj["powerOnNeedsRemoteJack"] = powerOnNeedsRemoteJack(rigCaps);
         addToneCaps(obj);
@@ -791,7 +799,7 @@ void webServer::onHttpReadyRead()
         path = "/index.html";
     }
 
-    serveStaticFile(socket, path);
+    serveStaticFile(socket, path, headerSection);
 }
 
 void webServer::onHttpDisconnected()
@@ -803,7 +811,7 @@ void webServer::onHttpDisconnected()
     }
 }
 
-void webServer::serveStaticFile(QTcpSocket *socket, const QString &path)
+void webServer::serveStaticFile(QTcpSocket *socket, const QString &path, const QByteArray &headerSection)
 {
     // Serve from Qt resource system
     QString resourcePath = ":/web" + path;
@@ -812,6 +820,30 @@ void webServer::serveStaticFile(QTcpSocket *socket, const QString &path)
     if (!file.exists() || !file.open(QIODevice::ReadOnly)) {
         sendHttpResponse(socket, 404, "Not Found", "text/plain", "Not Found");
         return;
+    }
+
+    // The CW decoder's model and ONNX runtime (~27 MB together) only change
+    // with a release, and the decoder fetches them on every page that opens
+    // in CW.  Every other resource goes out no-store (see sendHttpResponse);
+    // these two directories get a version+size ETag and "no-cache", which
+    // lets the browser keep the bytes and revalidate with one small round
+    // trip, answered 304 here.
+    const bool revalidable = path.startsWith("/models/") || path.startsWith("/ort/");
+    QByteArray extraHeaders;
+    if (revalidable) {
+        const QByteArray etag = "\"" WFWEB_VERSION "-" + QByteArray::number(file.size()) + "\"";
+        extraHeaders = "ETag: " + etag + "\r\nCache-Control: no-cache\r\n";
+        const QByteArray lower = headerSection.toLower();
+        const int inm = lower.indexOf("if-none-match:");
+        if (inm >= 0) {
+            const int end = lower.indexOf("\r\n", inm);
+            const QByteArray given = headerSection.mid(inm + 14, (end >= 0 ? end : headerSection.size()) - inm - 14).trimmed();
+            if (given == etag || given == "*") {
+                file.close();
+                sendHttpResponse(socket, 304, "Not Modified", "application/octet-stream", QByteArray(), extraHeaders);
+                return;
+            }
+        }
     }
 
     QByteArray body = file.readAll();
@@ -829,8 +861,9 @@ void webServer::serveStaticFile(QTcpSocket *socket, const QString &path)
     else if (path.endsWith(".ico")) contentType = "image/x-icon";
     else if (path.endsWith(".wasm")) contentType = "application/wasm"; // required for WebAssembly streaming compile
     else if (path.endsWith(".onnx")) contentType = "application/octet-stream";
+    else if (path.endsWith("LICENSE")) contentType = "text/plain; charset=utf-8";
 
-    sendHttpResponse(socket, 200, "OK", contentType, body);
+    sendHttpResponse(socket, 200, "OK", contentType, body, extraHeaders);
 }
 
 void webServer::serveRestInfoPage(QTcpSocket *socket, const QByteArray &headerSection)
@@ -888,7 +921,8 @@ void webServer::serveRestInfoPage(QTcpSocket *socket, const QByteArray &headerSe
 }
 
 void webServer::sendHttpResponse(QTcpSocket *socket, int statusCode, const QString &statusText,
-                                  const QByteArray &contentType, const QByteArray &body)
+                                  const QByteArray &contentType, const QByteArray &body,
+                                  const QByteArray &extraHeaders)
 {
     QByteArray response;
     response.append(QString("HTTP/1.1 %1 %2\r\n").arg(statusCode).arg(statusText).toUtf8());
@@ -900,9 +934,14 @@ void webServer::sendHttpResponse(QTcpSocket *socket, int statusCode, const QStri
     response.append("Access-Control-Allow-Origin: *\r\n");
     // The resources are embedded in the binary and change every build;
     // there's no CDN in front.  Tell browsers not to cache so a wfweb
-    // rebuild never serves stale JS/CSS to a reloaded page.
-    response.append("Cache-Control: no-store, no-cache, must-revalidate\r\n");
-    response.append("Pragma: no-cache\r\n");
+    // rebuild never serves stale JS/CSS to a reloaded page.  A caller that
+    // supplies its own Cache-Control (serveStaticFile, for the CW model and
+    // runtime) replaces this block.
+    if (!extraHeaders.contains("Cache-Control:")) {
+        response.append("Cache-Control: no-store, no-cache, must-revalidate\r\n");
+        response.append("Pragma: no-cache\r\n");
+    }
+    response.append(extraHeaders);
     response.append("\r\n");
     response.append(body);
 
@@ -1770,6 +1809,18 @@ void webServer::onWsDisconnected()
     QWebSocket *pClient = qobject_cast<QWebSocket *>(sender());
     if (pClient) {
         qInfo() << "Web client disconnected:" << pClient->peerAddress().toString();
+        // A browser that keyed the rig and vanished (phone lost the network,
+        // tab killed) must not leave it transmitting until the rig's own
+        // time-out timer, if any, fires.
+        if (pClient == pttClient) {
+            pttClient = nullptr;
+            if (queue) {
+                queue->add(priorityImmediate, queueItem(funcTransceiverStatus, QVariant::fromValue<bool>(false), false, uchar(0)));
+                queue->del(funcALCMeter, 0);
+                releaseCompressorHold();
+            }
+            qInfo() << "Web: PTT released (keying client disconnected)";
+        }
         if (pClient == micActiveClient) {
             micStatsLog("client disconnected");
             micDeviceLabel.clear();
@@ -2212,6 +2263,11 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
     }
     else if (type == "setPTT") {
         bool on = cmd["value"].toBool();
+        // What wfweb modulates itself is a digital signal: the page flags
+        // FT8/FT4, JS8 and TUNE, and FreeDV / RADE voice is a modem too.
+        // The compressor goes out before the key, in queue order.
+        if (on && (cmd["digital"].toBool() || freedvEnabled))
+            holdCompressorForDigitalTx(freedvEnabled ? "FreeDV/RADE" : "digital");
         // On PTT-off with RADE: synthesise an EOO frame carrying the callsign
         // and delay the radio unkey so the OFDM frame plays out before the
         // radio stops transmitting. RadeProcessor::sendEoo() emits txReady;
@@ -2225,11 +2281,17 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             QTimer::singleShot(300, this, [this]() {
                 queue->add(priorityImmediate, queueItem(funcTransceiverStatus, QVariant::fromValue<bool>(false), false, uchar(0)));
                 queue->del(funcALCMeter, 0);
+                releaseCompressorHold();
                 qInfo() << "Web: RADE delayed unkey sent";
             });
             return;
         }
         queue->add(priorityImmediate, queueItem(funcTransceiverStatus, QVariant::fromValue<bool>(on), false, uchar(0)));
+        if (!on) releaseCompressorHold();
+        // Remember who keyed the rig so onWsDisconnected can unkey it if that
+        // browser drops mid-over (a latched touch PTT can hold an over for
+        // minutes, #144). nullptr for rigctld, which has its own lifetime.
+        pttClient = on ? client : nullptr;
         // Start/stop ALC meter polling for web clients
         if (on) {
             queue->addUnique(priorityHighest, queueItem(funcALCMeter, true, 0));
@@ -2280,6 +2342,15 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             if (queue) queue->add(priorityImmediate, funcNoiseBlanker, false, 0);
         });
     }
+    else if (type == "setBreakIn") {
+        // 0 = OFF, 1 = SEMI, 2 = FULL break-in; read back so the CW bar's
+        // BK-IN button shows what the rig took.
+        uchar val = static_cast<uchar>(qBound(0, cmd["value"].toInt(), 2));
+        queue->addUnique(priorityImmediate, queueItem(funcBreakIn, QVariant::fromValue<uchar>(val), false, 0));
+        QTimer::singleShot(200, this, [this]() {
+            if (queue) queue->add(priorityImmediate, funcBreakIn, false, 0);
+        });
+    }
     else if (type == "setNoiseReduction") {
         bool on = cmd["value"].toBool();
         queue->addUnique(priorityImmediate, queueItem(funcNoiseReduction, QVariant::fromValue<uchar>(on ? 1 : 0), false, 0));
@@ -2293,7 +2364,14 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
     }
     else if (type == "setCompressor") {
         bool on = cmd["value"].toBool();
+        // The operator's word wins over a digital-TX hold: the end of the
+        // over must not put the old state back on top of it.
+        if (compHeld) compRestoreOn = false;
         queue->add(priorityImmediate, queueItem(funcCompressor, QVariant::fromValue<uchar>(on ? 1 : 0), false, 0));
+    }
+    else if (type == "setCompLevel") {
+        ushort val = static_cast<ushort>(qBound(0, cmd["value"].toInt(), 255));
+        queue->addUnique(priorityImmediate, queueItem(funcCompressorLevel, QVariant::fromValue<ushort>(val), false, 0));
     }
     else if (type == "setMonitor") {
         bool on = cmd["value"].toBool();
@@ -3657,6 +3735,9 @@ QJsonObject webServer::buildInfoJson() const
         // The IC-705 declares it for the optional AH-705 and refuses the
         // status read without one — tunerRejected tracks that.
         info["hasTuner"] = rigCaps->commands.contains(funcTunerStatus) && !tunerRejected;
+        info["hasBreakIn"] = rigCaps->commands.contains(funcBreakIn);
+        info["hasCompressor"] = rigCaps->commands.contains(funcCompressor);
+        info["hasCompLevel"] = rigCaps->commands.contains(funcCompressorLevel);
         addToneCaps(info);
         addBandCaps(info);
         addTxMeterCaps(info);
@@ -3793,35 +3874,16 @@ void webServer::sendCurrentState(QWebSocket *client)
     }
 }
 
-// The frequency / mode the rig is operating with. getVfoCommand() names the
-// per-VFO cache (funcSelectedFreq / funcSelectedMode on an A/B rig); in
-// memory mode it names the plain 03 / 04 reads instead, and the Icom
-// commander files those replies under the Selected funcs too, so the named
-// cache never fills there while the periodic 25 00 / 26 00 poll keeps the
-// Selected one live with the recalled channel (IC-7300, measured). Anything
-// that only looked at the named cache saw nothing in memory mode: setFilter
-// silently did nothing (#138) and the status went out with null freq/mode.
-// Only funcs the rig has are consulted: getCache() re-requests an empty slot.
+// Operating freq / mode with the memory-mode fallbacks (#138); the chain
+// lives in cachingQueue so rigctld reads the same values as the web status.
 cacheItem webServer::operatingFreqCache(const vfoCommandType &t)
 {
-    if (!queue || !rigCaps || t.freqFunc == funcNone) return cacheItem();
-    cacheItem c = queue->getCache(t.freqFunc, t.receiver);
-    if (!c.value.isValid() && rigCaps->commands.contains(funcSelectedFreq))
-        c = queue->getCache(funcSelectedFreq, 0);
-    if (!c.value.isValid() && rigCaps->commands.contains(funcFreq))
-        c = queue->getCache(funcFreq, t.receiver);
-    return c;
+    return queue ? queue->operatingFreqCache(t) : cacheItem();
 }
 
 cacheItem webServer::operatingModeCache(const vfoCommandType &t)
 {
-    if (!queue || !rigCaps || t.modeFunc == funcNone) return cacheItem();
-    cacheItem c = queue->getCache(t.modeFunc, t.receiver);
-    if (!c.value.isValid() && rigCaps->commands.contains(funcSelectedMode))
-        c = queue->getCache(funcSelectedMode, 0);
-    if (!c.value.isValid() && rigCaps->commands.contains(funcMode))
-        c = queue->getCache(funcMode, t.receiver);
-    return c;
+    return queue ? queue->operatingModeCache(t) : cacheItem();
 }
 
 QJsonObject webServer::buildStatusJson()
@@ -4028,6 +4090,17 @@ QJsonObject webServer::buildStatusJson()
     cacheItem monGain = queue->getCache(funcMonitorGain, 0);
     if (monGain.value.isValid()) status["monitorGain"] = monGain.value.toInt();
 
+    // Speech compressor (FUNC COMP tile) and its level (GAIN COMP row).
+    // Only asked on rigs that have them: getCache() re-requests a miss.
+    if (rigCaps && rigCaps->commands.contains(funcCompressor)) {
+        cacheItem comp = queue->getCache(funcCompressor, 0);
+        if (comp.value.isValid()) status["compressor"] = comp.value.toBool();
+    }
+    if (rigCaps && rigCaps->commands.contains(funcCompressorLevel)) {
+        cacheItem compLevel = queue->getCache(funcCompressorLevel, 0);
+        if (compLevel.value.isValid()) status["compLevel"] = compLevel.value.toInt();
+    }
+
     // Tuner (0=off, 1=on, 2=tuning)
     cacheItem tuner = queue->getCache(funcTunerStatus, 0);
     if (tuner.value.isValid()) status["tuner"] = tuner.value.toInt();
@@ -4051,6 +4124,13 @@ QJsonObject webServer::buildStatusJson()
     // Noise Blanker
     cacheItem nb = queue->getCache(funcNoiseBlanker, 0);
     if (nb.value.isValid()) status["nb"] = nb.value.toBool();
+
+    // CW break-in: 0 = OFF, 1 = SEMI, 2 = FULL. Only asked of rigs that have
+    // it, since getCache() requests a missing value from the rig.
+    if (rigCaps && rigCaps->commands.contains(funcBreakIn)) {
+        cacheItem bk = queue->getCache(funcBreakIn, 0);
+        if (bk.value.isValid()) status["breakIn"] = bk.value.toInt();
+    }
 
     // Noise Reduction
     cacheItem nr = queue->getCache(funcNoiseReduction, 0);
@@ -4325,6 +4405,12 @@ void webServer::receiveCache(cacheItem item)
     case funcMonitorGain:
         update["monitorGain"] = item.value.toInt();
         break;
+    case funcCompressor:
+        update["compressor"] = item.value.toBool();
+        break;
+    case funcCompressorLevel:
+        update["compLevel"] = item.value.toInt();
+        break;
     case funcSplitStatus:
         update["split"] = item.value.toBool();
         break;
@@ -4377,6 +4463,9 @@ void webServer::receiveCache(cacheItem item)
         break;
     case funcNoiseBlanker:
         update["nb"] = item.value.toBool();
+        break;
+    case funcBreakIn:
+        update["breakIn"] = item.value.toInt();   // 0 = OFF, 1 = SEMI, 2 = FULL
         break;
     case funcNoiseReduction:
         update["nr"] = item.value.toBool();
@@ -6118,6 +6207,7 @@ bool webServer::pickDataModInput(rigInput &out) const
 // AFSK arrives over LAN, transmitting a dead carrier.
 void webServer::queuePacketModInput()
 {
+    holdCompressorForDigitalTx("packet");
     rigInput modInput;
     if (!queue || !pickDataModInput(modInput)) return;
     queue->addUnique(priorityImmediate,
@@ -6127,6 +6217,49 @@ void webServer::queuePacketModInput()
         packetModInputLogged = true;
         qInfo() << "Web: Set DATA MOD OFF to" << modInput.name << "for packet TX";
     }
+}
+
+// wfweb's digital modes transmit in plain USB / LSB, where the rig keeps the
+// operator's voice processing, so a COMP left on for voice stays in the path:
+// it distorts RADE's OFDM and shifts the level of an FT8 tone. The older
+// Icoms force it OFF only in the SSB data modes (IC-7600, IC-7100, IC-9100,
+// IC-785x manuals); the IC-7300-generation manuals state no such rule and
+// list COMP as a data-mode preset item. Off for the over, back on after it
+// (#147).
+// SSB only: COMP does nothing in the other modes.
+void webServer::holdCompressorForDigitalTx(const char *why)
+{
+    if (compHeld || !queue || !rigCaps || !rigCaps->commands.contains(funcCompressor))
+        return;
+    cacheItem mode = operatingModeCache(queue->getVfoCommand(vfoA, 0, false));
+    rigMode_t mk = mode.value.isValid() ? mode.value.value<modeInfo>().mk : modeUnknown;
+    if (mk != modeUSB && mk != modeLSB)
+        return;
+    cacheItem comp = queue->getCache(funcCompressor, 0);
+    if (!comp.value.isValid()) {
+        // Not read yet (getCache() has just asked): leave it alone rather
+        // than guess; a guess could leave the operator's COMP off for good.
+        qInfo() << "Web: compressor state unknown, left as is for" << why << "TX";
+        return;
+    }
+    compHeld = true;
+    compRestoreOn = comp.value.toBool();
+    if (compRestoreOn) {
+        queue->addUnique(priorityImmediate, queueItem(funcCompressor, QVariant::fromValue<uchar>(0), false, 0));
+        qInfo() << "Web: speech compressor OFF for" << why << "TX";
+    }
+}
+
+// Queued after the unkey, so the rig is back on receive when COMP returns.
+void webServer::releaseCompressorHold()
+{
+    if (!compHeld) return;
+    compHeld = false;
+    if (compRestoreOn && queue) {
+        queue->addUnique(priorityImmediate, queueItem(funcCompressor, QVariant::fromValue<uchar>(1), false, 0));
+        qInfo() << "Web: speech compressor restored ON";
+    }
+    compRestoreOn = false;
 }
 
 // Beacon TX: AprsProcessor asked us to transmit a UI frame.  Mirror the
@@ -6255,6 +6388,7 @@ void webServer::onPacketTxReady(audioPacket audio)
                        queueItem(funcTransceiverStatus,
                                  QVariant::fromValue<bool>(false), false, uchar(0)));
             queue->del(funcALCMeter, 0);
+            releaseCompressorHold();
         }
     };
 
@@ -6416,6 +6550,7 @@ void webServer::onPacketTxFailed(QString reason)
                    queueItem(funcTransceiverStatus,
                              QVariant::fromValue<bool>(false), false, uchar(0)));
         queue->del(funcALCMeter, 0);
+        releaseCompressorHold();
     }
     QJsonObject notify;
     notify["type"] = "packetTxFailed";
@@ -6441,6 +6576,7 @@ void webServer::drainPacketLanTxBuffer()
                            queueItem(funcTransceiverStatus,
                                      QVariant::fromValue<bool>(false), false, uchar(0)));
                 queue->del(funcALCMeter, 0);
+                releaseCompressorHold();
             }
             QJsonObject notify;
             notify["type"] = "packetTxComplete";
@@ -6569,6 +6705,7 @@ void webServer::onUsbAudioOutputStateChanged(QAudio::State state)
                        queueItem(funcTransceiverStatus,
                                  QVariant::fromValue<bool>(false), false, uchar(0)));
             queue->del(funcALCMeter, 0);
+            releaseCompressorHold();
         }
         QJsonObject notify;
         notify["type"] = "packetTxComplete";

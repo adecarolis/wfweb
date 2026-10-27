@@ -1,7 +1,7 @@
 <RCC>
     <qresource prefix="/web">
         <file alias="index.html">web/index.html</file>
-        <file alias="debug.html">web/debug.html</file>
+        <file alias="favicon.svg">web-shared/favicon.svg</file>
         <file alias="packet.js">web-shared/packet.js</file>
         <file alias="transport/rig-transport.js">web-shared/transport/rig-transport.js</file>
         <file alias="transport/websocket-transport.js">web/transport/websocket-transport.js</file>
@@ -10,10 +10,16 @@
         <file alias="ctcss.js">web-shared/ctcss.js</file>
         <file alias="dxcc.js">web-shared/dxcc.js</file>
         <file alias="cw-decoder-worker.js">web-shared/cw-decoder-worker.js</file>
+        <file alias="cw-decoder-worker-ggmorse.js">web-shared/cw-decoder-worker-ggmorse.js</file>
+        <file alias="ggmorse-wasm.js">web-shared/ggmorse-wasm.js</file>
         <file alias="cw-decoder-stft.js">web-shared/cw-decoder-stft.js</file>
         <file alias="cw-decoder-utils.js">web-shared/cw-decoder-utils.js</file>
-        <file alias="model.onnx">web-shared/models/model.onnx</file>
-        <file alias="ggmorse-wasm.js">web-shared/ggmorse-wasm.js</file>
+        <file alias="models/deepcw.onnx">web-shared/models/deepcw.onnx</file>
+        <file alias="models/deepcw.onnx.json">web-shared/models/deepcw.onnx.json</file>
+        <file alias="models/deepcw-LICENSE">web-shared/models/deepcw-LICENSE</file>
+        <file alias="ort/ort.wasm.min.mjs">web-shared/ort/ort.wasm.min.mjs</file>
+        <file alias="ort/ort-wasm-simd-threaded.mjs">web-shared/ort/ort-wasm-simd-threaded.mjs</file>
+        <file alias="ort/ort-wasm-simd-threaded.wasm">web-shared/ort/ort-wasm-simd-threaded.wasm</file>
         <file alias="reporters.js">web-shared/reporters.js</file>
         <file alias="urltune.js">web-shared/urltune.js</file>
         <file alias="wf-canvas.js">web-shared/wf-canvas.js</file>
@@ -21,6 +27,9 @@
         <file alias="recorder.js">web-shared/recorder.js</file>
         <file alias="rx-jitter.js">web-shared/rx-jitter.js</file>
         <file alias="cw-keyer.js">web-shared/cw-keyer.js</file>
+        <file alias="cw-paddle.js">web-shared/cw-paddle.js</file>
+        <file alias="midi.js">web-shared/midi.js</file>
+        <file alias="paddle-panel.js">web-shared/paddle-panel.js</file>
         <file alias="lamejs/lame.min.js">web-shared/lamejs/lame.min.js</file>
         <file alias="theme.css">web-shared/theme.css</file>
         <file alias="js8-panel.css">web-shared/js8-panel.css</file>

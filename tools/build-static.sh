@@ -2,7 +2,7 @@
 # Build wfweb Standalone — the static, browser-only build of the wfweb
 # frontend. The output is a directory containing index.html, the
 # transport / CI-V JS modules, the FT8/FT4 module, and the client-side
-# helpers (CW decoder, ggmorse-wasm, packet UI). It runs without the
+# helpers (CW decoder + DeepCW model + ONNX Runtime, packet UI). It runs without the
 # wfweb Server binary — host it on any HTTPS static host (GitHub Pages,
 # Netlify, …) or serve locally with `python3 -m http.server` (localhost
 # is treated as a secure context for Web Serial).
@@ -38,21 +38,26 @@ mkdir -p "$DIST/transport" "$DIST/civ" "$DIST/models" "$DIST/digits" "$DIST/wasm
 
 # Standalone-only files (index + serial transport + CI-V).
 cp "$SRC/index.html"     "$DIST/"
-cp "$SRC/favicon.svg"    "$DIST/"
 cp "$SRC"/transport/*.js "$DIST/transport/"
 cp "$SRC"/civ/*.js       "$DIST/civ/"
 
-# Shared assets (CW decoder family, ggmorse, sprites, models, packet UI,
+# Shared assets (CW decoder family, sprites, models, packet UI,
 # rig-transport base class).
-cp "$SHARED/digits-sprite.png" "$DIST/"
+cp "$SHARED/digits-sprite.png" "$SHARED/favicon.svg" "$DIST/"
 for f in cw-decoder.js cw-decoder-stft.js cw-decoder-utils.js cw-decoder-worker.js \
-         ggmorse-wasm.js packet.js reporters.js airbus.js wf-canvas.js urltune.js \
+         cw-decoder-worker-ggmorse.js ggmorse-wasm.js packet.js reporters.js airbus.js wf-canvas.js urltune.js \
          ctcss.js dxcc.js recorder.js needle-meter.js rx-jitter.js cw-keyer.js \
+         cw-paddle.js midi.js paddle-panel.js \
          theme.css js8-panel.css js8-panel.mjs js8.mjs; do
     cp "$SHARED/$f" "$DIST/"
 done
 cp "$SHARED"/transport/*.js "$DIST/transport/"
-cp "$SHARED"/models/*.onnx  "$DIST/models/"
+# CW decoder: DeepCW model + metadata (AGPL-3.0, e04/deepcw-engine) and the
+# ONNX Runtime Web wasm backend it runs on (MIT), both loaded lazily by
+# cw-decoder-worker.js the first time DECODE is pressed.
+cp "$SHARED"/models/deepcw.onnx "$SHARED"/models/deepcw.onnx.json "$SHARED"/models/deepcw-LICENSE "$DIST/models/"
+mkdir -p "$DIST/ort"
+cp "$SHARED"/ort/* "$DIST/ort/"
 cp "$SHARED"/digits/*.png   "$DIST/digits/"
 # APRS map: vendored Leaflet + hessu/aprs-symbols sprite sheets
 # (lazy-loaded by packet.js when the map pane is expanded).
@@ -136,7 +141,7 @@ Opera, Brave, Arc). Firefox / Safari users can't use this build.
   memories, P.AMP / ATT, AGC, NB / NR / NOTCH, MON, …
 - RX and TX audio (mic via getUserMedia, RX via PCM stream from the rig)
 - FT8 / FT4 decode and reply
-- CW decode (ggmorse + Goertzel) and CW keying
+- CW decode (DeepCW neural decoder on in-browser ONNX Runtime, ggmorse fallback) and CW keying
 - AX.25 packet — 300 / 1200 / 9600 baud — including APRS heard-stations,
   beacon scheduler, connected-mode terminal, and YAPP file transfer
 - RADE V1 digital voice (browser-side WebAssembly modem)

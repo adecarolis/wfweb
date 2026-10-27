@@ -7,6 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { Clock, fakeContext, bursts, wall, makeRig } from './cw_sim_harness.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const src = fs.readFileSync(path.join(here, '../resources/web-shared/cw-keyer.js'), 'utf8');
@@ -18,67 +19,6 @@ let failures = 0;
 function check(ok, msg) { console.log((ok ? 'PASS ' : 'FAIL ') + msg); if (!ok) failures++; }
 const close = (a, b, tol) => Math.abs(a - b) <= tol;
 
-// ---- virtual clock + timers -------------------------------------------------
-class Clock {
-  constructor() { this.t = 1_000_000; this.timers = []; this.id = 0; }
-  now() { return this.t; }
-  setTimeout(fn, ms) { const id = ++this.id; this.timers.push({ id, at: this.t + Math.max(0, ms), fn }); return id; }
-  clearTimeout(id) { this.timers = this.timers.filter(x => x.id !== id); }
-  // advance to time T, firing timers in order
-  run(until) {
-    for (;;) {
-      this.timers.sort((a, b) => a.at - b.at || a.id - b.id);
-      if (!this.timers.length || this.timers[0].at > until) break;
-      const x = this.timers.shift(); this.t = x.at; x.fn();
-    }
-    this.t = until;
-  }
-  advance(ms) { this.run(this.t + ms); }
-}
-
-// ---- fake AudioContext: records envelope automation ------------------------
-function fakeContext(clock) {
-  const ctx = { state: 'running', destination: {}, resume() { this.state = 'running'; } };
-  Object.defineProperty(ctx, 'currentTime', { get: () => (clock.now() - 1_000_000) / 1000 + 10 });
-  const param = (events) => ({
-    value: 0,
-    setValueAtTime(v, t) { events.push({ k: 'set', v, t }); },
-    linearRampToValueAtTime(v, t) { events.push({ k: 'ramp', v, t }); },
-    setTargetAtTime(v, t) { events.push({ k: 'target', v, t }); },
-    cancelAndHoldAtTime(t) { events.push({ k: 'cancel', t }); },
-    cancelScheduledValues(t) { events.push({ k: 'cancel', t }); },
-  });
-  ctx.envEvents = [];
-  ctx.createGain = () => { const ev = []; const g = { gain: param(ev), connect() {}, disconnect() {}, _ev: ev }; ctx.lastGain = g; return g; };
-  ctx.oscillators = [];
-  ctx.createOscillator = () => { const o = { type: '', frequency: param([]), started: false, stopped: false, connect() {}, disconnect() {}, start() { this.started = true; }, stop() { this.stopped = true; } }; ctx.oscillators.push(o); return o; };
-  return ctx;
-}
-// Tone bursts from envelope events: a 'set 0' followed by 'ramp 1' opens, the
-// next 'ramp 0' closes; a cancel at time T drops everything after T.
-function bursts(events) {
-  const out = []; let cur = null;
-  for (const e of events) {
-    if (e.k === 'cancel') {   // everything scheduled after T is gone, a running burst is cut at T
-      while (out.length && out[out.length - 1].on > e.t) out.pop();
-      if (out.length && out[out.length - 1].off > e.t) out[out.length - 1].off = e.t;
-      if (cur) { if (cur.on > e.t) cur = null; else { cur.off = e.t; out.push(cur); cur = null; } }
-      continue;
-    }
-    if (e.k === 'ramp' && e.v === 1 && cur === null) cur = { on: e.t - 0.005 };
-    else if (e.k === 'ramp' && e.v === 0 && cur !== null) { cur.off = e.t; out.push(cur); cur = null; }
-  }
-  return out;
-}
-// wall-clock ms of a fake audio time (see fakeContext)
-const wall = (t) => (t - 10) * 1000 + 1_000_000;
-
-function makeRig(clock) {
-  const rig = { frames: [], stops: 0 };
-  rig.send = (text) => rig.frames.push({ t: clock.now(), text });
-  rig.stop = () => { rig.stops++; rig.frames.push({ t: clock.now(), text: null }); };
-  return rig;
-}
 function makeKeyer(clock, rig, opts = {}) {
   const tone = new WfCwSidetone({
     enabled: opts.tone !== false, createContext: () => fakeContext(clock), pitch: () => 600, gain: () => 0.2,
@@ -240,6 +180,44 @@ for (const wpm of [20, 6, 48]) {
   const b = bursts(k.sidetone.env._ev);
   const future = k.elements(0).filter(e => e.on >= clock.now() - 100).length;
   check(b.length >= future && b.length < k.elements(0).length, 'TONE on mid-way: only the remaining elements are scheduled (' + b.length + ')');
+}
+
+// ---- 9. the output device changes: a new context, never mid-tone ----------
+{
+  const clock = new Clock(), rig = makeRig(clock);
+  const lat = [];
+  const tone = new WfCwSidetone({
+    enabled: true, createContext: () => fakeContext(clock), pitch: () => 600, gain: () => 0.2, onLatency: (ms) => lat.push(ms),
+    now: () => clock.now(), setTimeout: (f, ms) => clock.setTimeout(f, ms), clearTimeout: (t) => clock.clearTimeout(t),
+  });
+  const k = new WfCwKeyer({ wpm: () => 20, send: rig.send, stopRig: rig.stop, sidetone: tone,
+    now: () => clock.now(), setTimeout: (f, ms) => clock.setTimeout(f, ms), clearTimeout: (t) => clock.clearTimeout(t) });
+  k.sendText('PARIS');
+  const first = tone.ctx;
+  clock.advance(1100);
+  check(lat.length === 1 && lat[0] === 174, 'tone delay reported once the context plays (' + lat.join() + ' ms: 6 base + 168 output)');
+  tone.reset();
+  check(tone.ctx === first && first.state === 'running', 'device change while keying: the context is kept until the tone is out');
+  const end = k.base + k.nextTime;
+  clock.run(end + 600);
+  check(tone.ctx !== first && first.state === 'closed' && tone.ctx && tone.ctx.oscillators.length === 0, 'and replaced when the oscillator parks (a new context, nothing playing on it)');
+  clock.advance(1100);
+  check(lat.length === 2, 'the new device is measured at once, without keying (' + lat.join() + ')');
+  const b = bursts(first.lastGain._ev);
+  check(b.length === k.elements(0).length, 'no element lost to the deferred rebuild (' + b.length + ' of ' + k.elements(0).length + ')');
+  const rebuilt = tone.ctx;
+  k.sendText('E');
+  check(tone.ctx === rebuilt && tone.ctx.oscillators.length === 1, 'the next element plays on the rebuilt context');
+  clock.run(clock.now() + 2000);
+  const second = tone.ctx;
+  tone.reset();
+  check(second.state === 'closed' && tone.ctx && tone.ctx !== second, 'device change while idle: replaced at once');
+  clock.advance(1100);
+  check(lat.length === 3, 'and measured without keying');
+  k.sendText('E'); clock.advance(200);
+  const third = tone.ctx;
+  tone.setEnabled(false);
+  check(tone.ctx === null && third.state === 'closed', 'TONE off releases the context (off / on rebuilds it)');
 }
 
 console.log(failures ? 'FAILED ' + failures : 'ALL PASS');

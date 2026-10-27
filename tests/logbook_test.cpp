@@ -1,6 +1,6 @@
 // Unit test for the Logbook class (include/logbook.h): ADIF parsing, the
 // chronological index, append-vs-rewrite on disk, paging cursors and merge
-// dedupe.  Built and run by tests/test_logbook_unit.py.
+// dedupe.  Built and run by tests/test_cpp_units.py.
 #include "logbook.h"
 
 #include <QDebug>

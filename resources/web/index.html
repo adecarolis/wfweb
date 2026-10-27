@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>wfweb</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
 <!-- Shared design tokens + component kit (.wf-*). Source of truth lives at
      resources/web-shared/theme.css; loaded before the inline styles so its
      CSS custom properties are available everywhere. -->
@@ -684,11 +685,11 @@ body.meter-needle #meterCanvas { width: auto; height: 128px; aspect-ratio: 611 /
 /* .cw-bar-header geometry is now .wf-panel-header; .cw-label is now .wf-badge.
    (Mobile overrides for these live in the @media block below.) */
 
-.cw-tone-btn .cw-narrow { display: none; }   /* the glyph form, phones only (below) */
+.cw-tone-btn .cw-narrow, .cw-bkin-btn .cw-narrow { display: none; }   /* the short forms, phones only (below) */
 /* Mobile portrait: more compact CW bar */
 @media (orientation: portrait) and (max-width: 600px) {
     .cw-bar-header {
-        gap: 3px;
+        gap: 2px;
         padding: 3px;
         font-size: 11px;
         flex-wrap: nowrap; /* one row: a wrapped ✕ costs a row the bar can't spare */
@@ -700,19 +701,21 @@ body.meter-needle #meterCanvas { width: auto; height: 128px; aspect-ratio: 611 /
        the strip above the bar (resizeCanvases) so tap-to-tune keeps working. */
     /* Touch targets: keep every header control >= 28px tall (WCAG floor is 24). */
     .cw-speed-btn { width: 28px; height: 28px; font-size: 15px; padding: 0; }
-    #cwSpeedInput { width: 32px; height: 28px; font-size: 12px; padding: 2px; }
+    .cw-bar #cwSpeedInput { width: 32px; height: 28px; font-size: 12px; padding: 2px; }   /* .cw-bar: outranks the base rule further down */
     .cw-wpm-label { display: none; } /* Hide "WPM" - obvious from context */
     .cw-mode-btn { padding: 5px 5px; font-size: 10px; min-height: 28px; }
-    .cw-stop-btn, .cw-close-btn, .cw-edit-btn, .cw-log-btn, .cw-tone-btn { padding: 5px 5px; font-size: 10px; min-height: 28px; }
-    .cw-tone-btn .cw-wide { display: none; }   /* TONE becomes a note glyph */
-    .cw-tone-btn .cw-narrow { display: inline; }
+    .cw-stop-btn, .cw-close-btn, .cw-edit-btn, .cw-log-btn, .cw-tone-btn, .cw-bkin-btn { padding: 5px 5px; font-size: 10px; min-height: 28px; }
+    .cw-close-btn { flex: 0 0 28px; }   /* the way out never shrinks below a touch target */
+    .cw-tone-btn .cw-wide, .cw-bkin-btn .cw-wide { display: none; }   /* TONE becomes a note glyph, BKIN reads BK */
+    .cw-tone-btn .cw-narrow, .cw-bkin-btn .cw-narrow { display: inline; }
     .cw-display { font-size: 11px; padding: 3px 4px; min-height: 18px; }
     .cw-input-field { font-size: 11px; padding: 3px 4px; }
     .cw-macro-grid { gap: 3px; padding: 4px 6px; }
     .cw-macro-btn { padding: 6px 3px; font-size: 9px; min-height: 28px; }
     .cw-callsign-row { padding: 3px 6px; gap: 4px; }
     .cw-callsign-label { font-size: 10px; }
-    .cw-callsign-input { font-size: 12px; padding: 5px 4px; max-width: 120px; min-height: 28px; box-sizing: border-box; }
+    .cw-callsign-input { font-size: 12px; padding: 5px 4px; max-width: 120px; min-height: 28px; box-sizing: border-box; min-width: 0; flex: 1 1 0; }   /* shrink to leave PADDLE room */
+    .cw-paddle-btn { padding: 5px 5px; font-size: 10px; min-height: 28px; }
 }
 .cw-speed-ctrl {
     display: flex;
@@ -843,6 +846,7 @@ body.meter-needle #meterCanvas { width: auto; height: 128px; aspect-ratio: 611 /
     font-weight: bold;
     text-transform: uppercase;
 }
+.cw-paddle-btn { margin-left: auto; flex: 0 0 auto; }
 .cw-callsign-input:focus {
     outline: none;
     background: #002a00;
@@ -1994,6 +1998,23 @@ body.digi-open #bottomBar { grid-row: 5; }
     top: 144px;  /* clears the 14px-tall RFG readout above (118 + 26) */
     font-size: 14px;
 }
+/* Squelch set above 0 mutes the rig whenever the signal is under it. Usually
+   on purpose (FM), so it is a grey readout like P.AMP/DUP/TONE rather than an
+   orange warning; one tap opens the GAIN panel. Hidden at 0. */
+#squelchIndicator {
+    top: 170px;  /* clears the 14px-tall VOL readout above (144 + 26) */
+    font-size: 14px;
+    color: #888;
+}
+/* Speech compressor on, with its level (0-10 like the radio). A setting the
+   operator chose, so a grey readout like SQL; one tap opens the GAIN panel,
+   where the level is. Hidden while COMP is off, so it also blinks out while
+   wfweb holds COMP off for a digital over (#147). */
+#compIndicator {
+    top: 196px;  /* clears the 14px-tall SQL readout above (170 + 26) */
+    font-size: 14px;
+    color: #888;
+}
 
 /* ============ RESPONSIVE ============ */
 @media (max-height: 450px) {
@@ -2132,6 +2153,135 @@ body.digi-open #bottomBar { grid-row: 5; }
        GAIN readouts) that stacks down the left edge of the scope area. */
     #freedvIndicator { flex-wrap: wrap; justify-content: flex-end; row-gap: 2px; max-width: calc(100% - 150px); }
 }
+/* ============ TOUCH OPERATING CONTROLS (#144) ============
+   Phones and tablets only ((pointer: coarse)); the desktop keeps its five
+   equal soft keys and plain hold-to-talk.
+   - #uiLockBtn is the HT-style key lock in the scope's bottom-right corner:
+     a tap locks everything but PTT, a ~0.8 s hold unlocks (the ring fills).
+     resizeCanvases() lifts it above the CW bar; the FT8/JS8/packet panels
+     hide it while unlocked since it would sit on their controls.
+   - .ptt-btn takes a full-width row of its own in portrait and double
+     width in landscape, in voice modes only (pttApplicable()): CW keeps a
+     plain KEY soft key, RTTY and the FT8/JS8/packet panels get the four
+     soft keys alone. Slide the held finger up into #pttLockCap and let go
+     to latch TX; the latched button is the STOP key. */
+#uiLockBtn {
+    display: none;
+    position: absolute; right: 8px; bottom: 8px;
+    width: 40px; height: 40px; padding: 0;
+    border-radius: 50%;
+    border: 1px solid #444;
+    background: rgba(18,18,18,0.85);
+    color: #888;
+    z-index: 210;            /* above the mode bars (200), under the panel overlays (220):
+                                MODE/BAND/FUNC/GAIN put their back key in this corner */
+    touch-action: none;
+    cursor: pointer;
+    transition: color .15s, border-color .15s, background .15s;
+}
+#uiLockBtn svg { width: 18px; height: 18px; display: block; margin: 0 auto; pointer-events: none; }
+#uiLockBtn .lock-closed { display: none; }
+body.ui-locked #uiLockBtn { border-color: #0aa; color: #0cc; background: rgba(8,36,36,0.92); }
+body.ui-locked #uiLockBtn .lock-open { display: none; }
+body.ui-locked #uiLockBtn .lock-closed { display: block; }
+/* hold-to-unlock progress: a ring that fills clockwise, --p set by JS */
+#uiLockBtn::before {
+    content: ''; position: absolute; inset: -5px; border-radius: 50%;
+    background: conic-gradient(#0cc var(--p, 0%), transparent 0);
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+    mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+    opacity: 0; transition: opacity .1s;
+}
+#uiLockBtn.holding::before { opacity: 1; }
+#uiLockBtn.pulse { animation: lockNudge .4s ease; }
+@keyframes lockNudge {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-4px); } 40% { transform: translateX(4px); }
+    60% { transform: translateX(-3px); } 80% { transform: translateX(3px); }
+}
+#uiLockHint {
+    position: absolute; right: 56px; bottom: 17px;
+    padding: 4px 9px; border-radius: 12px;
+    background: rgba(8,36,36,0.92); border: 1px solid #0aa; color: #0cc;
+    font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; white-space: nowrap;
+    opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 210;
+}
+#uiLockHint.show { opacity: 1; }
+/* Locked: everything but PTT and the padlock reads as inert. The frequency,
+   the meter and the scope stay at full brightness — they are what you look
+   at while the lock is on. */
+body.ui-locked #topBar > :not(#txIndicator):not(#clock):not(#connDot):not(.flex-space),
+body.ui-locked #spanIndicator,
+body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
+#pttLockCap {
+    position: absolute; left: 50%; bottom: 0;
+    transform: translate(-50%, 14px);
+    width: 58px; height: 58px; border-radius: 50%;
+    border: 1px solid #a33; background: rgba(50,0,0,0.92); color: #f99;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; z-index: 350;
+    transition: opacity .18s, transform .18s, background .15s, border-color .15s;
+}
+#pttLockCap svg { width: 26px; height: 26px; }
+#pttLockCap::after {
+    content: 'slide up to lock';
+    position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+    white-space: nowrap; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: #f99;
+}
+#pttLockCap.show { opacity: 1; transform: translate(-50%, 0); }
+#pttLockCap.armed { background: #c00; border-color: #f66; color: #fff; transform: translate(-50%, 0) scale(1.12); }
+#pttLockCap.armed::after { content: 'release to lock'; color: #fff; }
+.ptt-hint, .ptt-timer { display: none; }
+@media (pointer: coarse) {
+    #uiLockBtn { display: block; }
+    /* The FT8 / JS8 / packet panels replace the scope and put their own
+       controls where the padlock sits: hide it there unless it is locked
+       (then it must stay reachable to unlock). */
+    body:not(.ui-locked) #scopeArea:has(.digi-bar:not(.hidden), .js8-bar:not(.hidden), .packet-bar:not(.hidden)) #uiLockBtn { display: none; }
+    #bottomBar { touch-action: none; }
+    .softBtn.ptt-btn {
+        flex: 2;
+        position: relative;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .ptt-hint {
+        display: block;
+        font-size: 9px; font-weight: normal; letter-spacing: 1px; text-transform: uppercase;
+        margin-top: 2px; pointer-events: none; color: #855;
+    }
+    .softBtn.ptt-btn.tx-active .ptt-hint, .softBtn.ptt-btn.latched .ptt-hint { color: #fcc; }
+    .softBtn.ptt-btn.latched { background: #a00; border-color: #f33; color: #fff; }
+    .softBtn.ptt-btn.latched.warn { animation: pttLatchWarn .7s infinite; }
+    @keyframes pttLatchWarn { 50% { background: #500; border-color: #a00; } }
+    .ptt-timer {
+        display: block;
+        position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+        font-family: var(--font-mono); font-size: 13px; font-weight: normal; letter-spacing: 0; color: #fdd;
+        pointer-events: none;
+    }
+}
+@media (pointer: coarse) and (orientation: portrait) {
+    #radio, body.meter-needle #radio { grid-template-rows: 32px 72px 18px 1fr auto; }
+    body.meter-needle #radio { grid-template-rows: 32px 84px 18px 1fr auto; }
+    /* The PTT keeps clear of the screen's bottom edge: on Android that edge
+       is the system navigation gesture (and env(safe-area-inset-bottom) is 0
+       there), so a thumb landing low pulled up the nav bar mid-over. */
+    #bottomBar {
+        flex-wrap: wrap;
+        padding: 5px 6px;
+        padding-bottom: calc(16px + env(safe-area-inset-bottom));
+        gap: 5px;
+    }
+    .softBtn { flex: 1 1 0; height: 38px; }
+    .softBtn:only-child { flex-basis: 100%; }
+    .softBtn.ptt-btn {
+        flex: 1 1 100%; order: 2;
+        height: 96px;
+        font-size: 17px; letter-spacing: 2px;
+        border-radius: 10px;
+    }
+    .ptt-hint { font-size: 10px; margin-top: 3px; }
+}
 </style>
 <!-- JS8 messenger panel styles — shared with the standalone build via
      resources/web-shared/js8-panel.css. -->
@@ -2246,6 +2396,8 @@ body.digi-open #bottomBar { grid-row: 5; }
         <canvas id="waterfallCanvas" width="800" height="200"></canvas>
         <span id="spanEdgeLeft"></span>
         <span id="spanEdgeRight"></span>
+        <button id="uiLockBtn" title="Lock controls" aria-label="Lock controls"><svg class="lock-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.6-1.7"/></svg><svg class="lock-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>
+        <span id="uiLockHint">hold to unlock</span>
 
         <!-- Mode overlay -->
         <div id="modeOverlay" class="overlay">
@@ -2330,6 +2482,27 @@ body.digi-open #bottomBar { grid-row: 5; }
             </div>
         </div>
 
+        <!-- MIDI window: controller on/off, map (CTR2-MIDI presets + MIDI
+             learn) and the paddle keyer's options. The body is built by
+             WfMidiPanel (midi.js), shared by both builds. -->
+        <div id="midiOverlay" class="mem-modal">
+            <div class="mem-modal-title">
+                <span>MIDI controller</span>
+                <button class="digi-settings-close" style="width:auto;margin:0;padding:2px 12px" onclick="closeMidiModal()">&#x2715; Close</button>
+            </div>
+            <div id="midiPanel"></div>
+        </div>
+        <!-- PADDLE window (CW bar, CALL row): keyer options and the paddle's
+             adapter -- a MIDI controller's jack (mapped in FUNC > MIDI) or a
+             USB keyboard adapter. Body built by WfPaddlePanel (paddle-panel.js). -->
+        <div id="paddleOverlay" class="mem-modal">
+            <div class="mem-modal-title">
+                <span>Paddle</span>
+                <button class="digi-settings-close" style="width:auto;margin:0;padding:2px 12px" onclick="closePaddleModal()">&#x2715; Close</button>
+            </div>
+            <div id="paddlePanel"></div>
+        </div>
+
         <!-- TONE window (the DUP window's twin). Access mode on top, then the
              tone each half of that mode actually uses, then Scan — a sweep of
              the tone squelch that stops on whatever opens it. -->
@@ -2389,11 +2562,12 @@ body.digi-open #bottomBar { grid-row: 5; }
                     <button class="cw-speed-btn wf-btn sq" id="cwSpeedUp">+</button>
                 </div>
                 <div class="cw-mode-btns">
-                    <button class="cw-mode-btn active wf-btn" data-mode="chars">CHR</button>
-                    <button class="cw-mode-btn wf-btn" data-mode="words">WRD</button>
-                    <button class="cw-mode-btn wf-btn" data-mode="lines">LN</button>
+                    <button class="cw-mode-btn active wf-btn toggle" data-mode="chars">CHR</button>
+                    <button class="cw-mode-btn wf-btn toggle" data-mode="words">WRD</button>
+                    <button class="cw-mode-btn wf-btn toggle" data-mode="lines">LN</button>
                 </div>
-                <button id="cwToneBtn" class="cw-tone-btn wf-btn" title="Sidetone made in the browser at the radio's CW pitch, at the VOL level. Switch it off if you key with a paddle and hear the radio's own sidetone over USB."><span class="cw-wide">TONE</span><span class="cw-narrow">&#9834;</span></button>
+                <button id="cwBreakInBtn" class="cw-bkin-btn wf-btn toggle" style="display:none" title="Break-in, the radio's BK-IN key: OFF (the keyer only sounds its sidetone, nothing is transmitted), BKIN = semi break-in, F-BKIN = full break-in. Tap to step OFF, BKIN, F-BKIN."><span class="cw-wide">BK-IN</span><span class="cw-narrow">BK</span></button>
+                <button id="cwToneBtn" class="cw-tone-btn wf-btn toggle" title="Sidetone made in the browser at the radio's CW pitch, at the VOL level. Switch it off if you key with a paddle and hear the radio's own sidetone over USB."><span class="cw-wide">TONE</span><span class="cw-narrow">&#9834;</span></button>
                 <button id="cwLogBtn" class="cw-log-btn wf-btn">LOG<span class="cw-wide"> QSO</span></button>
                 <button id="cwStopBtn" class="cw-stop-btn wf-btn danger">STOP</button>
                 <button id="cwCloseBtn" class="cw-close-btn wf-btn sq">✕</button>
@@ -2409,6 +2583,7 @@ body.digi-open #bottomBar { grid-row: 5; }
                 <input type="text" id="cwCallInput" class="cw-callsign-input wf-field" maxlength="10" placeholder="">
                 <span class="cw-callsign-label">QSO:</span>
                 <input type="text" id="cwQsoInput" class="cw-callsign-input wf-field" maxlength="10" placeholder="">
+                <button id="cwPaddleBtn" class="cw-paddle-btn wf-btn" title="Paddle: keyer options (iambic A / B, swap) and the adapter it comes through -- a MIDI controller's paddle jack or a USB keyboard adapter (VBand).">PADDLE</button>
             </div>
 
             <div class="cw-display" id="cwDisplay"></div>
@@ -2666,6 +2841,15 @@ body.digi-open #bottomBar { grid-row: 5; }
                     <input type="range" id="monitorLevelSlider" min="0" max="255" value="128"></div>
                 <span class="gain-val" id="monitorLevelVal">50%</span>
             </div>
+            <!-- Speech compressor level, 0-10 as on the radio's screen; COMP on /
+                 off is the FUNC tile. Dimmed while COMP is off. Hidden on rigs
+                 without the level command. -->
+            <div class="gain-row tx" id="compLevelRow" style="display:none;" title="Speech compressor level. Switch COMP on or off in FUNC.">
+                <span class="gain-label">COMP</span>
+                <div class="gain-bar-bg"><div class="gain-bar-fill" id="compLevelFill" style="width:50%"></div>
+                    <input type="range" id="compLevelSlider" min="0" max="255" value="128"></div>
+                <span class="gain-val" id="compLevelVal">5</span>
+            </div>
             <div class="gain-back-row">
                 <button class="ov-btn back-btn" onclick="setPanel('default')">&#x21A9;</button>
             </div>
@@ -2766,10 +2950,15 @@ body.digi-open #bottomBar { grid-row: 5; }
         <div id="toneIndicator" class="spectrum-warning" style="display: none;" onclick="openToneModal()"></div>
         <div id="rfGainIndicator" class="spectrum-warning" style="display: none;" onclick="setPanel('gain')"></div>
         <div id="rxVolIndicator" class="spectrum-warning" style="display: none;" onclick="setPanel('gain')"></div>
+        <div id="squelchIndicator" class="spectrum-warning" style="display: none;" onclick="setPanel('gain')"></div>
+        <div id="compIndicator" class="spectrum-warning" style="display: none;" onclick="setPanel('gain')"></div>
     </div>
 
     <!-- Row 5: Bottom bar -->
     <div id="bottomBar"></div>
+    <!-- Slide-up target for the touch PTT latch (#144); outside #bottomBar
+         because renderBottomBar() rebuilds that element mid-press. -->
+    <div id="pttLockCap"><svg class="lock-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
 </div>
 
 <script src="transport/rig-transport.js"></script>
@@ -2781,6 +2970,9 @@ body.digi-open #bottomBar { grid-row: 5; }
 <script src="recorder.js"></script>
 <script src="rx-jitter.js"></script>
 <script src="cw-keyer.js"></script>
+<script src="cw-paddle.js"></script>
+<script src="midi.js"></script>
+<script src="paddle-panel.js"></script>
 <script>
 // ============================================================
 // STATE
@@ -2960,6 +3152,11 @@ var micDeviceId = '';       // TX AUDIO button choice; '' = AUTO (browser defaul
 try { micDeviceId = localStorage.getItem('wfMicDeviceId') || ''; } catch (e) {}
 var monitorEnabled = false;
 var monitorLevel = 128; // 0-255 (radio gain)
+// Speech compressor: the FUNC COMP tile (on / off) and the GAIN COMP row (level).
+var hasCompressor = false;
+var hasCompLevel = false;
+var compOn = false;
+var compLevel = null;   // 0-255, null until the rig reports it
 
 var nbOn = false;
 var nrOn = false;
@@ -3286,6 +3483,7 @@ function onTransportOpen() {
 }
 
 function onTransportClose() {
+    dropPttLatch();
     document.getElementById('connDot').classList.remove('connected');
     document.getElementById('connDot').title = 'Disconnected';
     if (micEnabled || micStarting) stopMic();
@@ -3393,7 +3591,7 @@ function handleMessage(msg) {
                 if (msg.hasMainSub !== undefined) { hasMainSub = msg.hasMainSub; updateVfoDisplay(); }
                 if (msg.hasDuplex !== undefined) hasDuplex = !!msg.hasDuplex;
                 updateToneCaps(msg);
-                if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner);
+                if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner); if (msg.hasBreakIn !== undefined) updateHasBreakIn(!!msg.hasBreakIn); if (msg.hasCompressor !== undefined || msg.hasCompLevel !== undefined) updateHasCompressor(msg);
                 if (msg.txMeters !== undefined) setTxMeterCaps(msg.txMeters, msg.poCal);
                 if (msg.cwSpeedRange) applyCwSpeedRange(msg.cwSpeedRange);
                 if (msg.manufacturer !== undefined) cwKeyerType = (msg.manufacturer === 'Icom') ? 'icom' : 'ideal';
@@ -3432,7 +3630,7 @@ function handleMessage(msg) {
             if (msg.hasMainSub !== undefined) { hasMainSub = msg.hasMainSub; updateVfoDisplay(); }
             if (msg.hasDuplex !== undefined) hasDuplex = !!msg.hasDuplex;
             updateToneCaps(msg);
-            if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner);
+            if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner); if (msg.hasBreakIn !== undefined) updateHasBreakIn(!!msg.hasBreakIn); if (msg.hasCompressor !== undefined || msg.hasCompLevel !== undefined) updateHasCompressor(msg);
             if (msg.txMeters !== undefined) setTxMeterCaps(msg.txMeters, msg.poCal);
                 if (msg.cwSpeedRange) applyCwSpeedRange(msg.cwSpeedRange);
                 if (msg.manufacturer !== undefined) cwKeyerType = (msg.manufacturer === 'Icom') ? 'icom' : 'ideal';
@@ -3493,6 +3691,8 @@ function handleMessage(msg) {
             if (msg.micGain !== undefined) updateSlider('micGain', msg.micGain);
             if (msg.monitor !== undefined) { monitorEnabled = msg.monitor; if (currentPanel === 'func') renderFuncOverlay(); }
             if (msg.monitorGain !== undefined) { monitorLevel = msg.monitorGain; updateSlider('monitorLevel', msg.monitorGain); if (currentPanel === 'func') renderFuncOverlay(); }
+            if (msg.compressor !== undefined) updateCompressor(msg.compressor);
+            if (msg.compLevel !== undefined) updateCompLevel(msg.compLevel);
             if (msg.split !== undefined) updateSplit(msg.split);
             if (msg.duplex !== undefined) updateDuplex(msg.duplex);
             updateToneStatus(msg);
@@ -3502,7 +3702,7 @@ function handleMessage(msg) {
             if (msg.nb !== undefined) updateToggle('nb', msg.nb);
             if (msg.nr !== undefined) updateToggle('nr', msg.nr);
             if (msg.autoNotch !== undefined) updateToggle('anf', msg.autoNotch);
-            if (msg.tuner !== undefined) updateTunerState(msg.tuner);
+            if (msg.tuner !== undefined) updateTunerState(msg.tuner); if (msg.breakIn !== undefined) updateBreakIn(msg.breakIn);
             if (msg.preamp !== undefined) updatePreampBtn(msg.preamp);
             if (msg.attenuator !== undefined) updateAttenuatorBtn(msg.attenuator);
             if (msg.antenna !== undefined || msg.rxAntenna !== undefined) updateAntennaState(msg.antenna, msg.rxAntenna);
@@ -3542,6 +3742,8 @@ function handleMessage(msg) {
             if (msg.micGain !== undefined) updateSlider('micGain', msg.micGain);
             if (msg.monitor !== undefined) { monitorEnabled = msg.monitor; if (currentPanel === 'func') renderFuncOverlay(); }
             if (msg.monitorGain !== undefined) { monitorLevel = msg.monitorGain; updateSlider('monitorLevel', msg.monitorGain); if (currentPanel === 'func') renderFuncOverlay(); }
+            if (msg.compressor !== undefined) updateCompressor(msg.compressor);
+            if (msg.compLevel !== undefined) updateCompLevel(msg.compLevel);
             if (msg.split !== undefined) updateSplit(msg.split);
             if (msg.duplex !== undefined) updateDuplex(msg.duplex);
             updateToneStatus(msg);
@@ -3553,8 +3755,8 @@ function handleMessage(msg) {
             if (msg.autoNotch !== undefined) updateToggle('anf', msg.autoNotch);
             // hasTuner arrives here when the server learns, after the fact, that the
             // rig refuses (or has started answering) the tuner status read.
-            if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner);
-            if (msg.tuner !== undefined) updateTunerState(msg.tuner);
+            if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner); if (msg.hasBreakIn !== undefined) updateHasBreakIn(!!msg.hasBreakIn); if (msg.hasCompressor !== undefined || msg.hasCompLevel !== undefined) updateHasCompressor(msg);
+            if (msg.tuner !== undefined) updateTunerState(msg.tuner); if (msg.breakIn !== undefined) updateBreakIn(msg.breakIn);
             if (msg.preamp !== undefined) updatePreampBtn(msg.preamp);
             if (msg.attenuator !== undefined) updateAttenuatorBtn(msg.attenuator);
             if (msg.antenna !== undefined || msg.rxAntenna !== undefined) updateAntennaState(msg.antenna, msg.rxAntenna);
@@ -4185,6 +4387,50 @@ function updateSplit(on) {
     document.getElementById('splitBadge').classList.toggle('hidden', !on);
 }
 
+// Speech compressor (SSB). wfweb takes it out for the length of its own
+// digital overs (FT8/FT4, JS8, TUNE, FreeDV/RADE, packet) and puts it back
+// (#147), so the tile can read OFF while one of them transmits.
+function updateHasCompressor(msg) {
+    if (msg.hasCompressor !== undefined) hasCompressor = !!msg.hasCompressor;
+    if (msg.hasCompLevel !== undefined) hasCompLevel = !!msg.hasCompLevel;
+    var row = document.getElementById('compLevelRow');
+    if (row) row.style.display = hasCompLevel ? '' : 'none';
+    updateCompIndicator();
+    if (currentPanel === 'func') renderFuncOverlay();
+}
+
+function updateCompressor(on) {
+    compOn = !!on;
+    var row = document.getElementById('compLevelRow');
+    if (row) row.style.opacity = compOn ? '' : '0.55';
+    updateCompIndicator();
+    if (currentPanel === 'func') renderFuncOverlay();
+}
+
+function updateCompLevel(val) {
+    compLevel = val;
+    updateSlider('compLevel', val);
+    updateCompIndicator();
+    if (currentPanel === 'func') renderFuncOverlay();
+}
+
+// The radio shows the level 0-10; the CI-V value is 0-255.
+function compLevelText(val) {
+    return String(Math.round(val / 255 * 10));
+}
+
+// The COMP n tile on the spectrum, next to SQL: shown while COMP is on.
+function updateCompIndicator() {
+    var el = document.getElementById('compIndicator');
+    if (!el) return;
+    if (!hasCompressor || !compOn) {
+        el.style.display = 'none';
+        return;
+    }
+    el.textContent = 'COMP' + (hasCompLevel && compLevel !== null ? ' ' + compLevelText(compLevel) : '');
+    el.style.display = '';
+}
+
 function updateToggle(name, state) {
     if (name === 'nb') nbOn = !!state;
     else if (name === 'nr') nrOn = !!state;
@@ -4259,6 +4505,17 @@ function updateRfGainIndicator(val) {
     el.style.display = '';
 }
 
+function updateSquelchIndicator(val) {
+    var el = document.getElementById('squelchIndicator');
+    if (!el) return;
+    if (!(val > 0)) {
+        el.style.display = 'none';
+        return;
+    }
+    el.textContent = 'SQL ' + Math.max(1, Math.round(val / 255 * 100)) + '%';
+    el.style.display = '';
+}
+
 function updateDspIndicators() {
     var el = document.getElementById('dspIndicators');
     var tags = [];
@@ -4274,7 +4531,7 @@ var sliderDragging = {};
 var SLIDER_DEBOUNCE_MS = 1500;
 
 function initSliderTracking() {
-    ['afGain', 'rfGain', 'rfPower', 'squelch', 'micGain'].forEach(function(name) {
+    ['afGain', 'rfGain', 'rfPower', 'squelch', 'micGain', 'compLevel'].forEach(function(name) {
         var slider = document.getElementById(name + 'Slider');
         if (!slider) return;
         slider.addEventListener('mousedown', function() { sliderDragging[name] = true; });
@@ -4286,14 +4543,21 @@ function initSliderTracking() {
         slider.addEventListener('input', function() {
             var val = slider.value;
             sliderSetTimes[name] = Date.now();
-            document.getElementById(name + 'Val').textContent = toPercent(val, 255);
+            document.getElementById(name + 'Val').textContent =
+                name === 'compLevel' ? compLevelText(val) : toPercent(val, 255);
             var fill = document.getElementById(name.replace(/([A-Z])/g, function(m) { return m; }) + 'Fill');
             if (fill) fill.style.width = (val / 255 * 100) + '%';
             if (name === 'afGain') throttledSend('afGain', 'setAfGain', val);
             else if (name === 'rfGain') { throttledSend('rfGain', 'setRfGain', val); updateRfGainIndicator(val); }
             else if (name === 'rfPower') throttledSend('rfPower', 'setRfPower', val);
-            else if (name === 'squelch') throttledSend('squelch', 'setSquelch', val);
+            else if (name === 'squelch') { throttledSend('squelch', 'setSquelch', val); updateSquelchIndicator(val); }
             else if (name === 'micGain') throttledSend('micGain', 'setMicGain', val);
+            else if (name === 'compLevel') {
+                compLevel = parseInt(val);
+                throttledSend('compLevel', 'setCompLevel', val);
+                updateCompIndicator();
+                if (currentPanel === 'func') renderFuncOverlay();
+            }
         });
     });
     // Monitor level slider (CI-V, 0-255)
@@ -4401,12 +4665,14 @@ function updateSlider(name, val) {
         showPBT(name, val);
         return;
     }
-    if (valSpan) valSpan.textContent = toPercent(val, parseInt((slider || {}).max) || 255);
+    if (valSpan) valSpan.textContent = name === 'compLevel' ? compLevelText(val)
+                                    : toPercent(val, parseInt((slider || {}).max) || 255);
     // Update fill bars
     var fillId = name + 'Fill';
     var fill = document.getElementById(fillId);
     if (fill) fill.style.width = (val / 255 * 100) + '%';
     if (name === 'rfGain') updateRfGainIndicator(val);
+    if (name === 'squelch') updateSquelchIndicator(val);
 }
 
 var sliderTimers = {};
@@ -5056,6 +5322,9 @@ function hideAllOverlays() {
 }
 
 function renderBottomBar() {
+    // A latched TX cannot outlive its PTT key: the mode changed away from
+    // voice or a digital panel opened over it.
+    if (pttLatched && !pttApplicable()) { unlatchPTT(); return; }
     var bar = document.getElementById('bottomBar');
     bar.innerHTML = '';
     var btns = getBottomButtons();
@@ -5065,8 +5334,19 @@ function renderBottomBar() {
         el.className = 'softBtn';
         if (b.active) el.classList.add('active');
         if (b.txActive) el.classList.add('tx-active');
-        if (b.cls) el.classList.add(b.cls);
+        if (b.cls) b.cls.split(' ').forEach(function(c) { el.classList.add(c); });
         el.textContent = b.label;
+        if (b.hint) {
+            var hint = document.createElement('small');
+            hint.className = 'ptt-hint';
+            hint.textContent = b.hint;
+            el.appendChild(hint);
+        }
+        if (b.timer) {
+            var timer = document.createElement('span');
+            timer.className = 'ptt-timer';
+            el.appendChild(timer);
+        }
         if (b.disabled) el.disabled = true;
         if (b.action) el.onclick = b.action;
         bar.appendChild(el);
@@ -5083,14 +5363,27 @@ function getBottomButtons() {
         case 'func':
         case 'span':
         case 'gain':
-            return [
+            var keys = [
                 { label: 'MODE', active: currentPanel === 'mode', action: function() { setPanel('mode'); } },
                 { label: 'BAND', active: currentPanel === 'band', action: function() { setPanel('band'); } },
                 { label: 'FUNC', active: currentPanel === 'func', action: function() { setPanel('func'); } },
 
-                { label: 'GAIN', active: currentPanel === 'gain', action: function() { setPanel('gain'); } },
-                { label: isCW ? 'KEY' : 'PTT', txActive: isTransmitting, cls: isCW ? 'key-btn' : 'ptt-btn', disabled: currentPanel !== 'default', action: currentPanel !== 'default' ? null : (isCW ? toggleCWBar : function() { handlePTTPress(); }) }
+                { label: 'GAIN', active: currentPanel === 'gain', action: function() { setPanel('gain'); } }
             ];
+            if (isCW) {
+                keys.push({ label: 'KEY', txActive: isTransmitting, cls: 'key-btn', disabled: currentPanel !== 'default', action: currentPanel !== 'default' ? null : toggleCWBar });
+            } else if (pttApplicable()) {
+                // Touch devices get a sub-label under PTT and, once latched,
+                // the button becomes the STOP key and stays enabled under any
+                // panel (#144).
+                keys.push({ label: pttLatched ? 'TX LOCKED' : 'PTT', txActive: isTransmitting,
+                  cls: 'ptt-btn' + (pttLatched ? ' latched' : ''),
+                  hint: touchUi ? (pttLatched ? 'tap to stop' : (isTransmitting ? 'release to stop' : 'hold \u00b7 slide up to lock')) : null,
+                  timer: pttLatched,
+                  disabled: currentPanel !== 'default' && !pttLatched,
+                  action: (currentPanel !== 'default' || pttLatched) ? null : function() { handlePTTPress(); } });
+            }
+            return keys;
         case 'audiomiс':
         case 'freqinp':
         case 'memory':
@@ -5178,6 +5471,41 @@ function populateBands(bands) {
     if (currentPanel === 'band') renderBandOverlay();
 }
 
+// Go to a band (an entry of rigBands), as its BAND-overlay key does.
+function recallBand(band) {
+    var lbl = band.label, bsr = band.bsr;
+    if (bsr) {
+        // The rig's BAND key: recall the band's last-used stacking
+        // register (freq + mode + filter); pressing the band you
+        // are already on steps to the next of its three slots.
+        // `save` names the register being left so the transport
+        // stores the current VFO there first, as the key does —
+        // the rig never does that for CI-V tuning by itself.
+        var cur = bandLabelOf(currentFreq);
+        var curBand = null;
+        rigBands.forEach(function(rb) { if (rb.label === cur) curBand = rb; });
+        var reg = (cur === lbl) ? (bsrReg[lbl] || 1) % 3 + 1 : (bsrReg[lbl] || 1);
+        var msg = { cmd: 'setBand', bsr: bsr, reg: reg };
+        if (curBand && curBand.bsr) msg.save = { bsr: curBand.bsr, reg: bsrReg[cur] || 1 };
+        bsrReg[lbl] = reg;
+        send(msg);
+    } else {
+        send({ cmd: 'setFrequency', value: bandLastFreq[lbl] || band.freq });
+    }
+}
+
+// The next band up (dir > 0) or down in the rig's band table; off-band, the
+// nearest one in that direction.
+function stepBand(dir) {
+    if (!rigBands.length) return;
+    var cur = bandLabelOf(currentFreq), idx = -1;
+    rigBands.forEach(function(b, i) { if (b.label === cur) idx = i; });
+    if (idx >= 0) idx += dir > 0 ? 1 : -1;
+    else if (dir > 0) { idx = rigBands.length; for (var i = rigBands.length - 1; i >= 0; i--) if (rigBands[i].freq > currentFreq) idx = i; }
+    else { for (var j = 0; j < rigBands.length; j++) if (rigBands[j].freq < currentFreq) idx = j; }
+    if (idx >= 0 && idx < rigBands.length) recallBand(rigBands[idx]);
+}
+
 function renderBandOverlay() {
     var grid = document.getElementById('bandGrid');
     grid.innerHTML = '';
@@ -5199,27 +5527,10 @@ function renderBandOverlay() {
             var btn = document.createElement('button');
             btn.className = 'ov-btn';
             btn.textContent = b.label;
-            btn.onclick = (function(f, lbl, bsr) { return function() {
-                if (bsr) {
-                    // The rig's BAND key: recall the band's last-used stacking
-                    // register (freq + mode + filter); pressing the band you
-                    // are already on steps to the next of its three slots.
-                    // `save` names the register being left so the transport
-                    // stores the current VFO there first, as the key does —
-                    // the rig never does that for CI-V tuning by itself.
-                    var cur = bandLabelOf(currentFreq);
-                    var curBand = null;
-                    rigBands.forEach(function(rb) { if (rb.label === cur) curBand = rb; });
-                    var reg = (cur === lbl) ? (bsrReg[lbl] || 1) % 3 + 1 : (bsrReg[lbl] || 1);
-                    var msg = { cmd: 'setBand', bsr: bsr, reg: reg };
-                    if (curBand && curBand.bsr) msg.save = { bsr: curBand.bsr, reg: bsrReg[cur] || 1 };
-                    bsrReg[lbl] = reg;
-                    send(msg);
-                } else {
-                    send({ cmd: 'setFrequency', value: bandLastFreq[lbl] || f });
-                }
+            btn.onclick = (function(band) { return function() {
+                recallBand(band);
                 setPanel('default');
-            }; })(b.freq, b.label, b.bsr);
+            }; })(b);
             if (b.bsr) btn.title = 'Band stacking register: press again to cycle 1 / 2 / 3';
             grid.appendChild(btn);
         }
@@ -5326,11 +5637,29 @@ function renderFuncOverlay() {
         renderFuncOverlay();
     }));
 
+    // Speech compressor, next to MON: the two TX audio functions. The tile
+    // carries the level when it is on; the level itself is GAIN's COMP row.
+    if (hasCompressor) {
+        var compState = !compOn ? 'OFF' : (hasCompLevel && compLevel !== null ? compLevelText(compLevel) : 'ON');
+        grid.appendChild(makeFuncBtn('COMP', compState, compOn, function() {
+            // Decide once: a transport may echo the new state back inside send().
+            var want = !compOn;
+            send({ cmd: 'setCompressor', value: want });
+            updateCompressor(want);
+        }));
+    }
+
     // Meter face: follow the radio, or force the tile bar / the needle
     grid.appendChild(makeFuncBtn('METER', meterStyle.toUpperCase(), meterStyle !== 'auto', function() {
         cycleMeterStyle();
         renderFuncOverlay();
     }));
+
+    // MIDI controller window: only while a controller is plugged in (hot-plug
+    // re-renders the grid, midi.watch()). Before the site holds the MIDI
+    // permission no controller can be seen; the window is then reached from
+    // the CW bar's PADDLE window (its MIDI... button).
+    if (midi.devices.length) grid.appendChild(makeFuncBtn('MIDI', midi.enabled ? 'ON' : 'OFF', midi.enabled, openMidiModal));
 
     // RX audio / TX audio / jitter buffer: the AUDIO / TX overlay, which is
     // otherwise only reachable while audio is off.
@@ -6575,18 +6904,40 @@ function releasePTT() {
 // renderBottomBar() destroys the button DOM mid-press; document-level pointerup
 // always fires regardless. touch-action:none on .ptt-btn prevents browser
 // from stealing the touch for scrolling.
+//
+// Touch latch (#144): while a finger holds PTT, #pttLockCap fades in above
+// the bar; sliding the finger PTT_LATCH_SLIDE_PX up arms it, and releasing
+// there latches TX. A tap, however long, can only ever key while held. The
+// latch ends on a tap of the button (now the STOP key), Escape / space, the
+// page being hidden, the transport dropping, or PTT_LATCH_MAX_MS.
+var touchUi = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+var pttLatched = false, pttLatchStart = 0, pttLatchTimer = null;
+var PTT_LATCH_MAX_MS = 180000, PTT_LATCH_WARN_MS = 15000, PTT_LATCH_SLIDE_PX = 60;
+
 (function() {
     var bar = document.getElementById('bottomBar');
-    var pttPointerActive = false;
-    function isPTT(e) { return e.target && e.target.classList && e.target.classList.contains('ptt-btn'); }
+    var cap = document.getElementById('pttLockCap');
+    var pttPointerActive = false, pttPointerId = null, pttStartY = 0, capArmed = false, slideOk = false;
+    function isPTT(e) { return !!(e.target && e.target.closest && e.target.closest('.ptt-btn')); }
+    function showCap() {
+        var radio = document.getElementById('radio').getBoundingClientRect();
+        cap.style.bottom = (radio.bottom - bar.getBoundingClientRect().top + 28) + 'px';
+        cap.classList.add('show');
+    }
+    function hideCap() { cap.classList.remove('show', 'armed'); capArmed = false; }
     function pttOn(e) {
         e.preventDefault();
+        if (pttLatched) { unlatchPTT(); return; }
         if (!handlePTTPress()) return;
         if (pttReleaseTimer) {
             clearTimeout(pttReleaseTimer);
             pttReleaseTimer = null;
         }
         pttPointerActive = true;
+        pttPointerId = e.pointerId;
+        pttStartY = e.clientY;
+        slideOk = touchUi && e.pointerType !== 'mouse';
+        if (slideOk) showCap();
         flushAudio();
         send({ cmd: 'setPTT', value: true });
     }
@@ -6594,14 +6945,201 @@ function releasePTT() {
     bar.addEventListener('pointerdown', function(e) {
         if (isPTT(e)) pttOn(e);
     });
+    document.addEventListener('pointermove', function(e) {
+        if (!pttPointerActive || !slideOk || e.pointerId !== pttPointerId) return;
+        var armed = (pttStartY - e.clientY) >= PTT_LATCH_SLIDE_PX;
+        if (armed === capArmed) return;
+        capArmed = armed;
+        cap.classList.toggle('armed', armed);
+        if (armed && navigator.vibrate) { try { navigator.vibrate(20); } catch (err) {} }
+    });
+    function pttEnd(latchable) {
+        if (!pttPointerActive) return;
+        pttPointerActive = false;
+        var latch = latchable && capArmed;
+        hideCap();
+        if (latch) latchPTT(); else releasePTT();
+    }
     // Release: on document so it fires even if button DOM was recreated
-    document.addEventListener('pointerup', function() {
-        if (pttPointerActive) { pttPointerActive = false; releasePTT(); }
-    });
-    document.addEventListener('pointercancel', function() {
-        if (pttPointerActive) { pttPointerActive = false; releasePTT(); }
-    });
+    document.addEventListener('pointerup', function() { pttEnd(true); });
+    document.addEventListener('pointercancel', function() { pttEnd(false); });
 })();
+
+function latchPTT() {
+    pttLatched = true;
+    pttLatchStart = Date.now();
+    if (pttReleaseTimer) { clearTimeout(pttReleaseTimer); pttReleaseTimer = null; }
+    clearInterval(pttLatchTimer);
+    pttLatchTimer = setInterval(tickPttLatch, 250);
+    renderBottomBar();
+    tickPttLatch();
+}
+
+// immediate: unkey now rather than after the 300 ms TX audio drain — for the
+// page going away, when a timer may never fire.
+function unlatchPTT(immediate) {
+    if (!pttLatched) return;
+    pttLatched = false;
+    clearInterval(pttLatchTimer);
+    pttLatchTimer = null;
+    if (immediate) {
+        if (pttReleaseTimer) { clearTimeout(pttReleaseTimer); pttReleaseTimer = null; }
+        send({ cmd: 'setPTT', value: false });
+    } else {
+        releasePTT();
+    }
+    renderBottomBar();
+}
+
+// The link is gone: nothing to send, just stop showing a latch that no
+// longer keys anything (the server drops PTT for a vanished client itself).
+function dropPttLatch() {
+    if (!pttLatched) return;
+    pttLatched = false;
+    clearInterval(pttLatchTimer);
+    pttLatchTimer = null;
+    renderBottomBar();
+}
+
+function tickPttLatch() {
+    var elapsed = Date.now() - pttLatchStart;
+    var left = PTT_LATCH_MAX_MS - elapsed;
+    if (left <= 0) { unlatchPTT(); return; }
+    var btn = document.querySelector('#bottomBar .ptt-btn');
+    if (!btn) return;
+    var t = btn.querySelector('.ptt-timer');
+    var s = Math.floor(elapsed / 1000);
+    if (t) t.textContent = Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+    btn.classList.toggle('warn', left <= PTT_LATCH_WARN_MS);
+}
+
+// A latched TX never outlives the page.
+document.addEventListener('visibilitychange', function() { if (document.hidden) unlatchPTT(true); });
+
+// Touch devices show the PTT row only where a mic PTT means something: the
+// voice modes (FreeDV / RADE included) with no digital panel open. RTTY and
+// the FT8 / JS8 / packet panels, which drive their own TX, get the four soft
+// keys alone (CW keeps its KEY key). The desktop keeps PTT in every mode.
+function digitalPanelOpen() {
+    return !!document.querySelector('#scopeArea .digi-bar:not(.hidden), #scopeArea .js8-bar:not(.hidden), #scopeArea .packet-bar:not(.hidden)');
+}
+function pttApplicable() {
+    if (!touchUi) return true;
+    if (String(currentMode || '').indexOf('RTTY') === 0) return false;
+    return !digitalPanelOpen();
+}
+// The panels open and close from their own modules, so watch them rather
+// than hook every path.
+(function() {
+    if (!touchUi || !window.MutationObserver) return;
+    var was = digitalPanelOpen();
+    new MutationObserver(function() {
+        var now = digitalPanelOpen();
+        if (now === was) return;
+        was = now;
+        renderBottomBar();
+    }).observe(document.getElementById('scopeArea'), { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
+})();
+window.addEventListener('pagehide', function() { unlatchPTT(true); });
+
+// ============================================================
+// KEY LOCK (#144) — touch devices only
+// ============================================================
+// An HT-style lock: a tap on the padlock locks every control but PTT (and
+// the padlock), a ~0.8 s hold unlocks. Touches on anything else are
+// swallowed at the capture phase and nudge the padlock, so a locked screen
+// never reads as a dead one. The AUDIO / MIC overlay stays reachable because
+// the PTT itself opens it when the mic is off; the power-off and start
+// overlays because nothing else can be done from them.
+var uiLocked = false;
+var UI_LOCK_HOLD_MS = 800;
+
+function setUiLock(on) {
+    on = !!on;
+    if (uiLocked === on) return;
+    uiLocked = on;
+    document.body.classList.toggle('ui-locked', on);
+    try { localStorage.setItem('wfUiLock', on ? '1' : '0'); } catch (e) {}
+    // Nothing but PTT is reachable under the lock, so an open panel would be stuck.
+    if (on && currentPanel !== 'default') setPanel('default');
+    document.getElementById('uiLockBtn').title = on ? 'Hold to unlock controls' : 'Lock controls';
+}
+
+var uiLockHintTimer = null;
+function pulseUiLock(hint) {
+    var btn = document.getElementById('uiLockBtn');
+    btn.classList.remove('pulse');
+    void btn.offsetWidth;   // restart the animation
+    btn.classList.add('pulse');
+    if (navigator.vibrate) { try { navigator.vibrate(15); } catch (e) {} }
+    if (hint) {
+        var h = document.getElementById('uiLockHint');
+        h.textContent = hint;
+        h.classList.add('show');
+        clearTimeout(uiLockHintTimer);
+        uiLockHintTimer = setTimeout(function() { h.classList.remove('show'); }, 1400);
+    }
+}
+
+(function() {
+    var btn = document.getElementById('uiLockBtn');
+    var holdPid = null, holdStart = 0, holdRaf = null;
+    function allowed(t) {
+        return !!(t && t.closest && t.closest('.ptt-btn, #uiLockBtn, #audioMicOverlay, #startupOverlay, #powerOffOverlay'));
+    }
+    function guard(e) {
+        if (!uiLocked || allowed(e.target)) return;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        if (e.type === 'pointerdown') pulseUiLock('hold to unlock');
+    }
+    // touchstart/touchend cover the handlers that still listen to touch
+    // events (TUNE long-press, sliders); pointerup is left alone so the
+    // document-level PTT release always arrives.
+    ['pointerdown', 'mousedown', 'touchstart', 'touchend', 'click', 'dblclick', 'contextmenu', 'wheel'].forEach(function(ev) {
+        document.addEventListener(ev, guard, { capture: true, passive: false });
+    });
+
+    function stopHold() {
+        if (holdRaf) cancelAnimationFrame(holdRaf);
+        holdRaf = null;
+        holdPid = null;
+        btn.classList.remove('holding');
+        btn.style.removeProperty('--p');
+    }
+    btn.addEventListener('pointerdown', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!uiLocked) { setUiLock(true); pulseUiLock('locked'); return; }
+        holdPid = e.pointerId;
+        holdStart = performance.now();
+        try { btn.setPointerCapture(e.pointerId); } catch (err) {}
+        btn.classList.add('holding');
+        (function tick() {
+            var p = Math.min(1, (performance.now() - holdStart) / UI_LOCK_HOLD_MS);
+            btn.style.setProperty('--p', (p * 100).toFixed(1) + '%');
+            if (p < 1) { holdRaf = requestAnimationFrame(tick); return; }
+            stopHold();
+            setUiLock(false);
+        })();
+    });
+    function end(e) {
+        if (holdPid === null || e.pointerId !== holdPid) return;
+        var held = performance.now() - holdStart;
+        stopHold();
+        if (uiLocked && held < UI_LOCK_HOLD_MS) pulseUiLock('hold to unlock');
+    }
+    btn.addEventListener('pointerup', end);
+    btn.addEventListener('pointercancel', end);
+    btn.addEventListener('click', function(e) { e.preventDefault(); e.stopPropagation(); });
+})();
+
+// A reload in the car mount keeps the lock on.
+function restoreUiLock() {
+    var saved = false;
+    try { saved = localStorage.getItem('wfUiLock') === '1'; } catch (e) {}
+    if (touchUi && saved) setUiLock(true);
+}
 
 // ============================================================
 // COMMANDS
@@ -7034,9 +7572,13 @@ var rxVolume = (function() {
     return 100;
 })();
 function rxVolumeGain() { var f = rxVolume / 100; return f * f; }
+// What the RX playback gain is set to: VOL, or nothing while the paddle
+// sends (setRxPaddleMute).
+var rxPaddleMuted = false;
+function rxPlaybackGain() { return rxPaddleMuted ? 0 : rxVolumeGain(); }
 function setRxVolume(pct, save) {
     rxVolume = Math.max(0, Math.min(100, Math.round(pct) || 0));
-    if (audioGainNode && audioCtx) audioGainNode.gain.setTargetAtTime(rxVolumeGain(), audioCtx.currentTime, 0.01);
+    if (audioGainNode && audioCtx) audioGainNode.gain.setTargetAtTime(rxPlaybackGain(), audioCtx.currentTime, 0.01);
     if (window.cwSidetone) cwSidetone.gainChanged();
     var text = rxVolume ? rxVolume + '%' : 'MUTE';
     document.querySelectorAll('.rx-vol-slider').forEach(function(s) { if (parseInt(s.value, 10) !== rxVolume) s.value = rxVolume; });
@@ -7127,7 +7669,7 @@ function startAudio() {
     if (!audioCtx) audioCtx = createRxAudioCtx();
     // Gain node: the browser-side VOL (setRxVolume)
     audioGainNode = audioCtx.createGain();
-    audioGainNode.gain.value = rxVolumeGain();
+    audioGainNode.gain.value = rxPlaybackGain();
     audioGainNode.connect(audioCtx.destination);
     audioJbStats = null;
     if (audioCtx.audioWorklet && window.isSecureContext) startWithWorklet();
@@ -7776,6 +8318,10 @@ function resizeCanvases() {
     }
     var spectH = Math.round(availH * 0.35);
     var wfH = Math.round(availH * 0.65);
+    // The key lock and its hint sit in the strip's corner, not the bar's.
+    var lockLift = Math.round(areaRect.height - availH);
+    document.getElementById('uiLockBtn').style.bottom = (8 + lockLift) + 'px';
+    document.getElementById('uiLockHint').style.bottom = (17 + lockLift) + 'px';
     spectCanvas.style.height = spectH + 'px';
     wfCanvas.style.top = spectH + 'px';
     wfCanvas.style.height = wfH + 'px';
@@ -8240,14 +8786,22 @@ function drawWaterfall() {
     return p < 1;
 }
 
+// Step a scope click, tap or drag lands on: 1 Hz in CW, where the dial has
+// to sit on the signal for the beat note to come out at the pitch, 100 Hz
+// in every other mode.
+function scopeTuneStep() {
+    return (currentMode === 'CW' || currentMode === 'CW-R') ? 1 : 100;
+}
+
 function scopeFreqFromClientX(target, clientX) {
     if (!target || spectStartFreq <= 0 || spectEndFreq <= spectStartFreq) return 0;
     var rect = target.getBoundingClientRect();
     if (rect.width <= 0) return 0;
     var frac = (clientX - rect.left) / rect.width;
     frac = Math.max(0, Math.min(1, frac));
-    // Scope tuning lands on 100 Hz steps, like a drag (scopeFreqFromDragDeltaX).
-    return Math.round((spectStartFreq + (spectEndFreq - spectStartFreq) * frac) * 1e6 / 100) * 100;
+    // Scope tuning lands on scopeTuneStep(), like a drag (scopeFreqFromDragDeltaX).
+    var step = scopeTuneStep();
+    return Math.round((spectStartFreq + (spectEndFreq - spectStartFreq) * frac) * 1e6 / step) * step;
 }
 
 function scopeSetVisualPan(px) {
@@ -8267,7 +8821,8 @@ function scopeFreqFromDragDeltaX(deltaX) {
     var spanHz = (spectEndFreq - spectStartFreq) * 1e6;
     var hzPerPx = spanHz / scopeDragRectWidth;
     // Left pan (negative deltaX) should increase frequency.
-    return Math.max(100, Math.round((scopeDragStartFreq - deltaX * hzPerPx) / 100) * 100);
+    var step = scopeTuneStep();
+    return Math.max(step, Math.round((scopeDragStartFreq - deltaX * hzPerPx) / step) * step);
 }
 
 // X of the VFO on the glass. CENTER pins it mid-screen (compensating the
@@ -8312,7 +8867,8 @@ function scopeDragTuneFreq(clientX, deltaX, release) {
     } else {
         frac = Math.max(0, Math.min(1, frac));
     }
-    var f = Math.round((spectStartFreq + (spectEndFreq - spectStartFreq) * frac) * 1e6 / 100) * 100;
+    var step = scopeTuneStep();
+    var f = Math.round((spectStartFreq + (spectEndFreq - spectStartFreq) * frac) * 1e6 / step) * step;
     if (f > 0) scopeDragFreq = f;
     return f;
 }
@@ -8463,7 +9019,12 @@ var spacebarPTTActive = false;
 
 document.addEventListener('keydown', function(e) {
     // Don't handle shortcuts when editing macros or in input fields
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    // The CW input holds focus while the CW bar is open; the arrow keys keep
+    // tuning the VFO from there (the box is cleared as it is keyed, so the
+    // caret has nothing to move through).
+    var inField = (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA');
+    var cwTune = (e.target.id === 'cwInput' && e.key.indexOf('Arrow') === 0);
+    if (inField && !cwTune) return;
 
     // Don't handle shortcuts when macro editor is open
     var macroEditor = document.getElementById('cwMacroEditor');
@@ -8485,6 +9046,7 @@ document.addEventListener('keydown', function(e) {
     else if (e.key === 'ArrowLeft') { e.preventDefault(); tuneDownHz(); }
     else if (e.key === 'Escape') {
         e.preventDefault();
+        unlatchPTT();
         // Stop CW transmission first
         cwStopRig();
         // If a digi-mode TX (FT8/JS8/FreeDV) is in flight, halt it
@@ -8498,6 +9060,7 @@ document.addEventListener('keydown', function(e) {
     }
     else if (e.key === ' ' && !e.repeat) {
         e.preventDefault();
+        if (pttLatched) { unlatchPTT(); return; }
         if (!spacebarPTTActive && handlePTTPress()) {
             spacebarPTTActive = true;
             // Cancel any pending PTT release
@@ -8702,8 +9265,66 @@ var cwSidetone = new WfCwSidetone({
     enabled: (function() { try { return localStorage.getItem('wfCwSidetone') !== '0'; } catch (e) { return true; } })(),
     createContext: function() { return new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' }); },
     pitch: function() { return cwPitchHz; },
-    gain: function() { return 0.2 * rxVolumeGain(); }
+    gain: function() { return 0.2 * rxVolumeGain(); },
+    onLatency: function(ms) {
+        cwToneLatencyMs = ms;
+        if (ms > CW_TONE_SLOW_MS) console.warn('[CW] tone delay ' + ms + ' ms: the audio output is slow (Bluetooth?)');
+        updateCwSidetoneUi();
+    }
 });
+// The tone's delay is the output device's: ~170 ms on AirPods, ~30 ms on the
+// Mac speakers. Past CW_TONE_SLOW_MS a paddle cannot be sent by ear, so TONE
+// turns amber and says why. A context keeps the latency of the device it
+// opened on, so a device change rebuilds it (cw-keyer.js reset()).
+var CW_TONE_SLOW_MS = 80;
+var cwToneLatencyMs = null;
+// Rebuilding measures the new device at once, so the TONE colour follows a
+// device change without keying. What tells us the output changed, on a Mac
+// switching AirPods -> speakers (2026-10-25): no devicechange event, and no
+// device labels without microphone permission -- but the RX audio context
+// follows the new device (its outputLatency went 168 -> 40 ms) while the
+// tone's stayed at 176. So a jump in the RX latency is the trigger; the
+// devicechange event and the default output's name are kept for browsers
+// that do give them.
+var cwOutputSig = null;
+var cwRxLatency = null;
+var cwOutputTick = 0;
+function cwReadOutputSig() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return Promise.resolve(null);
+    return navigator.mediaDevices.enumerateDevices().then(function(list) {
+        var outs = list.filter(function(d) { return d.kind === 'audiooutput'; });
+        var d = outs.filter(function(x) { return x.deviceId === 'default'; })[0] || outs[0];
+        return (d && (d.label || d.groupId)) ? { sig: d.label + '|' + d.groupId, label: d.label } : null;
+    }).catch(function() { return null; });
+}
+function cwAudioOutputChanged(why) {
+    console.info('[CW] audio output changed (' + why + '): rebuilding the tone');
+    cwSidetone.reset();
+}
+if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+    navigator.mediaDevices.addEventListener('devicechange', function() {
+        cwAudioOutputChanged('devicechange');
+        cwReadOutputSig().then(function(o) { if (o) cwOutputSig = o.sig; });   // the watch below must not rebuild it again
+    });
+}
+setInterval(function() {
+    var rx = (audioCtx && audioCtx.state === 'running' && audioCtx.outputLatency) ? audioCtx.outputLatency : null;
+    var prev = cwRxLatency;
+    cwRxLatency = rx;
+    if (!cwSidetone.enabled || !cwSidetone.ctx) return;
+    if (rx !== null && prev !== null && Math.abs(rx - prev) > 0.02) {
+        cwAudioOutputChanged('RX audio latency ' + Math.round(prev * 1000) + ' -> ' + Math.round(rx * 1000) + ' ms');
+        return;
+    }
+    if (++cwOutputTick % 3) return;
+    var bar = document.getElementById('cwBar');
+    if (!bar || bar.classList.contains('hidden')) return;
+    cwReadOutputSig().then(function(o) {
+        if (!o) return;
+        if (cwOutputSig !== null && o.sig !== cwOutputSig) cwAudioOutputChanged('default output now ' + (o.label || 'another device'));
+        cwOutputSig = o.sig;
+    });
+}, 1000);
 var cwKeyer = new WfCwKeyer({
     wpm: function() { return cwSpeed; },
     keyer: function() { return cwKeyerType; },
@@ -8723,6 +9344,39 @@ function setCwPitch(hz) {
 
 function cwSidetoneOn() { return cwSidetone.enabled; }
 
+// Break-in, the radio's BK-IN key (CI-V 16 47): OFF -> BKIN (semi) -> F-BKIN
+// (full). OFF lets the keyer sound its sidetone without transmitting. The
+// button shows what the rig reports (breakIn in status / update), so the
+// radio's own key moves it too. Hidden on rigs without the command.
+var hasBreakIn = false;
+var breakInMode = null;   // 0 OFF, 1 SEMI, 2 FULL; null until the rig reports
+var BREAK_IN_LABELS = [['BK-IN', 'BK'], ['BKIN', 'BK'], ['F-BKIN', 'F-BK']];
+
+function cycleBreakIn() {
+    if (!hasBreakIn) return;
+    send({ cmd: 'setBreakIn', value: ((breakInMode || 0) + 1) % 3 });
+}
+
+function updateHasBreakIn(on) {
+    hasBreakIn = !!on;
+    updateBreakInUi();
+}
+
+function updateBreakIn(val) {
+    breakInMode = Math.max(0, Math.min(2, val | 0));
+    updateBreakInUi();
+}
+
+function updateBreakInUi() {
+    var btn = document.getElementById('cwBreakInBtn');
+    if (!btn) return;
+    btn.style.display = hasBreakIn ? '' : 'none';
+    var lbl = BREAK_IN_LABELS[breakInMode || 0];
+    btn.querySelector('.cw-wide').textContent = lbl[0];
+    btn.querySelector('.cw-narrow').textContent = lbl[1];
+    btn.classList.toggle('active', breakInMode > 0);
+}
+
 function setCwSidetone(on) {
     cwSidetone.setEnabled(on, cwKeyer.elements(0));   // joins a transmission under way
     try { localStorage.setItem('wfCwSidetone', cwSidetone.enabled ? '1' : '0'); } catch (e) {}
@@ -8731,11 +9385,200 @@ function setCwSidetone(on) {
 
 function updateCwSidetoneUi() {
     var btn = document.getElementById('cwToneBtn');
-    if (btn) btn.classList.toggle('active', cwSidetone.enabled);
+    if (!btn) return;
+    btn.classList.toggle('active', cwSidetone.enabled);
+    if (btn.dataset.title === undefined) btn.dataset.title = btn.title;
+    var slow = cwSidetone.enabled && cwToneLatencyMs > CW_TONE_SLOW_MS;
+    btn.classList.toggle('lag', slow);
+    btn.title = slow
+        ? 'Tone delay ' + cwToneLatencyMs + ' ms: the audio output is slow (Bluetooth headphones?). Sending with a paddle needs the speakers or wired headphones. After switching, tap TONE off and on.'
+        : btn.dataset.title;
 }
 
 // Stop keying now, keep what was sent (Escape).
 function cwStopRig() { cwKeyer.cut(); }
+
+// ------------------------------------------------------------
+// MIDI controller (midi.js) and paddle / straight key (cw-paddle.js).
+// A controller's knob and buttons call the same functions as the page's own
+// controls; the MIDI window (FUNC > MIDI) holds the map. The paddle is text
+// entry: its keyer is heard at once through the CW bar's TONE, each decoded
+// character goes to the rig's keyer through cwKeyer like a typed one (one
+// character behind the fist), with no second tone for it. Timing lives in
+// cw-paddle.js, coalescing of knob ticks in WfMidiTuner.
+// ------------------------------------------------------------
+var cwPaddle = new WfCwPaddle({
+    dot: function() { return cwKeyer.dot(); },
+    sidetone: cwSidetone,
+    onChar: function(ch) { cwKeyer.sendText(ch, { tone: false }); },
+    // The radio's own sidetone comes back a character late (it keys only
+    // decoded text): cut the RX audio from the first element until that
+    // echo has played out -- the radio's keying, the jitter buffer, margin.
+    onRxMute: setRxPaddleMute,
+    rigEnd: function() { return cwKeyer.characters.length ? cwKeyer.base + cwKeyer.nextTime : 0; },
+    rxDelay: function() { return (audioJbStats ? audioJbStats.bufMs : 150) + 300; }
+});
+
+function setRxPaddleMute(on) {
+    rxPaddleMuted = on;
+    if (!audioGainNode || !audioCtx) return;
+    var g = audioGainNode.gain, t = audioCtx.currentTime;
+    g.cancelScheduledValues(t);
+    g.setValueAtTime(g.value, t);
+    g.linearRampToValueAtTime(rxPlaybackGain(), t + (on ? 0.003 : 0.03));   // out at once, back with a short fade
+}
+var midi = new WfMidi();
+var midiTuner = new WfMidiTuner({
+    getFreq: function() { return currentFreq; },
+    send: function(hz) { send({ cmd: 'setFrequency', value: hz }); }
+});
+var midiPttHeld = false;
+
+function midiPtt(on) {
+    if (on) {
+        if (!handlePTTPress()) return;
+        if (pttReleaseTimer) { clearTimeout(pttReleaseTimer); pttReleaseTimer = null; }
+        midiPttHeld = true;
+        flushAudio();
+        send({ cmd: 'setPTT', value: true });
+    } else if (midiPttHeld) {
+        midiPttHeld = false;
+        releasePTT();
+    }
+}
+
+// Paddle / key contacts: only in CW (outside it the rig's keyer sends
+// nothing); the first one opens the CW bar so the transcript shows. A
+// release always goes through so nothing stays latched.
+function midiCwContact(closed, fn) {
+    var isCW = (currentMode === 'CW' || currentMode === 'CW-R');
+    if (closed && !isCW) return;
+    if (closed && document.getElementById('cwBar').classList.contains('hidden')) renderCWOverlay();
+    fn(closed);
+}
+
+function midiStep(list, cur, dir) {
+    if (!list.length) return null;
+    var i = list.indexOf(cur);
+    return list[(i < 0 ? 0 : i + dir + list.length) % list.length];
+}
+
+// A GAIN-panel slider (0-255) driven like a drag, so the label, the bar and
+// the throttled send stay the slider's own.
+function midiSlider(name) {
+    return {
+        get: function() { var s = document.getElementById(name + 'Slider'); return s ? s.value / 255 : 0; },
+        set: function(v) {
+            var s = document.getElementById(name + 'Slider');
+            if (!s) return;
+            var val = Math.round(v * 255);
+            if (String(val) === s.value) return;
+            s.value = val;
+            s.dispatchEvent(new Event('input'));
+        }
+    };
+}
+
+(function() {
+    function rel(name, label, fn) { midi.register(name, { label: label, kind: 'rel', fn: fn }); }
+    function abs(name, label, o) { midi.register(name, { label: label, kind: 'abs', get: o.get, fn: o.set }); }
+    function btn(name, label, fn) { midi.register(name, { label: label, kind: 'btn', fn: fn }); }
+    function gate(name, label, fn) { midi.register(name, { label: label, kind: 'gate', fn: fn }); }
+    rel('tuneFine', 'VFO fine', function(t) { midiTuner.add(t * (+midi.opts.fineStep || 10)); });
+    rel('tuneCoarse', 'VFO coarse', function(t) { midiTuner.add(t * tuneStep, tuneStep); });
+    abs('afGain', 'AF gain', midiSlider('afGain'));
+    abs('rfGain', 'RF gain', midiSlider('rfGain'));
+    abs('squelch', 'Squelch', midiSlider('squelch'));
+    abs('rfPower', 'TX power', midiSlider('rfPower'));
+    abs('cwWpm', 'CW WPM', {
+        get: function() { return (cwSpeed - cwSpeedRange.min) / Math.max(1, cwSpeedRange.max - cwSpeedRange.min); },
+        set: function(v) {
+            var wpm = Math.round(cwSpeedRange.min + v * (cwSpeedRange.max - cwSpeedRange.min));
+            if (wpm !== cwSpeed) setCwSpeedValue(wpm);
+        }
+    });
+    btn('bandDown', 'BAND -', function() { stepBand(-1); });
+    btn('bandUp', 'BAND +', function() { stepBand(1); });
+    btn('modeDown', 'MODE -', function() { var m = midiStep(availableModes, currentMode, -1); if (m) setMode(m); });
+    btn('modeUp', 'MODE +', function() { var m = midiStep(availableModes, currentMode, 1); if (m) setMode(m); });
+    btn('cwBar', 'CW bar (KEY)', toggleCWBar);
+    btn('spanDown', 'SPAN -', function() { if (availableSpans.length) setSpan(Math.max(0, currentSpanIndex - 1)); });
+    btn('spanUp', 'SPAN +', function() { if (availableSpans.length) setSpan(Math.min(availableSpans.length - 1, currentSpanIndex + 1)); });
+    btn('preampAtt', 'P.AMP/ATT', function() { if (attsHere().length > 2) cyclePreamp(); else cyclePreampAtt(); });
+    btn('nb', 'NB', function() { send({ cmd: 'setNoiseBlanker', value: !nbOn }); });
+    btn('nr', 'NR', function() { send({ cmd: 'setNoiseReduction', value: !nrOn }); });
+    btn('notch', 'NOTCH', function() { send({ cmd: 'setAutoNotch', value: !anfOn }); });
+    btn('tuner', 'TUNER', handleTunerPress);
+    btn('breakIn', 'BK-IN', cycleBreakIn);
+    btn('cwCut', 'CW STOP', function() { cwPaddle.stop(); cwStopRig(); });
+    btn('pttToggle', 'PTT toggle', function() { midiPtt(!midiPttHeld); });
+    gate('paddleLeft', 'Paddle left', function(c) { paddleContact('left', c); });
+    gate('paddleRight', 'Paddle right', function(c) { paddleContact('right', c); });
+    gate('straightKey', 'Straight key', function(c) { paddleContact('straight', c); });
+    gate('ptt', 'PTT (hold)', midiPtt);
+})();
+
+var midiPanel = new WfMidiPanel(document.getElementById('midiPanel'), midi);
+midi.subscribe(function(m, what) {
+    if (what === 'message') return;
+    if (currentPanel === 'func') renderFuncOverlay();
+    if (document.getElementById('paddleOverlay').classList.contains('visible')) paddlePanel.render();
+});
+midi.watch();
+
+// The paddle: keyer options and the keyboard adapter (paddle-panel.js), the
+// PADDLE window in the CW bar's CALL row. A contact from either adapter --
+// MIDI jack or USB keys -- comes through paddleContact().
+var paddleSettings = new WfPaddleSettings();
+function applyPaddleSettings() {
+    cwPaddle.setMode(paddleSettings.get('keyerMode'));
+    cwPaddle.setSwap(paddleSettings.get('swap'));
+}
+paddleSettings.subscribe(applyPaddleSettings);
+applyPaddleSettings();
+
+// Every contact lights its lamp in the PADDLE window; it keys only in CW.
+function paddleContact(role, closed) {
+    paddlePanel.lamp(role, closed);
+    midiCwContact(closed, function(on) {
+        if (role === 'straight') cwPaddle.straightKey(on); else cwPaddle.paddle(role, on);
+    });
+}
+var keyboardPaddle = new WfKeyboardPaddle({
+    settings: paddleSettings,
+    target: window,
+    onContact: paddleContact,
+    isActive: function() { return currentMode === 'CW' || currentMode === 'CW-R'; },
+    onLearn: function() { paddlePanel.render(); },
+    onTrace: function(t) { paddlePanel.showTrace(t); }
+});
+var paddlePanel = new WfPaddlePanel(document.getElementById('paddlePanel'), paddleSettings, keyboardPaddle, {
+    midiStatus: function() {
+        if (!WfMidi.supported()) return 'not in this browser';
+        if (!midi.enabled) return 'OFF';
+        if (midi.status !== 'ready') return midi.status;
+        return midi.devices.length ? 'ON \u00b7 ' + midi.devices.join(', ') : 'ON \u00b7 no device';
+    },
+    openMidi: function() { closePaddleModal(); openMidiModal(); }
+});
+function openPaddleModal() {
+    document.getElementById('paddleOverlay').classList.add('visible');
+    paddlePanel.render();
+}
+function closePaddleModal() {
+    keyboardPaddle.learn(null);
+    document.getElementById('paddleOverlay').classList.remove('visible');
+}
+document.getElementById('cwPaddleBtn').addEventListener('click', openPaddleModal);
+
+function openMidiModal() {
+    document.getElementById('midiOverlay').classList.add('visible');
+    midiPanel.render();
+}
+function closeMidiModal() {
+    midi.learn(null);
+    document.getElementById('midiOverlay').classList.remove('visible');
+}
 
 function toggleCWBar() {
     var cwBar = document.getElementById('cwBar');
@@ -8801,24 +9644,20 @@ function updateCWTranscript() {
 
 function sendCWText(text) { cwKeyer.sendText(text); }
 
+// Set the keyer speed (WPM box, its steppers, a MIDI knob).
+function setCwSpeedValue(wpm) {
+    cwSpeed = clampCwSpeed(wpm);
+    var input = document.getElementById('cwSpeedInput');
+    if (input) input.value = cwSpeed;
+    send({ cmd: 'setCWSpeed', wpm: cwSpeed });
+}
+
 function initCWHandlers() {
     // Speed buttons
     var speedInput = document.getElementById('cwSpeedInput');
-    document.getElementById('cwSpeedDown').addEventListener('click', function() {
-        cwSpeed = clampCwSpeed(cwSpeed - 1);
-        speedInput.value = cwSpeed;
-        send({ cmd: 'setCWSpeed', wpm: cwSpeed });
-    });
-    document.getElementById('cwSpeedUp').addEventListener('click', function() {
-        cwSpeed = clampCwSpeed(cwSpeed + 1);
-        speedInput.value = cwSpeed;
-        send({ cmd: 'setCWSpeed', wpm: cwSpeed });
-    });
-    speedInput.addEventListener('change', function() {
-        cwSpeed = clampCwSpeed(parseInt(speedInput.value) || 20);
-        speedInput.value = cwSpeed;
-        send({ cmd: 'setCWSpeed', wpm: cwSpeed });
-    });
+    document.getElementById('cwSpeedDown').addEventListener('click', function() { setCwSpeedValue(cwSpeed - 1); });
+    document.getElementById('cwSpeedUp').addEventListener('click', function() { setCwSpeedValue(cwSpeed + 1); });
+    speedInput.addEventListener('change', function() { setCwSpeedValue(parseInt(speedInput.value) || 20); });
 
     // Mode buttons
     document.querySelectorAll('.cw-mode-btn').forEach(function(btn) {
@@ -8835,6 +9674,13 @@ function initCWHandlers() {
     document.getElementById('cwStopBtn').addEventListener('click', function() {
         cwKeyer.stop();
         cwPendingText = '';
+    });
+
+    // Break-in OFF / SEMI / FULL
+    updateBreakInUi();
+    document.getElementById('cwBreakInBtn').addEventListener('click', function() {
+        cycleBreakIn();
+        document.getElementById('cwInput').focus();
     });
 
     // Browser sidetone on / off
@@ -10968,7 +11814,8 @@ function executeDigiTx(slotPhase) {
         }, function() {
             // onFirstChunk: ~100 ms of audio buffered in ALSA — safe to key TX
             console.log('[DIGI TX] PTT ON for: "' + txMsgCapture + '"');
-            send({ cmd: 'setPTT', value: true });
+            // digital: the backend takes the voice COMP out for the over (#147)
+            send({ cmd: 'setPTT', value: true, digital: true });
         });
     } catch(e) {
         console.error('[DIGI TX] encode/stream error:', e);
@@ -11036,7 +11883,7 @@ function startDigiTune(overrideFreq) {
         sendTxAudio(frame);
         chunksSent++;
         if (chunksSent === PTT_AFTER_CHUNKS) {
-            send({ cmd: 'setPTT', value: true });
+            send({ cmd: 'setPTT', value: true, digital: true });
         }
     }
 
@@ -12403,6 +13250,7 @@ Recorder.init({
 });
 renderBottomBar();
 applyMeterStyle();
+restoreUiLock();
 updateClock();
 setInterval(updateClock, 10000);
 

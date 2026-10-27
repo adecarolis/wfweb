@@ -27,6 +27,7 @@ CMD_MODE_READ = 0x04
 CMD_FREQ_SET = 0x05
 CMD_MODE_SET = 0x06
 CMD_LEVEL = 0x14
+CMD_FUNC = 0x16
 CMD_METER = 0x15
 CMD_POWER_CTRL = 0x18
 CMD_TRANSCEIVER_ID = 0x19
@@ -42,6 +43,8 @@ SUB_RF_GAIN = 0x02
 SUB_SQUELCH = 0x03
 SUB_RF_POWER = 0x0A
 SUB_MIC_GAIN = 0x0B
+SUB_COMP_LEVEL = 0x0E
+SUB_COMPRESSOR = 0x44  # under CMD_FUNC
 SUB_S_METER = 0x02
 SUB_SWR_METER = 0x12
 SUB_ALC_METER = 0x13
@@ -107,11 +110,15 @@ class CivRadioBase:
         self._frequency: int = 14_074_000
         self._mode: int = 0x01  # USB
         self._filter: int = 1
+        self._data: int = 0  # DATA-mode byte of the 26 0N slot (0 = off, 1 = DATA)
         self._af_gain: int = 128
         self._rf_gain: int = 255
         self._rf_power: int = 100
         self._squelch: int = 0
         self._mic_gain: int = 128
+        # Speech compressor ON at level 5 (128 of 255), as a voice operator leaves it.
+        self.compressor: int = 1
+        self._comp_level: int = 128
         self._s_meter: int = 120
         self._swr: int = 10
         self._alc: int = 0
@@ -134,6 +141,12 @@ class CivRadioBase:
     def set_mode(self, mode: int, filt: int = 1) -> None:
         self._mode = mode
         self._filter = filt
+
+    @property
+    def data_mode(self) -> int:
+        """DATA-mode byte of the last 26 0N write (0 = off, 1 = DATA); the
+        plain 06 mode set has no such byte and leaves it alone."""
+        return self._data
 
     def set_s_meter(self, value: int) -> None:
         self._s_meter = value
@@ -216,6 +229,13 @@ class CivRadioBase:
                 return self.civ_ack(to, frm)
             return self._handle_meter(to, frm, payload[0])
 
+        if cmd == CMD_FUNC and payload and payload[0] == SUB_COMPRESSOR:
+            if len(payload) > 1:
+                self.compressor = payload[1]
+                return self.civ_ack(to, frm)
+            return self.civ_frame(to, frm, CMD_FUNC, sub=SUB_COMPRESSOR,
+                                  data=bytes([self.compressor]))
+
         if cmd == CMD_POWER_CTRL:
             return self.civ_ack(to, frm)
 
@@ -237,16 +257,19 @@ class CivRadioBase:
             receiver = payload[0] if payload else 0
             rest = payload[1:]
             if rest:
+                # 26 0N <mode> <data> <filter>: the layout a real Icom uses
                 self._mode = rest[0]
                 if len(rest) > 1:
-                    self._filter = rest[1]
+                    self._data = rest[1]
+                if len(rest) > 2:
+                    self._filter = rest[2]
                 return self.civ_ack(to, frm)
             else:
                 if self.blank_channel:
                     return self.civ_frame(to, frm, CMD_RX_MODE,
                                           data=bytes([receiver, 0xFF]))
                 return self.civ_frame(to, frm, CMD_RX_MODE,
-                                      data=bytes([receiver, self._mode, self._filter]))
+                                      data=bytes([receiver, self._mode, self._data, self._filter]))
 
         if cmd in (CMD_ACK, CMD_NAK):
             return None
@@ -296,6 +319,7 @@ class CivRadioBase:
             SUB_SQUELCH: ("_squelch", self._squelch),
             SUB_RF_POWER: ("_rf_power", self._rf_power),
             SUB_MIC_GAIN: ("_mic_gain", self._mic_gain),
+            SUB_COMP_LEVEL: ("_comp_level", self._comp_level),
         }
         if sub not in levels:
             return self.civ_ack(to, frm)

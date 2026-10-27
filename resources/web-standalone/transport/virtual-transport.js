@@ -48,6 +48,9 @@
         setMonitor:       'monitor',
         setPreamp:        'preamp',
         setAttenuator:    'attenuator',
+        setBreakIn:       'breakIn',
+        setCompressor:    'compressor',
+        setCompLevel:     'compLevel',
         setSplit:         'split',
         setDuplex:        'duplex',
         setDuplexOffset:  'duplexOffset',
@@ -133,6 +136,12 @@
                 // cycle button walks the caps lists from here.
                 preamp: 0,
                 attenuator: 0,
+                // CW break-in, SEMI like the C++ virtual rig (civemulator).
+                breakIn: 1,
+                // Speech compressor ON at level 5, as a voice operator leaves
+                // it, so the bench shows the digital-TX hold (#147).
+                compressor: true,
+                compLevel: 128,
                 // -54 dB = S0. The drawSMeter() scale treats 0 as S9, so a
                 // default of 0 would paint a permanent full-scale signal.
                 sMeter: -54,
@@ -201,6 +210,8 @@
                 return;
             }
             if (ECHO_FIELDS.hasOwnProperty(obj.cmd)) {
+                // Mirror SerialRigTransport: the operator's COMP wins over a hold.
+                if (obj.cmd === 'setCompressor' && this._compHeld) this._compRestoreOn = false;
                 var field = ECHO_FIELDS[obj.cmd];
                 var val = (obj.cmd === 'setCWSpeed') ? obj.wpm : obj.value;
                 if (val === undefined) return;
@@ -263,6 +274,9 @@
                     return;
                 case 'setPTT':
                     var ptt = !!obj.value;
+                    // Mirror SerialRigTransport: COMP out for a digital over (#147).
+                    if (ptt && (obj.digital || (this._rade.enabled && this._rade.modem)))
+                        this._holdCompressor();
                     if (this._rade.enabled && this._rade.modem) {
                         // Mirror SerialRigTransport: on PTT-off ship the EOO
                         // (carries the encoded callsign — receiver decodes it
@@ -279,6 +293,7 @@
                     }
                     this.state.transmitting = ptt;
                     this._emit('update', { transmitting: ptt });
+                    if (!ptt) this._releaseCompressor();
                     return;
                 case 'selectVFO':
                     if (obj.value === 'MEM') {
@@ -590,6 +605,11 @@
                 // Same for the TUNE tile — the virtual rig echoes tuner
                 // state, so the bench can exercise it off-air.
                 hasTuner: true,
+                // The CW bar's BK-IN button, echoed like the rest.
+                hasBreakIn: true,
+                // FUNC COMP tile and GAIN COMP row, echoed like the rest.
+                hasCompressor: true,
+                hasCompLevel: true,
                 // Switchable bottom meter: borrow the IC-705's meter faces so
                 // the SWR / ALC / COMP / Vd / Id cycle can be exercised off-air.
                 txMeters: virtualTxMeters(),
@@ -631,6 +651,9 @@
                 rxAntenna: this.state.rxAntenna,
                 preamp: this.state.preamp,
                 attenuator: this.state.attenuator,
+                breakIn: this.state.breakIn,
+                compressor: this.state.compressor,
+                compLevel: this.state.compLevel,
                 duplex: this.state.duplex || 'OFF',
                 toneMode: this.state.toneMode || 'OFF',
                 toneFreq: this.state.toneFreq,
@@ -738,7 +761,32 @@
             setTimeout(function () {
                 self.state.transmitting = false;
                 self._emit('update', { transmitting: false });
+                self._releaseCompressor();
             }, 300);
+        }
+
+        // Same rule as SerialRigTransport._holdCompressor: SSB only, and an
+        // unread state is never guessed.
+        _holdCompressor() {
+            if (this._compHeld) return;
+            if (this.state.mode !== 'USB' && this.state.mode !== 'LSB') return;
+            if (this.state.compressor === undefined || this.state.compressor === null) return;
+            this._compHeld = true;
+            this._compRestoreOn = !!this.state.compressor;
+            if (this._compRestoreOn) {
+                this.state.compressor = false;
+                this._emit('update', { compressor: false });
+            }
+        }
+
+        _releaseCompressor() {
+            if (!this._compHeld) return;
+            this._compHeld = false;
+            if (this._compRestoreOn) {
+                this.state.compressor = true;
+                this._emit('update', { compressor: true });
+            }
+            this._compRestoreOn = false;
         }
     }
 

@@ -105,8 +105,11 @@ void cachingQueue::run()
                     auto cv = findCache(item.command, item.receiver);
                     held = (cv != cache.end() && cv->backedOff());
                 }
-                if (!held)
+                if (!held) {
+                    if (!item.param.isValid())
+                        countUnanswered(item.command, item.receiver);
                     emit haveCommand(item.command,item.param,item.receiver);
+                }
                 it=queue.erase(it);
                 //queue.remove(prio,it.value()); // Will remove ALL matching commands which breaks some things (memory bulk write)
 
@@ -115,8 +118,10 @@ void cachingQueue::run()
                     queue.insert(prio,item);
                 }
 
-                // Immediate will be updated by the add command, any other commands should update the cache
-                if (!held && prio != priorityImmediate) {
+                // An immediate set was put in the cache by add(); everything
+                // else is stamped here, as it goes out, so that a read's req
+                // is the time it was last asked (countUnanswered).
+                if (!held && (prio != priorityImmediate || !item.param.isValid())) {
                     updateCache(false,item.command,item.param,item.receiver);
                 }
             }
@@ -202,6 +207,26 @@ void cachingQueue::add(queuePriority prio ,queueItem item, bool unique)
                     qWarning() << "cachingQueue::add() Warning, cannot add recurring command with immediate priority!" << funcString[item.command];
                 } else {
                     if (unique) {
+                        // A read never replaces a pending item of the same
+                        // command; the new read is dropped and the pending one
+                        // keeps its place.
+                        // - A pending set: queueItem equality ignores the
+                        //   value, so the 5 Hz status read of the PTT state
+                        //   deleted a queued key before it went out (#147).
+                        //   The commander reads a set back anyway.
+                        // - A pending read: removing it and inserting the new
+                        //   one sent it to the back of the line. A value the
+                        //   status asked for again before the backlog ahead of
+                        //   it drained (getCache() re-asks on every miss) was
+                        //   pushed back each time and never read: COMP, last
+                        //   in the status, on the macOS CI runner.
+                        if (!item.param.isValid()) {
+                            for (auto it = queue.constFind(prio); it != queue.cend() && it.key() == prio; ++it) {
+                                if (it.value().command == item.command && it.value().receiver == item.receiver
+                                        && it.value().recurring == item.recurring)
+                                    return;
+                            }
+                        }
                         int count=queue.remove(prio,item);
                         if (count>0)
                             qDebug() << "cachingQueue::add() deleted" << count << "entries from queue for" << funcString[item.command] << "on receiver" << item.receiver;
@@ -219,8 +244,9 @@ void cachingQueue::add(queuePriority prio ,queueItem item, bool unique)
 
                 }
             }
-            //Immediately update the cache (even if we aren't sending a value)
-            if (!item.recurring && prio == priorityImmediate)
+            // An immediate set goes into the cache now, before the rig has
+            // answered; a read is stamped when it is sent (run()).
+            if (!item.recurring && prio == priorityImmediate && item.param.isValid())
             {
                 updateCache(false,item.command,item.param,item.receiver);
             }
@@ -273,6 +299,38 @@ vfoCommandType cachingQueue::getVfoCommand(vfo_t vfo,uchar rx, bool set)
     }
     qDebug(logRig()) << "Queue VFO:" << vfo << "rx:" << rx<< "set:" << set << "mode:" << funcString[cmd.modeFunc] << "freq:" << funcString[cmd.freqFunc] << "rigstate: vfoMode:" << rigState.vfoMode << "vfo" << rigState.vfo << "rx" << rigState.receiver;
     return cmd;
+}
+
+// Operating frequency / mode. In memory mode the per-VFO cache never fills
+// while the periodic 25 00 / 26 00 poll keeps the Selected one live with the
+// recalled channel (IC-7300, measured); anything that only looked at the
+// named slot saw nothing there: setFilter silently did nothing (#138) and the
+// status went out with null freq/mode. rigctld had the same hole from the
+// other side: a slot nothing polls answered the last value *set* (#147).
+// The named slot first, then the Selected one, then the plain read. Only
+// funcs the rig has are consulted: getCache() re-requests an empty slot.
+cacheItem cachingQueue::operatingFreqCache(const vfoCommandType &t)
+{
+    if (rigCaps == Q_NULLPTR || t.freqFunc == funcNone) return cacheItem();
+    cacheItem c = getCache(t.freqFunc, t.receiver);
+    if (!c.value.isValid() && rigCaps->commands.contains(funcSelectedFreq))
+        c = getCache(funcSelectedFreq, 0);
+    for (funcs f : {funcFreq, funcFreqGet})
+        if (!c.value.isValid() && rigCaps->commands.contains(f))
+            c = getCache(f, t.receiver);
+    return c;
+}
+
+cacheItem cachingQueue::operatingModeCache(const vfoCommandType &t)
+{
+    if (rigCaps == Q_NULLPTR || t.modeFunc == funcNone) return cacheItem();
+    cacheItem c = getCache(t.modeFunc, t.receiver);
+    if (!c.value.isValid() && rigCaps->commands.contains(funcSelectedMode))
+        c = getCache(funcSelectedMode, 0);
+    for (funcs f : {funcMode, funcModeGet})
+        if (!c.value.isValid() && rigCaps->commands.contains(f))
+            c = getCache(f, t.receiver);
+    return c;
 }
 
 queuePriority cachingQueue::del(funcs func, uchar receiver)
@@ -426,6 +484,7 @@ int cachingQueue::receiveNak(funcs func, uchar receiver)
             cv = cache.insert(func, c);
         }
         count = ++cv->nak;
+        cv->reply = QDateTime::currentDateTime(); // an NG is an answer: not unanswered
         if (count == CACHE_NAK_LIMIT)
             tripped = *cv;
         mutex.unlock();
@@ -435,6 +494,27 @@ int cachingQueue::receiveNak(funcs func, uchar receiver)
     if (count == CACHE_NAK_LIMIT)
         emit cacheRejected(tripped);
     return count;
+}
+
+// Called as a read goes out, with the mutex held.  If the same read went
+// out before and nothing came back since — no value, no NG — that silence
+// counts as a refusal, so a rig that ignores a command is backed off like
+// one that answers FA (CACHE_NAK_LIMIT) instead of being asked again on
+// every status build for as long as it runs.  A refresh of a value the rig
+// did answer once is not counted: a lost reply there costs nothing.
+void cachingQueue::countUnanswered(funcs func, uchar receiver)
+{
+    auto cv = findCache(func, receiver);
+    if (cv == cache.end() || cv->value.isValid() || !cv->req.isValid())
+        return;
+    if (cv->reply.isValid() && cv->reply >= cv->req)
+        return;
+    int count = ++cv->nak;
+    if (count == CACHE_NAK_LIMIT) {
+        qInfo(logRig()) << "Rig has not answered" << count << "consecutive reads of" << funcString[func]
+                        << "- backing off to one attempt every" << CACHE_NAK_RETRY_SECS << "s";
+        emit cacheRejected(*cv);
+    }
 }
 
 void cachingQueue::updateCache(bool reply, queueItem item)
