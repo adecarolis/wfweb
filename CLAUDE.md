@@ -678,12 +678,17 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
   call the same functions as the page's own controls (`stepBand` /
   `recallBand`, `setMode`, `setCwSpeedValue`, the GAIN sliders driven by an
   `input` event, `setSpan`, `midiPtt` = the PTT button's path). FUNC > MIDI
-  opens `#midiOverlay`, whose body `WfMidiPanel` builds. The tile is always
-  shown: without `navigator.requestMIDIAccess` (Safari / iOS, plain http) it
-  reads N/A and the window says to use Chrome / Edge over https — a hidden
-  tile in Safari cost a bench session. Off until switched on:
-  `localStorage wfMidiEnabled`, the map in `wfMidiMap`, keyer options in
-  `wfMidiOpts`.
+  opens `#midiOverlay`, whose body `WfMidiPanel` builds. The tile shows
+  only while a controller is plugged in (`midi.devices`, hot-plug
+  re-renders FUNC). `midi.watch()` at load sees one without switching MIDI
+  on, but only where `permissions.query({name: 'midi'})` is already
+  `granted` — Chrome prompts for any MIDI access, and a prompt at every
+  page load is worse than no tile. Until that first grant (and in Safari /
+  iOS, plain http) the window is reached from CW bar > PADDLE > MIDI...,
+  which also says why there is no MIDI. Off until switched on:
+  `localStorage wfMidiEnabled`, the map in `wfMidiMap`, knob options in
+  `wfMidiOpts`; switched off, MIDI still lists the controllers but acts on
+  no message.
 - The map is a table, `[{type: 'cc'|'note', num, enc, action}]`, with
   CTR2-MIDI presets and MIDI learn. CTR2 (manual v2.01, channel 1): knob CC
   100/101 Home turn / push-turn (WheelA, 64 ± ticks, speed-sensitive ±1/10/50),

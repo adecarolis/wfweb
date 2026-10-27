@@ -82,12 +82,21 @@ await new Promise(r => server.listen(0, '127.0.0.1', r));
 const URL0 = `http://127.0.0.1:${server.address().port}/?virtual=1&id=1`;
 
 // ---- fake Web MIDI: one CTR2-MIDI input ------------------------------------
-function fakeMidi() {
+// The MIDI permission reads 'prompt' (never given on this site) unless the
+// argument says 'granted'.
+function fakeMidi(perm) {
   const port = { id: 'ctr2', name: 'CTR2-MIDI', manufacturer: 'Lynovation', type: 'input', state: 'connected', onmidimessage: null };
   const access = { inputs: new Map([['ctr2', port]]), outputs: new Map(), onstatechange: null };
   window.__midiRequests = 0;
   Object.defineProperty(navigator, 'requestMIDIAccess', { configurable: true, value: () => { window.__midiRequests++; return Promise.resolve(access); } });
+  const query = navigator.permissions.query.bind(navigator.permissions);
+  navigator.permissions.query = (d) => d && d.name === 'midi' ? Promise.resolve({ state: perm || 'prompt' }) : query(d);
   window.__midiSend = (bytes) => { if (port.onmidimessage) port.onmidimessage({ data: Uint8Array.from(bytes), timeStamp: performance.now() }); };
+  window.__midiPlug = (on) => {
+    port.state = on ? 'connected' : 'disconnected';
+    if (on) access.inputs.set('ctr2', port); else access.inputs.delete('ctr2');
+    if (access.onstatechange) access.onstatechange({ port });
+  };
 }
 
 const browser = await chromium.launch({
@@ -111,16 +120,24 @@ try {
   const midi = (bytes) => page.evaluate((b) => window.__midiSend(b), bytes);
   const cmds = (name) => page.evaluate((n) => window.__cmds.filter(c => c.cmd === n), name);
 
-  // -- FUNC > MIDI, ON, LEARN --
+  // -- first time (no permission yet): no tile; the window via PADDLE, ON, LEARN --
   check(await page.evaluate(() => window.__midiRequests === 0 && !window.midi.enabled), 'MIDI off by default: no access requested at load');
   await page.evaluate(() => window.setPanel('func'));
   const tile = page.locator('#funcGrid .ov-btn', { hasText: 'MIDI' });
-  check(await tile.count() === 1, 'FUNC grid has a MIDI tile');
-  await tile.click();
-  check(await page.locator('#midiOverlay.visible').count() === 1, 'MIDI window opens');
+  check(await tile.count() === 0, 'permission never given: no controller can be seen, no MIDI tile');
+  await page.evaluate(() => { window.setPanel('default'); window.openPaddleModal(); });
+  await page.locator('#paddlePanel .wf-btn', { hasText: 'MIDI' }).click();
+  check(await page.locator('#midiOverlay.visible').count() === 1, 'MIDI window opens from PADDLE > MIDI...');
   await page.locator('#midiPanel .midi-row .wf-btn', { hasText: 'OFF' }).first().click();
   await page.waitForFunction(() => window.midi.status === 'ready');
   check((await page.locator('#midiPanel .midi-status').textContent()).includes('CTR2-MIDI'), 'ON: the controller is listed');
+  await page.evaluate(() => window.setPanel('func'));
+  check(await tile.count() === 1 && (await tile.textContent()).includes('ON'), 'the controller found: FUNC has a MIDI tile, ON');
+  await page.evaluate(() => window.__midiPlug(false));
+  check(await tile.count() === 0, 'unplugged: the tile goes');
+  await page.evaluate(() => window.__midiPlug(true));
+  check(await tile.count() === 1, 'plugged back in: the tile is back');
+  await page.evaluate(() => window.setPanel('default'));
   const spanRow = page.locator('#midiPanel .midi-map-row', { hasText: 'SPAN -' });
   await spanRow.locator('.wf-btn', { hasText: 'LEARN' }).click();
   await midi([0x90, 70, 127]);
@@ -133,7 +150,21 @@ try {
   await page.evaluate(() => { window.closeMidiModal(); window.setPanel('default'); });
   check(await page.evaluate(() => localStorage.getItem('wfMidiEnabled') === '1' && JSON.parse(localStorage.getItem('wfMidiMap')).bindings.some(b => b.num === 70)), 'enabled flag and learnt map persisted');
 
-  // -- a browser without Web MIDI (Safari): tile shown as N/A, window says why --
+  // -- permission already held, MIDI off: the tile shows at load, OFF --
+  {
+    const ctx3 = await browser.newContext();
+    await ctx3.addInitScript(fakeMidi, 'granted');
+    const p3 = await ctx3.newPage();
+    await p3.goto(URL0);
+    await p3.waitForFunction(() => typeof window.midi === 'object' && window.midi.devices.length > 0, null, { timeout: 10000 }).catch(() => {});
+    await p3.evaluate(() => window.setPanel('func'));
+    const t3 = p3.locator('#funcGrid .ov-btn', { hasText: 'MIDI' });
+    check(await t3.count() === 1 && (await t3.textContent()).includes('OFF') && await p3.evaluate(() => !window.midi.enabled && window.__midiRequests === 1),
+      'permission held: the controller is seen at load without switching MIDI on; tile reads OFF');
+    await ctx3.close();
+  }
+
+  // -- a browser without Web MIDI (Safari): no tile, the window says why --
   {
     const ctx2 = await browser.newContext();
     await ctx2.addInitScript(() => { delete Navigator.prototype.requestMIDIAccess; });
@@ -142,7 +173,7 @@ try {
     await p2.waitForFunction(() => typeof window.midi === 'object');
     await p2.evaluate(() => window.setPanel('func'));
     const t2 = p2.locator('#funcGrid .ov-btn', { hasText: 'MIDI' });
-    check(await t2.count() === 1 && (await t2.textContent()).includes('N/A'), 'no Web MIDI: the MIDI tile is still shown, reading N/A');
+    check(await t2.count() === 0, 'no Web MIDI: no MIDI tile');
     await p2.evaluate(() => window.openMidiModal());   // the start splash still covers the page here
     check((await p2.locator('#midiPanel').textContent()).includes('Chrome or Edge'), 'and the MIDI window says to use Chrome or Edge');
     await ctx2.close();

@@ -14,8 +14,10 @@
 //   WfMidiPanel  The settings window body (theme.css .wf-* kit).
 //
 // Web MIDI needs a secure context and Chromium (Firefox behind a site
-// permission add-on); without navigator.requestMIDIAccess the page hides the
-// MIDI tile and everything here stays idle.
+// permission add-on); without navigator.requestMIDIAccess everything here
+// stays idle.  The page shows its MIDI tile only while a controller is
+// plugged in: watch() follows hot-plug without a permission prompt once the
+// site holds the MIDI permission.
 (function (global) {
     'use strict';
 
@@ -79,6 +81,11 @@
         var nav = typeof navigator !== 'undefined' ? navigator : null;
         this._requestAccess = 'requestAccess' in opts ? opts.requestAccess
             : (nav && nav.requestMIDIAccess ? function () { return nav.requestMIDIAccess({ sysex: false }); } : null);
+        // -> Promise of 'granted' | 'prompt' | 'denied'; never prompts.
+        this._queryPermission = 'queryPermission' in opts ? opts.queryPermission
+            : (nav && nav.permissions && nav.permissions.query ? function () {
+                return nav.permissions.query({ name: 'midi' }).then(function (s) { return s.state; });
+            } : null);
         this._storage = 'storage' in opts ? opts.storage
             : (function () { try { return global.localStorage; } catch (e) { return null; } })();
         this.actions = {};
@@ -139,9 +146,9 @@
         var p;
         try { p = Promise.resolve(this._requestAccess()); } catch (e) { p = Promise.reject(e); }
         return p.then(function (access) {
-            if (!self.enabled) return false;    // switched off while the prompt was up
             self._access = access;
             self._attach();
+            if (!self.enabled) { self._changed(); return false; }   // switched off while the prompt was up
             self.status = 'ready';
             self._changed();
             return true;
@@ -155,17 +162,38 @@
     WfMidi.prototype.disable = function () {
         this.enabled = false;
         store(this._storage, 'wfMidiEnabled', '0');
-        this._detach();
+        if (this._access) this._attach();   // still follows hot-plug, deaf to messages
         this._releaseGates();
         this.learning = null;
         if (this.status !== 'unsupported') this.status = 'off';
         this._changed();
     };
 
+    // Watch for a controller without asking.  Switched on: open MIDI as
+    // enable() does.  Switched off: only where the site already holds the
+    // permission (a prompt at every page load would be worse than no tile),
+    // then `devices` follows hot-plug while no message is acted on.
+    WfMidi.prototype.watch = function () {
+        var self = this;
+        if (this.enabled) return this.enable();
+        if (!this._requestAccess || !this._queryPermission) return Promise.resolve(false);
+        var p;
+        try { p = Promise.resolve(this._queryPermission()); } catch (e) { p = Promise.reject(e); }
+        return p.then(function (state) {
+            if (state !== 'granted' || self._access) return !!self._access;
+            return Promise.resolve(self._requestAccess()).then(function (access) {
+                if (!self._access) { self._access = access; self._attach(); self._changed(); }
+                return true;
+            });
+        }).catch(function () { return false; });
+    };
+
+    // Lists the inputs and follows hot-plug; messages reach handle() only
+    // while switched on.
     WfMidi.prototype._attach = function () {
         var self = this;
         var access = this._access;
-        var handler = function (ev) { self.handle(ev.data); };
+        var handler = this.enabled ? function (ev) { self.handle(ev.data); } : null;
         var names = [];
         access.inputs.forEach(function (input) {
             input.onmidimessage = handler;
@@ -179,13 +207,6 @@
             self._attach();
             self._changed();
         };
-    };
-
-    WfMidi.prototype._detach = function () {
-        if (!this._access) return;
-        this._access.inputs.forEach(function (input) { input.onmidimessage = null; });
-        this._access.onstatechange = null;
-        this.devices = [];
     };
 
     WfMidi.prototype._releaseGates = function () {

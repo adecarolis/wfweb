@@ -65,6 +65,30 @@ async function makeMidi(storage = memStorage({ wfMidiEnabled: '1' }), access = f
   check(d.status === 'denied', 'permission refused: status denied');
 }
 
+// ---- 2b. watch(): a controller seen without a prompt, once the site holds the permission ----
+{
+  let asked = 0;
+  const access = fakeAccess(['CTR2-MIDI']);
+  const mk = (perm) => new WfMidi({ requestAccess: () => { asked++; return Promise.resolve(access); }, queryPermission: () => Promise.resolve(perm), storage: memStorage() });
+  const p = mk('prompt');
+  await p.watch();
+  check(asked === 0 && p.devices.length === 0, 'watch(), permission not given yet: no access request (no prompt at load), no device known');
+  const g = mk('granted'), log = [];
+  g.register('bandDown', { label: 'BAND -', kind: 'btn', fn: () => log.push(1) });
+  await g.watch();
+  check(asked === 1 && g.devices.join() === 'CTR2-MIDI' && g.status === 'off' && !g.enabled, 'permission held, MIDI off: the controller is listed, MIDI stays off');
+  access.send('CTR2-MIDI', ON(1));
+  check(log.length === 0, 'and its messages are not acted on');
+  access.unplug('CTR2-MIDI');
+  check(g.devices.length === 0, 'unplugged while off: the list follows');
+  access.plug('CTR2-MIDI');
+  check(g.devices.join() === 'CTR2-MIDI', 'plugged back in: listed again');
+  await g.enable(); access.send('CTR2-MIDI', ON(1));
+  check(asked === 1 && log.length === 1 && g.status === 'ready', 'switched on: the same access, messages acted on');
+  g.disable(); access.send('CTR2-MIDI', ON(1));
+  check(log.length === 1 && g.devices.join() === 'CTR2-MIDI', 'switched off again: deaf to messages, still listed');
+}
+
 // ---- 3. CTR2 preset: knob encodings -----------------------------------------
 {
   const { m, log, access } = await makeMidi();
