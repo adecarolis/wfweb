@@ -73,15 +73,48 @@ def _wait_for_connected(url: str, timeout: float = 15.0) -> bool:
     return False
 
 
+def wfweb_output_tail(proc, lines: int = 60) -> str:
+    """The last lines wfweb wrote, for a failure message."""
+    path = getattr(proc, "output_path", None)
+    if not path or not os.path.exists(path):
+        return "(no wfweb output file)"
+    with open(path, errors="replace") as f:
+        return "".join(f.readlines()[-lines:])
+
+
+def ws_connect(web_port, proc=None, timeout=10.0):
+    """A browser-style WebSocket to a test server: WSS on the web port (TLS
+    is on by default), plain WS on the next port only where the server runs
+    without TLS. An upgrade the server leaves unanswered fails here with the
+    server's log tail: it used to fall through to the plain port, whose HTTP
+    200 signpost page said nothing about what the WSS path did (macOS CI,
+    2026-10-27). Needs the websockets package; skips without it."""
+    import ssl
+    pytest.importorskip("websockets")
+    from websockets.sync.client import connect
+
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    try:
+        return connect(f"wss://127.0.0.1:{web_port}", ssl=ctx, open_timeout=timeout)
+    except TimeoutError as e:
+        tail = wfweb_output_tail(proc) if proc is not None else "(no server handle)"
+        pytest.fail(f"WSS upgrade on port {web_port} unanswered for {timeout} s: {e}\n"
+                    f"--- wfweb output (tail) ---\n{tail}")
+    except (ssl.SSLError, OSError):
+        return connect(f"ws://127.0.0.1:{web_port + 1}", open_timeout=timeout)
+
+
 def _dump_and_fail(proc, event_loop, loop_thread, message, url):
     """Kill wfweb, dump its output, stop the event loop, and fail the test."""
     proc.terminate()
     try:
-        out, _ = proc.communicate(timeout=3)
-        print(f"=== wfweb output ({message}) ===", file=sys.stderr)
-        print(out.decode(errors="replace"), file=sys.stderr)
+        proc.wait(timeout=3)
     except subprocess.TimeoutExpired:
         proc.kill()
+    print(f"=== wfweb output ({message}) ===", file=sys.stderr)
+    print(wfweb_output_tail(proc, 400), file=sys.stderr)
     event_loop.call_soon_threadsafe(event_loop.stop)
     loop_thread.join(timeout=2)
     pytest.fail(f"{message}. URL: {url}")
@@ -223,12 +256,19 @@ def _launch_wfweb(mock, event_loop, rigctld_port, civ, home):
     env["HOME"] = home
     os.makedirs(home, exist_ok=True)
 
+    # wfweb also logs every line to stdout when it is not on a terminal. A pipe
+    # nobody reads fills up (16 KB on macOS) and then blocks every thread that
+    # logs, so stdout is dropped; the -l log file, flushed per line, is what
+    # failures quote.
+    output_path = os.path.join(home, "wfweb.log")
+    cmd += ["-l", output_path]
     proc = subprocess.Popen(
         cmd,
-        stdout=subprocess.PIPE,
+        stdout=subprocess.DEVNULL,
         stderr=subprocess.STDOUT,
         env=env,
     )
+    proc.output_path = output_path
 
     # The mock's event loop must run in the background to handle the handshake
     loop_thread = _ensure_loop_thread(event_loop)
