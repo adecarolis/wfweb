@@ -202,15 +202,23 @@ void cachingQueue::add(queuePriority prio ,queueItem item, bool unique)
                     qWarning() << "cachingQueue::add() Warning, cannot add recurring command with immediate priority!" << funcString[item.command];
                 } else {
                     if (unique) {
-                        // A read must never evict a pending set of the same
-                        // command: queueItem equality ignores the value, so
-                        // the 5 Hz status read of the PTT state deleted a
-                        // queued key before it went out (#147). The set is
-                        // read back by the commander anyway; drop the read.
+                        // A read never replaces a pending item of the same
+                        // command; the new read is dropped and the pending one
+                        // keeps its place.
+                        // - A pending set: queueItem equality ignores the
+                        //   value, so the 5 Hz status read of the PTT state
+                        //   deleted a queued key before it went out (#147).
+                        //   The commander reads a set back anyway.
+                        // - A pending read: removing it and inserting the new
+                        //   one sent it to the back of the line. A value the
+                        //   status asked for again before the backlog ahead of
+                        //   it drained (getCache() re-asks on every miss) was
+                        //   pushed back each time and never read: COMP, last
+                        //   in the status, on the macOS CI runner.
                         if (!item.param.isValid()) {
                             for (auto it = queue.constFind(prio); it != queue.cend() && it.key() == prio; ++it) {
                                 if (it.value().command == item.command && it.value().receiver == item.receiver
-                                        && it.value().recurring == item.recurring && it.value().param.isValid())
+                                        && it.value().recurring == item.recurring)
                                     return;
                             }
                         }

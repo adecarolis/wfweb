@@ -351,10 +351,12 @@ modeInfo.data = 0;
 // modeInfo.filter should default to 1 (FIL1)
 modeInfo.filter = 1;
 
-// A read never evicts a pending set: queueItem equality ignores the value,
-// so addUnique(read) used to delete a queued set of the same command — the
-// 5 Hz status read of the PTT state ate keys (#147). cachingQueue::add()
-// now drops the read instead; the commander reads a set back anyway.
+// A read never replaces a pending item of the same command: add() drops the
+// new read and the pending set or read keeps its place. queueItem equality
+// ignores the value, so addUnique(read) used to delete a queued set — the
+// 5 Hz status read of the PTT state ate keys (#147) — and moved a pending
+// read to the back of the line, so a value getCache() re-asked faster than
+// the backlog drained was never read (COMP on the macOS CI runner).
 
 // EXCEPTION: funcMemoryContents is addressed by channel, so two of them are
 // never duplicates. Use add() — addUnique() compares command+receiver only

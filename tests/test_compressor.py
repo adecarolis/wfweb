@@ -50,9 +50,12 @@ def _ws_connect(web_port):
 
 def _wait(predicate, timeout=6.0, what="condition", detail=None):
     # One look a second. Every status build re-queues each value the mock
-    # never answers (getCache() on a miss) as an immediate read; asked twice
-    # a second, those keep the queue busy and the compressor read, and the
-    # periodic polls, never get a turn (measured: 0 reads of 16 44 in 12 s).
+    # never answers (getCache() on a miss) as an immediate read, which keeps
+    # the queue busy. A re-queued read used to go to the back of the line, so
+    # the compressor, last in the status, was never read when the status was
+    # asked faster than that backlog drained (0 reads of 16 44 in 12 s at
+    # 2 Hz here, and on the macOS runner at 1 Hz); cachingQueue::add() now
+    # leaves a pending read where it is.
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if predicate():
