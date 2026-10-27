@@ -7,6 +7,7 @@
 // - TUNE keys the rig as a digital over ({setPTT, digital: true}), and the
 //   transport takes COMP out for that over and puts it back after it; a plain
 //   PTT leaves it alone.
+// - The spectrum carries a grey COMP n tile next to SQL while COMP is on.
 //
 // Needs playwright-core and a Chromium (found like midi_browser.mjs);
 // `--probe` only reports whether they were found. Run through
@@ -102,6 +103,9 @@ try {
   let s = await state();
   check(s.hasCompressor && s.hasCompLevel && s.compOn === true && s.compLevel === 128,
         `the rig reports COMP on at level 128 (got ${JSON.stringify(s)})`);
+  const ind = () => page.evaluate(() => { const e = document.getElementById('compIndicator');
+    return e && e.style.display !== 'none' ? e.textContent : null; });
+  check((await ind()) === 'COMP 5', `the spectrum shows a COMP 5 tile (got ${await ind()})`);
 
   // -- FUNC: the COMP tile --
   await page.evaluate(() => window.setPanel('func'));
@@ -114,6 +118,7 @@ try {
   await page.waitForFunction(() => window.compOn === false);
   const tileOff = page.locator('#funcGrid .ov-btn', { hasText: 'COMP' });
   check((await tileOff.locator('.btn-state').textContent()) === 'OFF', 'a tap switches COMP off and the tile reads OFF');
+  check((await ind()) === null, 'the spectrum COMP tile hides while COMP is off');
   check((await cmds('setCompressor')).some(c => c.value === false), 'the tap sends setCompressor false');
   await tileOff.click();
   await page.waitForFunction(() => window.compOn === true);
@@ -130,6 +135,7 @@ try {
   });
   await page.waitForFunction(() => window.__cmds.some(c => c.cmd === 'setCompLevel' && c.value === 204), null, { timeout: 3000 });
   check((await page.locator('#compLevelVal').textContent()) === '8', 'moving the slider sends setCompLevel 204 and reads 8');
+  check((await ind()) === 'COMP 8', 'the spectrum tile follows the level (COMP 8)');
   if (process.env.WFWEB_SHOT_DIR) await page.locator('#gainOverlay').screenshot({ path: path.join(process.env.WFWEB_SHOT_DIR, 'comp-gain.png') });
   await page.evaluate(() => window.setPanel('default'));
 
@@ -148,10 +154,16 @@ try {
   const keys = (await cmds('setPTT')).filter(c => c.value === true);
   check(keys.length > 0 && keys.every(c => c.digital === true), 'TUNE keys the rig as a digital over');
   await page.waitForFunction(() => window.compOn === false, null, { timeout: 3000 });
-  check(true, 'COMP goes off for the over');
+  check((await ind()) === null, 'COMP goes off for the over, and its spectrum tile with it');
   await page.evaluate(() => window.stopDigiTune());
   await page.waitForFunction(() => window.compOn === true, null, { timeout: 3000 });
-  check(true, 'COMP is back on after the unkey');
+  check((await ind()) === 'COMP 8', 'COMP is back on after the unkey, tile included');
+  if (process.env.WFWEB_SHOT_DIR) {
+    await page.evaluate(() => window.send({ cmd: 'setSquelch', value: 64 }));
+    await page.waitForFunction(() => { const e = document.getElementById('squelchIndicator'); return e && e.style.display !== 'none'; });
+    await page.screenshot({ path: path.join(process.env.WFWEB_SHOT_DIR, 'comp-indicator.png'), clip: { x: 0, y: 0, width: 1100, height: 520 } });
+    await page.evaluate(() => window.send({ cmd: 'setSquelch', value: 0 }));
+  }
 
   // -- a voice over leaves COMP alone --
   await page.evaluate(() => { window.__compSeen = []; window.send({ cmd: 'setPTT', value: true }); });

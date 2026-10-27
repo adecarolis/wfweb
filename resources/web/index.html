@@ -2005,6 +2005,15 @@ body.digi-open #bottomBar { grid-row: 5; }
     font-size: 14px;
     color: #888;
 }
+/* Speech compressor on, with its level (0-10 like the radio). A setting the
+   operator chose, so a grey readout like SQL; one tap opens the GAIN panel,
+   where the level is. Hidden while COMP is off, so it also blinks out while
+   wfweb holds COMP off for a digital over (#147). */
+#compIndicator {
+    top: 196px;  /* clears the 14px-tall SQL readout above (170 + 26) */
+    font-size: 14px;
+    color: #888;
+}
 
 /* ============ RESPONSIVE ============ */
 @media (max-height: 450px) {
@@ -2941,6 +2950,7 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
         <div id="rfGainIndicator" class="spectrum-warning" style="display: none;" onclick="setPanel('gain')"></div>
         <div id="rxVolIndicator" class="spectrum-warning" style="display: none;" onclick="setPanel('gain')"></div>
         <div id="squelchIndicator" class="spectrum-warning" style="display: none;" onclick="setPanel('gain')"></div>
+        <div id="compIndicator" class="spectrum-warning" style="display: none;" onclick="setPanel('gain')"></div>
     </div>
 
     <!-- Row 5: Bottom bar -->
@@ -4384,6 +4394,7 @@ function updateHasCompressor(msg) {
     if (msg.hasCompLevel !== undefined) hasCompLevel = !!msg.hasCompLevel;
     var row = document.getElementById('compLevelRow');
     if (row) row.style.display = hasCompLevel ? '' : 'none';
+    updateCompIndicator();
     if (currentPanel === 'func') renderFuncOverlay();
 }
 
@@ -4391,18 +4402,32 @@ function updateCompressor(on) {
     compOn = !!on;
     var row = document.getElementById('compLevelRow');
     if (row) row.style.opacity = compOn ? '' : '0.55';
+    updateCompIndicator();
     if (currentPanel === 'func') renderFuncOverlay();
 }
 
 function updateCompLevel(val) {
     compLevel = val;
     updateSlider('compLevel', val);
+    updateCompIndicator();
     if (currentPanel === 'func') renderFuncOverlay();
 }
 
 // The radio shows the level 0-10; the CI-V value is 0-255.
 function compLevelText(val) {
     return String(Math.round(val / 255 * 10));
+}
+
+// The COMP n tile on the spectrum, next to SQL: shown while COMP is on.
+function updateCompIndicator() {
+    var el = document.getElementById('compIndicator');
+    if (!el) return;
+    if (!hasCompressor || !compOn) {
+        el.style.display = 'none';
+        return;
+    }
+    el.textContent = 'COMP' + (hasCompLevel && compLevel !== null ? ' ' + compLevelText(compLevel) : '');
+    el.style.display = '';
 }
 
 function updateToggle(name, state) {
@@ -4529,6 +4554,7 @@ function initSliderTracking() {
             else if (name === 'compLevel') {
                 compLevel = parseInt(val);
                 throttledSend('compLevel', 'setCompLevel', val);
+                updateCompIndicator();
                 if (currentPanel === 'func') renderFuncOverlay();
             }
         });
