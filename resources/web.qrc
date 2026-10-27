@@ -16,6 +16,7 @@
         <file alias="cw-decoder-utils.js">web-shared/cw-decoder-utils.js</file>
         <file alias="models/deepcw.onnx">web-shared/models/deepcw.onnx</file>
         <file alias="models/deepcw.onnx.json">web-shared/models/deepcw.onnx.json</file>
+        <file alias="models/deepcw-LICENSE">web-shared/models/deepcw-LICENSE</file>
         <file alias="ort/ort.wasm.min.mjs">web-shared/ort/ort.wasm.min.mjs</file>
         <file alias="ort/ort-wasm-simd-threaded.mjs">web-shared/ort/ort-wasm-simd-threaded.mjs</file>
         <file alias="ort/ort-wasm-simd-threaded.wasm">web-shared/ort/ort-wasm-simd-threaded.wasm</file>
