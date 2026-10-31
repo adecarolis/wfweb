@@ -139,7 +139,7 @@
             '</div>' +
             '<div class="rtty-macro-grid" id="rttyMacroGrid"></div>' +
             '<div class="rtty-compose-row">' +
-              '<input type="text" id="rttyInput" class="rtty-input wf-field" placeholder="TYPE AND PRESS ENTER TO SEND..." autocomplete="off" autocapitalize="characters">' +
+              '<textarea id="rttyInput" class="rtty-input wf-field" rows="1" placeholder="TYPE AND PRESS ENTER TO SEND..." autocomplete="off" autocapitalize="characters" spellcheck="false"></textarea>' +
               '<button id="rttyTxBtn" class="wf-btn toggle" title="Key the transmitter and send what you type as you type it (idle LTRS while you think). Press again to end the over once everything typed has gone out.">TX</button>' +
               '<button id="rttySendBtn" class="wf-btn" title="Send the line as one over">SEND</button>' +
             '</div>';
@@ -208,6 +208,9 @@
         inp.addEventListener('keydown', function (e) {
             e.stopPropagation();           // the page's shortcuts must not see typing
             if (e.key === 'Escape') { if (S.tx) { e.preventDefault(); stopTx(); } return; }
+            // Shift+Enter puts a line break in the box (the textarea's own
+            // insert); the channel's input handler sends it as CR LF.
+            if (e.key === 'Enter' && e.shiftKey) return;
             if (!typing()) { if (e.key === 'Enter') { e.preventDefault(); sendCompose(); } return; }
             // The channel is open: the line is the air.  Enter = new line,
             // Backspace takes back a character not yet rendered.
@@ -215,10 +218,12 @@
             else if (e.key === 'Backspace' && !inp.value) { e.preventDefault(); if (!unqueueChar()) flashHint('Already sent'); }
         });
         inp.addEventListener('input', function () {
-            if (!typing()) return;
-            var t = inp.value;
-            inp.value = '';
-            if (t) queueText(t);
+            if (typing()) {
+                var t = inp.value;
+                inp.value = '';
+                if (t) queueText(t);
+            }
+            fitInput();
         });
         var callEl = document.getElementById('rttyCallInput');
         callEl.value = myCall();
@@ -852,7 +857,16 @@
         var inp = document.getElementById('rttyInput');
         var text = (inp.value || '').trim();
         if (!text) return;
-        if (sendText(text)) inp.value = '';
+        if (sendText(text)) { inp.value = ''; fitInput(); }
+    }
+    // The compose box is a one-row textarea that grows with its lines
+    // (Shift+Enter), up to four, then scrolls.
+    function fitInput() {
+        var inp = document.getElementById('rttyInput');
+        if (!inp) return;
+        inp.style.height = 'auto';
+        var line = parseFloat(getComputedStyle(inp).lineHeight) || 18;
+        inp.style.height = Math.min(inp.scrollHeight + 2, 4 * line + 14) + 'px';
     }
     function typing() { return !!(S.tx && !S.tx.ending); }
 
@@ -1016,7 +1030,7 @@
         if (typeof window.streamDigiAudio !== 'function' || !window.WfRtty) return false;
         if (typeof window.initDigiTxCtx === 'function') window.initDigiTxCtx();
         var synth = new window.WfRtty.WfRttySynth({ sampleRate: TX_RATE, centerHz: centerHz(), markLow: !markHigh() });
-        var samples = synth.render(text + ' ');
+        var samples = synth.render(text.replace(/\n/g, '\r\n') + ' ');
         S.txBusy = true;
         appendTx(text);
         updateButtons();
@@ -1116,7 +1130,7 @@
         txBtn.textContent = S.tx ? (S.tx.ending ? 'ENDING' : 'END') : 'TX';
         txBtn.title = S.tx ? 'End the over once everything typed has gone out (STOP cuts it now)' : 'Key the transmitter and send what you type as you type it; press again to end the over';
         var inp = document.getElementById('rttyInput');
-        if (!hintTimer) inp.placeholder = typing() ? 'ON THE AIR: TYPE, ENTER = NEW LINE, ESC = STOP' : (S.tx ? 'ENDING...' : 'TYPE AND PRESS ENTER TO SEND...');
+        if (!hintTimer) inp.placeholder = typing() ? 'ON THE AIR: TYPE, ENTER = NEW LINE, ESC = STOP' : (S.tx ? 'ENDING...' : 'TYPE AND PRESS ENTER TO SEND (SHIFT+ENTER = NEW LINE)...');
         sizeScope();
     }
 

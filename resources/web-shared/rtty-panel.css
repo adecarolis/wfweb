@@ -108,7 +108,7 @@
 .rtty-bar.rtty-tx .rtty-macro-btn:not(.toggle) { opacity: 0.6; }
 
 .rtty-compose-row { display: flex; gap: 6px; padding: 0 10px 6px; background: var(--bg-app); }
-.rtty-input { flex: 1 1 auto; min-width: 0; text-transform: uppercase; }
+.rtty-input { flex: 1 1 auto; min-width: 0; text-transform: uppercase; resize: none; overflow-y: auto; line-height: 1.3; box-sizing: border-box; }
 .rtty-input.rtty-hint::placeholder { color: #fc8; opacity: 1; }
 .rtty-bar .wf-btn:disabled { opacity: 0.45; cursor: default; }
 
