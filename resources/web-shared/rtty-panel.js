@@ -15,8 +15,12 @@
 //   - CALL / QSO / RST fields and LOG QSO (addQsoLogEntry, mode RTTY);
 //     ten macro slots laid out and edited like the CW bar's (EDIT/SET,
 //     then a button opens the editor overlay; wfRttyMacros);
-//   - AFSK transmit: macros and a compose line keyed through the FT8 TX
-//     path (streamDigiAudio, setPTT {digital: true}).  The rig's own RTTY
+//   - AFSK transmit through the FT8 TX path (setPTT {digital: true}): an
+//     open channel (openDigiStream) that sends what is typed as it is
+//     typed, LTRS "diddles" while there is nothing to say, the macros as
+//     one over or appended to the open channel; a macro ending in [HOLD]
+//     leaves the channel open.  The TX line shows every character as
+//     pending / going out / sent, like the CW transcript.  The rig's own RTTY
 //     mode keys FSK from its key jack, which CI-V cannot drive, so TX
 //     needs the rig on a sideband: the AFSK button puts it on LSB (the
 //     standard 2125 / 2295 polarity) and closing the bar puts it back.
@@ -66,7 +70,7 @@
         6: 'QRZ? DE [CALL] [CALL] K',
         7: '[QSO] DE [CALL] AGN AGN PSE K',
         8: 'CQ TEST CQ TEST DE [CALL] [CALL] TEST',
-        9: '[QSO] UR [RST] [RST] [RST] BK',
+        9: '[QSO] DE [CALL] [HOLD]',
         10: 'RYRYRYRYRY RYRYRYRYRY RYRYRYRYRY DE [CALL]',
     };
 
@@ -81,6 +85,7 @@
         spec: null,                         // { lowHz, binHz, bins } of the strip columns
         lines: [], pending: '',             // [{ dir: 'rx' | 'tx', text }]
         txBusy: false,
+        tx: null,                           // the open TX channel (see openChannel)
         macros: null,                       // { slot: text }
         editMacros: false, editingSlot: null,
         suppressOpenUntil: 0,
@@ -108,7 +113,7 @@
               '<button id="rttyAfskBtn" class="wf-btn toggle" title="AFSK: put the rig on LSB and send RTTY as audio tones through the data input. The rig\'s RTTY mode keys FSK from its key jack, which wfweb cannot drive. Closing the bar puts the mode back.">AFSK</button>' +
               '<button id="rttyLogBtn" class="wf-btn">LOG<span class="rtty-wide"> QSO</span></button>' +
               '<button id="rttyClearBtn" class="wf-btn" title="Clear the text">CLR</button>' +
-              '<button id="rttyStopBtn" class="wf-btn danger" title="Stop transmitting">STOP</button>' +
+              '<button id="rttyStopBtn" class="wf-btn danger" title="Cut the transmission now: what is still queued is dropped">STOP</button>' +
               '<button id="rttyCloseBtn" class="wf-btn sq">✕</button>' +
             '</div>' +
             '<div class="rtty-scope-row">' +
@@ -135,7 +140,8 @@
             '<div class="rtty-macro-grid" id="rttyMacroGrid"></div>' +
             '<div class="rtty-compose-row">' +
               '<input type="text" id="rttyInput" class="rtty-input wf-field" placeholder="TYPE AND PRESS ENTER TO SEND..." autocomplete="off" autocapitalize="characters">' +
-              '<button id="rttySendBtn" class="wf-btn">SEND</button>' +
+              '<button id="rttyTxBtn" class="wf-btn toggle" title="Key the transmitter and send what you type as you type it (idle LTRS while you think). Press again to end the over once everything typed has gone out.">TX</button>' +
+              '<button id="rttySendBtn" class="wf-btn" title="Send the line as one over">SEND</button>' +
             '</div>';
         cwBar.parentNode.insertBefore(el, cwBar.nextSibling);
         bar = el;
@@ -146,7 +152,7 @@
         ed.innerHTML =
             '<div class="editor-dialog">' +
               '<div class="editor-title">Edit Macro Button</div>' +
-              '<div class="editor-hint">Use [CALL], [QSO] and [RST] as placeholders</div>' +
+              '<div class="editor-hint">Use [CALL], [QSO] and [RST] as placeholders. End with [HOLD] to leave the transmitter on and keep typing.</div>' +
               '<textarea id="rttyMacroText"></textarea>' +
               '<div class="editor-buttons">' +
                 '<button id="rttyMacroSave">SAVE</button>' +
@@ -194,9 +200,25 @@
         document.getElementById('rttyStopBtn').addEventListener('click', stopTx);
         document.getElementById('rttyCloseBtn').addEventListener('click', function () { hide({ restore: true }); });
         document.getElementById('rttySendBtn').addEventListener('click', sendCompose);
-        document.getElementById('rttyInput').addEventListener('keydown', function (e) {
-            if (e.key === 'Enter') { e.preventDefault(); sendCompose(); }
+        document.getElementById('rttyTxBtn').addEventListener('click', function () {
+            if (S.tx) { endChannel(); return; }
+            if (openChannel()) document.getElementById('rttyInput').focus();
+        });
+        var inp = document.getElementById('rttyInput');
+        inp.addEventListener('keydown', function (e) {
             e.stopPropagation();           // the page's shortcuts must not see typing
+            if (e.key === 'Escape') { if (S.tx) { e.preventDefault(); stopTx(); } return; }
+            if (!typing()) { if (e.key === 'Enter') { e.preventDefault(); sendCompose(); } return; }
+            // The channel is open: the line is the air.  Enter = new line,
+            // Backspace takes back a character not yet rendered.
+            if (e.key === 'Enter') { e.preventDefault(); queueText('\n'); }
+            else if (e.key === 'Backspace' && !inp.value) { e.preventDefault(); if (!unqueueChar()) flashHint('Already sent'); }
+        });
+        inp.addEventListener('input', function () {
+            if (!typing()) return;
+            var t = inp.value;
+            inp.value = '';
+            if (t) queueText(t);
         });
         var callEl = document.getElementById('rttyCallInput');
         callEl.value = myCall();
@@ -565,6 +587,18 @@
             return escapeHtml(part);
         }).join('');
     }
+    // The over going out: every character by its state, like the CW transcript.
+    function renderTxLive() {
+        var tx = S.tx;
+        if (!tx) return '';
+        var html = '';
+        for (var i = 0; i < tx.chars.length; i++) {
+            var c = tx.chars[i];
+            html += '<span class="rtty-ch ' + c.status + '">' + (c.ch === '\n' ? '\u21b5\n' : escapeHtml(c.ch)) + '</span>';
+        }
+        html += '<span class="rtty-ch cursor' + (tx.ending ? ' ending' : '') + '">' + (tx.ending ? '\u2300' : '\u2588') + '</span>';
+        return html;
+    }
     function renderText() {
         var el = document.getElementById('rttyText');
         if (!el) return;
@@ -572,7 +606,7 @@
         var lines = S.lines;
         for (var i = 0; i < lines.length; i++) {
             var ln = lines[i];
-            html += '<div class="rtty-line rtty-' + ln.dir + '">' + (ln.dir === 'rx' ? renderRx(ln.text) : escapeHtml(ln.text));
+            html += '<div class="rtty-line rtty-' + ln.dir + (ln.live ? ' rtty-live' : '') + '">' + (ln.dir === 'rx' ? renderRx(ln.text) : ln.live ? renderTxLive() : escapeHtml(ln.text));
             if (i === lines.length - 1 && ln.dir === 'rx' && S.pending) html += '<span class="rtty-pending">' + escapeHtml(S.pending) + '</span>';
             html += '</div>';
         }
@@ -760,6 +794,12 @@
     // ------------------------------------------------------------------
     // TX
     // ------------------------------------------------------------------
+    // A macro ending in [HOLD] leaves the channel open after its text.
+    function splitHold(t) {
+        t = String(t || '');
+        var hold = /\[HOLD\]\s*$/.test(t);
+        return { text: t.replace(/\s*\[HOLD\]\s*$/, '').trim(), hold: hold };
+    }
     function substitute(t) {
         var qso = (document.getElementById('rttyQsoInput').value || '').trim().toUpperCase();
         var rst = (document.getElementById('rttyRstSent').value || '599').trim();
@@ -779,13 +819,14 @@
                 b.addEventListener('click', toggleEditMode);
             } else {
                 var template = S.macros[i] || '';
-                b.className = 'rtty-macro-btn wf-btn' + (template ? '' : ' empty') + (S.editMacros ? ' editable' : '');
-                b.textContent = template ? substitute(template) : 'M' + i;
-                b.title = template;
+                var m = splitHold(template);
+                b.className = 'rtty-macro-btn wf-btn' + (template ? '' : ' empty') + (S.editMacros ? ' editable' : '') + (m.hold ? ' hold' : '');
+                b.textContent = template ? substitute(m.text) + (m.hold ? ' \u2026' : '') : 'M' + i;
+                b.title = template + (m.hold ? '  (leaves the transmitter on)' : '');
                 b.addEventListener('click', (function (slot) { return function () {
                     if (S.editMacros) { showMacroEditor(slot); return; }
-                    var t = S.macros[slot];
-                    if (t) sendText(substitute(t));
+                    var mm = splitHold(S.macros[slot]);
+                    if (mm.text) sendText(substitute(mm.text), { hold: mm.hold });
                 }; })(i));
             }
             grid.appendChild(b);
@@ -813,9 +854,17 @@
         if (!text) return;
         if (sendText(text)) inp.value = '';
     }
-    function sendText(text) {
-        text = String(text || '').toUpperCase();
-        if (!text) return false;
+    function typing() { return !!(S.tx && !S.tx.ending); }
+
+    // ---- the TX channel --------------------------------------------------
+    // One over is an open channel: lead mark + LTRS LTRS, then whatever is
+    // queued (typed characters, macro text) rendered a character at a time
+    // and pushed ~300 ms ahead of the rig, LTRS while the queue is empty,
+    // and on END a LTRS + tail mark before the key drops.  Every character
+    // carries its sample span, so onProgress can mark it sent as it goes.
+    var AHEAD_S = 0.3, TX_RATE = 12000;
+    function openChannel() {
+        if (S.tx) return true;
         if (!afskAllowed()) {
             // The rig's RTTY mode keys FSK from its key jack; CI-V has no way
             // in.  Say so where it is read, and point at the way out.
@@ -825,16 +874,152 @@
             return false;
         }
         if (S.txBusy) { flashHint('TX busy — STOP first'); return false; }
+        if (typeof window.openDigiStream !== 'function' || !window.WfRtty) return false;
+        if (typeof window.initDigiTxCtx === 'function') window.initDigiTxCtx();
+        var tx = {
+            stream: null,
+            synth: new window.WfRtty.WfRttySynth({ sampleRate: TX_RATE, centerHz: centerHz(), markLow: !markHigh() }),
+            enc: new window.WfRtty.Ita2Encoder(),
+            queue: [], chars: [], rendered: 0, consumed: 0, ending: false,
+            line: { dir: 'tx', text: '', live: true },
+        };
+        tx.synth.reset();
+        tx.stream = window.openDigiStream(
+            function (consumed) { if (S.tx !== tx) return; tx.consumed = consumed; markProgress(tx); topUp(tx); scheduleRender(); },
+            function (aborted) { if (S.tx !== tx) return; channelDone(tx, aborted); },
+            function () { hostSend({ cmd: 'setPTT', value: true, digital: true }); });
+        if (!tx.stream) return false;
+        S.tx = tx;
+        S.txBusy = true;
+        // Like FT8 / JS8: the TX audio path and the rig's MOD input (DATA OFF
+        // MOD -> USB) are set up by enableMic; without it the rig keys with
+        // nothing on the modulator.  Put the mic back the way it was after.
+        S.micWasOn = !!host('micEnabled');
+        hostSend({ cmd: 'enableMic', value: true });
+        S.lines.push(tx.line);
+        if (S.lines.length > MAX_LINES) S.lines.splice(0, S.lines.length - MAX_LINES);
+        push(tx, tx.synth.renderMark(0.4));
+        push(tx, tx.synth.renderCodes([window.WfRtty.LTRS, window.WfRtty.LTRS]));
+        topUp(tx);
+        updateButtons();
+        renderText();
+        return true;
+    }
+    function push(tx, audio) { tx.rendered += audio.length; tx.stream.push(audio); }
+    function topUp(tx) {
+        var ahead = AHEAD_S * TX_RATE;
+        while (tx.stream.active && tx.rendered - tx.consumed < ahead) {
+            var c = tx.queue.shift();
+            if (c) {
+                var audio = tx.synth.renderCodes(tx.enc.encode(c.ch === '\n' ? '\r\n' : c.ch));
+                c.start = tx.rendered; c.end = tx.rendered + audio.length;
+                push(tx, audio);
+            } else if (tx.ending) {
+                push(tx, tx.synth.renderCodes([window.WfRtty.LTRS]));
+                push(tx, tx.synth.renderMark(0.2));
+                tx.stream.end();
+                break;
+            } else {
+                push(tx, tx.synth.renderCodes(tx.enc.idle()));      // diddle
+            }
+        }
+    }
+    function markProgress(tx) {
+        for (var i = 0; i < tx.chars.length; i++) {
+            var c = tx.chars[i];
+            c.status = c.start === undefined ? 'pending' : c.end <= tx.consumed ? 'sent' : c.start <= tx.consumed ? 'sending' : 'pending';
+        }
+    }
+    // Text for the open channel.  Characters ITA2 cannot carry are dropped
+    // here, so the line shows what goes on the air.
+    function queueText(text) {
+        var tx = S.tx;
+        if (!tx || tx.ending) return false;
+        var n = 0;
+        var chars = Array.from(String(text).toUpperCase());
+        for (var i = 0; i < chars.length; i++) {
+            var ch = chars[i];
+            if (ch !== '\n' && !window.WfRtty.canSend(ch)) continue;
+            var c = { ch: ch, status: 'pending' };
+            tx.queue.push(c); tx.chars.push(c);
+            n++;
+        }
+        if (!n) return false;
+        topUp(tx);
+        tx.line.text = lineText(tx);
+        scheduleRender();
+        return true;
+    }
+    // Backspace: the last character not yet rendered into audio.
+    function unqueueChar() {
+        var tx = S.tx;
+        if (!tx || !tx.queue.length) return false;
+        var c = tx.queue.pop();
+        tx.chars.splice(tx.chars.lastIndexOf(c), 1);
+        tx.line.text = lineText(tx);
+        scheduleRender();
+        return true;
+    }
+    function lineText(tx) { return tx.chars.map(function (c) { return c.ch; }).join(''); }
+    function endChannel() {
+        var tx = S.tx;
+        if (!tx || tx.ending) return;
+        tx.ending = true;
+        topUp(tx);
+        updateButtons();
+    }
+    function channelDone(tx, aborted) {
+        if (aborted) {
+            // Cut: what had not gone out is gone from the line too.
+            tx.chars = tx.chars.filter(function (c) { return c.status === 'sent' || c.status === 'sending'; });
+        } else {
+            for (var i = 0; i < tx.chars.length; i++) tx.chars[i].status = 'sent';
+        }
+        tx.line.text = lineText(tx);
+        tx.line.live = false;
+        tx.line.chars = null;
+        if (!tx.line.text) { var k = S.lines.indexOf(tx.line); if (k >= 0) S.lines.splice(k, 1); }
+        S.tx = null;
+        unkey();
+        renderText();
+    }
+    var renderTimer = null;
+    function scheduleRender() {
+        if (renderTimer) return;
+        renderTimer = requestAnimationFrame(function () { renderTimer = null; renderText(); });
+    }
+
+    // Text to the air: appended to the open channel, or an over of its own.
+    // opts.hold leaves the channel open afterwards (a [HOLD] macro).
+    function sendText(text, opts) {
+        opts = opts || {};
+        text = String(text || '').toUpperCase();
+        if (!text) return false;
+        if (S.tx) {
+            if (S.tx.ending) { flashHint('TX ending — wait'); return false; }
+            queueText(text + ' ');
+            if (!opts.hold) endChannel();
+            return true;
+        }
+        if (openChannel()) {
+            queueText(text + ' ');
+            if (!opts.hold) endChannel();
+            else document.getElementById('rttyInput').focus();
+            return true;
+        }
+        if (S.txBusy || !afskAllowed()) return false;
+        return sendOneShot(text);
+    }
+    // Without the AudioWorklet (an insecure origin) the over goes out as
+    // one buffer through streamDigiAudio, as the first version did.
+    function sendOneShot(text) {
         if (typeof window.streamDigiAudio !== 'function' || !window.WfRtty) return false;
         if (typeof window.initDigiTxCtx === 'function') window.initDigiTxCtx();
-        var synth = new window.WfRtty.WfRttySynth({ sampleRate: 12000, centerHz: centerHz(), markLow: !markHigh() });
+        var synth = new window.WfRtty.WfRttySynth({ sampleRate: TX_RATE, centerHz: centerHz(), markLow: !markHigh() });
         var samples = synth.render(text + ' ');
         S.txBusy = true;
         appendTx(text);
         updateButtons();
-        // Like FT8 / JS8: the TX audio path and the rig's MOD input (DATA OFF
-        // MOD -> USB) are set up by enableMic; without it the rig keys with
-        // nothing on the modulator.  Put the mic back the way it was after.
         S.micWasOn = !!host('micEnabled');
         hostSend({ cmd: 'enableMic', value: true });
         var done = false;
@@ -849,8 +1034,10 @@
         S.txBusy = false;
         updateButtons();
     }
+    // STOP / Escape / the bar closing: cut now, drop what is queued.
     function stopTx() {
         if (!S.txBusy) return;
+        if (S.tx) { S.tx.stream.abort(); return; }         // -> channelDone(aborted)
         if (typeof window.haltDigiTx === 'function') window.haltDigiTx();
         unkey();
     }
@@ -870,7 +1057,7 @@
         inp.placeholder = text;
         inp.classList.add('rtty-hint');
         if (hintTimer) clearTimeout(hintTimer);
-        hintTimer = setTimeout(function () { inp.placeholder = 'TYPE AND PRESS ENTER TO SEND...'; inp.classList.remove('rtty-hint'); hintTimer = null; }, 2500);
+        hintTimer = setTimeout(function () { inp.classList.remove('rtty-hint'); hintTimer = null; updateButtons(); }, 2500);
     }
 
     // ------------------------------------------------------------------
@@ -917,10 +1104,19 @@
         var stop = document.getElementById('rttyStopBtn');
         stop.style.display = S.txBusy ? '' : 'none';
         bar.classList.toggle('rtty-tx', S.txBusy);
+        bar.classList.toggle('rtty-typing', typing());
         bar.classList.toggle('rtty-no-tx', !afskAllowed());
         var sendBtn = document.getElementById('rttySendBtn');
         sendBtn.disabled = !afskAllowed();
-        sendBtn.title = afskAllowed() ? 'Send the line as AFSK' : 'AFSK transmit needs the rig on LSB / USB: press AFSK';
+        sendBtn.style.display = S.tx ? 'none' : '';
+        sendBtn.title = afskAllowed() ? 'Send the line as one over' : 'AFSK transmit needs the rig on LSB / USB: press AFSK';
+        var txBtn = document.getElementById('rttyTxBtn');
+        txBtn.disabled = !afskAllowed() || (S.txBusy && !S.tx) || (S.tx && S.tx.ending);
+        txBtn.classList.toggle('active', !!S.tx);
+        txBtn.textContent = S.tx ? (S.tx.ending ? 'ENDING' : 'END') : 'TX';
+        txBtn.title = S.tx ? 'End the over once everything typed has gone out (STOP cuts it now)' : 'Key the transmitter and send what you type as you type it; press again to end the over';
+        var inp = document.getElementById('rttyInput');
+        if (!hintTimer) inp.placeholder = typing() ? 'ON THE AIR: TYPE, ENTER = NEW LINE, ESC = STOP' : (S.tx ? 'ENDING...' : 'TYPE AND PRESS ENTER TO SEND...');
         sizeScope();
     }
 

@@ -5,7 +5,8 @@
 // tests through the same import with a `self` shim.  It defines
 // self.WfRtty = { ... } and nothing else.
 //
-//   ITA2 tables + encodeIta2() / Ita2Decoder   the 5-bit code, LTRS/FIGS shift, USOS
+//   ITA2 tables + encodeIta2() / Ita2Encoder /  the 5-bit code, LTRS/FIGS shift, USOS
+//     Ita2Decoder
 //   WfRttySynth                                 AFSK TX audio: start bit, 5 data bits
 //                                               LSB first, 1.5 stop bits, continuous phase
 //   WfRttyTranslator                            RX audio at any rate -> the 3200 Hz,
@@ -67,6 +68,32 @@
             // anything else: not in the code, dropped
         }
         return codes;
+    }
+
+    // Stateful ITA2 encoder for a channel that stays open: the shift the
+    // receiver was left in persists across calls, so text typed one
+    // character at a time is coded like one over.  idle() is the LTRS a
+    // transmitter sends while there is nothing to say (the "diddle"): it
+    // keeps the receiver in step and puts it in letters.
+    class Ita2Encoder {
+        constructor(usos) { this.usos = usos === undefined ? true : usos; this.shift = null; }
+        encode(text) {
+            const codes = [];
+            for (const ch of String(text).toUpperCase()) {
+                if (BOTH_CODES[ch] !== undefined) {
+                    codes.push(BOTH_CODES[ch]);
+                    if (ch === ' ' && this.usos) this.shift = 'letters';
+                } else if (LETTER_CODES[ch] !== undefined) {
+                    if (this.shift !== 'letters') { codes.push(LTRS); this.shift = 'letters'; }
+                    codes.push(LETTER_CODES[ch]);
+                } else if (FIGURE_CODES[ch] !== undefined) {
+                    if (this.shift !== 'figures') { codes.push(FIGS); this.shift = 'figures'; }
+                    codes.push(FIGURE_CODES[ch]);
+                }
+            }
+            return codes;
+        }
+        idle() { this.shift = 'letters'; return [LTRS]; }
     }
 
     // Stateful ITA2 decoder: the letters / figures shift persists across calls.
@@ -140,27 +167,48 @@
 
         // Float32 samples of one over.
         render(text, leadS, tailS) {
-            const bits = this.plan(text, leadS, tailS);
-            const sr = this.sampleRate, bitSamples = sr / this.baud;
-            let total = 0;
-            for (const b of bits) total += b[1] * bitSamples;
-            const out = new Float32Array(Math.ceil(total));
-            const wMark = 2 * Math.PI * this.markHz / sr, wSpace = 2 * Math.PI * this.spaceHz / sr;
-            let phase = 0, edge = 0, n = 0;
-            for (const [level, len] of bits) {
-                edge += len * bitSamples;
-                const w = level ? wMark : wSpace;
-                for (; n < edge && n < out.length; n++) {
-                    out[n] = this.amplitude * Math.sin(phase);
-                    phase += w;
-                    if (phase > 2 * Math.PI) phase -= 2 * Math.PI;
-                }
-            }
+            this.reset();
+            const out = this.renderBits(this.plan(text, leadS, tailS));
             // 5 ms ramps keep the key clicks off the air.
-            const ramp = Math.min(Math.round(0.005 * sr), out.length >> 1);
+            const ramp = Math.min(Math.round(0.005 * this.sampleRate), out.length >> 1);
             for (let i = 0; i < ramp; i++) { const g = i / ramp; out[i] *= g; out[out.length - 1 - i] *= g; }
             return out;
         }
+
+        // Streaming: the phase and the fractional bit edge carry over from
+        // one call to the next, so audio rendered piecemeal (a character at
+        // a time as it is typed, LTRS while idle) is one continuous signal.
+        reset() { this.phase = 0; this.edge = 0; this.level = 1; }
+        renderBits(bits) {
+            if (this.phase === undefined) this.reset();
+            const sr = this.sampleRate, bitSamples = sr / this.baud;
+            // The last call's bit edge fell `this.edge` samples short of a
+            // whole sample: that fraction still belongs to its level.
+            const segs = [[this.level, this.edge]];
+            let total = this.edge;
+            for (const b of bits) { segs.push([b[0], b[1] * bitSamples]); total += b[1] * bitSamples; }
+            const out = new Float32Array(Math.floor(total));
+            const wMark = 2 * Math.PI * this.markHz / sr, wSpace = 2 * Math.PI * this.spaceHz / sr;
+            let edge = 0, n = 0;
+            for (const [level, len] of segs) {
+                edge += len;
+                const w = level ? wMark : wSpace;
+                for (; n < edge && n < out.length; n++) {
+                    out[n] = this.amplitude * Math.sin(this.phase);
+                    this.phase += w;
+                    if (this.phase > 2 * Math.PI) this.phase -= 2 * Math.PI;
+                }
+                this.level = level;
+            }
+            this.edge = edge - out.length;
+            return out;
+        }
+        renderCodes(codes) {
+            const bits = [];
+            for (const code of codes) for (const b of WfRttySynth.charBits(code)) bits.push(b);
+            return this.renderBits(bits);
+        }
+        renderMark(seconds) { return this.renderBits([[1, seconds * this.baud]]); }
     }
 
     // ------------------------------------------------------------------
@@ -280,6 +328,6 @@
     root.WfRtty = {
         BAUD, SHIFT_HZ, MODEL_RATE, MODEL_CENTER_HZ, CHAR_S, BITS_PER_CHAR,
         LTRS, FIGS, LETTERS, FIGURES, BOTH,
-        canSend, encodeIta2, Ita2Decoder, WfRttySynth, WfRttyTranslator,
+        canSend, encodeIta2, Ita2Encoder, Ita2Decoder, WfRttySynth, WfRttyTranslator,
     };
 })(typeof self !== 'undefined' ? self : globalThis);

@@ -203,18 +203,43 @@ rig's RTTY). A sideband the user leaves by hand closes the bar without
 restoring; going back to the rig's RTTY by hand just ends AFSK. While we key, the worker gets a
 silence `gap` of the same length so the timeline stays whole. The over is
 bracketed with `enableMic` (see the COMP section); proven on the IC-7300
-on 40 m, 2026-10-31. Macros are laid out and edited like the CW bar's:
-ten slots in two rows, slot 5 is EDIT/SET, a button shows its text with
-`[CALL]` `[QSO]` `[RST]` filled in, and in edit mode a press opens the
-`#rttyMacroEditor` overlay (SAVE / CLEAR / CANCEL, the bar fades out
-under it); `wfRttyMacros` (`{slot: text}`) is localStorage in both
-builds. LOG QSO -> `addQsoLogEntry({mode: 'RTTY'})`; `defaultLogMode()`
+on 40 m, 2026-10-31. **The over is an open channel**, as RTTY is operated:
+`openDigiStream()` in both `index.html` (the FT8 pacer worklet in a
+queued mode next to its one-buffer mode, same 0x03 frames, PTT after
+100 ms, `haltDigiTx` hook; `digiTxFrame()` builds the frame for both
+paths; `null` without the AudioWorklet, i.e. an insecure origin, where
+the bar falls back to one `streamDigiAudio` buffer per line). The panel
+(`openChannel` / `topUp` / `endChannel` in `rtty-panel.js`) renders audio
+a character at a time with the streaming `WfRttySynth` (`renderCodes` /
+`renderMark`, phase and fractional bit edge carried over, so the piecewise
+over is sample for sample the one-shot one) and a stateful `Ita2Encoder`
+(the LTRS / FIGS shift persists across characters), keeps ~300 ms pushed
+ahead of the rig (`onProgress` counts what went out), sends LTRS
+"diddles" while the queue is empty, and on END a LTRS + 0.2 s of mark
+before the key drops. The TX button in the compose row opens the channel
+(type-ahead: the input's `input` event queues the text and clears the
+box, Enter = CR LF, Backspace takes back a character not yet rendered,
+Escape = STOP); pressed again it reads END and drains. The TX line in the
+text area is the progress display, every character `.rtty-ch` pending /
+sending / sent like the CW transcript, with a cursor; STOP cuts at once
+and drops what had not gone out from the line too. A macro or a SEND
+line while the channel is closed opens it, sends and ends; while it is
+open it appends (no preamble) and ends the over unless it carries
+`[HOLD]` at the end (`splitHold`), which leaves the channel open --
+"[QSO] DE [CALL] [HOLD]" is default slot 9, shown with a trailing
+ellipsis and a dashed border. Macros are laid out and edited like the CW
+bar's: ten slots in two rows, slot 5 is EDIT/SET, a button shows its
+text with `[CALL]` `[QSO]` `[RST]` filled in, and in edit mode a press
+opens the `#rttyMacroEditor` overlay (SAVE / CLEAR / CANCEL, the bar
+fades out under it); `wfRttyMacros` (`{slot: text}`) is localStorage in
+both builds. LOG QSO -> `addQsoLogEntry({mode: 'RTTY'})`; `defaultLogMode()`
 says RTTY while the bar is open. The recorder draws the bar's lines under
 the scope (`rttyView` / `drawRttyPanel`). Tests:
 `tests/rtty_decoder_sim.mjs` (via `tests/test_rtty_decoder.py`) runs the
 real worker under node on AFSK from the page's own synthesizer at 12 and
-48 kHz, both polarities, clean / -6 / -10 dB and the classic engine -- run
-it after any change to `rtty.js` or the worker.
+48 kHz, both polarities, clean / -6 / -10 dB, the classic engine, and a
+typed over (pieces with idle diddles between them) from the streaming
+synthesizer -- run it after any change to `rtty.js` or the worker.
 
 ### SSTV panel, codec and gallery
 SSTV is browser-side in both builds (no C++ for the radio side). MODE grid

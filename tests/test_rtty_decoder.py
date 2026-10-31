@@ -54,7 +54,7 @@ def test_rtty_assets_wired_into_both_builds():
 def test_worker_is_a_module_fed_with_the_rigs_pcm():
     panel = (ROOT / "resources" / "web-shared" / "rtty-panel.js").read_text(encoding="utf-8")
     assert "{ type: 'module' }" in panel, "rtty-decoder-worker.js is an ES module and needs a module worker"
-    assert "type: 'configure', inputRate: host('audioSampleRate')" in panel, "the worker translates from the page's audio rate"
+    assert "type: 'configure', inputRate: S.inputRate" in panel and "S.inputRate = host('audioSampleRate')" in panel, "the worker translates from the page's audio rate"
     assert "function wasmSimdSupported()" in panel and "function fallbackToClassic(" in panel
     worker = (ROOT / "resources" / "web-shared" / "rtty-decoder-worker.js").read_text(encoding="utf-8")
     assert "from './rtty.js'" in worker, "the fingerprinter versions `from` imports only"

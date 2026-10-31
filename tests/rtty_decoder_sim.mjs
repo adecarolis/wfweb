@@ -17,7 +17,11 @@
 //   - a FIGS run across a tick boundary keeps its shift (the stateful
 //     ITA2 decoder);
 //   - the classic FSK engine copies a clean over;
-//   - the TX synthesizer's encoding round-trips through the decoder.
+//   - the TX synthesizer's encoding round-trips through the decoder;
+//   - the streaming synthesizer (the open channel: lead, characters one at
+//     a time, LTRS diddles while idle, LTRS + tail) renders sample for
+//     sample what the one-shot render does, and its idle diddles decode
+//     to nothing: a typed over with pauses comes back as the typed text.
 // Exit status 0 when everything passes.  Takes ~30 s.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -53,9 +57,27 @@ function gaussian() { let u = 0; while (u === 0) u = rand(); return Math.sqrt(-2
 
 // 1 s of noise, the over, 3 s of noise; Int16 at `rate`.  `markLow` false
 // puts the mark on the upper tone (USB).
-function synth(text, rate, snrDb, markLow) {
+// `typed` (an array of strings) renders the over the way the panel's open
+// channel does: a character at a time through a stateful encoder, with
+// `idleChars` LTRS between the pieces.
+function synth(text, rate, snrDb, markLow, typed, idleChars = 0) {
     const synth = new WfRtty.WfRttySynth({ sampleRate: rate, centerHz: 2210, markLow, amplitude: 0.5 });
-    const over = synth.render(text, 0.5, 0.2);
+    let over;
+    if (typed) {
+        synth.reset();
+        const enc = new WfRtty.Ita2Encoder();
+        const parts = [synth.renderMark(0.5), synth.renderCodes([WfRtty.LTRS, WfRtty.LTRS])];
+        for (const piece of typed) {
+            for (const ch of piece) parts.push(synth.renderCodes(enc.encode(ch)));
+            for (let i = 0; i < idleChars; i++) parts.push(synth.renderCodes(enc.idle()));
+        }
+        parts.push(synth.renderCodes([WfRtty.LTRS]), synth.renderMark(0.2));
+        over = new Float32Array(parts.reduce((n, p) => n + p.length, 0));
+        let off = 0;
+        for (const p of parts) { over.set(p, off); off += p.length; }
+    } else {
+        over = synth.render(text, 0.5, 0.2);
+    }
     const lead = rate, tail = 3 * rate;
     const n = lead + over.length + tail;
     const x = new Float32Array(n);
@@ -89,10 +111,10 @@ function editDistance(a, b) {
     return prev[b.length];
 }
 
-async function run(label, text, { rate = 12000, snrDb = 99, markLow = true, invert = false, engine = 'deeprtty', maxCer = 0 } = {}) {
+async function run(label, text, { rate = 12000, snrDb = 99, markLow = true, invert = false, engine = 'deeprtty', maxCer = 0, typed = null, idleChars = 0 } = {}) {
     await send({ type: 'configure', inputRate: rate, centerHz: 2210, invert, engine });
     await send({ type: 'reset' });
-    const audio = synth(text, rate, snrDb, markLow);
+    const audio = synth(text, rate, snrDb, markLow, typed, idleChars);
     let committed = '', pending = '';
     const ms = [];
     const chunk = Math.round(rate / 10);
@@ -133,6 +155,25 @@ await run('-10 dB CQ', 'CQ TEST DE JA1ABC JA1ABC K W1AW DE JA1ABC 599 001 001 K'
 // A figures run long enough to straddle several ticks and the commit boundary.
 await run('figures across ticks', 'W1AW DE JA1ABC 599 001 001 ' + '1234567890/'.repeat(8) + ' K', { snrDb: 0 });
 await run('classic engine, clean', 'CQ CQ DE K1FM K1FM K', { engine: 'classic' });
+
+// The streaming synthesizer: piecewise == one-shot, sample for sample
+// (the ramps of the one-shot render aside), with no idle inserted.
+{
+    const one = new WfRtty.WfRttySynth({ sampleRate: 12000, centerHz: 2210 });
+    const whole = one.render('CQ DE K1FM 599', 0.4, 0.2);
+    const two = new WfRtty.WfRttySynth({ sampleRate: 12000, centerHz: 2210 });
+    two.reset();
+    const enc = new WfRtty.Ita2Encoder();
+    const parts = [two.renderMark(0.4), two.renderCodes([WfRtty.LTRS, WfRtty.LTRS])];
+    for (const ch of 'CQ DE K1FM 599') parts.push(two.renderCodes(enc.encode(ch)));
+    parts.push(two.renderCodes([WfRtty.LTRS]), two.renderMark(0.2));
+    const len = parts.reduce((n, p) => n + p.length, 0);
+    let diffs = 0, i = 0;
+    for (const p of parts) for (const v of p) { if (i > 60 && i < len - 61 && Math.abs(v - whole[i]) > 1e-5) diffs++; i++; }
+    check(len === whole.length && diffs === 0, `streaming synth renders the one-shot over sample for sample (${len} vs ${whole.length}, ${diffs} differ)`);
+}
+// A typed over: pieces with LTRS diddles between them, figures kept across a pause.
+await run('typed over with idle diddles', 'HELLO W1AW UR 599 599 QRZ? DE K1FM K', { typed: ['HELLO ', 'W1AW ', 'UR 599', ' 599 ', 'QRZ? DE ', 'K1FM K'], idleChars: 4 });
 
 console.log(fails ? `${fails} FAILED` : 'ALL PASS');
 process.exit(fails ? 1 : 0);

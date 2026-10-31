@@ -62,6 +62,18 @@
 .rtty-line.rtty-sys { color: #fc8; font-size: 0.85em; }
 .rtty-line.rtty-sys::before { content: '\2014\00a0'; }
 .rtty-pending { color: var(--mode-accent-dim); }
+/* The over going out, a character at a time (the CW transcript's states) */
+.rtty-ch { display: inline; }
+.rtty-ch.sent { color: #a97a4a; }
+.rtty-ch.pending { color: #fd9; opacity: 0.55; }
+.rtty-ch.sending { color: #fff; text-shadow: 0 0 5px #fd9; }
+.rtty-ch.cursor { color: #fd9; animation: rtty-cursor 1s steps(2) infinite; }
+.rtty-ch.cursor.ending { color: #a55; animation: none; }
+@keyframes rtty-cursor { 0% { opacity: 1; } 100% { opacity: 0; } }
+.rtty-macro-btn.hold { border-style: dashed; }
+#rttyTxBtn { min-width: 52px; font-weight: bold; }
+#rttyTxBtn.active { background: #a33; border-color: #e55; color: #fff; }
+.rtty-bar.rtty-typing .rtty-input { border-color: #e55; }
 @keyframes rtty-attn { 0%, 100% { box-shadow: 0 0 0 0 transparent; } 50% { box-shadow: 0 0 0 3px #fc8; } }
 .wf-btn.rtty-attn { animation: rtty-attn 0.6s ease-in-out 4; }
 .rtty-call { color: #ff0; cursor: pointer; text-decoration: underline; }
