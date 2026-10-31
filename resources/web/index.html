@@ -5406,14 +5406,26 @@ function getBottomButtons() {
 function renderModeOverlay() {
     var grid = document.getElementById('modeGrid');
     grid.innerHTML = '';
+    // A reverse mode (CW-R, RTTY-R) folds into its base button: the first
+    // press selects the base, a press while in that family flips the variant.
+    // The grid closes on the press, so the top-bar mode tile is the readout;
+    // the button itself names the variant you are in while it is active.
     for (var i = 0; i < availableModes.length; i++) {
+        var m = availableModes[i];
+        if (/-R$/.test(m) && availableModes.indexOf(m.slice(0, -2)) >= 0) continue;
+        var rev = m + '-R', hasRev = availableModes.indexOf(rev) >= 0;
+        var active = currentMode === m || (hasRev && currentMode === rev);
         var btn = document.createElement('button');
-        btn.className = 'ov-btn' + (availableModes[i] === currentMode ? ' active' : '');
-        btn.textContent = availableModes[i];
-        btn.onclick = (function(m) { return function() { setMode(m); setPanel('default'); }; })(availableModes[i]);
+        btn.className = 'ov-btn' + (active ? ' active' : '');
+        btn.textContent = active ? currentMode : m;
+        if (hasRev) btn.title = 'Press again to switch between ' + m + ' and ' + rev;
+        btn.onclick = (function(base, reverse) { return function() {
+            setMode(currentMode === base && reverse ? reverse : base);
+            setPanel('default');
+        }; })(m, hasRev ? rev : null);
         grid.appendChild(btn);
     }
-    // FT8 panel toggle — replaces RTTY-R in the grid (8th position)
+    // FT8 panel toggle — the 8th slot, where RTTY-R stood before it folded into RTTY
     var ft8Btn = document.createElement('button');
     ft8Btn.className = 'ov-btn' + (digiBarVisible ? ' active' : '');
     ft8Btn.textContent = 'FT8';

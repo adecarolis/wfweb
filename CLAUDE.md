@@ -275,6 +275,16 @@ keyed the IC-7300 with 0 W out without it, 2026-10-31).
 Tests: `tests/test_compressor.py` (server, IC-7300 mock) and
 `tests/comp_browser.mjs` (Standalone virtual rig).
 
+### MODE grid: reverse modes fold into their base button
+`renderModeOverlay` (identical in both forks) shows the rig's mode list
+minus the `-R` variants whose base is also listed: CW-R and RTTY-R live
+behind the CW and RTTY buttons. A press selects the base; a press while
+already in that family flips to the other variant (`setMode`). The grid
+closes on every press, so the top-bar mode tile is the readout, and the
+active button names the variant you are in when the grid is reopened.
+The bars follow either variant (the CW decoder and the RTTY bar flip
+their dial direction on `-R`).
+
 ### Scope click-to-tune step
 A click, tap or drag on the scope lands on `scopeTuneStep()` (identical in
 both `index.html` forks, used by `scopeFreqFromClientX`, the drag path and
