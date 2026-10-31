@@ -192,10 +192,15 @@ CLASSIC tag on the strip says it is in use. Model + wasm live in Cache
 Storage `wfweb-rtty-model` with their ETag (same reasons as the CW model).
 **TX is AFSK through the FT8 path** (`WfRttySynth` at 12 kHz ->
 `streamDigiAudio`, `setPTT {digital: true}`): the rig's RTTY mode keys FSK
-from its key jack, which CI-V cannot drive, so the AFSK button puts the rig
-on LSB (standard 2125 / 2295), sets the mod level like FT8 does, and the
-bar's close button puts the mode back (a mode the user changes by hand
-closes the bar without restoring). While we key, the worker gets a
+from its key jack, which CI-V cannot drive, so AFSK puts the rig on LSB
+(standard 2125 / 2295) and sets the mod level like FT8 does. AFSK is on by
+default: the bar engages it as it opens (`wfRttyAfsk`; the AFSK button
+turns it off and that choice is remembered), the top-bar mode tile reads
+`RTTY - LSB` while it runs (`updateModeBtnLabel`), and the bar's close
+button puts the rig back in the mode it was in *before RTTY* (`beforeRtty`,
+noted on a fresh entry into RTTY; the AFSK button alone goes back to the
+rig's RTTY). A sideband the user leaves by hand closes the bar without
+restoring; going back to the rig's RTTY by hand just ends AFSK. While we key, the worker gets a
 silence `gap` of the same length so the timeline stays whole. The over is
 bracketed with `enableMic` (see the COMP section); proven on the IC-7300
 on 40 m, 2026-10-31. Macros are laid out and edited like the CW bar's:

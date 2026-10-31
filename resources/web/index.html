@@ -4044,6 +4044,8 @@ function applyVfoFreqMessage(msg) {
 
 function updateModeBtnLabel() {
     var label = currentMode;
+    // The RTTY bar doing AFSK has the rig on a sideband: say so, and why.
+    if (window.RttyPanel && RttyPanel.afsk()) label = 'RTTY - ' + currentMode;
     if (freedvEnabled) label += ' | ' + freedvModeName;
     document.getElementById('modeBtn').textContent = label;
 }

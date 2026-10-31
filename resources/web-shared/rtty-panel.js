@@ -77,6 +77,7 @@
         decoding: false, loading: false, loaded: false, loadProgress: 0,
         engine: 'deeprtty', engineReason: '',
         mark: 2125, rev: false, zoom: false,
+        afskDefault: true,                  // engage AFSK (LSB) when the bar opens; the AFSK button remembers
         spec: null,                         // { lowHz, binHz, bins } of the strip columns
         lines: [], pending: '',             // [{ dir: 'rx' | 'tx', text }]
         txBusy: false,
@@ -241,6 +242,7 @@
             if (MARKS.indexOf(m) >= 0) S.mark = m;
             S.rev = localStorage.getItem('wfRttyRev') === '1';
             S.zoom = localStorage.getItem('wfRttyZoom') === '1';
+            S.afskDefault = localStorage.getItem('wfRttyAfsk') !== '0';
             var mac = JSON.parse(localStorage.getItem('wfRttyMacros') || 'null');
             if (Array.isArray(mac)) {                   // the first layout: five { label, text }; the rest from the defaults
                 S.macros = {};
@@ -256,6 +258,7 @@
             localStorage.setItem('wfRttyMark', String(S.mark));
             localStorage.setItem('wfRttyRev', S.rev ? '1' : '0');
             localStorage.setItem('wfRttyZoom', S.zoom ? '1' : '0');
+            localStorage.setItem('wfRttyAfsk', S.afskDefault ? '1' : '0');
             localStorage.setItem('wfRttyMacros', JSON.stringify(S.macros));
         } catch (e) { /* no storage */ }
     }
@@ -291,6 +294,10 @@
         if (typeof window.renderBottomBar === 'function') window.renderBottomBar();
         if (typeof window.resizeCanvases === 'function') window.resizeCanvases();
         if (!S.decoding && !S.loading) startDecoder();
+        // AFSK is the way to transmit, so it is on by default: the rig goes
+        // to LSB as the bar opens.  The AFSK button turns it off and that
+        // choice is remembered.
+        if (S.afskDefault && !S.afsk && isRttyMode(mode())) startAfsk();
     }
 
     // opts.restore: put the rig back where AFSK found it (the bar's own
@@ -306,7 +313,11 @@
         if (!wasVisible) return;
         stopTx();
         stopDecoder();
-        if (S.afsk) endAfsk(opts.restore !== false);   // a mode put back there must not reopen us (suppressOpenUntil)
+        // Closing in AFSK goes back to the mode the rig was in before RTTY
+        // (the AFSK button alone goes back to RTTY); a mode put back there
+        // must not reopen us (suppressOpenUntil).
+        if (S.afsk) endAfsk(opts.restore !== false, S.beforeRtty);
+        S.beforeRtty = null;
         if (typeof window.renderBottomBar === 'function') window.renderBottomBar();
         if (typeof window.resizeCanvases === 'function') window.resizeCanvases();
     }
@@ -326,6 +337,10 @@
     function onModeChange(m, prev) {
         m = String(m || '').toUpperCase();
         if (isRttyMode(m)) {
+            // A fresh entry into RTTY from another mode: remember where the
+            // rig came from, so closing the bar in AFSK can go back there.
+            if (prev && !isRttyMode(prev) && !S.afsk && !S.visible && !S.suspended) S.beforeRtty = prev;
+            if (S.afsk && !S.afskPending) endAfsk(false);   // the user went back to the rig's RTTY by hand
             if (!S.visible && !S.suspended && Date.now() >= S.suppressOpenUntil) {
                 if (host('currentPanel') === 'default') show();
                 else { if (!bar) build(); S.suspended = true; if (!S.decoding) startDecoder(); }
@@ -339,9 +354,14 @@
     }
 
     function toggleAfsk() {
-        if (S.afsk) { endAfsk(true); updateButtons(); return; }
+        if (S.afsk) { S.afskDefault = false; savePrefs(); endAfsk(true); updateButtons(); return; }
+        if (!isRttyMode(mode())) return;
+        S.afskDefault = true; savePrefs();
+        startAfsk();
+        updateButtons();
+    }
+    function startAfsk() {
         var m = mode();
-        if (!isRttyMode(m)) return;
         S.afsk = true;
         S.afskPending = true;
         S.afskFrom = { mode: m, filter: host('currentFilter') };
@@ -354,7 +374,7 @@
         if (typeof window.setMode === 'function') window.setMode('LSB');
         updateButtons();
     }
-    function endAfsk(restore) {
+    function endAfsk(restore, toMode) {
         if (!S.afsk) return;
         S.afsk = false; S.afskPending = false;
         if (S.savedModLevel >= 0 && typeof window.throttledSend === 'function') {
@@ -363,9 +383,11 @@
         }
         S.savedModLevel = -1;
         var from = S.afskFrom; S.afskFrom = null;
+        if (typeof window.updateModeBtnLabel === 'function') window.updateModeBtnLabel();
         if (restore && from && isSideband(mode())) {
             S.suppressOpenUntil = Date.now() + 1500;
-            hostSend({ cmd: 'setMode', value: from.mode, filter: from.filter });
+            if (toMode && !isRttyMode(toMode) && typeof window.setMode === 'function') window.setMode(toMode);
+            else hostSend({ cmd: 'setMode', value: from.mode, filter: from.filter });
         }
     }
 
