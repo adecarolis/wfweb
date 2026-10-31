@@ -2399,6 +2399,8 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
 <!-- JS8 messenger panel styles — shared with the server build via
      resources/web-shared/js8-panel.css. -->
 <link rel="stylesheet" href="js8-panel.css">
+<!-- RTTY bar styles — resources/web-shared/rtty-panel.css, both builds. -->
+<link rel="stylesheet" href="rtty-panel.css">
 </head>
 <body>
 <!-- Startup Overlay -->
@@ -4223,6 +4225,8 @@ function updateMode(mode) {
     } else if (!wasCW) {
         autoOpenCwBarOnModeEntry();
     }
+    // The RTTY bar opens on RTTY / RTTY-R the same way (rtty-panel.js).
+    if (window.RttyPanel) RttyPanel.onModeChange(mode, prevMode);
 
     renderBottomBar(); // Update PTT/KEY button
 }
@@ -5434,7 +5438,9 @@ function setPanel(name) {
             }
             digiBarSuspended = false;
         }
+        if (window.RttyPanel) RttyPanel.resume();
     } else {
+        if (window.RttyPanel) RttyPanel.suspend();
         var _cwBar = document.getElementById('cwBar');
         if (!_cwBar.classList.contains('hidden')) {
             _cwBar.classList.add('hidden');
@@ -7048,6 +7054,7 @@ function freqInputKeydown(e) {
 
 function typingModePanelOpen() {
     return !document.getElementById('cwBar').classList.contains('hidden')
+        || !!(window.RttyPanel && RttyPanel.visible())
         || digiBarVisible
         || !!(window.Packet && window.Packet.state && window.Packet.state.visible)
         || (typeof window.js8MessengerVisible === 'function' && window.js8MessengerVisible());
@@ -7259,7 +7266,7 @@ document.addEventListener('visibilitychange', function() { if (document.hidden) 
 // the FT8 / JS8 / packet panels, which drive their own TX, get the four soft
 // keys alone (CW keeps its KEY key). The desktop keeps PTT in every mode.
 function digitalPanelOpen() {
-    return !!document.querySelector('#scopeArea .digi-bar:not(.hidden), #scopeArea .js8-bar:not(.hidden), #scopeArea .packet-bar:not(.hidden)');
+    return !!document.querySelector('#scopeArea .digi-bar:not(.hidden), #scopeArea .js8-bar:not(.hidden), #scopeArea .packet-bar:not(.hidden), #scopeArea .rtty-bar:not(.hidden)');
 }
 function pttApplicable() {
     if (!touchUi) return true;
@@ -7595,6 +7602,9 @@ function closeOtherModesInner(except) {
         if (cwBar && !cwBar.classList.contains('hidden')) {
             cwBar.classList.add('hidden');
         }
+    }
+    if (except !== 'rtty' && window.RttyPanel && (RttyPanel.visible() || RttyPanel.state.suspended)) {
+        RttyPanel.hide({ restore: false });   // the panel opening owns the mode now
     }
     if (except !== 'digi' && digiBarVisible) {
         toggleDigiBar();
@@ -8215,6 +8225,7 @@ function handleAudioData(buffer) {
     if (typeof window._js8ProcessAudioChunk === 'function') window._js8ProcessAudioChunk(pcmData);
     if (toneScanDetector) feedToneScan(pcmData);
     Recorder.feedRx(pcmData, audioSampleRate);
+    if (window.RttyPanel) RttyPanel.feedRx(pcmData);
 
     if (audioUseWorklet && audioWorkletNode) audioWorkletNode.port.postMessage(floatData, [floatData.buffer]);
     else if (audioJb) audioJb.push(floatData);
@@ -8528,10 +8539,13 @@ function resizeCanvases() {
     // decoding. The bar caps itself at 65% of the area (CSS), so the scope
     // always keeps at least the top 35%.
     var availH = areaRect.height;
-    var cwBar = document.getElementById('cwBar');
-    if (cwBar && !cwBar.classList.contains('hidden')) {
-        availH = Math.max(areaRect.height * 0.35, areaRect.height - cwBar.getBoundingClientRect().height);
-    }
+    // (The RTTY bar docks the same way.)
+    ['cwBar', 'rttyBar'].forEach(function (id) {
+        var dockedBar = document.getElementById(id);
+        if (dockedBar && !dockedBar.classList.contains('hidden')) {
+            availH = Math.max(areaRect.height * 0.35, areaRect.height - dockedBar.getBoundingClientRect().height);
+        }
+    });
     var spectH = Math.round(availH * 0.35);
     var wfH = Math.round(availH * 0.65);
     // The key lock and its hint sit in the strip's corner, not the bar's.
@@ -9006,7 +9020,12 @@ function drawWaterfall() {
 // to sit on the signal for the beat note to come out at the pitch, 100 Hz
 // in every other mode.
 function scopeTuneStep() {
-    return (currentMode === 'CW' || currentMode === 'CW-R') ? 1 : 100;
+    // 1 Hz where a signal has to land on a tone: CW, and RTTY (the rig's
+    // RTTY modes, or the RTTY bar doing AFSK on a sideband).
+    if (currentMode === 'CW' || currentMode === 'CW-R') return 1;
+    if (currentMode === 'RTTY' || currentMode === 'RTTY-R') return 1;
+    if (window.RttyPanel && RttyPanel.visible()) return 1;
+    return 100;
 }
 
 function scopeFreqFromClientX(target, clientX) {
@@ -12493,6 +12512,7 @@ function logCWQso() {
 // in USB/LSB while FT8/FT4/JS8/FreeDV run), otherwise the rig's own mode (#125).
 function defaultLogMode() {
     if (digiBarVisible) return digiMode;
+    if (window.RttyPanel && RttyPanel.visible()) return 'RTTY';   // the rig sits on LSB while AFSK runs
     if (typeof window.js8MessengerVisible === 'function' && window.js8MessengerVisible()) return 'JS8';
     if (freedvEnabled) return 'FREEDV';
     return (currentMode && currentMode !== '---') ? currentMode : 'SSB';
@@ -13379,6 +13399,10 @@ window.dispatchEvent(new Event('ft8tsReady'));
 <script src="cw-decoder-stft.js"></script>
 <script src="cw-decoder-utils.js"></script>
 <script src="cw-decoder.js"></script>
+<!-- RTTY: ITA2 / AFSK / translator (rtty.js) and the bar (rtty-panel.js);
+     the DeepRTTY decoder runs in rtty-decoder-worker.js. -->
+<script src="rtty.js"></script>
+<script src="rtty-panel.js"></script>
 <script src="ctcss.js"></script>
 <script src="dxcc.js"></script>
 <script src="packet.js"></script>

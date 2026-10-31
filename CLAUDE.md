@@ -147,6 +147,61 @@ When you want to share a file between both builds:
 3. Update its `web.qrc` `<file alias=...>` line so the source path is `web-shared/<file>` (the alias stays the same — no C++ code changes)
 4. Add it to the explicit file list in `tools/build-static.sh` — top-level `web-shared/` files are copied by name, not by glob (only its subdirectories are copied wholesale)
 
+### RTTY bar and the DeepRTTY decoder
+RTTY mirrors CW: the rig's RTTY / RTTY-R mode opens `#rttyBar`
+(`resources/web-shared/rtty-panel.js` builds it next to `#cwBar`, docked at
+the bottom like the CW bar; `rtty-panel.css`, `.mode-rtty` in `theme.css`),
+`updateMode` -> `RttyPanel.onModeChange`, and leaving the mode closes it.
+Decoding is the DeepRTTY model (`models/deeprtty.onnx` + `.json`, MIT, from
+e04/DeepRTTY) on the same ONNX Runtime Web as DeepCW, in
+`rtty-decoder-worker.js` (ES module worker). Unlike the CW decoder it taps
+the rig's raw RX PCM in `handleAudioData` (`RttyPanel.feedRx`, Int16 at
+`audioSampleRate`), not the playback graph: `WfRttyTranslator` in `rtty.js`
+mixes the tone pair at MARK / MARK + 170 Hz down, decimates with a
+triangular window (box squared: a single box or a ramp folds the alias
+bands in at -27 / -11 dB and costs the model a dB at -10 dB SNR), low-passes
+and remodulates at 800 Hz on 3200 Hz, mark low -- the model's training
+layout (mark 715 / space 885). Polarity comes from the mode: mark is the
+lower tone on LSB and in RTTY / RTTY-R (Icom demodulates RTTY as LSB and
+keeps the mark on its MARK FREQUENCY setting), the upper one on USB; REV
+flips it. The worker keeps a 12 s window, decodes it per second of new
+audio (~100 ms on a laptop; the model is 5.7 MB), puts each CTC spike on
+the absolute sample timeline, commits characters older than 2 s once by
+position and shows the younger ones as the pending tail; the committed
+codes go through one stateful `Ita2Decoder` (LTRS / FIGS, USOS) and the
+pending ones through a copy of it. The tuning strip is a waterfall of the
+*input* audio over the whole passband (300-3000 Hz, ~8 Hz bins, posted by
+the worker with its bin layout), ZOOM narrows it to the pair +/- 250 Hz; a
+click moves the dial so the clicked signal lands on the pair (sign flips
+on USB / RTTY-R, like CW-R). It must show the passband, not just the pair:
+on an IC-7300 in RTTY mode the dial is the mark frequency and the audio
+mark sits at the MARK FREQUENCY setting (2125 Hz, LSB sense: a signal
+670 Hz above the dial came out at 1455 Hz audio, 2026-10-31), so a station
+a few hundred Hz off the dial is nowhere near the pair and a +/- 250 Hz
+strip showed nothing but noise. Fallback: `ClassicFsk` in the same worker (one-bit correlators
+at 715 / 885 Hz, UART-style start-bit sync), chosen when there is no WASM
+SIMD, the model fails or times out loading, or the ticks average more than
+2.5 s; `localStorage wfRttyDecoder` = `deeprtty` | `classic` pins one; a
+CLASSIC tag on the strip says it is in use. Model + wasm live in Cache
+Storage `wfweb-rtty-model` with their ETag (same reasons as the CW model).
+**TX is AFSK through the FT8 path** (`WfRttySynth` at 12 kHz ->
+`streamDigiAudio`, `setPTT {digital: true}`): the rig's RTTY mode keys FSK
+from its key jack, which CI-V cannot drive, so the AFSK button puts the rig
+on LSB (standard 2125 / 2295), sets the mod level like FT8 does, and the
+bar's close button puts the mode back (a mode the user changes by hand
+closes the bar without restoring). While we key, the worker gets a
+silence `gap` of the same length so the timeline stays whole. The over is
+bracketed with `enableMic` (see the COMP section); proven on the IC-7300
+on 40 m, 2026-10-31. Macros
+(`wfRttyMacros`, `[CALL]` `[QSO]` `[RST]`) are localStorage in both
+builds. LOG QSO -> `addQsoLogEntry({mode: 'RTTY'})`; `defaultLogMode()`
+says RTTY while the bar is open. The recorder draws the bar's lines under
+the scope (`rttyView` / `drawRttyPanel`). Tests:
+`tests/rtty_decoder_sim.mjs` (via `tests/test_rtty_decoder.py`) runs the
+real worker under node on AFSK from the page's own synthesizer at 12 and
+48 kHz, both polarities, clean / -6 / -10 dB and the classic engine -- run
+it after any change to `rtty.js` or the worker.
+
 ### Shared theme + component kit (`theme.css`)
 `resources/web-shared/theme.css` is the single source of UI styling for both
 builds (linked from each `index.html`, aliased in `web.qrc`, copied by
@@ -213,14 +268,18 @@ including the vanished-client and shutdown paths), `_holdCompressor` /
 `_releaseCompressor` in `serial-transport.js` (`_restoreCompressorDirect`
 on close) and its mirror in `virtual-transport.js`. SSB only, never on an
 unread state, never switched on if it was off, and a `setCompressor` during
-the over wins. A new digital TX path must send `digital: true`.
+the over wins. A new digital TX path must send `digital: true`, and must
+bracket the over with `enableMic true` / `false` like FT8 does: that is
+what sets up the TX audio chain and the rig's MOD input (the RTTY bar
+keyed the IC-7300 with 0 W out without it, 2026-10-31).
 Tests: `tests/test_compressor.py` (server, IC-7300 mock) and
 `tests/comp_browser.mjs` (Standalone virtual rig).
 
 ### Scope click-to-tune step
 A click, tap or drag on the scope lands on `scopeTuneStep()` (identical in
 both `index.html` forks, used by `scopeFreqFromClientX`, the drag path and
-`scopeFreqFromDragDeltaX`): 1 Hz in CW/CW-R, 100 Hz in every other mode. The
+`scopeFreqFromDragDeltaX`): 1 Hz in CW/CW-R, in RTTY/RTTY-R and while the
+RTTY bar is open (AFSK on a sideband), 100 Hz in every other mode. The
 backends pass Hz through untouched (CI-V `05` is 1 Hz). The live click path
 is the no-drag branch of `scopePointerEnd`; `scopeClick` is not wired. The
 scope message carries its edges as float32 MHz, about 1 Hz at 14 MHz but
@@ -402,13 +461,16 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 | `resources/web-shared/recorder.js` | Audio (MP3) / video recorder behind the top-bar REC button (both builds) |
 | `resources/web-shared/needle-meter.js` | IC-7610-style needle meter face + needle ballistics; alternative to the tile-bar meter in `index.html` (both builds) |
 | `resources/web-shared/rx-jitter.js` | Adaptive RX jitter buffer (worklet + ScriptProcessor fallback, both builds); simulated by `tests/rx_jitter_sim.mjs` |
+| `resources/web-shared/rtty.js` | ITA2 tables, AFSK synthesizer, RX frequency translator for the RTTY decoder (both builds) |
+| `resources/web-shared/rtty-panel.js` | RTTY bar: DeepRTTY decoder control, tuning strip, text, log, AFSK macros (both builds) |
+| `resources/web-shared/rtty-decoder-worker.js` | DeepRTTY on ONNX Runtime Web + classic FSK fallback (module worker, both builds); `tests/rtty_decoder_sim.mjs` |
 | `resources/web-shared/cw-keyer.js` | CW keyer model: timing, pacing of the text to the rig's keyer, browser sidetone (both builds); `tests/cw_keyer_sim.mjs` under node, `tests/cw_bench.mjs` on the two-rig bench, both via `tests/test_cw_keyer.py` |
 | `resources/web-shared/cw-paddle.js` | Paddle / straight key as CW text entry: iambic A/B keyer, element decoder, adaptive straight-key decoder (both builds); `tests/cw_paddle_sim.mjs` |
 | `resources/web-shared/paddle-panel.js` | Paddle settings (keyer A/B, swap, `wfPaddleOpts`), USB keyboard paddle adapter (VBand: left / right Ctrl), the PADDLE window of the CW bar (both builds); `tests/paddle_input_sim.mjs` |
 | `resources/web-shared/midi.js` | Web MIDI controller: CTR2-MIDI presets, MIDI learn, knob-tick tuner, MIDI window body (both builds); `tests/midi_sim.mjs`, `tests/midi_browser.mjs` via `tests/test_midi.py` |
 | `resources/web-shared/js8-panel.mjs` | JS8 messenger panel — markup + state machine, QSO tabs, RX/TX, CMD palette (both builds) |
 | `resources/web-shared/js8.mjs` | JS8 WASM codec bridge — 8-FSK synth + encode/decode wrapper (both builds) |
-| `resources/web-shared/` | Files shared by both builds (CW decoder + DeepCW model + ORT, sprites, models) |
+| `resources/web-shared/` | Files shared by both builds (CW + RTTY decoders, DeepCW / DeepRTTY models + ORT, sprites) |
 | `resources/web.qrc` | Qt resource file for the server build |
 | `tools/build-static.sh` | Builds the Standalone static bundle into `dist/` |
 | `tools/serve-static.py` | Local HTTP server for `dist/` with `Cache-Control: no-store` |

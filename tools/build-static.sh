@@ -48,7 +48,8 @@ for f in cw-decoder.js cw-decoder-stft.js cw-decoder-utils.js cw-decoder-worker.
          cw-decoder-worker-ggmorse.js ggmorse-wasm.js packet.js reporters.js airbus.js wf-canvas.js urltune.js \
          ctcss.js dxcc.js recorder.js needle-meter.js rx-jitter.js cw-keyer.js \
          cw-paddle.js midi.js paddle-panel.js \
-         theme.css js8-panel.css js8-panel.mjs js8.mjs; do
+         theme.css js8-panel.css js8-panel.mjs js8.mjs \
+         rtty.js rtty-panel.js rtty-panel.css rtty-decoder-worker.js; do
     cp "$SHARED/$f" "$DIST/"
 done
 cp "$SHARED"/transport/*.js "$DIST/transport/"
@@ -56,6 +57,9 @@ cp "$SHARED"/transport/*.js "$DIST/transport/"
 # ONNX Runtime Web wasm backend it runs on (MIT), both loaded lazily by
 # cw-decoder-worker.js the first time DECODE is pressed.
 cp "$SHARED"/models/deepcw.onnx "$SHARED"/models/deepcw.onnx.json "$SHARED"/models/deepcw-LICENSE "$DIST/models/"
+# RTTY decoder: DeepRTTY model + metadata (MIT, e04/DeepRTTY), same runtime,
+# loaded lazily by rtty-decoder-worker.js when the RTTY bar opens.
+cp "$SHARED"/models/deeprtty.onnx "$SHARED"/models/deeprtty.onnx.json "$SHARED"/models/deeprtty-LICENSE "$DIST/models/"
 mkdir -p "$DIST/ort"
 cp "$SHARED"/ort/* "$DIST/ort/"
 cp "$SHARED"/digits/*.png   "$DIST/digits/"
@@ -142,6 +146,7 @@ Opera, Brave, Arc). Firefox / Safari users can't use this build.
 - RX and TX audio (mic via getUserMedia, RX via PCM stream from the rig)
 - FT8 / FT4 decode and reply
 - CW decode (DeepCW neural decoder on in-browser ONNX Runtime, ggmorse fallback) and CW keying
+- RTTY decode (DeepRTTY neural decoder, same runtime, classic FSK fallback) and AFSK keying
 - AX.25 packet — 300 / 1200 / 9600 baud — including APRS heard-stations,
   beacon scheduler, connected-mode terminal, and YAPP file transfer
 - RADE V1 digital voice (browser-side WebAssembly modem)

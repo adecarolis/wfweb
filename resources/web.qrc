@@ -17,6 +17,13 @@
         <file alias="models/deepcw.onnx">web-shared/models/deepcw.onnx</file>
         <file alias="models/deepcw.onnx.json">web-shared/models/deepcw.onnx.json</file>
         <file alias="models/deepcw-LICENSE">web-shared/models/deepcw-LICENSE</file>
+        <file alias="rtty.js">web-shared/rtty.js</file>
+        <file alias="rtty-panel.js">web-shared/rtty-panel.js</file>
+        <file alias="rtty-panel.css">web-shared/rtty-panel.css</file>
+        <file alias="rtty-decoder-worker.js">web-shared/rtty-decoder-worker.js</file>
+        <file alias="models/deeprtty.onnx">web-shared/models/deeprtty.onnx</file>
+        <file alias="models/deeprtty.onnx.json">web-shared/models/deeprtty.onnx.json</file>
+        <file alias="models/deeprtty-LICENSE">web-shared/models/deeprtty-LICENSE</file>
         <file alias="ort/ort.wasm.min.mjs">web-shared/ort/ort.wasm.min.mjs</file>
         <file alias="ort/ort-wasm-simd-threaded.mjs">web-shared/ort/ort-wasm-simd-threaded.mjs</file>
         <file alias="ort/ort-wasm-simd-threaded.wasm">web-shared/ort/ort-wasm-simd-threaded.wasm</file>

@@ -104,6 +104,14 @@
     --field-text:      #fed;
     --panel-bg:        #100c06;
 }
+.mode-rtty {                            /* teleprinter amber-green: next to the CW bar, not the same */
+    --mode-accent:     #bf6;
+    --mode-accent-dim: #7a2;
+    --mode-accent-bg:  #0f1a00;
+    --on-accent:       #000;
+    --field-text:      #efc;
+    --panel-bg:        #0b1206;
+}
 .mode-freedv {                          /* FreeDV cyan */
     --mode-accent:     #0ff;
     --mode-accent-dim: #0aa;

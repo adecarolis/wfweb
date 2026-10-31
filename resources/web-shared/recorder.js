@@ -431,6 +431,22 @@ function cwView() {
     };
 }
 
+// The RTTY bar (rtty-panel.js) keeps its lines as a conversation already:
+// RX lines of committed text, TX lines of what we sent, the worker's
+// pending tail on the last RX line.
+function rttyView() {
+    var p = global.RttyPanel;
+    if (!p || !p.visible()) return null;
+    var st = p.state, partner = byId('rttyQsoInput');
+    return {
+        decoding: !!st.decoding,
+        lines: st.lines.filter(function (l) { return l.dir !== 'sys'; }), pending: st.pending || '',
+        mark: st.mark, afsk: !!st.afsk, tx: !!st.txBusy,
+        scope: st.decoding ? byId('rttyScopeCanvas') : null,
+        partner: partner ? partner.value.trim().toUpperCase() : ''
+    };
+}
+
 function ft8View() {
     if (!global.digiBarVisible || typeof global.getDigiSlotInfo !== 'function') return null;
     var status = byId('digiStatus'), dx = byId('digiDxCall');
@@ -674,6 +690,54 @@ function drawCwPanel(r, v, top, st) {
                 g.fillText(words[k], textX + col * charW, ly);
                 col += words[k].length;
             }
+        }
+    }
+}
+
+function drawRttyPanel(r, v, top, st) {
+    var g = r.g, W = VIDEO.w, H = VIDEO.h, T = r.theme, y = top;
+    g.fillStyle = T.bar; g.fillRect(0, y, W, 30);
+    g.font = 'bold 15px ' + T.mono;
+    tile(g, 12, y + 4, 60, 22, '#7a2', '#000', 'RTTY');
+    g.fillStyle = T.dim;
+    g.fillText(['45.45 BD ' + v.mark + '/' + (v.mark + 170) + ' HZ', v.afsk ? 'AFSK' : '', v.tx ? 'TX' : '',
+                v.partner ? 'QSO ' + v.partner : ''].filter(Boolean).join('   '), 84, y + 16);
+    y += 34;
+    if (v.scope && v.scope.width && v.scope.height) {
+        g.drawImage(v.scope, 12, y, W - 24, 48);
+        y += 56;
+    }
+    g.font = 'bold 20px ' + T.mono;
+    var charW = g.measureText('M').width, textX = 76, lineH = 26;
+    var perLine = Math.floor((W - textX - 12) / charW);
+    var maxLines = Math.floor((H - 6 - y) / lineH);
+    var lines = [], i, k;
+    var src = v.lines.slice(-maxLines - 2);
+    for (i = 0; i < src.length; i++) {
+        var text = src[i].text + (i === src.length - 1 && src[i].dir === 'rx' ? v.pending : '');
+        var spans = wrap(text, perLine);
+        if (!spans.length) spans = [[0, 0]];
+        for (k = 0; k < spans.length; k++) {
+            lines.push({ dir: src[i].dir, first: k === 0, text: text.slice(spans[k][0], spans[k][1]),
+                         dimFrom: i === src.length - 1 ? src[i].text.length - spans[k][0] : Infinity });
+        }
+    }
+    lines = lines.slice(-maxLines);
+    var myCall = (st.call || '').toUpperCase();
+    for (i = 0; i < lines.length; i++) {
+        var ln = lines[i], ly = y + i * lineH + lineH / 2;
+        if (ln.first) {
+            g.font = 'bold 15px ' + T.mono;
+            tile(g, 12, ly - 11, 48, 22, ln.dir === 'tx' ? '#a00' : '#075', '#fff', ln.dir === 'tx' ? 'TX' : 'RX');
+            g.font = 'bold 20px ' + T.mono;
+        }
+        if (ln.dir === 'tx') { g.fillStyle = CW_COLORS.tx; g.fillText(ln.text, textX, ly); continue; }
+        var words = ln.text.split(/(\s+)/), col = 0;
+        for (k = 0; k < words.length; k++) {
+            var dim = col >= ln.dimFrom;
+            g.fillStyle = dim ? CW_COLORS.pending : isCallsign(words[k]) && words[k] !== myCall ? CW_COLORS.call : CW_COLORS.rx;
+            g.fillText(words[k], textX + col * charW, ly);
+            col += words[k].length;
         }
     }
 }
@@ -1150,10 +1214,11 @@ function drawFrame(r) {
     if ((view = ft8View())) return drawFt8Body(r, view);
     if ((view = js8View())) return drawJs8Body(r, view);
     if ((view = packetView())) return drawPacketBody(r, view);
-    var cw = cwView(), fdv = cw ? null : freedvView();
-    var panelH = cw ? CW_PANEL_H : fdv ? FDV_PANEL_H : 0;
+    var cw = cwView(), rtty = cw ? null : rttyView(), fdv = (cw || rtty) ? null : freedvView();
+    var panelH = (cw || rtty) ? CW_PANEL_H : fdv ? FDV_PANEL_H : 0;
     drawScopeBody(g, cv, HEADER_H, H - panelH);
     if (cw) drawCwPanel(r, cw, H - panelH, st);
+    else if (rtty) drawRttyPanel(r, rtty, H - panelH, st);
     else if (fdv) drawFreedvPanel(r, fdv, H - panelH, st);
 }
 
