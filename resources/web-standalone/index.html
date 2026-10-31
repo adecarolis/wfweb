@@ -2350,7 +2350,7 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
     /* The FT8 / JS8 / packet panels replace the scope and put their own
        controls where the padlock sits: hide it there unless it is locked
        (then it must stay reachable to unlock). */
-    body:not(.ui-locked) #scopeArea:has(.digi-bar:not(.hidden), .js8-bar:not(.hidden), .packet-bar:not(.hidden)) #uiLockBtn { display: none; }
+    body:not(.ui-locked) #scopeArea:has(.digi-bar:not(.hidden), .js8-bar:not(.hidden), .packet-bar:not(.hidden), .sstv-bar:not(.hidden)) #uiLockBtn { display: none; }
     #bottomBar { touch-action: none; }
     .softBtn.ptt-btn {
         flex: 2;
@@ -2401,6 +2401,7 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
 <link rel="stylesheet" href="js8-panel.css">
 <!-- RTTY bar styles — resources/web-shared/rtty-panel.css, both builds. -->
 <link rel="stylesheet" href="rtty-panel.css">
+<link rel="stylesheet" href="sstv-panel.css">
 </head>
 <body>
 <!-- Startup Overlay -->
@@ -5441,8 +5442,10 @@ function setPanel(name) {
             digiBarSuspended = false;
         }
         if (window.RttyPanel) RttyPanel.resume();
+        if (window.SstvPanel) SstvPanel.resume();
     } else {
         if (window.RttyPanel) RttyPanel.suspend();
+        if (window.SstvPanel) SstvPanel.suspend();
         var _cwBar = document.getElementById('cwBar');
         if (!_cwBar.classList.contains('hidden')) {
             _cwBar.classList.add('hidden');
@@ -5686,6 +5689,16 @@ function renderModeOverlay() {
         if (typeof window.toggleJs8Bar === 'function') window.toggleJs8Bar();
     };
     grid.appendChild(js8Btn);
+    // SSTV panel — the picture mode, same overlay slot as FT8 / JS8
+    var sstvBtn = document.createElement('button');
+    var sstvOn = !!(window.SstvPanel && window.SstvPanel.visible());
+    sstvBtn.className = 'ov-btn' + (sstvOn ? ' active' : '');
+    sstvBtn.textContent = 'SSTV';
+    sstvBtn.onclick = function() {
+        setPanel('default');
+        if (typeof window.toggleSstvBar === 'function') window.toggleSstvBar();
+    };
+    grid.appendChild(sstvBtn);
     // Packet (Dire Wolf AX.25 / APRS) panel toggle
     if (window.Packet) {
         var pktBtn = document.createElement('button');
@@ -7280,7 +7293,7 @@ document.addEventListener('visibilitychange', function() { if (document.hidden) 
 // the FT8 / JS8 / packet panels, which drive their own TX, get the four soft
 // keys alone (CW keeps its KEY key). The desktop keeps PTT in every mode.
 function digitalPanelOpen() {
-    return !!document.querySelector('#scopeArea .digi-bar:not(.hidden), #scopeArea .js8-bar:not(.hidden), #scopeArea .packet-bar:not(.hidden), #scopeArea .rtty-bar:not(.hidden)');
+    return !!document.querySelector('#scopeArea .digi-bar:not(.hidden), #scopeArea .js8-bar:not(.hidden), #scopeArea .packet-bar:not(.hidden), #scopeArea .rtty-bar:not(.hidden), #scopeArea .sstv-bar:not(.hidden)');
 }
 function pttApplicable() {
     if (!touchUi) return true;
@@ -7413,6 +7426,8 @@ function setMode(mode) {
     if (!pktVoice && window.Packet && window.Packet.state && window.Packet.state.visible) {
         window.Packet.hide();
     }
+    // SSTV is audio in a voice mode too (USB / LSB on HF, FM on 2 m)
+    if (!pktVoice && window.SstvPanel && window.SstvPanel.visible()) window.SstvPanel.hide();
 }
 function updateVfoDisplay() {
     var label = document.getElementById('vfoLabel');
@@ -7607,7 +7622,7 @@ function toggleLanConnection() {
 function closeOtherModes(except) {
     // FT8 <-> JS8: the panel being closed must not restore the VFO, the one
     // opening inherits its snapshot instead (see saveVfoSnapshot).
-    vfoSnapshotHandoff = (except === 'digi' || except === 'js8');
+    vfoSnapshotHandoff = (except === 'digi' || except === 'js8' || except === 'sstv');
     try { closeOtherModesInner(except); } finally { vfoSnapshotHandoff = false; }
 }
 function closeOtherModesInner(except) {
@@ -7631,6 +7646,9 @@ function closeOtherModesInner(except) {
     }
     if (except !== 'js8' && typeof window.js8MessengerVisible === 'function' && window.js8MessengerVisible()) {
         window.toggleJs8Bar();
+    }
+    if (except !== 'sstv' && window.SstvPanel && (SstvPanel.visible() || SstvPanel.state.suspended)) {
+        SstvPanel.hide();
     }
 }
 window.closeOtherModes = closeOtherModes;
@@ -8240,6 +8258,7 @@ function handleAudioData(buffer) {
     if (toneScanDetector) feedToneScan(pcmData);
     Recorder.feedRx(pcmData, audioSampleRate);
     if (window.RttyPanel) RttyPanel.feedRx(pcmData);
+    if (window.SstvPanel) SstvPanel.feedRx(pcmData);
 
     if (audioUseWorklet && audioWorkletNode) audioWorkletNode.port.postMessage(floatData, [floatData.buffer]);
     else if (audioJb) audioJb.push(floatData);
@@ -12169,6 +12188,190 @@ function haltDigiTx() {
 }
 window.haltDigiTx = haltDigiTx;
 
+// The pacer worklet source, shared by streamDigiAudio (one buffer) and
+// openDigiStream (a queue).  Built from a Blob URL, registered once per
+// AudioContext (digiTxPacerReady).
+function digiPacerCode() {
+    return [
+        'class DigiPacer extends AudioWorkletProcessor {',
+        '  constructor() {',
+        '    super();',
+        '    this.buf = null; this.pos = 0; this.accStart = 0;',
+        '    this.queue = []; this.cur = null; this.curPos = 0; this.ended = false; this.streaming = false;',
+        '    this.acc = new Float32Array(512); this.accLen = 0;',
+        '    this.port.onmessage = function(e) {',
+        '      var d = e.data;',
+        '      if (d instanceof ArrayBuffer) { this.buf = new Float32Array(d); this.pos = 0; this.accStart = 0; return; }',
+        '      if (d.type === "append") { this.queue.push(new Float32Array(d.buf)); this.streaming = true; }',
+        '      else if (d.type === "end") { this.ended = true; this.streaming = true; }',
+        '    }.bind(this);',
+        '  }',
+        // Streaming mode (openDigiStream): play the queued buffers back to
+        // back, silence on an underrun, and finish once "end" has arrived
+        // and the queue is empty.  Chunks go out as 512-sample batches like
+        // the one-shot mode.
+        '  flushAcc() {',
+        '    if (!this.accLen) return;',
+        '    var i16 = new Int16Array(this.accLen);',
+        '    for (var k=0; k<this.accLen; k++) { var v = this.acc[k]<-1?-1:this.acc[k]>1?1:this.acc[k]; i16[k] = (v<0?v*32768:v*32767)|0; }',
+        '    this.accLen = 0;',
+        '    this.port.postMessage(i16.buffer, [i16.buffer]);',
+        '  }',
+        '  processStream(out) {',
+        '    for (var i=0; i<128; i++) {',
+        '      if (!this.cur || this.curPos >= this.cur.length) { this.cur = this.queue.shift() || null; this.curPos = 0; }',
+        '      var v = this.cur ? this.cur[this.curPos++] : 0;',
+        '      if (out) out[i] = v;',
+        '      this.acc[this.accLen++] = v;',
+        '      if (this.accLen === 512) this.flushAcc();',
+        '    }',
+        '    if (this.ended && !this.queue.length && (!this.cur || this.curPos >= this.cur.length)) {',
+        '      this.flushAcc(); this.streaming = false; this.ended = false; this.cur = null;',
+        '      this.port.postMessage("done");',
+        '    }',
+        '    return true;',
+        '  }',
+        '  process(inputs, outputs) {',
+        '    var QUANTUM = 128;',
+        '    var BATCH = 512;',
+        '    var out = outputs[0] && outputs[0][0];',
+        '    if (this.streaming) return this.processStream(out);',
+        '    if (!this.buf || this.pos >= this.buf.length) {',
+        '      if (out) { for (var z=0; z<QUANTUM; z++) out[z]=0; }',
+        '      return true;',
+        '    }',
+        '    var end = Math.min(this.pos + QUANTUM, this.buf.length);',
+        '    if (out) {',
+        '      for (var i=0, j=this.pos; j<end; i++, j++) out[i] = this.buf[j];',
+        '      for (; i<QUANTUM; i++) out[i] = 0;',
+        '    }',
+        '    this.pos = end;',
+        '    var isDone = this.pos >= this.buf.length;',
+        '    if ((this.pos - this.accStart) >= BATCH || isDone) {',
+        '      var chunk = this.buf.subarray(this.accStart, this.pos);',
+        '      var i16 = new Int16Array(chunk.length);',
+        '      for (var k=0; k<chunk.length; k++) {',
+        '        var v = chunk[k]<-1?-1:chunk[k]>1?1:chunk[k];',
+        '        i16[k] = (v<0?v*32768:v*32767)|0;',
+        '      }',
+        '      this.port.postMessage(i16.buffer, [i16.buffer]);',
+        '      this.accStart = this.pos;',
+        '    }',
+        '    if (isDone) this.port.postMessage("done");',
+        '    return true;',
+        '  }',
+        '}',
+        'registerProcessor("digi-pacer", DigiPacer);'
+    ].join('\n');
+}
+
+// One 0x03 frame of modem audio: digiTxGain applied, byte 1 = 0x01 tags it
+// as modem-generated (see sendTuneChunk).
+function digiTxFrame(i16buf, seq) {
+    var samples = new Int16Array(i16buf);
+    for (var g = 0; g < samples.length; g++) samples[g] = (samples[g] * digiTxGain) | 0;
+    var frame = new ArrayBuffer(6 + samples.byteLength);
+    var dv = new DataView(frame);
+    dv.setUint8(0, 0x03); dv.setUint8(1, 0x01);
+    dv.setUint16(2, seq & 0xFFFF, true);
+    dv.setUint16(4, 0, true);
+    new Uint8Array(frame, 6).set(new Uint8Array(samples.buffer));
+    return frame;
+}
+
+// A digital TX channel that stays open (the RTTY bar's type-ahead): the
+// caller pushes 12 kHz Float32 audio as it has it, end() closes the
+// channel once what is queued has gone out, abort() cuts it now.  Same
+// pacer worklet, 0x03 frames, PTT-after-100-ms and haltDigiTx hook as
+// streamDigiAudio; the sidetone is the pacer's own output at monitor
+// level.  onProgress(consumed12k) says how much has been handed to the
+// rig, so the caller can keep ~300 ms ahead and show what is going out;
+// onDone(aborted) is the end.  Needs the AudioWorklet: null without it
+// (an insecure origin), and the caller falls back to streamDigiAudio.
+function openDigiStream(onProgress, onDone, onFirstChunk) {
+    var txCtx = digiTxCtx;
+    if (!txCtx || txCtx.state === 'closed' || !txCtx.audioWorklet) return null;
+    var actualRate = txCtx.sampleRate, ratio = actualRate / 12000;
+    var seq = digiTxSeq, chunksSent = 0, consumed = 0, finished = false, node = null;
+    var PTT_AFTER_CHUNKS = 9;
+    var backlog = [];                      // pushed before the worklet was ready
+    var ended = false, aborted = false;
+    function upsample(samples12k) {
+        var outLen = Math.floor(samples12k.length * ratio);
+        var out = new Float32Array(outLen);
+        for (var i = 0; i < outLen; i++) {
+            var srcPos = i / ratio, srcIdx = Math.floor(srcPos), frac = srcPos - srcIdx;
+            var s0 = samples12k[srcIdx] || 0;
+            var s1 = samples12k[Math.min(srcIdx + 1, samples12k.length - 1)] || 0;
+            out[i] = s0 + frac * (s1 - s0);
+        }
+        return out;
+    }
+    function finish(wasAborted) {
+        if (finished) return;
+        finished = true;
+        if (activeDigiTxHalt === abortFn) activeDigiTxHalt = null;
+        if (node) { try { node.disconnect(); } catch (e) {} }
+        digiTxSeq = seq;
+        setTimeout(function () { if (onDone) onDone(wasAborted); }, wasAborted ? 0 : 200);
+    }
+    var abortFn = function () { aborted = true; finish(true); };
+    activeDigiTxHalt = abortFn;
+    function startNode() {
+        if (finished) return;
+        node = new AudioWorkletNode(txCtx, 'digi-pacer', { outputChannelCount: [1] });
+        var mon = txCtx.createGain();
+        mon.gain.value = 0.025;
+        node.connect(mon);
+        mon.connect(txCtx.destination);
+        node.port.onmessage = function (e) {
+            if (finished) return;
+            if (e.data === 'done') { finish(false); return; }
+            if (!txAudioReady()) return;
+            var n = new Int16Array(e.data).length;
+            sendTxAudio(digiTxFrame(e.data, seq++));
+            chunksSent++;
+            if (chunksSent === PTT_AFTER_CHUNKS && onFirstChunk) onFirstChunk();
+            consumed += n / ratio;
+            if (onProgress) onProgress(consumed);
+        };
+        for (var i = 0; i < backlog.length; i++) node.port.postMessage({ type: 'append', buf: backlog[i].buffer }, [backlog[i].buffer]);
+        backlog = [];
+        if (ended) node.port.postMessage({ type: 'end' });
+    }
+    if (digiTxPacerReady) {
+        startNode();
+    } else {
+        var blob = new Blob([digiPacerCode()], { type: 'application/javascript' });
+        var blobUrl = URL.createObjectURL(blob);
+        txCtx.audioWorklet.addModule(blobUrl).then(function () {
+            URL.revokeObjectURL(blobUrl);
+            digiTxPacerReady = true;
+            startNode();
+        }).catch(function (err) {
+            URL.revokeObjectURL(blobUrl);
+            console.warn('[DIGI stream] AudioWorklet unavailable:', err);
+            finish(true);
+        });
+    }
+    return {
+        push: function (samples12k) {
+            if (finished || ended) return;
+            var out = upsample(samples12k);
+            if (node) node.port.postMessage({ type: 'append', buf: out.buffer }, [out.buffer]);
+            else backlog.push(out);
+        },
+        end: function () {
+            if (finished || ended) return;
+            ended = true;
+            if (node) node.port.postMessage({ type: 'end' });
+        },
+        abort: abortFn,
+        get active() { return !finished; },
+    };
+}
+window.openDigiStream = openDigiStream;
+
 function streamDigiAudio(samples12k, onDone, onFirstChunk) {
     console.log('[DIGI stream] start: samples12k.length=' + samples12k.length +
                 ' audioSampleRate=' + audioSampleRate +
@@ -12245,17 +12448,7 @@ function streamDigiAudio(samples12k, onDone, onFirstChunk) {
                          (chunksSent + 1));
             return;
         }
-        var samples = new Int16Array(i16buf);
-        for (var g = 0; g < samples.length; g++) samples[g] = (samples[g] * digiTxGain) | 0;
-        i16buf = samples.buffer;
-        var frame = new ArrayBuffer(6 + i16buf.byteLength);
-        var dv = new DataView(frame);
-        // byte 1 = 0x01 tags this as modem-generated audio (see sendTuneChunk)
-        dv.setUint8(0, 0x03); dv.setUint8(1, 0x01);
-        dv.setUint16(2, (seq++) & 0xFFFF, true);
-        dv.setUint16(4, 0, true);
-        new Uint8Array(frame, 6).set(new Uint8Array(i16buf));
-        sendTxAudio(frame);
+        sendTxAudio(digiTxFrame(i16buf, seq++));
         chunksSent++;
         if (chunksSent === 1) console.log('[DIGI stream] first chunk sent (' + i16buf.byteLength + ' bytes)');
         if (chunksSent === PTT_AFTER_CHUNKS) {
@@ -12269,46 +12462,7 @@ function streamDigiAudio(samples12k, onDone, onFirstChunk) {
     // IMPORTANT: process() MUST write to outputs[0][0] on every call — even silence —
     // or browsers apply "tail-time" optimisation and stop calling process() early,
     // cutting the transmission short and causing an ALSA underrun.
-    var pacerCode = [
-        'class DigiPacer extends AudioWorkletProcessor {',
-        '  constructor() {',
-        '    super();',
-        '    this.buf = null; this.pos = 0; this.accStart = 0;',
-        '    this.port.onmessage = function(e) {',
-        '      this.buf = new Float32Array(e.data); this.pos = 0; this.accStart = 0;',
-        '    }.bind(this);',
-        '  }',
-        '  process(inputs, outputs) {',
-        '    var QUANTUM = 128;',
-        '    var BATCH = 512;',
-        '    var out = outputs[0] && outputs[0][0];',
-        '    if (!this.buf || this.pos >= this.buf.length) {',
-        '      if (out) { for (var z=0; z<QUANTUM; z++) out[z]=0; }',
-        '      return true;',
-        '    }',
-        '    var end = Math.min(this.pos + QUANTUM, this.buf.length);',
-        '    if (out) {',
-        '      for (var i=0, j=this.pos; j<end; i++, j++) out[i] = this.buf[j];',
-        '      for (; i<QUANTUM; i++) out[i] = 0;',
-        '    }',
-        '    this.pos = end;',
-        '    var isDone = this.pos >= this.buf.length;',
-        '    if ((this.pos - this.accStart) >= BATCH || isDone) {',
-        '      var chunk = this.buf.subarray(this.accStart, this.pos);',
-        '      var i16 = new Int16Array(chunk.length);',
-        '      for (var k=0; k<chunk.length; k++) {',
-        '        var v = chunk[k]<-1?-1:chunk[k]>1?1:chunk[k];',
-        '        i16[k] = (v<0?v*32768:v*32767)|0;',
-        '      }',
-        '      this.port.postMessage(i16.buffer, [i16.buffer]);',
-        '      this.accStart = this.pos;',
-        '    }',
-        '    if (isDone) this.port.postMessage("done");',
-        '    return true;',
-        '  }',
-        '}',
-        'registerProcessor("digi-pacer", DigiPacer);'
-    ].join('\n');
+    var pacerCode = digiPacerCode();
 
     // Node setup — called once the processor is registered in txCtx.
     function startPacerNode() {
@@ -12527,6 +12681,7 @@ function logCWQso() {
 function defaultLogMode() {
     if (digiBarVisible) return digiMode;
     if (window.RttyPanel && RttyPanel.visible()) return 'RTTY';   // the rig sits on LSB while AFSK runs
+    if (window.SstvPanel && SstvPanel.visible()) return 'SSTV';
     if (typeof window.js8MessengerVisible === 'function' && window.js8MessengerVisible()) return 'JS8';
     if (freedvEnabled) return 'FREEDV';
     return (currentMode && currentMode !== '---') ? currentMode : 'SSB';
@@ -13417,6 +13572,7 @@ window.dispatchEvent(new Event('ft8tsReady'));
      the DeepRTTY decoder runs in rtty-decoder-worker.js. -->
 <script src="rtty.js"></script>
 <script src="rtty-panel.js"></script>
+<script src="sstv-panel.js"></script>
 <script src="ctcss.js"></script>
 <script src="dxcc.js"></script>
 <script src="packet.js"></script>

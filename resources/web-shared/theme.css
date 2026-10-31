@@ -120,6 +120,14 @@
     --field-text:      #cff;
     --panel-bg:        #001414;
 }
+.mode-sstv {                            /* picture violet */
+    --mode-accent:     #c9f;
+    --mode-accent-dim: #74b;
+    --mode-accent-bg:  #120a1f;
+    --on-accent:       #000;
+    --field-text:      #ede;
+    --panel-bg:        #0d0814;
+}
 
 /* ============================================================================
    Component kit

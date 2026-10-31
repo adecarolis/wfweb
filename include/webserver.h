@@ -129,6 +129,9 @@ public slots:
     void configureLogbook(const QString &logbookOverride,
                           const QString &remoteLogOverride,
                           bool noRemoteLog, bool remoteLogDecodes);
+    // Where received SSTV pictures are kept (--sstv-dir, SstvDir= in the
+    // settings file, default <data dir>/sstv); runs once on the web thread.
+    void configureSstvDir(const QString &sstvDirOverride);
     // PTT requested via rigctld (Hamlib TCP). Routed through the same
     // setPTT path the WebSocket clients use, so RADE EOO synthesis,
     // packet TX gating and ALC meter polling stay coherent.
@@ -207,6 +210,11 @@ private:
                            const QString &path, const QUrlQuery &query,
                            const QByteArray &body);
     void sendRestResponse(QTcpSocket *socket, int statusCode, const QJsonObject &json);
+    // SSTV image gallery: /api/v1/sstv/images (list, upload, fetch, delete)
+    void handleSstvRequest(QTcpSocket *socket, const QString &method, const QString &path,
+                           const QUrlQuery &query, const QByteArray &body);
+    QJsonArray sstvGalleryList() const;
+    void sstvGalleryChanged();
     QJsonObject buildInfoJson() const;
     void sendJsonToAll(const QJsonObject &obj);
     void sendJsonTo(QWebSocket *client, const QJsonObject &obj);
@@ -612,6 +620,8 @@ private:
     QString instanceName_;
     Logbook logbook_;
     bool logbookPersistent_ = true;   // false: container without a volume, file dies with it
+    QString sstvDir_;                 // received SSTV pictures, <id>.png + <id>.json; empty = unavailable
+    bool sstvPersistent_ = true;
     QUdpSocket *wsjtxSocket_ = nullptr;
     QHostAddress wsjtxAddress_;
     quint16 wsjtxPort_ = 2237;

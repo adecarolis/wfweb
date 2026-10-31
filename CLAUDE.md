@@ -216,6 +216,111 @@ real worker under node on AFSK from the page's own synthesizer at 12 and
 48 kHz, both polarities, clean / -6 / -10 dB and the classic engine -- run
 it after any change to `rtty.js` or the worker.
 
+### SSTV panel, codec and gallery
+SSTV is browser-side in both builds (no C++ for the radio side). MODE grid
+`SSTV` -> `window.toggleSstvBar()` opens `#sstvBar`
+(`resources/web-shared/sstv-panel.js`, `sstv-panel.css`, `.mode-sstv` in
+`theme.css`), an overlay peer of the DIGI bar and JS8 inside `#scopeArea`
+(`body.sstv-open`, `closeOtherModes('sstv')`, VFO snapshot on open /
+restore on close, mic level to `DIGI_MOD_LEVEL` like `toggleDigiBar`). It
+keeps the rig's voice mode (USB / LSB / FM / AM: SSTV on 2 m is FM) and
+otherwise sets USB; the BAND select tunes the usual frequencies and sets
+their mode; `setMode()` to a non-voice mode closes it.
+**Codec**: the `sstv` Rust crate (MIT, 18 modes, the engine behind
+slowscan.space) behind a plain C ABI in `resources/sstv-shim/`, built by
+`tools/build-sstv-wasm.sh` into `resources/web-standalone/wasm/sstv.wasm`
+(committed, ~74 KB; needs rustup + `wasm32-unknown-unknown` + `wasm-opt`).
+The crate is **vendored** under `resources/sstv-shim/vendor/sstv/` (v0.3.1,
+commit in `README-vendoring.md`) with `sstv-relock.patch` applied: upstream
+re-anchors a timing sequence only when its sync pulse lands within one
+pulse length of nominal timing, so one audio frame dropped or stalled on
+the way (the bench put a 20 ms silent frame in the air from a TX underrun,
+2026-10-31; a lost packet or sound-card underrun in the field does the
+same) moved every later sync off the window and the rest of the picture
+came out as garbage — first swapped colours, then wrong brightness, which
+looked like a Robot 36 line-pair slip. The patch marks the timing lost on
+a cut without its sync and re-acquires with the crate's own `SyncLock`
+(three pulses one line apart, the Robot 36 pair aligned by its separator
+tones), keeping one extra sequence of estimates meanwhile; two to four rows
+stay garbled. `sstv_rx_decode(rate, pin, headerless)` also takes the
+crate's `without_header()` start for the panel's START button.
+The crate's decoder *pulls* samples from an iterator, which cannot wait for
+audio inside WebAssembly, so the build runs Binaryen **Asyncify** on it:
+`RingIter` calls the imported `sstv_await_samples()` when its ring runs dry,
+the JS glue (`wasm/asyncify.mjs`, our own: the GoogleChromeLabs library
+parks its unwind buffer in the first KB of memory, too small for the
+decoder's call chain) unwinds the stack into a 64 KB buffer and returns a
+Promise, and rewinds when `sstv_rx_push` has delivered more. SharedArrayBuffer
++ Atomics.wait would do without Asyncify but needs COOP/COEP headers, which
+Pages cannot send and which break the APRS map tiles. Note the crate's
+`no_std` build at this commit calls `f64::round` (upstream gap): we build
+with its default `std` feature, fine on wasm32. `wasm/sstv-codec.mjs` is
+the loader (`new URL('./sstv.wasm', import.meta.url)`, fingerprinted).
+**Worker** `resources/web-shared/sstv-worker.js` (module worker) owns the
+codec: `config {rate, pinMode, force}` / `pcm` / `gap` / `reset` / `encode`
+in, `ready {modes}` / `image` / `row` / `done` / `spectrum` /
+`encoded {int16, seconds, headerSeconds}` out (contract in the file
+header); `force` makes the next decode take the image to start at the
+next sample, no header search. The crate measures frequency by midline
+crossings and needs a tone to hold within +/-50 Hz for 3 ms: raw receiver
+audio fails that from ~27 dB SNR down, so the worker demodulates first (mix
+to 1900 Hz, 4th-order Butterworth I/Q low-pass at 900 Hz, phase difference,
+0.6 ms moving average, re-synthesized as a clean tone) and reaches +12 dB
+SNR in 2.5 kHz with white noise; the table of the sweep is in the file
+(`tests/sstv_codec_sim.mjs --sweep`). Below that the crate's VIS / sync
+detection gives up: this is a strong-signal decoder, MMSSTV goes lower.
+Each `config` / `reset` bumps a generation so the suspended decode aborts
+cleanly; rows of an aborted generation are dropped.
+**RX** taps the rig's raw PCM in `handleAudioData` (`SstvPanel.feedRx`,
+silence `gap` while we transmit), paints rows with `putImageData`, and
+on `done` (complete or not: ISS passes end mid-image) PNG-encodes the
+canvas into the **gallery**. START (`S.rxForce`) decodes from this moment
+in the pinned RX mode, else the last received mode, else the TX mode, for
+a picture whose VIS was missed; that picture's `done` or DISCARD puts the
+worker back on the RX setting. **TX**: file / camera / gallery picture ->
+canvas at the mode's resolution (FIT letterbox / FILL crop, overlay text
+defaulting to the callsign, an optional PIP: a gallery picture in a
+corner, `S.pip` / `S.pipCorner`, the PIP button walks the corners then
+off) -> worker `encode` at 12 kHz -> the RTTY/FT8 recipe (`enableMic
+true`, `streamDigiAudio`, `setPTT {digital: true}`, `digiTxActive` for
+the ALC loop); while it goes out `#sstvTxSweep` (a line at the row going
+out, the rest dimmed, placed over the object-fit canvas by `setSweep`) is
+the progress display, starting after `headerSeconds`. The RX / TX canvases
+fill their cards (`object-fit: contain`). Tuning strip: the worker's
+1000-2500 Hz spectrum with marks at 1200 / 1500 / 1900 / 2300; a click
+puts the signal on 1900 Hz on a sideband (FM / AM: no-op). Desktop shows
+RX and TX side by side or, behind the GALLERY header button, the gallery
+alone (`data-pane`); phones keep the RX / TX / GALLERY pane tabs. No
+`confirm()` / `prompt()` anywhere in the panel: a modal dialog stalls the
+page and with it the audio and the decoder (DELETE is two presses, LOG
+QSO opens the log modal with `addDigiQso()`).
+**Gallery** (`SstvPanel` stores, one interface; two sections, RECEIVED
+= `kind: 'rx'` and LOADED = `kind: 'tx'`, every picture picked for TX is
+filed there at 640 px at most with its file `name`; the viewer offers
+TO TX, PIP, SAVE, DELETE): the Server build keeps pictures on the server
+so every device sees them — `ServerStore` over `/api/v1/sstv/images`
+(REST_API.md; `<id>.png` + `<id>.json` under `--sstv-dir` / `SstvDir=` /
+`<data dir>/sstv`, `handleSstvRequest` in `webserver.cpp`, every change
+broadcast as `{type: 'sstvGallery'}` which the page routes to
+`SstvPanel.onGalleryChanged()`); Standalone uses `IdbStore` (IndexedDB
+`wfweb-sstv`, BroadcastChannel between tabs; both virtual-rig tabs share
+it, being one origin).
+`scripts/testrig.sh` passes `--sstv-dir .testrig/sstv_<i>` so bench
+pictures stay out of the operator's data dir. The HTTP reader now caps any
+request at 16 MB (413), a picture at 4 MB. The recorder draws the panel
+(`sstvView` / `drawSstvBody`). **Tests**: `tests/test_sstv.py` runs
+`tests/sstv_codec_sim.mjs` (the real worker under node: clean / 8 kHz /
+clock error / back to back / reset / pinned / a 20 ms frame inserted and
+dropped / START / +12 and +15 dB, sweep mode for tuning), the wasm export
+check, the wiring check and `tests/sstv_browser.mjs` (two Standalone
+virtual rigs: A sends, B decodes and files, TO TX, PIP, START, the
+two-press DELETE, the sweep; with `WFWEB_SSTV_URLS` the same on the C++
+bench with a second browser on B watching the shared gallery; a wrong
+picture dumps B's 48 kHz PCM next to the screenshots, which the sim's
+machinery replays); `tests/test_sstv_gallery.py` covers the REST store.
+Run them after any change to the worker, the shim, the vendored crate or
+the panel.
+
 ### Shared theme + component kit (`theme.css`)
 `resources/web-shared/theme.css` is the single source of UI styling for both
 builds (linked from each `index.html`, aliased in `web.qrc`, copied by
@@ -376,6 +481,7 @@ Without a server, the browser does in JS / WASM what the Server does in Qt:
 | Per-rig `.rig` files in `rigs/`       | `civ/rig-caps.js` (generated from `rigs/*.rig` by `tools/extract-rig-caps.py`) |
 | `freedvProcessor` / `radeProcessor`   | `wasm/{rade,direwolf}.{mjs,wasm}` — committed in tree; rebuild only when WASM source changes via `tools/build-{rade,direwolf}-wasm.sh` (Emscripten) |
 | `aprsProcessor` / `ax25LinkProcessor` | Browser-side AX.25 stack in `resources/web-shared/packet.js` driving the Direwolf WASM modem |
+| SSTV gallery (`/api/v1/sstv/images`)  | `IdbStore` in `resources/web-shared/sstv-panel.js` (IndexedDB, this browser only); the codec `wasm/sstv.wasm` is browser-side in both builds |
 | `tools/virtualrig` (off-air loopback) | `resources/web-shared/airbus.js` + `transport/virtual-transport.js` (same-origin BroadcastChannel between two tabs at `/?virtual=1&id=N`) |
 | FreeDV 700D/700E/1600                 | _Server-only_ (no codec2 WASM port) |
 | PSK / FreeDV Reporter                 | _Server-only_ (disabled in Standalone UI) |
@@ -488,6 +594,10 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 | `resources/web-shared/rtty.js` | ITA2 tables, AFSK synthesizer, RX frequency translator for the RTTY decoder (both builds) |
 | `resources/web-shared/rtty-panel.js` | RTTY bar: DeepRTTY decoder control, tuning strip, text, log, AFSK macros (both builds) |
 | `resources/web-shared/rtty-decoder-worker.js` | DeepRTTY on ONNX Runtime Web + classic FSK fallback (module worker, both builds); `tests/rtty_decoder_sim.mjs` |
+| `resources/web-shared/sstv-panel.js` | SSTV panel: RX picture, TX picture (file / camera, FIT / FILL, overlay), tuning strip, gallery with its server / IndexedDB stores (both builds) |
+| `resources/web-shared/sstv-worker.js` | SSTV codec worker: quadrature front end, the Asyncified `sstv` crate wasm, spectrum for the strip (module worker, both builds); `tests/sstv_codec_sim.mjs` |
+| `resources/web-standalone/wasm/sstv-codec.mjs` / `asyncify.mjs` / `sstv.wasm` | Loader, Asyncify runtime glue and the committed codec module (both builds; server aliases them via web.qrc) |
+| `resources/sstv-shim/` | Rust cdylib around the `sstv` crate, vendored under `vendor/sstv/` with `sstv-relock.patch` (`README-vendoring.md`); `tools/build-sstv-wasm.sh` builds it |
 | `resources/web-shared/cw-keyer.js` | CW keyer model: timing, pacing of the text to the rig's keyer, browser sidetone (both builds); `tests/cw_keyer_sim.mjs` under node, `tests/cw_bench.mjs` on the two-rig bench, both via `tests/test_cw_keyer.py` |
 | `resources/web-shared/cw-paddle.js` | Paddle / straight key as CW text entry: iambic A/B keyer, element decoder, adaptive straight-key decoder (both builds); `tests/cw_paddle_sim.mjs` |
 | `resources/web-shared/paddle-panel.js` | Paddle settings (keyer A/B, swap, `wfPaddleOpts`), USB keyboard paddle adapter (VBand: left / right Ctrl), the PADDLE window of the CW bar (both builds); `tests/paddle_input_sim.mjs` |
@@ -507,6 +617,7 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 | `tests/launcher_test.cpp` | Unit test for the two pure launcher helpers (`tests/test_cpp_units.py`, Linux CI) |
 | `tools/make-launcher-icon.py` | Regenerates `launcher/res/wfweb.{png,ico}` from `resources/web-shared/favicon.svg` (resvg-py + Pillow; outputs are committed) |
 | `tools/build-rade-wasm.sh` / `tools/build-direwolf-wasm.sh` / `tools/build-js8-wasm.sh` | Emscripten rebuilds of the browser modems (only when their C/C++ source changes) |
+| `tools/build-sstv-wasm.sh` | cargo + wasm-opt (Asyncify) rebuild of the SSTV codec (only when `resources/sstv-shim/` or its vendored crate changes) |
 | `.github/workflows/pages.yml` | Publishes Standalone to wfweb.k1fm.us |
 | `resources/ft8ts/dist/ft8ts.mjs` | FT8/FT4 decoder module |
 | `resources/js8-src/` | Vendored JS8Call-improved subset — JS8 mode codec only, compiled to WASM (see `README-vendoring.md`) |

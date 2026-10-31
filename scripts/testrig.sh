@@ -151,18 +151,21 @@ cmd_up() {
         local settings="$SCRATCH/wfweb_${i}.ini"
         local log="$SCRATCH/wfweb_${i}.log"
         local logbook="$SCRATCH/logbook_${i}.adi"
+        local sstvdir="$SCRATCH/sstv_${i}"
         local pidfile="$SCRATCH/wfweb_${i}.pid"
 
         echo "testrig: starting wfweb #$i (web :$web -> rig LAN :$ctrl/$civ/$aud)"
         # --logbook / --no-remote-log: without them wfweb falls back to the
         # operator's real <AppData>/logbook.adi, and a QSO between the bench
         # stations would land in the station log (and any remote logger).
+        # --sstv-dir likewise keeps bench SSTV pictures out of <AppData>/sstv.
         (
             cd "$REPO"
             nohup "$WFWEB" \
                 -s "$settings" \
                 -l "$log" \
                 --logbook "$logbook" \
+                --sstv-dir "$sstvdir" \
                 --no-remote-log \
                 -p "$web" \
                 --lan 127.0.0.1 \

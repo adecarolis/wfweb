@@ -400,8 +400,8 @@ function wrap(text, n, first) {
 // Mode views. The page's mode code is not modular, so — as js8-panel.mjs does
 // with its host helpers — these readers take what they need straight from
 // page globals and from what the page has already rendered. All page access
-// for the mode views is in cwView(), ft8View(), js8View(), packetView() and
-// freedvView(); each returns null when its mode is not in use.
+// for the mode views is in cwView(), ft8View(), js8View(), packetView(),
+// sstvView() and freedvView(); each returns null when its mode is not in use.
 // ---------------------------------------------------------------------------
 var CW_PANEL_H = 250;
 var CW_SEED_CHARS = 100;         // decoded text carried in when recording starts mid-QSO
@@ -534,6 +534,27 @@ function js8View() {
         lo: global.WF_FREQ_LOW || 300, hi: global.WF_FREQ_HIGH || 2800,
         waterfall: byId('js8WfCanvas'), txMarker: markerOf('js8WfTxMarker'),
         heard: heard, feed: feed
+    };
+}
+
+// SSTV keeps its state on SstvPanel.state: the RX / TX canvases, the status
+// line, the progress and the mode names; the gallery is left out (it is the
+// same picture again).
+function sstvView() {
+    var s = global.SstvPanel && global.SstvPanel.state;
+    if (!s || !(s.visible || s.suspended)) return null;
+    function picked(id) { var el = byId(id); return el && el.selectedOptions[0] ? el.selectedOptions[0].value : ''; }
+    return {
+        rx: s.rxCanvas, tx: s.txCanvas,
+        rxName: s.rx ? s.rx.name : (s.lastRx ? s.lastRx.name : ''),
+        rxLine: s.rx ? s.rx.rows + ' / ' + s.rx.h : '',
+        rxFrac: s.progress || 0,
+        txName: picked('sstvTxModeSel') || s.txModeName,
+        txBusy: !!s.txBusy,
+        txFrac: s.txBusy && s.txSeconds && s.txStartedAt ? Math.min(1, (Date.now() - s.txStartedAt) / 1000 / s.txSeconds) : 0,
+        status: s.status || '',
+        rxMode: picked('sstvRxModeSel') || 'AUTO',
+        strip: byId('sstvScopeCanvas')
     };
 }
 
@@ -955,6 +976,42 @@ function drawJs8Body(r, v) {
     }
 }
 
+// --- SSTV -------------------------------------------------------------------
+
+// The RX picture on the left, the TX picture on the right, each with its
+// progress, the tuning strip under them.
+function drawSstvBody(r, v) {
+    var g = r.g, W = VIDEO.w, H = VIDEO.h, T = r.theme, y = HEADER_H;
+
+    g.fillStyle = T.bar; g.fillRect(0, y, W, 32);
+    g.font = 'bold 15px ' + T.mono;
+    tile(g, 12, y + 5, 60, 22, '#74b', '#fff', 'SSTV');
+    g.fillStyle = v.txBusy ? '#ff8a8a' : T.text; g.fillText(v.status, 84, y + 17);
+    g.textAlign = 'right';
+    g.fillStyle = T.dim; g.fillText('RX ' + v.rxMode, W - 12, y + 17);
+    g.textAlign = 'left';
+    y += 36;
+
+    var stripH = 64, gap = 12, colW = Math.floor((W - 3 * gap) / 2);
+    var picH = H - y - stripH - 70;
+    function card(x, title, sub, cv, frac, tx) {
+        g.font = 'bold 14px ' + T.mono;
+        g.fillStyle = T.dim; g.fillText(title, x + 4, y + 12);
+        g.textAlign = 'right'; g.fillStyle = T.text; g.fillText(sub, x + colW - 4, y + 12); g.textAlign = 'left';
+        var top = y + 22;
+        g.fillStyle = '#000'; g.fillRect(x, top, colW, picH);
+        if (cv && cv.width && cv.height) {
+            var s = Math.min(colW / cv.width, picH / cv.height), dw = cv.width * s, dh = cv.height * s;
+            g.drawImage(cv, x + (colW - dw) / 2, top + (picH - dh) / 2, dw, dh);
+        }
+        drawProgress(g, x, top + picH + 6, colW, frac, tx);
+    }
+    card(gap, 'RX', v.rxName + (v.rxLine ? '  line ' + v.rxLine : ''), v.rx, v.rxFrac, false);
+    card(gap * 2 + colW, 'TX', v.txName, v.tx, v.txFrac, v.txBusy);
+    y += 22 + picH + 24;
+    drawSource(g, v.strip, gap, y, W - 2 * gap, stripH);
+}
+
 // --- Packet -----------------------------------------------------------------
 
 var PKT_COLORS = { rx: '#c8f5c8', tx: '#ffdf9e', pending: '#8a8168', info: '#8f9aa6' };
@@ -1214,6 +1271,7 @@ function drawFrame(r) {
     if ((view = ft8View())) return drawFt8Body(r, view);
     if ((view = js8View())) return drawJs8Body(r, view);
     if ((view = packetView())) return drawPacketBody(r, view);
+    if ((view = sstvView())) return drawSstvBody(r, view);
     var cw = cwView(), rtty = cw ? null : rttyView(), fdv = (cw || rtty) ? null : freedvView();
     var panelH = (cw || rtty) ? CW_PANEL_H : fdv ? FDV_PANEL_H : 0;
     drawScopeBody(g, cv, HEADER_H, H - panelH);

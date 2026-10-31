@@ -1,0 +1,47 @@
+# Vendored copy of the `sstv` crate (https://github.com/unexcellent/sstv,
+# v0.3.1, commit 9761c4c61a6353d7ae2173e1579e434e6c1b1ce3, MIT) with wfweb's
+# re-lock patch applied (../../sstv-relock.patch; see ../../README-vendoring.md).
+# Examples, tests, dev-dependencies and the image / wav / mp3 features are
+# left out: wfweb builds the codec alone.
+[package]
+name = "sstv"
+version = "0.3.1"
+edition = "2024"
+rust-version = "1.88"
+description = "Encode and decode slow-scan television (SSTV) transmissions, no_std compatible"
+repository = "https://github.com/unexcellent/sstv"
+license = "MIT"
+readme = "README.md"
+publish = false
+
+[features]
+default = ["std"]
+std = ["alloc"]
+alloc = []
+
+[dependencies]
+libm = "0.2.8"
+
+[lints.clippy]
+pedantic = { level = "deny", priority = -1 }
+nursery = { level = "deny", priority = -1 }
+unwrap_used = "deny"
+expect_used = "deny"
+unreachable = "deny"
+unimplemented = "deny"
+unchecked_time_subtraction = "deny"
+todo = "deny"
+string_slice = "deny"
+panic_in_result_fn = "deny"
+panic = "deny"
+exit = "deny"
+
+as_conversions = "allow"
+arithmetic_side_effects = "allow"
+indexing_slicing = "allow"
+cast_possible_truncation = "allow"
+cast_precision_loss = "allow"
+cast_sign_loss = "allow"
+cast_possible_wrap = "allow"
+# `f64::mul_add` does not exist without std.
+suboptimal_flops = "allow"

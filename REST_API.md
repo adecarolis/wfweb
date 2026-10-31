@@ -173,6 +173,49 @@ not on a mounted volume, i.e. the file is lost when the container is
 recreated. Browsers then keep their own copy of what they log and re-send it
 on every connect, and warn the operator in the log panel.
 
+### SSTV image gallery
+
+Pictures received in the browser's SSTV panel, and the pictures a user
+loads to send, are uploaded to the server so every device sees the same
+gallery. They live as `<id>.png` plus `<id>.json`
+(the metadata) in `<data directory>/sstv` by default; set `SstvDir=` in the
+settings file or pass `--sstv-dir <dir>` to choose another place (a relative
+path in a named profile resolves next to that profile). Nothing is pruned:
+pictures stay until deleted. An id is the UTC time of reception plus a
+random suffix (`20261031T162328Z-ece7`) and is never reused.
+
+| Method | Endpoint | Action |
+|---|---|---|
+| `GET` | `/api/v1/sstv/images` | `{"images":[...],"count":N,"dir":"...","persistent":bool}`, newest first |
+| `POST` | `/api/v1/sstv/images?kind=&name=&mode=&freq=&call=&complete=&ts=&w=&h=` | Store a picture: the body is the PNG (`Content-Type: image/png`, 4 MB at most); reply `{"id","count"}` |
+| `GET` | `/api/v1/sstv/images/{id}.png` | The picture (`Cache-Control: immutable`) |
+| `DELETE` | `/api/v1/sstv/images/{id}` | Delete it; reply `{"count"}` |
+
+A list entry carries `id`, `ts` (ISO 8601 UTC, from the upload's `ts` or
+the server clock), `kind` (`rx`, received off the air, the default; or
+`tx`, a picture loaded to send), `name` (the file name of a `tx` picture),
+`mode` (`Robot 36`, `PD-120`, ...), `freqHz`, `call` (the receiving
+station), `complete` (`false` when the signal ended before the last line),
+`w`, `h` and `bytes`. A body that is not a PNG is refused
+with 400, one over 4 MB with 413; an unknown or malformed id is 404.
+
+Every store and delete, through REST or the web UI, is broadcast to all
+connected browsers, which re-list the gallery:
+
+```json
+{"type":"sstvGallery","count":N}
+```
+
+`persistent` is `false` when the server runs in a container and the
+directory is not on a mounted volume (the same check as the logbook).
+
+```bash
+curl -s -X POST 'http://localhost:8081/api/v1/sstv/images?mode=Robot%2036&freq=14230000&complete=1&w=320&h=240' \
+  -H 'Content-Type: image/png' --data-binary @picture.png | jq .
+```
+
+---
+
 ### Remote logging (WSJT-X UDP protocol)
 
 Every logged QSO can be forwarded to an external logging program, so
