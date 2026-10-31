@@ -24,7 +24,8 @@
 //               { type: 'reset' }                                             forget the text, keep the setup
 // Messages out: { type: 'loadProgress', progress: 0..1 }
 //               { type: 'modelLoaded', engine }
-//               { type: 'spectrum', col: Uint8Array }                         a column of the tuning strip, SPEC_BINS tall
+//               { type: 'spectrum', col: Uint8Array, lowHz, binHz }           a column of the tuning strip: the input audio's
+//                                                                             passband, bins of binHz from lowHz up
 //               { type: 'result', committed, pending, ms, engine }
 //               { type: 'error', error }
 
@@ -48,10 +49,13 @@ const COMMIT_DELAY_S = 2;                             // a character younger tha
 const MIN_AUDIO_S = 2;
 const MIN_SCORE = 0.2;                                // a CTC spike below this posterior is noise
 
-// Tuning strip: a 512-point spectrum (6.25 Hz bins) of the translated audio
-// every SPEC_HOP samples (50 ms), SPEC_BINS bins from SPEC_LO_HZ up: the
-// centre +/- 250 Hz, so the two tones sit a third of the strip apart.
-const SPEC_N = 512, SPEC_HOP = 160, SPEC_LO_HZ = 550, SPEC_BINS = 80;
+// Tuning strip: a spectrum of the *input* audio over the whole passband
+// (SPEC_LO_HZ..SPEC_HI_HZ), ten columns a second.  The input is box-decimated
+// to about SPEC_RATE first, then a SPEC_N-point FFT gives ~8 Hz bins.  It
+// shows the passband, not just the pair: in an Icom's RTTY mode the dial is
+// the mark frequency and a station a few hundred Hz off the dial sits
+// nowhere near the pair (IC-7300, 2026-10-31), so a strip of the pair
+// alone showed only noise.  The page zooms, tunes and auto-tunes on it.
 
 let engine = 'deeprtty';
 let translator = null;
@@ -69,7 +73,8 @@ let committedPos = -Infinity;
 let ita2 = new WfRtty.Ita2Decoder(true);
 
 // Tuning strip state.
-let specBuf = new Float32Array(SPEC_N), specFill = 0, specFft = null, specWin = null, specPeak = 1e-3;
+const SPEC_RATE = 8000, SPEC_N = 1024, SPEC_LO_HZ = 300, SPEC_HI_HZ = 3000, SPEC_COLS_PER_S = 10;
+let spec = null;      // { decim, rate, hop, b0, bins, buf, fill, fft, win, acc, count, peak }
 
 function appendRing(chunk) {
     const cap = ring.length;
@@ -393,37 +398,48 @@ async function loadModel() {
 // ---------------------------------------------------------------------------
 // Audio in
 // ---------------------------------------------------------------------------
-function feedSpectrum(x) {
-    if (!specFft) {
-        specFft = new FFT(SPEC_N);
-        specWin = new Float32Array(SPEC_N);
-        for (let i = 0; i < SPEC_N; i++) specWin[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / SPEC_N);
-    }
-    const b0 = Math.round(SPEC_LO_HZ / (RATE / SPEC_N));
-    const frame = new Float32Array(SPEC_N), mags = new Float32Array(SPEC_BINS);
-    for (let i = 0; i < x.length; i++) {
-        if (specFill < SPEC_N) { specBuf[specFill++] = x[i]; continue; }
+function specSetup() {
+    const decim = Math.max(1, Math.round(inputRate / SPEC_RATE));
+    const rate = inputRate / decim, binHz = rate / SPEC_N;
+    const b0 = Math.round(SPEC_LO_HZ / binHz);
+    const b1 = Math.min(SPEC_N / 2 - 1, Math.round(SPEC_HI_HZ / binHz));
+    const win = new Float32Array(SPEC_N);
+    for (let i = 0; i < SPEC_N; i++) win[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / SPEC_N);
+    spec = { decim, rate, binHz, hop: Math.round(rate / SPEC_COLS_PER_S), b0, bins: b1 - b0 + 1,
+             buf: new Float32Array(SPEC_N), fill: 0, fft: new FFT(SPEC_N), win, acc: 0, count: 0, peak: 1e-3 };
+}
+
+// Raw input samples (Int16 or Float32 at inputRate) -> strip columns.
+function feedSpectrum(input) {
+    if (!spec || spec.decim !== Math.max(1, Math.round(inputRate / SPEC_RATE))) specSetup();
+    const sp = spec, scale = input instanceof Int16Array ? 1 / 32768 : 1;
+    const frame = new Float32Array(SPEC_N), mags = new Float32Array(sp.bins);
+    for (let i = 0; i < input.length; i++) {
+        sp.acc += input[i] * scale;
+        if (++sp.count < sp.decim) continue;
+        const v = sp.acc / sp.decim;
+        sp.acc = 0; sp.count = 0;
+        if (sp.fill < SPEC_N) { sp.buf[sp.fill++] = v; continue; }
         // one column
-        for (let k = 0; k < SPEC_N; k++) frame[k] = specBuf[k] * specWin[k];
-        specFft.magnitudes(frame, b0, b0 + SPEC_BINS, mags);
+        for (let k = 0; k < SPEC_N; k++) frame[k] = sp.buf[k] * sp.win[k];
+        sp.fft.magnitudes(frame, sp.b0, sp.b0 + sp.bins, mags);
         let peak = 0;
-        for (let k = 0; k < SPEC_BINS; k++) if (mags[k] > peak) peak = mags[k];
-        specPeak = Math.max(peak, specPeak * 0.98, 1e-4);          // slow AGC
-        const col = new Uint8Array(SPEC_BINS);
-        for (let k = 0; k < SPEC_BINS; k++) {
-            const db = 20 * Math.log10(mags[k] / specPeak + 1e-6);   // 0 dB = recent peak
+        for (let k = 0; k < sp.bins; k++) if (mags[k] > peak) peak = mags[k];
+        sp.peak = Math.max(peak, sp.peak * 0.98, 1e-4);          // slow AGC
+        const col = new Uint8Array(sp.bins);
+        for (let k = 0; k < sp.bins; k++) {
+            const db = 20 * Math.log10(mags[k] / sp.peak + 1e-6);   // 0 dB = recent peak
             col[k] = Math.max(0, Math.min(255, Math.round((db + 40) / 40 * 255)));
         }
-        self.postMessage({ type: 'spectrum', col }, [col.buffer]);
-        specBuf.copyWithin(0, SPEC_HOP);
-        specFill = SPEC_N - SPEC_HOP;
-        specBuf[specFill++] = x[i];
+        self.postMessage({ type: 'spectrum', col, lowHz: sp.b0 * sp.binHz, binHz: sp.binHz }, [col.buffer]);
+        sp.buf.copyWithin(0, sp.hop);
+        sp.fill = SPEC_N - sp.hop;
+        sp.buf[sp.fill++] = v;
     }
 }
 
 function onAudio(x) {
     if (!x.length) return;
-    feedSpectrum(x);
     if (engine === 'classic') {
         if (!classic) classic = new ClassicFsk();
         const codes = classic.process(x);
@@ -490,10 +506,13 @@ self.onmessage = async (e) => {
             self.postMessage({ type: 'modelLoaded', engine });
         } else if (msg.type === 'audio') {
             if (!translator) return;
+            feedSpectrum(msg.samples);
             onAudio(translator.process(msg.samples));
         } else if (msg.type === 'gap') {
             if (!translator) return;
-            onAudio(translator.process(new Float32Array(msg.samples)));
+            const zeros = new Float32Array(msg.samples);
+            feedSpectrum(zeros);
+            onAudio(translator.process(zeros));
         } else if (msg.type === 'reset') {
             resetTimeline();
             ita2 = new WfRtty.Ita2Decoder(true);

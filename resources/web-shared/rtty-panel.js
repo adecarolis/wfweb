@@ -5,9 +5,11 @@
 //     handleAudioData goes to the worker as it is (RttyPanel.feedRx); the
 //     worker moves the tone pair at MARK / MARK + 170 Hz onto the model's
 //     timeline, so nothing here depends on the audio rate;
-//   - a tuning strip (the translated spectrum, centre +/- 300 Hz, mark and
-//     space lines): a click moves the dial so the clicked tone lands on
-//     the pair, the way the CW scope does;
+//   - a tuning strip: a waterfall of the input audio over the whole
+//     passband (ZOOM: the pair +/- 250 Hz) with the mark and space lines;
+//     a click moves the dial so the clicked tone lands on the pair, the
+//     way the CW scope does, and AUTOTUNE finds the strongest pair of
+//     tones 170 Hz apart and pulls it there (the CW decoder's AUTOTUNE);
 //   - the decoded text, teleprinter style, committed bright and the
 //     worker's pending tail dim; callsigns are links into the QSO field;
 //   - CALL / QSO / RST fields and LOG QSO (addQsoLogEntry, mode RTTY);
@@ -29,8 +31,20 @@
 
     var MARKS = [2125, 1615, 1275];
     var SHIFT = 170;
-    var SPEC_BINS = 80, SPEC_LO = 550, SPEC_BIN_HZ = 6.25;   // what the worker sends (rtty-decoder-worker.js): centre +/- 250 Hz
-    var MODEL_CENTER = 800;
+    // The strip: the worker posts a spectrum of the input audio over the
+    // whole passband (lowHz / binHz come with each column); ZOOM shows the
+    // pair +/- ZOOM_HALF_HZ of it instead.
+    var ZOOM_HALF_HZ = 250;
+    // Auto-tune: average the strip for a while, find the strongest pair of
+    // tones 170 Hz apart in the passband, pull it onto the mark / space pair.
+    var AUTOTUNE_WINDOW_MS = 1500;    // several characters at 45 Bd
+    var AUTOTUNE_DEADBAND_HZ = 15;    // finer than the ear - don't nudge for nothing
+    // The strip is dB relative to a slow peak AGC (0..255 = -40..0 dB), so
+    // there is no absolute level to test; the weaker tone of the pair must
+    // stand this far above the band's median instead.  A lone carrier has
+    // only one tone up, and a quiet band has nothing up.
+    var AUTOTUNE_MIN_ABOVE_DB = 6;
+    var AUTOTUNE_HOLD_MS = 1600;      // how long the button shows its verdict
     var ENGINE_KEY = 'wfRttyDecoder';
     var SLOW_TICKS = 4, SLOW_TICK_MS = 2500;
     var MODEL_LOAD_TIMEOUT_MS = 180000;
@@ -49,7 +63,8 @@
         savedModLevel: -1,
         decoding: false, loading: false, loaded: false, loadProgress: 0,
         engine: 'deeprtty', engineReason: '',
-        mark: 2125, rev: false,
+        mark: 2125, rev: false, zoom: false,
+        spec: null,                         // { lowHz, binHz, bins } of the strip columns
         lines: [], pending: '',             // [{ dir: 'rx' | 'tx', text }]
         txBusy: false,
         macros: null,
@@ -88,6 +103,10 @@
               '<div class="rtty-tone-line rtty-space-line"><span>SPACE</span></div>' +
               '<div class="rtty-scale"><span class="rtty-scale-hi"></span><span class="rtty-scale-lo"></span></div>' +
               '<span id="rttyEngineTag" class="rtty-engine-tag" hidden>CLASSIC</span>' +
+              '<div class="rtty-scope-btns">' +
+                '<button id="rttyAutoTune" class="wf-btn" title="Auto-tune: listen for a moment, find the strongest RTTY signal in the passband (two tones 170 Hz apart) and move the dial so it lands on the mark / space pair"></button>' +
+                '<button id="rttyZoomBtn" class="wf-btn toggle" title="Zoom the strip onto the pair (\u00b1250 Hz) or show the whole passband">ZOOM</button>' +
+              '</div>' +
             '</div>' +
             '<div id="rttyText" class="rtty-text"></div>' +
             '<div class="rtty-callsign-row">' +
@@ -119,6 +138,9 @@
         sel.value = S.mark;
         sel.addEventListener('change', function () { S.mark = parseInt(sel.value, 10) || 2125; savePrefs(); configureWorker(); });
         document.getElementById('rttyRevBtn').addEventListener('click', function () { S.rev = !S.rev; savePrefs(); configureWorker(); updateButtons(); });
+        document.getElementById('rttyZoomBtn').addEventListener('click', function () { S.zoom = !S.zoom; savePrefs(); updateButtons(); clearScope(); });
+        document.getElementById('rttyAutoTune').addEventListener('click', autoTune);
+        setAutoTuneState('idle');
         document.getElementById('rttyDecodeBtn').addEventListener('click', function () { if (S.decoding) stopDecoder(); else startDecoder(); });
         document.getElementById('rttyAfskBtn').addEventListener('click', toggleAfsk);
         document.getElementById('rttyLogBtn').addEventListener('click', logQso);
@@ -173,6 +195,7 @@
             var m = parseInt(localStorage.getItem('wfRttyMark'), 10);
             if (MARKS.indexOf(m) >= 0) S.mark = m;
             S.rev = localStorage.getItem('wfRttyRev') === '1';
+            S.zoom = localStorage.getItem('wfRttyZoom') === '1';
             var mac = JSON.parse(localStorage.getItem('wfRttyMacros') || 'null');
             if (Array.isArray(mac) && mac.length === DEFAULT_MACROS.length) S.macros = mac;
         } catch (e) { /* no storage */ }
@@ -182,6 +205,7 @@
         try {
             localStorage.setItem('wfRttyMark', String(S.mark));
             localStorage.setItem('wfRttyRev', S.rev ? '1' : '0');
+            localStorage.setItem('wfRttyZoom', S.zoom ? '1' : '0');
             localStorage.setItem('wfRttyMacros', JSON.stringify(S.macros));
         } catch (e) { /* no storage */ }
     }
@@ -357,6 +381,7 @@
     }
 
     function stopDecoder() {
+        cancelAutoTune();
         if (loadTimer) { clearTimeout(loadTimer); loadTimer = null; }
         if (worker) { worker.terminate(); worker = null; }
         S.decoding = false; S.loading = false; S.loaded = false; S.loadProgress = 0;
@@ -388,6 +413,11 @@
                 updateButtons();
                 break;
             case 'spectrum':
+                if (!S.spec || S.spec.lowHz !== m.lowHz || S.spec.binHz !== m.binHz || S.spec.bins !== m.col.length) {
+                    S.spec = { lowHz: m.lowHz, binHz: m.binHz, bins: m.col.length };
+                    sizeScope();
+                }
+                if (autoTuneAcc && !S.txBusy) autoTuneFeed(m.col);
                 drawColumn(m.col);
                 break;
             case 'result':
@@ -502,47 +532,156 @@
         var q = l < 0.5 ? l * (1 + s) : l + s - l * s, p = 2 * l - q;
         return [Math.round(hue2rgb(p, q, h + 1 / 3) * 255), Math.round(hue2rgb(p, q, h) * 255), Math.round(hue2rgb(p, q, h - 1 / 3) * 255)];
     }
+    // The strip's frequency range, in audio Hz: the whole passband the
+    // worker sends, or the pair +/- ZOOM_HALF_HZ.
+    function stripRange() {
+        if (S.zoom) return { lo: centerHz() - ZOOM_HALF_HZ, hi: centerHz() + ZOOM_HALF_HZ };
+        var sp = S.spec;
+        if (!sp) return { lo: 300, hi: 3000 };
+        return { lo: sp.lowHz, hi: sp.lowHz + sp.binHz * (sp.bins - 1) };
+    }
+    function markHz() { return centerHz() + (markHigh() ? 1 : -1) * SHIFT / 2; }
+    function spaceHz() { return centerHz() - (markHigh() ? 1 : -1) * SHIFT / 2; }
     function sizeScope() {
         if (!scope) return;
         var rect = scope.getBoundingClientRect();
         var dpr = window.devicePixelRatio || 1;
         var w = Math.round((rect.width || 300) * dpr), h = Math.round((rect.height || 48) * dpr);
         if (scope.width !== w || scope.height !== h) { scope.width = w; scope.height = h; column = null; }
-        // the mark / space lines: audio centre +/- 300 Hz over the strip, mark below space unless inverted
-        var span = SPEC_BINS * SPEC_BIN_HZ, lo = MODEL_CENTER - span / 2;
-        var markT = MODEL_CENTER - SHIFT / 2, spaceT = MODEL_CENTER + SHIFT / 2;   // translated, mark low
-        var pct = function (fT) { var a = markHigh() ? MODEL_CENTER - (fT - MODEL_CENTER) : fT; return (1 - (a - lo) / span) * 100; };
+        var r = stripRange(), span = r.hi - r.lo;
+        var pct = function (f) { return (1 - (f - r.lo) / span) * 100; };
         var ml = bar.querySelector('.rtty-mark-line'), sl = bar.querySelector('.rtty-space-line');
-        if (ml) ml.style.top = pct(markT) + '%';
-        if (sl) sl.style.top = pct(spaceT) + '%';
+        if (ml) ml.style.top = pct(markHz()) + '%';
+        if (sl) sl.style.top = pct(spaceHz()) + '%';
+        // Over the whole passband the two lines are a few pixels apart: one label then.
+        var close = rect.height * SHIFT / span < 16;
+        if (ml) ml.querySelector('span').textContent = close ? 'MARK \u00b7 SPACE' : 'MARK';
+        if (sl) sl.querySelector('span').style.display = close ? 'none' : '';
         var hi = bar.querySelector('.rtty-scale-hi'), lo = bar.querySelector('.rtty-scale-lo');
-        if (hi) hi.textContent = Math.round(centerHz() + span / 2) + ' Hz';
-        if (lo) lo.textContent = Math.round(centerHz() - span / 2) + ' Hz';
+        if (hi) hi.textContent = Math.round(r.hi) + ' Hz';
+        if (lo) lo.textContent = Math.round(r.lo) + ' Hz';
+    }
+    function clearScope() {
+        if (scope && scopeCtx) { scopeCtx.fillStyle = '#000'; scopeCtx.fillRect(0, 0, scope.width, scope.height); }
+        sizeScope();
+    }
+    // Strip value at an audio frequency: linear interpolation between bins.
+    function specAt(col, f) {
+        var sp = S.spec;
+        var x = (f - sp.lowHz) / sp.binHz;
+        if (x <= 0) return col[0];
+        if (x >= sp.bins - 1) return col[sp.bins - 1];
+        var i = Math.floor(x), t = x - i;
+        return col[i] * (1 - t) + col[i + 1] * t;
     }
     function drawColumn(col) {
-        if (!scope || !scopeCtx || !S.visible) return;
+        if (!scope || !scopeCtx || !S.visible || !S.spec) return;
         var w = scope.width, h = scope.height;
         if (!w || !h) return;
         scopeCtx.drawImage(scope, 0, 0, w, h, -1, 0, w, h);
         if (!column || column.height !== h) column = scopeCtx.createImageData(1, h);
-        var buf = column.data, inv = markHigh();
+        var buf = column.data, r = stripRange(), span = r.hi - r.lo;
         for (var y = 0; y < h; y++) {
-            var frac = 1 - y / Math.max(1, h - 1);                // bottom = lowest audio frequency
-            var bin = Math.min(SPEC_BINS - 1, Math.floor(frac * SPEC_BINS));
-            if (inv) bin = SPEC_BINS - 1 - bin;                   // the worker's bins are translated, mark low
-            var c = colorLUT[col[bin]], p = y * 4;
+            var f = r.lo + (1 - y / Math.max(1, h - 1)) * span;   // bottom = lowest audio frequency
+            var c = colorLUT[Math.round(specAt(col, f))], p = y * 4;
             buf[p] = c[0]; buf[p + 1] = c[1]; buf[p + 2] = c[2]; buf[p + 3] = 255;
         }
         scopeCtx.putImageData(column, w - 1, 0);
     }
+    // Move the dial so the audio tone at `f` lands on the centre of the pair.
+    function tuneToTone(f) {
+        var dial = host('currentFreq') || 0;
+        if (dial <= 0) return null;
+        var delta = dialSign() * (centerHz() - f);
+        hostSend({ cmd: 'setFrequency', value: Math.round(dial + delta) });
+        return delta;
+    }
     function scopeClick(e) {
         var rect = scope.getBoundingClientRect();
         var frac = 1 - (e.clientY - rect.top) / rect.height;      // 0 = bottom
-        var span = SPEC_BINS * SPEC_BIN_HZ;
-        var offset = (frac - 0.5) * span;                         // Hz from the centre, in audio terms
-        var dial = host('currentFreq') || 0;
-        if (dial <= 0) return;
-        hostSend({ cmd: 'setFrequency', value: Math.round(dial - dialSign() * offset) });
+        var r = stripRange();
+        tuneToTone(r.lo + frac * (r.hi - r.lo));
+    }
+
+    // ------------------------------------------------------------------
+    // Auto-tune
+    // ------------------------------------------------------------------
+    var autoTuneAcc = null, autoTuneTimer = null, autoTuneHoldTimer = null;
+    function autoTune() {
+        if (autoTuneAcc) return;                                  // already listening
+        if (!S.decoding || !S.spec) return;
+        autoTuneAcc = { sum: new Float64Array(S.spec.bins), frames: 0 };
+        setAutoTuneState('busy');
+        autoTuneTimer = setTimeout(finishAutoTune, AUTOTUNE_WINDOW_MS);
+    }
+    function autoTuneFeed(col) {
+        var a = autoTuneAcc;
+        if (col.length !== a.sum.length) return;
+        for (var k = 0; k < col.length; k++) a.sum[k] += col[k];
+        a.frames++;
+    }
+    function cancelAutoTune() {
+        if (autoTuneTimer) { clearTimeout(autoTuneTimer); autoTuneTimer = null; }
+        if (autoTuneHoldTimer) { clearTimeout(autoTuneHoldTimer); autoTuneHoldTimer = null; }
+        autoTuneAcc = null;
+        setAutoTuneState('idle');
+    }
+    // The strongest pair: for every centre c in the passband, the strip at
+    // c - 85 plus the strip at c + 85, averaged over the window.  A single
+    // carrier scores only half; two RTTY tones score on both.
+    function finishAutoTune() {
+        autoTuneTimer = null;
+        var a = autoTuneAcc; autoTuneAcc = null;
+        var sp = S.spec;
+        if (!a || !a.frames || !sp) { setAutoTuneState('warn', 'NO SIG'); return; }
+        var avg = new Float64Array(sp.bins);
+        for (var k = 0; k < sp.bins; k++) avg[k] = a.sum[k] / a.frames;
+        var sorted = Array.prototype.slice.call(avg).sort(function (x, y) { return x - y; });
+        var median = sorted[sorted.length >> 1];
+        var toDb = function (v) { return v / 255 * 40 - 40; };
+        var saved = S.spec; S.spec = sp;
+        var half = SHIFT / 2, lo = sp.lowHz + half, hi = sp.lowHz + sp.binHz * (sp.bins - 1) - half;
+        // The pair is scored by its weaker tone: both must be there.
+        var scoreAt = function (c) { var p = specAt(avg, c - half), q = specAt(avg, c + half); return Math.min(p, q) + 0.1 * Math.max(p, q); };
+        var best = -Infinity, bestC = 0, step = sp.binHz / 2;
+        for (var c = lo; c <= hi; c += step) {
+            var sc = scoreAt(c);
+            if (sc > best) { best = sc; bestC = c; }
+        }
+        // Parabolic refinement across the peak: finer than the bin.
+        var s0 = scoreAt(bestC - step), s1 = best, s2 = scoreAt(bestC + step);
+        var denom = s0 - 2 * s1 + s2;
+        if (denom !== 0) bestC += step * Math.max(-0.5, Math.min(0.5, 0.5 * (s0 - s2) / denom));
+        var weaker = Math.min(specAt(avg, bestC - half), specAt(avg, bestC + half));
+        S.spec = saved;
+        var above = toDb(weaker) - toDb(median);
+        if (above < AUTOTUNE_MIN_ABOVE_DB) {
+            console.log('[RTTY] Auto-tune: no signal (best pair ' + above.toFixed(1) + ' dB above the band median)');
+            setAutoTuneState('warn', 'NO SIG');
+            return;
+        }
+        var delta = dialSign() * (centerHz() - bestC);
+        if (Math.abs(delta) < AUTOTUNE_DEADBAND_HZ) {
+            console.log('[RTTY] Auto-tune: already centred (' + bestC.toFixed(0) + ' Hz, ' + above.toFixed(0) + ' dB)');
+            setAutoTuneState('ok', '\u2713 ' + Math.round(bestC) + ' Hz');
+            return;
+        }
+        if (tuneToTone(bestC) === null) { setAutoTuneState('warn', 'NO VFO'); return; }
+        console.log('[RTTY] Auto-tune: pair at ' + bestC.toFixed(0) + ' Hz (' + above.toFixed(0) + ' dB), dial ' + (delta > 0 ? '+' : '') + Math.round(delta) + ' Hz');
+        setAutoTuneState('ok', (delta > 0 ? '+' : '\u2212') + Math.abs(Math.round(delta)) + ' Hz');
+    }
+    // Button label doubles as the auto-tune readout: what it heard, or why not.
+    function setAutoTuneState(state, label) {
+        var btn = document.getElementById('rttyAutoTune');
+        if (!btn) return;
+        if (autoTuneHoldTimer) { clearTimeout(autoTuneHoldTimer); autoTuneHoldTimer = null; }
+        btn.className = 'wf-btn' + (state === 'idle' ? '' : ' ' + state);
+        if (state === 'idle') btn.innerHTML = '\u2316 AUTO<span class="rtty-wide">TUNE</span>';
+        else if (state === 'busy') btn.textContent = 'LISTENING';
+        else {
+            btn.textContent = label;
+            autoTuneHoldTimer = setTimeout(function () { autoTuneHoldTimer = null; setAutoTuneState('idle'); }, AUTOTUNE_HOLD_MS);
+        }
     }
 
     // ------------------------------------------------------------------
@@ -689,6 +828,7 @@
             dec.className = 'wf-btn toggle' + (S.decoding ? ' active' : '');
         }
         document.getElementById('rttyRevBtn').classList.toggle('active', S.rev);
+        document.getElementById('rttyZoomBtn').classList.toggle('active', S.zoom);
         var afsk = document.getElementById('rttyAfskBtn');
         afsk.classList.toggle('active', S.afsk);
         afsk.disabled = !S.afsk && !isRttyMode(mode());

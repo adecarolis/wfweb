@@ -170,15 +170,21 @@ the absolute sample timeline, commits characters older than 2 s once by
 position and shows the younger ones as the pending tail; the committed
 codes go through one stateful `Ita2Decoder` (LTRS / FIGS, USOS) and the
 pending ones through a copy of it. The tuning strip is a waterfall of the
-*input* audio over the whole passband (300-3000 Hz, ~8 Hz bins, posted by
-the worker with its bin layout), ZOOM narrows it to the pair +/- 250 Hz; a
-click moves the dial so the clicked signal lands on the pair (sign flips
+*input* audio over the whole passband (300-3000 Hz, ~8 Hz bins, ten
+columns a second, posted by the worker with `lowHz` / `binHz`; the input
+is box-decimated to ~8 kHz first), ZOOM narrows it to the pair +/- 250 Hz;
+a click moves the dial so the clicked signal lands on the pair (sign flips
 on USB / RTTY-R, like CW-R). It must show the passband, not just the pair:
 on an IC-7300 in RTTY mode the dial is the mark frequency and the audio
 mark sits at the MARK FREQUENCY setting (2125 Hz, LSB sense: a signal
 670 Hz above the dial came out at 1455 Hz audio, 2026-10-31), so a station
 a few hundred Hz off the dial is nowhere near the pair and a +/- 250 Hz
-strip showed nothing but noise. Fallback: `ClassicFsk` in the same worker (one-bit correlators
+strip showed nothing but noise. AUTOTUNE (same look and states as the CW
+one) averages the strip for 1.5 s, scores every centre in the passband by
+the *weaker* of its two tones 170 Hz apart (a lone carrier has one tone at
+the floor), and moves the dial onto the best pair; the strip's levels are
+relative to a slow peak AGC, so the no-signal test is "weaker tone less
+than 6 dB above the band median", not an absolute level like CW's. Fallback: `ClassicFsk` in the same worker (one-bit correlators
 at 715 / 885 Hz, UART-style start-bit sync), chosen when there is no WASM
 SIMD, the model fails or times out loading, or the ticks average more than
 2.5 s; `localStorage wfRttyDecoder` = `deeprtty` | `classic` pins one; a
