@@ -198,8 +198,11 @@ bar's close button puts the mode back (a mode the user changes by hand
 closes the bar without restoring). While we key, the worker gets a
 silence `gap` of the same length so the timeline stays whole. The over is
 bracketed with `enableMic` (see the COMP section); proven on the IC-7300
-on 40 m, 2026-10-31. Macros
-(`wfRttyMacros`, `[CALL]` `[QSO]` `[RST]`) are localStorage in both
+on 40 m, 2026-10-31. Macros are laid out and edited like the CW bar's:
+ten slots in two rows, slot 5 is EDIT/SET, a button shows its text with
+`[CALL]` `[QSO]` `[RST]` filled in, and in edit mode a press opens the
+`#rttyMacroEditor` overlay (SAVE / CLEAR / CANCEL, the bar fades out
+under it); `wfRttyMacros` (`{slot: text}`) is localStorage in both
 builds. LOG QSO -> `addQsoLogEntry({mode: 'RTTY'})`; `defaultLogMode()`
 says RTTY while the bar is open. The recorder draws the bar's lines under
 the scope (`rttyView` / `drawRttyPanel`). Tests:

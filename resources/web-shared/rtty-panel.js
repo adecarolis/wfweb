@@ -13,6 +13,8 @@
 //   - the decoded text, teleprinter style, committed bright and the
 //     worker's pending tail dim; callsigns are links into the QSO field;
 //   - CALL / QSO / RST fields and LOG QSO (addQsoLogEntry, mode RTTY);
+//     ten macro slots laid out and edited like the CW bar's (EDIT/SET,
+//     then a button opens the editor overlay; wfRttyMacros);
 //   - AFSK transmit: macros and a compose line keyed through the FT8 TX
 //     path (streamDigiAudio, setPTT {digital: true}).  The rig's own RTTY
 //     mode keys FSK from its key jack, which CI-V cannot drive, so TX
@@ -49,13 +51,24 @@
     var SLOW_TICKS = 4, SLOW_TICK_MS = 2500;
     var MODEL_LOAD_TIMEOUT_MS = 180000;
     var MAX_LINES = 120;
-    var DEFAULT_MACROS = [
-        { label: 'CQ',  text: 'CQ CQ CQ DE [CALL] [CALL] [CALL] PSE K' },
-        { label: 'ANS', text: '[QSO] DE [CALL] [CALL] [CALL] K' },
-        { label: 'RPT', text: '[QSO] DE [CALL] UR RST [RST] [RST] [RST] [QSO] DE [CALL] K' },
-        { label: 'TU',  text: '[QSO] DE [CALL] TU 73 SK' },
-        { label: 'QRZ', text: 'QRZ? DE [CALL] [CALL] K' },
-    ];
+    // Ten macro slots laid out like the CW bar's: two rows of five, slot 5
+    // (top right) is EDIT/SET. A button shows its text with [CALL] [QSO]
+    // [RST] filled in; an empty slot reads M<n>.
+    var MACRO_SLOTS = 10, EDIT_SLOT = 5;
+    // Its own set, not the CW one: an RTTY exchange is rubber-stamp text
+    // (RTTY repeats the report, ends an over with K / BK / SK), plus a
+    // contest row and an RY test line for setting the AFSK level.
+    var DEFAULT_MACROS = {
+        1: 'CQ CQ CQ DE [CALL] [CALL] [CALL] PSE K',
+        2: '[QSO] [QSO] DE [CALL] [CALL] [CALL] K',
+        3: '[QSO] DE [CALL] R R TNX FER CALL UR RST [RST] [RST] [RST] BTU [QSO] DE [CALL] K',
+        4: '[QSO] DE [CALL] R R QSL TNX FER QSO 73 73 [QSO] DE [CALL] SK',
+        6: 'QRZ? DE [CALL] [CALL] K',
+        7: '[QSO] DE [CALL] AGN AGN PSE K',
+        8: 'CQ TEST CQ TEST DE [CALL] [CALL] TEST',
+        9: '[QSO] UR [RST] [RST] [RST] BK',
+        10: 'RYRYRYRYRY RYRYRYRYRY RYRYRYRYRY DE [CALL]',
+    };
 
     var S = {
         visible: false, suspended: false,
@@ -67,8 +80,8 @@
         spec: null,                         // { lowHz, binHz, bins } of the strip columns
         lines: [], pending: '',             // [{ dir: 'rx' | 'tx', text }]
         txBusy: false,
-        macros: null,
-        editMacros: false,
+        macros: null,                       // { slot: text }
+        editMacros: false, editingSlot: null,
         suppressOpenUntil: 0,
     };
     var worker = null, loadTimer = null, tickMs = [];
@@ -125,6 +138,38 @@
             '</div>';
         cwBar.parentNode.insertBefore(el, cwBar.nextSibling);
         bar = el;
+        var ed = document.createElement('div');
+        ed.id = 'rttyMacroEditor';
+        ed.className = 'overlay mode-rtty rtty-macro-editor';
+        ed.style.display = 'none';
+        ed.innerHTML =
+            '<div class="editor-dialog">' +
+              '<div class="editor-title">Edit Macro Button</div>' +
+              '<div class="editor-hint">Use [CALL], [QSO] and [RST] as placeholders</div>' +
+              '<textarea id="rttyMacroText"></textarea>' +
+              '<div class="editor-buttons">' +
+                '<button id="rttyMacroSave">SAVE</button>' +
+                '<button id="rttyMacroClear">CLEAR</button>' +
+                '<button id="rttyMacroCancel">CANCEL</button>' +
+              '</div>' +
+            '</div>';
+        el.parentNode.insertBefore(ed, el.nextSibling);
+        document.getElementById('rttyMacroSave').addEventListener('click', function () {
+            var text = document.getElementById('rttyMacroText').value.trim().toUpperCase();
+            if (text) S.macros[S.editingSlot] = text; else delete S.macros[S.editingSlot];
+            savePrefs(); renderMacros(); hideMacroEditor();
+        });
+        document.getElementById('rttyMacroClear').addEventListener('click', function () {
+            delete S.macros[S.editingSlot];
+            savePrefs(); renderMacros(); hideMacroEditor();
+        });
+        document.getElementById('rttyMacroCancel').addEventListener('click', hideMacroEditor);
+        document.getElementById('rttyMacroText').addEventListener('input', function () {
+            var a = this.selectionStart, b = this.selectionEnd;
+            this.value = this.value.toUpperCase();
+            this.setSelectionRange(a, b);
+        });
+        document.getElementById('rttyMacroText').addEventListener('keydown', function (e) { e.stopPropagation(); });
         scope = document.getElementById('rttyScopeCanvas');
         scopeCtx = scope.getContext('2d');
 
@@ -197,9 +242,14 @@
             S.rev = localStorage.getItem('wfRttyRev') === '1';
             S.zoom = localStorage.getItem('wfRttyZoom') === '1';
             var mac = JSON.parse(localStorage.getItem('wfRttyMacros') || 'null');
-            if (Array.isArray(mac) && mac.length === DEFAULT_MACROS.length) S.macros = mac;
+            if (Array.isArray(mac)) {                   // the first layout: five { label, text }; the rest from the defaults
+                S.macros = {};
+                for (var d in DEFAULT_MACROS) S.macros[d] = DEFAULT_MACROS[d];
+                var slots = [1, 2, 3, 4, 6];
+                mac.forEach(function (m, i) { if (m && m.text && slots[i]) S.macros[slots[i]] = m.text; });
+            } else if (mac && typeof mac === 'object') S.macros = mac;
         } catch (e) { /* no storage */ }
-        if (!S.macros) S.macros = DEFAULT_MACROS.map(function (m) { return { label: m.label, text: m.text }; });
+        if (!S.macros) { S.macros = {}; for (var k in DEFAULT_MACROS) S.macros[k] = DEFAULT_MACROS[k]; }
     }
     function savePrefs() {
         try {
@@ -252,6 +302,7 @@
         S.visible = false;
         S.suspended = false;
         if (bar) bar.classList.add('hidden');
+        if (S.editingSlot !== null) hideMacroEditor();
         if (!wasVisible) return;
         stopTx();
         stopDecoder();
@@ -696,34 +747,43 @@
         var grid = document.getElementById('rttyMacroGrid');
         if (!grid) return;
         grid.innerHTML = '';
-        S.macros.forEach(function (m, i) {
+        for (var i = 1; i <= MACRO_SLOTS; i++) {
             var b = document.createElement('button');
-            b.className = 'rtty-macro-btn wf-btn' + (S.editMacros ? ' editable' : '');
-            b.textContent = m.label;
-            b.title = substitute(m.text);
-            b.addEventListener('click', function () {
-                if (S.editMacros) { editMacro(i); return; }
-                sendText(substitute(m.text));
-            });
+            b.id = 'rttyMacro' + i;
+            if (i === EDIT_SLOT) {
+                b.className = 'rtty-macro-btn edit-set-btn wf-btn' + (S.editMacros ? ' editing' : '');
+                b.textContent = 'EDIT/SET';
+                b.title = 'Edit the macros: press, then press a button to change its text';
+                b.addEventListener('click', toggleEditMode);
+            } else {
+                var template = S.macros[i] || '';
+                b.className = 'rtty-macro-btn wf-btn' + (template ? '' : ' empty') + (S.editMacros ? ' editable' : '');
+                b.textContent = template ? substitute(template) : 'M' + i;
+                b.title = template;
+                b.addEventListener('click', (function (slot) { return function () {
+                    if (S.editMacros) { showMacroEditor(slot); return; }
+                    var t = S.macros[slot];
+                    if (t) sendText(substitute(t));
+                }; })(i));
+            }
             grid.appendChild(b);
-        });
-        var edit = document.createElement('button');
-        edit.className = 'rtty-macro-btn wf-btn toggle' + (S.editMacros ? ' active' : '');
-        edit.textContent = S.editMacros ? 'DONE' : 'EDIT';
-        edit.title = 'Edit the macros: [CALL] = your call, [QSO] = the QSO field, [RST] = the RST sent';
-        edit.addEventListener('click', function () { S.editMacros = !S.editMacros; renderMacros(); });
-        grid.appendChild(edit);
+        }
     }
-    function editMacro(i) {
-        var m = S.macros[i];
-        var label = prompt('Button label:', m.label);
-        if (label === null) return;
-        var text = prompt('Text ([CALL] = your call, [QSO] = the QSO field, [RST] = RST sent):', m.text);
-        if (text === null) return;
-        m.label = label.trim().toUpperCase().slice(0, 8) || m.label;
-        m.text = text;
-        savePrefs();
-        renderMacros();
+    function toggleEditMode() { S.editMacros = !S.editMacros; renderMacros(); }
+    // The editor is an overlay over the scope area, like the CW bar's: the
+    // bar fades out under it so the two never overlap.
+    function showMacroEditor(slot) {
+        S.editingSlot = slot;
+        var ta = document.getElementById('rttyMacroText');
+        ta.value = S.macros[slot] || '';
+        document.getElementById('rttyMacroEditor').style.display = 'flex';
+        bar.style.opacity = '0'; bar.style.pointerEvents = 'none';
+        ta.focus();
+    }
+    function hideMacroEditor() {
+        document.getElementById('rttyMacroEditor').style.display = 'none';
+        bar.style.opacity = '1'; bar.style.pointerEvents = 'auto';
+        S.editingSlot = null;
     }
     function sendCompose() {
         var inp = document.getElementById('rttyInput');
