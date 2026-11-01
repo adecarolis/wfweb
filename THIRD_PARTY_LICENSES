@@ -134,6 +134,77 @@ SOFTWARE.
 
 
 ================================================================================
+DeepRTTY model — MIT
+https://github.com/e04/DeepRTTY
+================================================================================
+
+The RTTY decoder runs the DeepRTTY neural model (shipped unmodified as
+resources/web-shared/models/deeprtty.onnx and deeprtty.onnx.json, from upstream
+commit 759d4e72) in the browser on ONNX Runtime Web.  The license is also in
+resources/web-shared/models/deeprtty-LICENSE, served next to the model at
+/models/deeprtty-LICENSE.  The decoder's streaming logic in
+resources/web-shared/rtty-decoder-worker.js is wfweb's own.
+
+MIT License
+
+Copyright (c) 2026 e04
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+================================================================================
+sstv (Rust crate) — MIT
+https://github.com/unexcellent/sstv
+================================================================================
+
+SSTV encoding and decoding use the sstv crate, vendored under
+resources/sstv-shim/vendor/sstv/ (v0.3.1, commit 9761c4c6) with two local
+patches (sstv-relock.patch, sstv-layout-api.patch; see
+resources/sstv-shim/README-vendoring.md) and compiled to WebAssembly as
+resources/web-standalone/wasm/sstv.wasm.  The license is also in
+resources/web-standalone/wasm/sstv-LICENSE, served next to the module at
+/wasm/sstv-LICENSE.
+
+MIT License
+
+Copyright (c) 2026 Tobias Klockau
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+================================================================================
 ft8ts — GPLv3
 https://github.com/e04/ft8ts
 ================================================================================

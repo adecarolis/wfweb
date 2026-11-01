@@ -147,6 +147,236 @@ When you want to share a file between both builds:
 3. Update its `web.qrc` `<file alias=...>` line so the source path is `web-shared/<file>` (the alias stays the same — no C++ code changes)
 4. Add it to the explicit file list in `tools/build-static.sh` — top-level `web-shared/` files are copied by name, not by glob (only its subdirectories are copied wholesale)
 
+### RTTY bar and the DeepRTTY decoder
+RTTY mirrors CW: the rig's RTTY / RTTY-R mode opens `#rttyBar`
+(`resources/web-shared/rtty-panel.js` builds it next to `#cwBar`, docked at
+the bottom like the CW bar; `rtty-panel.css`, `.mode-rtty` in `theme.css`),
+`updateMode` -> `RttyPanel.onModeChange`, and leaving the mode closes it.
+Decoding is the DeepRTTY model (`models/deeprtty.onnx` + `.json`, MIT, from
+e04/DeepRTTY) on the same ONNX Runtime Web as DeepCW, in
+`rtty-decoder-worker.js` (ES module worker). Unlike the CW decoder it taps
+the rig's raw RX PCM in `handleAudioData` (`RttyPanel.feedRx`, Int16 at
+`audioSampleRate`), not the playback graph: `WfRttyTranslator` in `rtty.js`
+mixes the tone pair at MARK / MARK + 170 Hz down, decimates with a
+triangular window (box squared: a single box or a ramp folds the alias
+bands in at -27 / -11 dB and costs the model a dB at -10 dB SNR), low-passes
+and remodulates at 800 Hz on 3200 Hz, mark low -- the model's training
+layout (mark 715 / space 885). Polarity comes from the mode: mark is the
+lower tone on LSB and in RTTY / RTTY-R (Icom demodulates RTTY as LSB and
+keeps the mark on its MARK FREQUENCY setting), the upper one on USB; REV
+flips it. The worker keeps a 12 s window, decodes it per second of new
+audio (~100 ms on a laptop; the model is 5.7 MB), puts each CTC spike on
+the absolute sample timeline, commits characters older than 2 s once by
+position and shows the younger ones as the pending tail; the committed
+codes go through one stateful `Ita2Decoder` (LTRS / FIGS, USOS) and the
+pending ones through a copy of it. The tuning strip is a waterfall of the
+*input* audio over the whole passband (300-3000 Hz, ~8 Hz bins, ten
+columns a second, posted by the worker with `lowHz` / `binHz`; the input
+is box-decimated to ~8 kHz first), ZOOM narrows it to the pair +/- 250 Hz;
+a click moves the dial so the clicked signal lands on the pair (sign flips
+on USB / RTTY-R, like CW-R). It must show the passband, not just the pair:
+on an IC-7300 in RTTY mode the dial is the mark frequency and the audio
+mark sits at the MARK FREQUENCY setting (2125 Hz, LSB sense: a signal
+670 Hz above the dial came out at 1455 Hz audio, 2026-10-31), so a station
+a few hundred Hz off the dial is nowhere near the pair and a +/- 250 Hz
+strip showed nothing but noise. AUTOTUNE (same look and states as the CW
+one) averages the strip for 1.5 s, scores every centre in the passband by
+the *weaker* of its two tones 170 Hz apart (a lone carrier has one tone at
+the floor), and moves the dial onto the best pair; the strip's levels are
+relative to a slow peak AGC, so the no-signal test is "weaker tone less
+than 6 dB above the band median", not an absolute level like CW's. Fallback: `ClassicFsk` in the same worker (one-bit correlators
+at 715 / 885 Hz, UART-style start-bit sync), chosen when there is no WASM
+SIMD, the model fails or times out loading, or the ticks average more than
+2.5 s; `localStorage wfRttyDecoder` = `deeprtty` | `classic` pins one; a
+CLASSIC tag on the strip says it is in use. Model + wasm live in Cache
+Storage `wfweb-rtty-model` with their ETag (same reasons as the CW model).
+**TX is AFSK through the FT8 path** (`WfRttySynth` at 12 kHz ->
+`streamDigiAudio`, `setPTT {digital: true}`): the rig's RTTY mode keys FSK
+from its key jack, which CI-V cannot drive, so AFSK puts the rig on LSB
+(standard 2125 / 2295) and sets the mod level like FT8 does. AFSK is on by
+default: the bar engages it as it opens (`wfRttyAfsk`; the AFSK button
+turns it off and that choice is remembered), the top-bar mode tile reads
+`RTTY - LSB` while it runs (`updateModeBtnLabel`), and the bar's close
+button puts the rig back in the mode it was in *before RTTY* (`beforeRtty`,
+noted on a fresh entry into RTTY; the AFSK button alone goes back to the
+rig's RTTY). A sideband the user leaves by hand closes the bar without
+restoring; going back to the rig's RTTY by hand just ends AFSK. While we key, the worker gets a
+silence `gap` of the same length so the timeline stays whole. The over is
+bracketed with `enableMic` (see the COMP section); proven on the IC-7300
+on 40 m, 2026-10-31. **The over is an open channel**, as RTTY is operated:
+`openDigiStream()` in both `index.html` (the FT8 pacer worklet in a
+queued mode next to its one-buffer mode, same 0x03 frames, PTT after
+100 ms, `haltDigiTx` hook; `digiTxFrame()` builds the frame for both
+paths; `null` without the AudioWorklet, i.e. an insecure origin, where
+the bar falls back to one `streamDigiAudio` buffer per line). The panel
+(`openChannel` / `topUp` / `endChannel` in `rtty-panel.js`) renders audio
+a character at a time with the streaming `WfRttySynth` (`renderCodes` /
+`renderMark`, phase and fractional bit edge carried over, so the piecewise
+over is sample for sample the one-shot one) and a stateful `Ita2Encoder`
+(the LTRS / FIGS shift persists across characters), keeps ~300 ms pushed
+ahead of the rig (`onProgress` counts what went out), sends LTRS
+"diddles" while the queue is empty, and on END a LTRS + 0.2 s of mark
+before the key drops. The TX button in the compose row opens the channel
+(type-ahead: the input's `input` event queues the text and clears the
+box, Enter = CR LF, Backspace takes back a character not yet rendered,
+Escape = STOP); pressed again it reads END and drains. The TX line in the
+text area is the progress display, every character `.rtty-ch` pending /
+sending / sent like the CW transcript, with a cursor; STOP cuts at once
+and drops what had not gone out from the line too. A macro or a SEND
+line while the channel is closed opens it, sends and ends; while it is
+open it appends (no preamble) and ends the over unless it carries
+`[HOLD]` at the end (`splitHold`), which leaves the channel open --
+"[QSO] DE [CALL] [HOLD]" is default slot 9, shown with a trailing
+ellipsis and a dashed border. Macros are laid out and edited like the CW
+bar's: ten slots in two rows, slot 5 is EDIT/SET, a button shows its
+text with `[CALL]` `[QSO]` `[RST]` filled in, and in edit mode a press
+opens the `#rttyMacroEditor` overlay (SAVE / CLEAR / CANCEL, the bar
+fades out under it); `wfRttyMacros` (`{slot: text}`) is localStorage in
+both builds. LOG QSO -> `addQsoLogEntry({mode: 'RTTY'})`; `defaultLogMode()`
+says RTTY while the bar is open. The recorder draws the bar's lines under
+the scope (`rttyView` / `drawRttyPanel`). Tests:
+`tests/rtty_decoder_sim.mjs` (via `tests/test_rtty_decoder.py`) runs the
+real worker under node on AFSK from the page's own synthesizer at 12 and
+48 kHz, both polarities, clean / -6 / -10 dB, the classic engine, and a
+typed over (pieces with idle diddles between them) from the streaming
+synthesizer -- run it after any change to `rtty.js` or the worker.
+
+### SSTV panel, codec and gallery
+SSTV is browser-side in both builds (no C++ for the radio side). MODE grid
+`SSTV` -> `window.toggleSstvBar()` opens `#sstvBar`
+(`resources/web-shared/sstv-panel.js`, `sstv-panel.css`, `.mode-sstv` in
+`theme.css`), an overlay peer of the DIGI bar and JS8 inside `#scopeArea`
+(`body.sstv-open`, `closeOtherModes('sstv')`, VFO snapshot on open /
+restore on close, mic level to `DIGI_MOD_LEVEL` like `toggleDigiBar`). It
+keeps the rig's voice mode (USB / LSB / FM / AM: SSTV on 2 m is FM) and
+otherwise sets USB; the BAND select tunes the usual frequencies and sets
+their mode; `setMode()` to a non-voice mode closes it.
+**Codec**: the `sstv` Rust crate (MIT, 18 modes, the engine behind
+slowscan.space) behind a plain C ABI in `resources/sstv-shim/`, built by
+`tools/build-sstv-wasm.sh` into `resources/web-standalone/wasm/sstv.wasm`
+(committed, ~74 KB; needs rustup + `wasm32-unknown-unknown` + `wasm-opt`).
+The crate is **vendored** under `resources/sstv-shim/vendor/sstv/` (v0.3.1,
+commit in `README-vendoring.md`) with two patches applied.
+`sstv-layout-api.patch` only makes a mode's sequence layout public (sync
+spacing, control tones), which the shim exports as `sstv_mode_layout` /
+`sstv_mode_vis` for the worker's own image search. `sstv-relock.patch`: upstream
+re-anchors a timing sequence only when its sync pulse lands within one
+pulse length of nominal timing, so one audio frame dropped or stalled on
+the way (the bench put a 20 ms silent frame in the air from a TX underrun,
+2026-10-31; a lost packet or sound-card underrun in the field does the
+same) moved every later sync off the window and the rest of the picture
+came out as garbage — first swapped colours, then wrong brightness, which
+looked like a Robot 36 line-pair slip. The patch marks the timing lost on
+a cut without its sync and re-acquires with the crate's own `SyncLock`
+(three pulses one line apart, the Robot 36 pair aligned by its separator
+tones), keeping one extra sequence of estimates meanwhile; two to four rows
+stay garbled. `sstv_rx_decode(rate, pin, headerless)` is always called
+headerless and pinned (the crate's `without_header()`): **the worker finds
+the picture, not the crate** (see below).
+The crate's decoder *pulls* samples from an iterator, which cannot wait for
+audio inside WebAssembly, so the build runs Binaryen **Asyncify** on it:
+`RingIter` calls the imported `sstv_await_samples()` when its ring runs dry,
+the JS glue (`wasm/asyncify.mjs`, our own: the GoogleChromeLabs library
+parks its unwind buffer in the first KB of memory, too small for the
+decoder's call chain) unwinds the stack into a 64 KB buffer and returns a
+Promise, and rewinds when `sstv_rx_push` has delivered more. SharedArrayBuffer
++ Atomics.wait would do without Asyncify but needs COOP/COEP headers, which
+Pages cannot send and which break the APRS map tiles. Note the crate's
+`no_std` build at this commit calls `f64::round` (upstream gap): we build
+with its default `std` feature, fine on wasm32. `wasm/sstv-codec.mjs` is
+the loader (`new URL('./sstv.wasm', import.meta.url)`, fingerprinted).
+**Worker** `resources/web-shared/sstv-worker.js` (module worker) owns the
+codec: `config {rate, pinMode}` / `start {pinMode}` / `pcm` / `gap` /
+`reset` / `encode` in, `ready {modes}` / `image {mode, w, h, via}` / `row`
+/ `done` / `spectrum` / `encoded {int16, seconds, headerSeconds}` out
+(contract in the file header). The crate measures frequency by midline
+crossings and needs a tone to hold within +/-50 Hz for 3 ms: raw receiver
+audio fails that from ~27 dB SNR down, so the worker demodulates first (mix
+to 1900 Hz, 4th-order Butterworth I/Q low-pass at 900 Hz, phase difference,
+0.6 ms moving average, re-synthesized as a clean tone). Even so the crate's
+own VIS / sync detection gave up below +12 dB SNR (2.5 kHz) and missed
+starts on the air (2026-10-31), so **the worker runs its own image search**
+and the crate only ever decodes from a start it is handed: the VIS is read
+from coherent DFT energies of the raw audio at 1100 / 1200 / 1300 / 1900 Hz
+over each bit's middle 20 ms, in a bank of five tuning offsets (+/-60 Hz),
+with the leader, the framing bits, a 3 dB margin per bit and even parity
+(reads the header down to -3 dB; the crate's splitter never saw a bit as a
+tone below +12); sync pulses are runs of the 0.5 ms frequency track below
+1350 Hz, three of them one line apart (within 2.5 ms) name the mode from
+the spacing table -- the smallest that fits, so a Robot 36 pair is not read
+as Robot 72 -- and the sequence's other control tones pick the alignment
+(the Robot 36 line pair). What the crate eats waits in a 4 s delay buffer,
+so a picture found 300 ms (VIS) or two lines (sync) after it began is
+decoded from its first sample. A VIS heard while a picture decodes cuts it
+short (`done` incomplete) and starts the new one, so a station that stops
+early or a START on noise never leaves the decoder deaf for a mode's
+duration. Picture *quality* is the limit now: the pixel error is ~40 at
++6 dB and the picture is mush at 0 dB, where the header still reads. The
+sweep table is in the file (`tests/sstv_codec_sim.mjs --sweep`). Each
+start / `config` / `reset` bumps a generation so the suspended decode
+aborts cleanly; rows of an aborted generation are dropped.
+**RX** taps the rig's raw PCM in `handleAudioData` (`SstvPanel.feedRx`,
+silence `gap` while we transmit), paints rows with `putImageData`, and
+on `done` (complete or not: ISS passes end mid-image) PNG-encodes the
+canvas into the **gallery**. START (`S.rxForce`, worker `start`) is for a
+picture whose VIS was missed: the worker locks on the next three line
+sync pulses, in the pinned RX mode or, under AUTO, in the mode their
+spacing names, and begins the picture at the first of them out of its
+delay buffer, so the lines heard before the press are kept and the
+picture comes out shifted up by the lines gone before; that picture's
+`done` or DISCARD puts the worker back on the RX setting. With a mode
+pinned the worker locks on sync pulses without a START, as the crate did. **TX**: file / camera / gallery picture ->
+canvas at the mode's resolution (FIT letterbox / FILL crop, a text
+overlay defaulting to the callsign: a one-row textarea that grows to four
+lines on Shift+Enter like the RTTY compose box, with a style row -- size
+S/M/L as a fraction of the picture height, TOP / MIDDLE / BOTTOM, LEFT /
+CENTER / RIGHT, a colour swatch cycle, BOX for a dark band behind it --
+in `wfSstvOverlayStyle`, `drawOverlayText`; an optional PIP: a gallery picture in a
+corner, `S.pip` / `S.pipCorner`, the PIP button walks the corners then
+off) -> worker `encode` at 12 kHz -> the RTTY/FT8 recipe (`enableMic
+true`, `streamDigiAudio`, `setPTT {digital: true}`, `digiTxActive` for
+the ALC loop); while it goes out `#sstvTxSweep` (a line at the row going
+out, the rest dimmed, placed over the object-fit canvas by `setSweep`) is
+the progress display, starting after `headerSeconds`. The RX / TX canvases
+fill their cards (`object-fit: contain`). Tuning strip: the worker's
+1000-2500 Hz spectrum with marks at 1200 / 1500 / 1900 / 2300; a click
+puts the signal on 1900 Hz on a sideband (FM / AM: no-op). Desktop shows
+RX and TX side by side or, behind the GALLERY header button, the gallery
+alone (`data-pane`); phones keep the RX / TX / GALLERY pane tabs. No
+`confirm()` / `prompt()` anywhere in the panel: a modal dialog stalls the
+page and with it the audio and the decoder (DELETE is two presses, LOG
+QSO opens the log modal with `addDigiQso()`).
+**Gallery** (`SstvPanel` stores, one interface; two sections, RECEIVED
+= `kind: 'rx'` and LOADED = `kind: 'tx'`, every picture picked for TX is
+filed there at 640 px at most with its file `name`; the viewer offers
+TO TX, PIP, SAVE, DELETE): the Server build keeps pictures on the server
+so every device sees them — `ServerStore` over `/api/v1/sstv/images`
+(REST_API.md; `<id>.png` + `<id>.json` under `--sstv-dir` / `SstvDir=` /
+`<data dir>/sstv`, `handleSstvRequest` in `webserver.cpp`, every change
+broadcast as `{type: 'sstvGallery'}` which the page routes to
+`SstvPanel.onGalleryChanged()`); Standalone uses `IdbStore` (IndexedDB
+`wfweb-sstv`, BroadcastChannel between tabs; both virtual-rig tabs share
+it, being one origin).
+`scripts/testrig.sh` passes `--sstv-dir .testrig/sstv_<i>` so bench
+pictures stay out of the operator's data dir. The HTTP reader now caps any
+request at 16 MB (413), a picture at 4 MB. The recorder draws the panel
+(`sstvView` / `drawSstvBody`) with the same sweep over the TX picture and
+no progress bars: the RX picture filling row by row is its own progress,
+so the panel has no RX bar either. **Tests**: `tests/test_sstv.py` runs
+`tests/sstv_codec_sim.mjs` (the real worker under node: clean / 8 kHz /
+clock error / back to back / reset / pinned / a 20 ms frame inserted and
+dropped / START mid-picture with the mode from the sync spacing and a
+header cutting that decode short / +12, +15, +6 and +3 dB, sweep mode for
+tuning), the wasm export
+check, the wiring check and `tests/sstv_browser.mjs` (two Standalone
+virtual rigs: A sends, B decodes and files, TO TX, PIP, a START
+mid-flight on a second picture, the two-press DELETE, the sweep; with `WFWEB_SSTV_URLS` the same on the C++
+bench with a second browser on B watching the shared gallery; a wrong
+picture dumps B's 48 kHz PCM next to the screenshots, which the sim's
+machinery replays); `tests/test_sstv_gallery.py` covers the REST store.
+Run them after any change to the worker, the shim, the vendored crate or
+the panel.
+
 ### Shared theme + component kit (`theme.css`)
 `resources/web-shared/theme.css` is the single source of UI styling for both
 builds (linked from each `index.html`, aliased in `web.qrc`, copied by
@@ -213,14 +443,28 @@ including the vanished-client and shutdown paths), `_holdCompressor` /
 `_releaseCompressor` in `serial-transport.js` (`_restoreCompressorDirect`
 on close) and its mirror in `virtual-transport.js`. SSB only, never on an
 unread state, never switched on if it was off, and a `setCompressor` during
-the over wins. A new digital TX path must send `digital: true`.
+the over wins. A new digital TX path must send `digital: true`, and must
+bracket the over with `enableMic true` / `false` like FT8 does: that is
+what sets up the TX audio chain and the rig's MOD input (the RTTY bar
+keyed the IC-7300 with 0 W out without it, 2026-10-31).
 Tests: `tests/test_compressor.py` (server, IC-7300 mock) and
 `tests/comp_browser.mjs` (Standalone virtual rig).
+
+### MODE grid: reverse modes fold into their base button
+`renderModeOverlay` (identical in both forks) shows the rig's mode list
+minus the `-R` variants whose base is also listed: CW-R and RTTY-R live
+behind the CW and RTTY buttons. A press selects the base; a press while
+already in that family flips to the other variant (`setMode`). The grid
+closes on every press, so the top-bar mode tile is the readout, and the
+active button names the variant you are in when the grid is reopened.
+The bars follow either variant (the CW decoder and the RTTY bar flip
+their dial direction on `-R`).
 
 ### Scope click-to-tune step
 A click, tap or drag on the scope lands on `scopeTuneStep()` (identical in
 both `index.html` forks, used by `scopeFreqFromClientX`, the drag path and
-`scopeFreqFromDragDeltaX`): 1 Hz in CW/CW-R, 100 Hz in every other mode. The
+`scopeFreqFromDragDeltaX`): 1 Hz in CW/CW-R, in RTTY/RTTY-R and while the
+RTTY bar is open (AFSK on a sideband), 100 Hz in every other mode. The
 backends pass Hz through untouched (CI-V `05` is 1 Hz). The live click path
 is the no-drag branch of `scopePointerEnd`; `scopeClick` is not wired. The
 scope message carries its edges as float32 MHz, about 1 Hz at 14 MHz but
@@ -293,6 +537,7 @@ Without a server, the browser does in JS / WASM what the Server does in Qt:
 | Per-rig `.rig` files in `rigs/`       | `civ/rig-caps.js` (generated from `rigs/*.rig` by `tools/extract-rig-caps.py`) |
 | `freedvProcessor` / `radeProcessor`   | `wasm/{rade,direwolf}.{mjs,wasm}` — committed in tree; rebuild only when WASM source changes via `tools/build-{rade,direwolf}-wasm.sh` (Emscripten) |
 | `aprsProcessor` / `ax25LinkProcessor` | Browser-side AX.25 stack in `resources/web-shared/packet.js` driving the Direwolf WASM modem |
+| SSTV gallery (`/api/v1/sstv/images`)  | `IdbStore` in `resources/web-shared/sstv-panel.js` (IndexedDB, this browser only); the codec `wasm/sstv.wasm` is browser-side in both builds |
 | `tools/virtualrig` (off-air loopback) | `resources/web-shared/airbus.js` + `transport/virtual-transport.js` (same-origin BroadcastChannel between two tabs at `/?virtual=1&id=N`) |
 | FreeDV 700D/700E/1600                 | _Server-only_ (no codec2 WASM port) |
 | PSK / FreeDV Reporter                 | _Server-only_ (disabled in Standalone UI) |
@@ -402,13 +647,20 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 | `resources/web-shared/recorder.js` | Audio (MP3) / video recorder behind the top-bar REC button (both builds) |
 | `resources/web-shared/needle-meter.js` | IC-7610-style needle meter face + needle ballistics; alternative to the tile-bar meter in `index.html` (both builds) |
 | `resources/web-shared/rx-jitter.js` | Adaptive RX jitter buffer (worklet + ScriptProcessor fallback, both builds); simulated by `tests/rx_jitter_sim.mjs` |
+| `resources/web-shared/rtty.js` | ITA2 tables, AFSK synthesizer, RX frequency translator for the RTTY decoder (both builds) |
+| `resources/web-shared/rtty-panel.js` | RTTY bar: DeepRTTY decoder control, tuning strip, text, log, AFSK macros (both builds) |
+| `resources/web-shared/rtty-decoder-worker.js` | DeepRTTY on ONNX Runtime Web + classic FSK fallback (module worker, both builds); `tests/rtty_decoder_sim.mjs` |
+| `resources/web-shared/sstv-panel.js` | SSTV panel: RX picture, TX picture (file / camera, FIT / FILL, overlay), tuning strip, gallery with its server / IndexedDB stores (both builds) |
+| `resources/web-shared/sstv-worker.js` | SSTV codec worker: quadrature front end, the Asyncified `sstv` crate wasm, spectrum for the strip (module worker, both builds); `tests/sstv_codec_sim.mjs` |
+| `resources/web-standalone/wasm/sstv-codec.mjs` / `asyncify.mjs` / `sstv.wasm` | Loader, Asyncify runtime glue and the committed codec module (both builds; server aliases them via web.qrc) |
+| `resources/sstv-shim/` | Rust cdylib around the `sstv` crate, vendored under `vendor/sstv/` with `sstv-relock.patch` (`README-vendoring.md`); `tools/build-sstv-wasm.sh` builds it |
 | `resources/web-shared/cw-keyer.js` | CW keyer model: timing, pacing of the text to the rig's keyer, browser sidetone (both builds); `tests/cw_keyer_sim.mjs` under node, `tests/cw_bench.mjs` on the two-rig bench, both via `tests/test_cw_keyer.py` |
 | `resources/web-shared/cw-paddle.js` | Paddle / straight key as CW text entry: iambic A/B keyer, element decoder, adaptive straight-key decoder (both builds); `tests/cw_paddle_sim.mjs` |
 | `resources/web-shared/paddle-panel.js` | Paddle settings (keyer A/B, swap, `wfPaddleOpts`), USB keyboard paddle adapter (VBand: left / right Ctrl), the PADDLE window of the CW bar (both builds); `tests/paddle_input_sim.mjs` |
 | `resources/web-shared/midi.js` | Web MIDI controller: CTR2-MIDI presets, MIDI learn, knob-tick tuner, MIDI window body (both builds); `tests/midi_sim.mjs`, `tests/midi_browser.mjs` via `tests/test_midi.py` |
 | `resources/web-shared/js8-panel.mjs` | JS8 messenger panel — markup + state machine, QSO tabs, RX/TX, CMD palette (both builds) |
 | `resources/web-shared/js8.mjs` | JS8 WASM codec bridge — 8-FSK synth + encode/decode wrapper (both builds) |
-| `resources/web-shared/` | Files shared by both builds (CW decoder + DeepCW model + ORT, sprites, models) |
+| `resources/web-shared/` | Files shared by both builds (CW + RTTY decoders, DeepCW / DeepRTTY models + ORT, sprites) |
 | `resources/web.qrc` | Qt resource file for the server build |
 | `tools/build-static.sh` | Builds the Standalone static bundle into `dist/` |
 | `tools/serve-static.py` | Local HTTP server for `dist/` with `Cache-Control: no-store` |
@@ -421,6 +673,7 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 | `tests/launcher_test.cpp` | Unit test for the two pure launcher helpers (`tests/test_cpp_units.py`, Linux CI) |
 | `tools/make-launcher-icon.py` | Regenerates `launcher/res/wfweb.{png,ico}` from `resources/web-shared/favicon.svg` (resvg-py + Pillow; outputs are committed) |
 | `tools/build-rade-wasm.sh` / `tools/build-direwolf-wasm.sh` / `tools/build-js8-wasm.sh` | Emscripten rebuilds of the browser modems (only when their C/C++ source changes) |
+| `tools/build-sstv-wasm.sh` | cargo + wasm-opt (Asyncify) rebuild of the SSTV codec (only when `resources/sstv-shim/` or its vendored crate changes) |
 | `.github/workflows/pages.yml` | Publishes Standalone to wfweb.k1fm.us |
 | `resources/ft8ts/dist/ft8ts.mjs` | FT8/FT4 decoder module |
 | `resources/js8-src/` | Vendored JS8Call-improved subset — JS8 mode codec only, compiled to WASM (see `README-vendoring.md`) |
@@ -516,7 +769,15 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 - A mixer AudioWorklet in its own 48 kHz context builds one mono timeline.
   **TX replaces RX while TX audio is queued** — a rig with MONITOR on loops TX
   back into the RX stream, and summing would record it twice. Mic frames are
-  only kept while `isTransmitting` (the mic streams whenever it is enabled).
+  only kept while `isTransmitting` (the mic streams whenever it is enabled),
+  never in CW / CW-R, and not within `MODEM_HOLD_MS` (1 s) of a modem-tagged
+  frame: the transports' single-writer rule keeps the mic off the air there,
+  and RTTY's open channel sets no `digiTxActive`, so the page still sends it.
+  The CW TONE sidetone reaches the recording as a MediaStream
+  (`WfCwSidetone` `onStream` -> `Recorder.setSidetone`, a fixed-level tap
+  ahead of VOL, a new stream per context), added on the mixer's input after
+  the same 200 ms delay; RX is zeroed while `rxPaddleMuted`, as the page
+  mutes it. `tests/recorder_browser.mjs` (via `tests/test_recorder.py`).
 - Audio → MP3 via vendored `lamejs/lame.min.js` in a Blob worker. Video → a
   composited 1280×720 canvas (header + `meterCanvas` / `spectrumCanvas` /
   `waterfallCanvas`) through `MediaRecorder`; MP4 where supported, else WebM.

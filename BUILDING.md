@@ -303,7 +303,16 @@ under `resources/web-standalone/wasm/` — `build-static.sh` produces a
 working bundle out of the box. Rebuilding the WASM modules from source
 (only needed when their C/C++ source changes) requires Emscripten and is
 a separate one-off step: `tools/build-direwolf-wasm.sh`,
-`tools/build-rade-wasm.sh`, `tools/build-js8-wasm.sh`.
+`tools/build-rade-wasm.sh`, `tools/build-js8-wasm.sh`. The SSTV codec
+(`wasm/sstv.wasm`, the `sstv` Rust crate behind a C ABI in
+`resources/sstv-shim/`) is committed too; `tools/build-sstv-wasm.sh`
+rebuilds it and needs Rust via rustup with the `wasm32-unknown-unknown`
+target plus Binaryen's `wasm-opt` (on PATH or in `~/emsdk/upstream/bin`):
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --target wasm32-unknown-unknown
+tools/build-sstv-wasm.sh
+```
 
 ## Notes
 

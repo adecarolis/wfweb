@@ -70,6 +70,7 @@ struct cmdLineOverrides {
     // of the rig model, to tell several wfweb instances apart
     QString name;
     QString logbook;           // --logbook
+    QString sstvDir;           // --sstv-dir: where received SSTV pictures are kept
     // --remote-log: forward logged QSOs to an external logging program
     // (WSJT-X UDP protocol underneath, but named for what it does)
     QString remoteLogTarget;

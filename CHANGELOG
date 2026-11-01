@@ -6,6 +6,69 @@ a built-in web interface. See https://gitlab.com/eliggett/wfview for the
 upstream wfview history.
 
 
+v0.9.5 (2026-11-01)
+--------------------
+
+RTTY (both builds):
+- New RTTY bar, docked at the bottom like the CW bar; the rig's RTTY /
+  RTTY-R mode opens it. It decodes with DeepRTTY, a neural model
+  (e04/DeepRTTY) run in the browser on the same runtime as the CW
+  decoder, and falls back to a classic FSK demodulator on browsers
+  without WebAssembly SIMD or when the machine is too slow (a CLASSIC
+  tag shows it). MARK (2125 / 1615 / 1275), REV, clickable callsigns,
+  CALL / QSO / RST and LOG QSO.
+- Tuning strip: a waterfall of the whole passband (ZOOM narrows it to
+  the tone pair); a click puts the clicked signal on the pair. AUTOTUNE
+  finds the strongest 170 Hz pair and moves the dial onto it.
+- Transmit is AFSK: the rig's RTTY mode keys FSK from its key jack,
+  which CI-V cannot drive, so the bar puts the rig on LSB (the mode tile
+  reads RTTY - LSB) and the close button returns to the mode you were
+  in before RTTY. The AFSK button turns this off.
+- The over is an open channel, as RTTY is operated: TX keys the rig and
+  each character goes out as you type (Enter = new line, Backspace takes
+  back what has not gone out, Esc = STOP), with idle diddles in between;
+  END drains the over. The TX line shows each character pending, going
+  out and sent. The compose box takes several lines (Shift+Enter).
+- Ten macros, laid out and edited like the CW bar's, with RTTY defaults.
+  A macro ending in [HOLD] leaves the transmitter on.
+- The scope click tunes to 1 Hz in RTTY, as in CW.
+
+SSTV (both builds):
+- New SSTV picture mode in the MODE grid, 18 modes (Robot, Martin,
+  Scottie, PD, ...), on the `sstv` decoder (the engine behind
+  slowscan.space). It keeps a voice mode (FM on 2 m), otherwise sets
+  USB, and puts the VFO back on close.
+- RX: the picture is painted row by row. The header is read down to
+  about -3 dB SNR; START catches a picture whose header was missed and
+  names its mode from the line timing, keeping the lines already heard.
+  A dropped audio frame no longer ruins the rest of the picture.
+- TX: a picture from a file, the phone camera or the gallery, FIT or
+  FILL, a text overlay (callsign by default, up to four lines, size,
+  position, colour, a dark box behind it) and an optional
+  picture-in-picture from the gallery. A sweep line follows the row
+  going out.
+- Gallery of received and loaded pictures, with TO TX, PIP, SAVE and
+  DELETE. Server build: kept on the server, so every device sees the
+  same gallery (`--sstv-dir`, `SstvDir=` in the settings file, default
+  `<data dir>/sstv`; REST API `/api/v1/sstv/images`). Standalone: kept
+  in the browser.
+- Server build: the HTTP server refuses any request over 16 MB.
+
+Web UI:
+- CW-R and RTTY-R fold into the CW and RTTY buttons of the MODE grid: a
+  second press flips to the reverse variant.
+
+Recording:
+- CW recordings carry the browser sidetone instead of the mic, and the
+  mic no longer leaks into a recording under an RTTY or other modem
+  over. The RTTY bar and the SSTV panel are drawn in the video.
+
+Packaging:
+- macOS: builds against OpenSSL 4 (current Homebrew) and on the macOS
+  15 runners.
+- AppImage: ships a PNG icon, which current appimagetool requires.
+
+
 v0.9.4 (2026-10-26)
 --------------------
 

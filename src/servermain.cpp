@@ -106,6 +106,8 @@ servermain::servermain(const QString settingsFile, const cmdLineOverrides& overr
                                   Q_ARG(QString, cliOverrides.remoteLogTarget),
                                   Q_ARG(bool, cliOverrides.noRemoteLog),
                                   Q_ARG(bool, cliOverrides.remoteLogDecodes));
+        QMetaObject::invokeMethod(web, "configureSstvDir", Qt::QueuedConnection,
+                                  Q_ARG(QString, cliOverrides.sstvDir));
         connect(queue, SIGNAL(rigCapsUpdated(rigCapabilities*)), web, SLOT(receiveRigCaps(rigCapabilities*)));
         connect(webThread, SIGNAL(finished()), web, SLOT(deleteLater()));
         connect(web, &webServer::requestPowerOn, this, &servermain::powerRigOn);

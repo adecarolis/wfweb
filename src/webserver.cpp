@@ -16,6 +16,8 @@
 #include <QTimer>
 #include <QThread>
 #include <QDateTime>
+#include <QSaveFile>
+#include <QRandomGenerator>
 #include <QHostInfo>
 
 #ifdef Q_OS_WIN
@@ -261,10 +263,14 @@ static bool generateSelfSignedCert(const QString &certPath, const QString &keyPa
     X509_set_pubkey(x509, pkey);
 
     {
-        X509_NAME *name = X509_get_subject_name(x509);
+        // Own name object: OpenSSL 4 returns the certificate's as const
+        X509_NAME *name = X509_NAME_new();
+        if (!name) goto cleanup;
         X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC,
                                    reinterpret_cast<const unsigned char *>("wfweb"), -1, -1, 0);
+        X509_set_subject_name(x509, name);
         X509_set_issuer_name(x509, name); // self-signed
+        X509_NAME_free(name);
     }
 
     if (!X509_sign(x509, pkey, EVP_sha256())) goto cleanup;
@@ -723,6 +729,16 @@ void webServer::onHttpReadyRead()
     socketBuffers[socket] += socket->readAll();
     const QByteArray &request = socketBuffers[socket];
 
+    // Nothing this server takes is anywhere near this big (the largest
+    // upload, an SSTV picture, is capped at 4 MB): refuse a bigger request
+    // instead of buffering it for as long as the client keeps sending.
+    static const int HTTP_MAX_REQUEST_BYTES = 16 * 1024 * 1024;
+    if (request.size() > HTTP_MAX_REQUEST_BYTES) {
+        socketBuffers.remove(socket);
+        sendRestResponse(socket, 413, QJsonObject{{"error", "Request too large"}});
+        return;
+    }
+
     // Wait until we have the complete headers
     int sepIdx = request.indexOf("\r\n\r\n");
     if (sepIdx < 0) return;
@@ -737,6 +753,11 @@ void webServer::onHttpReadyRead()
     if (clIdx >= 0) {
         int clEnd = lowerHeaders.indexOf("\r\n", clIdx);
         int contentLength = headerSection.mid(clIdx + 15, clEnd - clIdx - 15).trimmed().toInt();
+        if (contentLength > HTTP_MAX_REQUEST_BYTES) {
+            socketBuffers.remove(socket);
+            sendRestResponse(socket, 413, QJsonObject{{"error", "Request too large"}});
+            return;
+        }
         if (contentLength > 0 && request.length() < sepIdx + 4 + contentLength)
             return; // body not yet complete — wait for next readyRead
     }
@@ -959,12 +980,15 @@ void webServer::sendRestResponse(QTcpSocket *socket, int statusCode, const QJson
     QString statusText;
     switch (statusCode) {
     case 200: statusText = "OK"; break;
+    case 201: statusText = "Created"; break;
     case 202: statusText = "Accepted"; break;
     case 400: statusText = "Bad Request"; break;
     case 404: statusText = "Not Found"; break;
     case 405: statusText = "Method Not Allowed"; break;
+    case 413: statusText = "Payload Too Large"; break;
+    case 500: statusText = "Internal Server Error"; break;
     case 503: statusText = "Service Unavailable"; break;
-    default:  statusText = "OK"; break;
+    default:  statusText = statusCode >= 500 ? "Error" : statusCode >= 400 ? "Error" : "OK"; break;
     }
 
     QByteArray response;
@@ -999,6 +1023,11 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
         if (err.error != QJsonParseError::NoError || !doc.isObject()) return QJsonObject();
         return doc.object();
     };
+
+    if (p.startsWith("/api/v1/sstv/images")) {
+        handleSstvRequest(socket, method, p, query, body);
+        return;
+    }
 
     // --- Station identity: one callsign + grid for the whole server ---
     if (p == "/api/v1/station") {
@@ -6876,6 +6905,166 @@ void webServer::configureLogbook(const QString &logbookOverride,
                           << "as" << wsjtxId_ << (wsjtxDecodes_ ? "(WSJT-X UDP protocol, with decodes)" : "(WSJT-X UDP protocol)");
     else
         qWarning() << "Remote log: cannot resolve target" << wsjtxTarget_;
+}
+
+// ---------------------------------------------------------------------------
+// SSTV image gallery.  The browser decodes the pictures (sstv-panel.js) and
+// uploads each one as a PNG so every device sees the same gallery; the
+// server only keeps the files, <id>.png next to <id>.json with the metadata,
+// and tells every browser of a change with {"type":"sstvGallery"}.
+// ---------------------------------------------------------------------------
+static const int SSTV_IMAGE_MAX_BYTES = 4 * 1024 * 1024;
+static const char SSTV_PNG_MAGIC[8] = { '\x89', 'P', 'N', 'G', '\r', '\n', '\x1a', '\n' };
+
+static bool sstvIdOk(const QString &id)
+{
+    if (id.isEmpty() || id.size() > 64) return false;
+    for (const QChar c : id)
+        if (!(c.isLetterOrNumber() && c.unicode() < 128) && c != '-') return false;
+    return true;
+}
+
+void webServer::configureSstvDir(const QString &sstvDirOverride)
+{
+    auto settings = openSettings();
+    // --sstv-dir wins over SstvDir= in the settings file; a relative path in
+    // a named profile resolves next to that profile, like the logbook.
+    QString dir = sstvDirOverride.isEmpty() ? settings->value("SstvDir").toString() : sstvDirOverride;
+    if (dir.isEmpty())
+        dir = QDir(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath(QStringLiteral("sstv"));
+    else if (QFileInfo(dir).isRelative() && !packetSettingsFile_.isEmpty())
+        dir = QFileInfo(packetSettingsFile_).dir().filePath(dir);
+    dir = QDir::cleanPath(dir);
+    if (!QDir().mkpath(dir)) {
+        qWarning().noquote() << "SSTV gallery: cannot create" << dir << "- received pictures will not be kept";
+        sstvDir_.clear();
+        return;
+    }
+    sstvDir_ = dir;
+    sstvPersistent_ = Logbook::isPersistentLocation(dir);
+    qInfo().noquote() << "SSTV gallery:" << dir << QString("(%1 images)").arg(sstvGalleryList().size());
+    if (!sstvPersistent_)
+        qWarning().noquote() << "SSTV gallery: NOT PERSISTENT -" << dir
+                             << "is inside the container's own filesystem. Mount a volume at /data (see DOCKER.md).";
+}
+
+// Newest first: ids start with the UTC timestamp.
+QJsonArray webServer::sstvGalleryList() const
+{
+    QJsonArray out;
+    if (sstvDir_.isEmpty()) return out;
+    const QDir d(sstvDir_);
+    const QFileInfoList metas = d.entryInfoList(QStringList() << "*.json", QDir::Files, QDir::Name | QDir::Reversed);
+    for (const QFileInfo &fi : metas) {
+        QFile f(fi.absoluteFilePath());
+        if (!f.open(QIODevice::ReadOnly)) continue;
+        QJsonObject o = QJsonDocument::fromJson(f.readAll()).object();
+        if (o.isEmpty()) continue;
+        o["id"] = fi.completeBaseName();
+        if (!o.contains("kind")) o["kind"] = "rx";
+        o["bytes"] = QFileInfo(d.filePath(fi.completeBaseName() + ".png")).size();
+        out.append(o);
+    }
+    return out;
+}
+
+void webServer::sstvGalleryChanged()
+{
+    sendJsonToAll(QJsonObject{{"type", "sstvGallery"}, {"count", sstvGalleryList().size()}});
+}
+
+void webServer::handleSstvRequest(QTcpSocket *socket, const QString &method, const QString &p,
+                                  const QUrlQuery &query, const QByteArray &body)
+{
+    const QString base = QStringLiteral("/api/v1/sstv/images");
+    if (sstvDir_.isEmpty()) {
+        sendRestResponse(socket, 503, QJsonObject{{"error", "SSTV gallery directory unavailable"}});
+        return;
+    }
+    const QDir d(sstvDir_);
+    if (p == base) {
+        if (method == "GET") {
+            const QJsonArray list = sstvGalleryList();
+            sendRestResponse(socket, 200, QJsonObject{{"images", list}, {"count", list.size()},
+                                                      {"dir", sstvDir_}, {"persistent", sstvPersistent_}});
+        } else if (method == "POST") {
+            if (body.size() > SSTV_IMAGE_MAX_BYTES) {
+                sendRestResponse(socket, 413, QJsonObject{{"error", "Image larger than 4 MB"}});
+                return;
+            }
+            if (body.size() < 8 || memcmp(body.constData(), SSTV_PNG_MAGIC, 8) != 0) {
+                sendRestResponse(socket, 400, QJsonObject{{"error", "Body must be a PNG image"}});
+                return;
+            }
+            QDateTime ts = QDateTime::fromString(query.queryItemValue("ts"), Qt::ISODateWithMs);
+            if (!ts.isValid()) ts = QDateTime::currentDateTimeUtc();
+            ts = ts.toUTC();
+            const QString id = ts.toString("yyyyMMdd'T'HHmmss'Z'") + '-'
+                             + QString("%1").arg(QRandomGenerator::global()->bounded(65536), 4, 16, QChar('0'));
+            // kind: "rx" (received off the air) or "tx" (a picture the user
+            // loaded to send); the gallery lists them apart.
+            const QString kind = query.queryItemValue("kind") == QLatin1String("tx") ? QStringLiteral("tx") : QStringLiteral("rx");
+            const QJsonObject meta{
+                {"ts", ts.toString(Qt::ISODateWithMs)},
+                {"kind", kind},
+                {"name", query.queryItemValue("name").left(64)},
+                {"mode", query.queryItemValue("mode").left(32)},
+                {"freqHz", query.queryItemValue("freq").toLongLong()},
+                {"call", query.queryItemValue("call").left(16).toUpper()},
+                {"complete", query.queryItemValue("complete") != "0"},
+                {"w", query.queryItemValue("w").toInt()},
+                {"h", query.queryItemValue("h").toInt()},
+            };
+            QSaveFile png(d.filePath(id + ".png"));
+            QSaveFile json(d.filePath(id + ".json"));
+            bool ok = png.open(QIODevice::WriteOnly) && png.write(body) == body.size() && png.commit();
+            ok = ok && json.open(QIODevice::WriteOnly)
+                    && json.write(QJsonDocument(meta).toJson(QJsonDocument::Compact)) > 0 && json.commit();
+            if (!ok) {
+                QFile::remove(d.filePath(id + ".png"));
+                QFile::remove(d.filePath(id + ".json"));
+                qWarning().noquote() << "SSTV gallery: cannot write" << d.filePath(id + ".png");
+                sendRestResponse(socket, 500, QJsonObject{{"error", "Cannot write the image"}});
+                return;
+            }
+            qInfo().noquote() << "SSTV gallery: stored" << id << kind << meta.value("mode").toString()
+                              << QString("(%1 bytes)").arg(body.size());
+            const int count = sstvGalleryList().size();
+            sstvGalleryChanged();
+            sendRestResponse(socket, 200, QJsonObject{{"id", id}, {"count", count}});
+        } else {
+            sendRestResponse(socket, 405, QJsonObject{{"error", "Method not allowed"}});
+        }
+        return;
+    }
+    QString id = p.mid(base.size());
+    if (!id.startsWith('/')) { sendRestResponse(socket, 404, QJsonObject{{"error", "Unknown API endpoint"}}); return; }
+    id = id.mid(1);
+    const bool wantPng = id.endsWith(".png");
+    if (wantPng) id.chop(4);
+    if (!sstvIdOk(id) || !QFile::exists(d.filePath(id + ".json"))) {
+        sendRestResponse(socket, 404, QJsonObject{{"error", "Image not found"}});
+        return;
+    }
+    if (method == "GET" && wantPng) {
+        QFile f(d.filePath(id + ".png"));
+        if (!f.open(QIODevice::ReadOnly)) {
+            sendRestResponse(socket, 404, QJsonObject{{"error", "Image not found"}});
+            return;
+        }
+        // An id is never reused: the browser may keep the picture for good.
+        sendHttpResponse(socket, 200, "OK", "image/png", f.readAll(),
+                         "Cache-Control: private, max-age=31536000, immutable\r\n");
+    } else if (method == "DELETE") {
+        QFile::remove(d.filePath(id + ".png"));
+        QFile::remove(d.filePath(id + ".json"));
+        qInfo().noquote() << "SSTV gallery: deleted" << id;
+        const int count = sstvGalleryList().size();
+        sstvGalleryChanged();
+        sendRestResponse(socket, 200, QJsonObject{{"count", count}});
+    } else {
+        sendRestResponse(socket, 405, QJsonObject{{"error", "Method not allowed"}});
+    }
 }
 
 // --- Logbook mutations: file, then WebSocket delta, then WSJT-X ---

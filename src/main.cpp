@@ -243,6 +243,7 @@ int main(int argc, char *argv[])
         "                          of the status page. Also enabled by setting\n"
         "                          WFWEB_NO_TUI=1 in the environment\n"
         "  --logbook <file>        QSO logbook (ADIF; default: <data dir>/logbook.adi)\n"
+        "  --sstv-dir <dir>        Received SSTV pictures (default: <data dir>/sstv)\n"
         "  --remote-log <host[:port]>  Send every logged QSO to an external logging\n"
         "                          program (GridTracker, JTAlert, Log4OM, ...) which\n"
         "                          listens for the WSJT-X UDP protocol; port 2237 if omitted\n"
@@ -454,6 +455,11 @@ int main(int argc, char *argv[])
         {
             if (argc > c + 1) overrides.logbook = argv[++c];
             else { std::cout << "Error: --logbook requires a file\n"; return -1; }
+        }
+        else if (currentArg == "--sstv-dir")
+        {
+            if (argc > c + 1) overrides.sstvDir = argv[++c];
+            else { std::cout << "Error: --sstv-dir requires a directory\n"; return -1; }
         }
         else if (currentArg == "--remote-log")
         {

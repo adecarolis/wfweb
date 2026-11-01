@@ -1,0 +1,165 @@
+/*
+ * SSTV panel styles — shared by both the server build (resources/web/index.html,
+ * via web.qrc alias) and the standalone build (tools/build-static.sh).
+ * The panel is built by sstv-panel.js inside #scopeArea and takes the same
+ * overlay slot as the FT8 DIGI bar and JS8 (body.sstv-open); the kit (.wf-*)
+ * is tinted by .mode-sstv in theme.css.
+ */
+.sstv-bar {
+    position: absolute;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    padding: 4px 6px;
+    gap: 4px;
+    overflow: hidden;
+    font-size: 14px;
+}
+.sstv-bar.hidden { display: none; }
+body.sstv-open #scopeInfoBar { display: none !important; }
+body.sstv-open #spectrumCanvas,
+body.sstv-open #waterfallCanvas { display: none !important; }
+body.sstv-open #scopeArea { grid-row: 3 / 5; }
+body.sstv-open #bottomBar { grid-row: 5; }
+
+.sstv-header { flex-wrap: wrap; row-gap: 4px; }
+.sstv-lbl { font: bold var(--fs-sm) var(--font-mono); color: var(--mode-accent-dim); }
+.sstv-sel { width: auto; max-width: 150px; padding: 2px 4px; font-size: var(--fs-sm); }
+.sstv-status { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: var(--fs-sm) var(--font-mono); color: var(--mode-accent); text-align: center; }
+.sstv-bar.sstv-tx .sstv-status { color: #f88; }
+#sstvCloseBtn { margin-left: auto; }
+.sstv-header .wf-btn:disabled { opacity: 0.45; cursor: default; }
+
+/*
+ * Desktop: RX and TX side by side, or the gallery alone behind the GALLERY
+ * header button (data-pane="gallery"); the pane tabs only exist on phones.
+ */
+.sstv-pane-tabs { display: none; }
+.sstv-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 6px;
+}
+.sstv-bar[data-pane="gallery"] .sstv-body { grid-template-columns: minmax(0, 1fr); }
+.sstv-card {
+    display: none;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    gap: 4px;
+    padding: 4px;
+    background: var(--mode-accent-bg);
+    border: 1px solid var(--mode-accent-dim);
+    border-radius: 4px;
+}
+.sstv-bar:not([data-pane="gallery"]) .sstv-card-rx,
+.sstv-bar:not([data-pane="gallery"]) .sstv-card-tx,
+.sstv-bar[data-pane="gallery"] .sstv-card-gallery { display: flex; }
+.sstv-card-head { display: flex; justify-content: space-between; font: bold var(--fs-sm) var(--font-mono); color: var(--mode-accent-dim); letter-spacing: 1px; }
+.sstv-meta { color: var(--mode-accent); font-weight: normal; letter-spacing: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* The picture fills the card, keeping the mode's aspect (object-fit) */
+.sstv-frame {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    background: #000;
+    border: 1px solid var(--mode-accent-dim);
+    border-radius: 3px;
+    overflow: hidden;
+}
+.sstv-frame canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; image-rendering: auto; display: block; }
+/* TX sweep: the line at the row going out, what is still to come dimmed */
+.sstv-sweep {
+    position: absolute;
+    display: none;
+    pointer-events: none;
+    --p: 0;
+    background: linear-gradient(to bottom, transparent calc(var(--p) * 100%), rgba(0, 0, 0, 0.62) calc(var(--p) * 100%));
+}
+.sstv-bar.sstv-tx .sstv-sweep { display: block; }
+.sstv-sweep::after {
+    content: '';
+    position: absolute;
+    left: 0; right: 0;
+    top: calc(var(--p) * 100%);
+    height: 2px;
+    margin-top: -1px;
+    background: #fff;
+    box-shadow: 0 0 6px 2px var(--mode-accent);
+}
+.sstv-card-btns { display: flex; gap: 4px; flex-wrap: wrap; }
+.sstv-card-btns .wf-btn { flex: 1 1 auto; padding: 5px 6px; }
+.sstv-card-btns .wf-btn:disabled { opacity: 0.45; cursor: default; }
+.sstv-card-btns .wf-btn[hidden] { display: none; }
+.sstv-bar.sstv-tx #sstvSendBtn { opacity: 0.45; }
+.sstv-overlay-row { display: flex; gap: 4px; flex: 0 0 auto; }
+.sstv-overlay-row[hidden] { display: none; }
+.sstv-overlay-input { flex: 1 1 auto; min-width: 0; text-transform: uppercase; resize: none; overflow-y: auto; line-height: 1.3; box-sizing: border-box; }
+.sstv-overlay-style .wf-btn { flex: 1 1 0; padding: 4px 4px; font-size: var(--fs-xs); }
+.sstv-swatch span { display: inline-block; width: 14px; height: 14px; border-radius: 2px; border: 1px solid rgba(255, 255, 255, 0.5); vertical-align: middle; }
+/* No camera on a desktop (no `capture` support): the file picker does the job */
+@media (hover: hover) and (pointer: fine) { .sstv-camera { display: none; } }
+
+/* Gallery: RECEIVED and LOADED sections, thumbnails newest first */
+.sstv-gallery {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 4px;
+    align-content: start;
+    scrollbar-width: thin;
+}
+.sstv-gallery-sect { grid-column: 1 / -1; margin-top: 4px; font: bold var(--fs-sm) var(--font-mono); color: var(--mode-accent-dim); letter-spacing: 1px; border-bottom: 1px solid var(--mode-accent-dim); }
+.sstv-gallery-sect:first-child { margin-top: 0; }
+.sstv-gallery-none { grid-column: 1 / -1; font: var(--fs-sm) var(--font-mono); color: var(--mode-accent-dim); padding: 2px 0 6px; }
+.sstv-thumb { position: relative; cursor: pointer; background: #000; border: 1px solid var(--mode-accent-dim); border-radius: 3px; overflow: hidden; aspect-ratio: 5 / 4; }
+.sstv-thumb:hover { border-color: var(--mode-accent); }
+.sstv-thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.sstv-thumb.partial img { opacity: 0.8; }
+.sstv-thumb-cap { position: absolute; left: 0; right: 0; bottom: 0; display: flex; justify-content: space-between; gap: 4px; padding: 1px 4px; font: 9px var(--font-mono); color: #ddd; background: rgba(0, 0, 0, 0.6); }
+.sstv-thumb-cap span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Viewer: a full-size image with its metadata, TO TX / PIP / SAVE / DELETE */
+.sstv-viewer { z-index: 250; align-items: center; justify-content: center; padding: 16px; }
+.sstv-viewer-dialog { display: flex; flex-direction: column; gap: 8px; max-width: 95vw; max-height: 95vh; background: var(--bg); border: 2px solid var(--mode-accent-dim); padding: 10px; box-shadow: 0 4px 20px rgba(200, 150, 255, 0.25); }
+#sstvViewerImg { max-width: 90vw; max-height: 72vh; object-fit: contain; background: #000; image-rendering: auto; }
+.sstv-viewer-meta { font: var(--fs-sm) var(--font-mono); color: var(--mode-accent); text-align: center; }
+.sstv-viewer-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+#sstvViewerDelete.armed { background: #c33; color: #fff; }
+
+/* Tuning strip: 1000-2500 Hz, time scrolling left, the four SSTV marks */
+.sstv-scope-row { position: relative; flex: 0 0 auto; height: 72px; }
+#sstvScopeCanvas { display: block; width: 100%; height: 72px; background: #000; border: 1px solid var(--mode-accent-dim); border-radius: 4px; cursor: var(--cursor-cross, crosshair); }
+.sstv-marks { position: absolute; inset: 0; pointer-events: none; }
+.sstv-mark { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed rgba(255, 255, 255, 0.55); }
+.sstv-mark span { position: absolute; left: 6px; top: -11px; font: bold 9px var(--font-mono); color: rgba(255, 255, 255, 0.8); line-height: 1; }
+
+/* Phones, portrait: one card at a time behind pane tabs */
+@media (orientation: portrait) and (max-width: 600px) {
+    .sstv-bar { padding: 3px; gap: 3px; }
+    .sstv-header { gap: 2px; padding: 3px; flex-wrap: nowrap; }
+    .sstv-wide, .sstv-desk { display: none; }
+    .sstv-sel { max-width: 92px; font-size: 10px; padding: 2px; }
+    .sstv-header .wf-btn { padding: 5px 5px; font-size: 10px; min-height: 28px; }
+    .sstv-status { font-size: 10px; }
+    .sstv-pane-tabs { display: flex; gap: 3px; }
+    .sstv-pane-tabs .wf-tab { flex: 1 1 0; }
+    .sstv-body { grid-template-columns: minmax(0, 1fr); }
+    .sstv-card { display: none; }
+    .sstv-bar[data-pane="rx"] .sstv-card-tx,
+    .sstv-bar[data-pane="tx"] .sstv-card-rx { display: none; }
+    .sstv-bar[data-pane="rx"] .sstv-card-rx,
+    .sstv-bar[data-pane="tx"] .sstv-card-tx,
+    .sstv-bar[data-pane="gallery"] .sstv-card-gallery { display: flex; }
+    .sstv-card-btns .wf-btn { font-size: 10px; padding: 6px 4px; }
+    .sstv-gallery { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+    .sstv-viewer-btns .wf-btn { font-size: 10px; padding: 6px 6px; }
+    .sstv-scope-row { height: 48px; }
+    #sstvScopeCanvas { height: 48px; }
+    .sstv-mark span { display: none; }
+}

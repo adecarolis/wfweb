@@ -80,12 +80,13 @@
     // ------------------------------------------------------------------
     // Sidetone: one sine oscillator through an envelope gain with a 5 ms
     // attack and release per element, in an AudioContext of its own so it
-    // never enters the RX chain (the CW decoder and the recorder tap the RX
-    // PCM and must not hear it).  Elements come in wall-clock ms and are
-    // moved onto the audio clock; the oscillator is parked once the furthest
-    // scheduled element is out.
+    // never enters the RX chain (the CW decoder taps the RX PCM and must not
+    // hear it; the recorder gets it on a stream of its own, onStream).
+    // Elements come in wall-clock ms and are moved onto the audio clock; the
+    // oscillator is parked once the furthest scheduled element is out.
     // ------------------------------------------------------------------
     var CW_TONE_RAMP = 0.005;
+    var CW_TONE_TAP_LEVEL = 0.2;     // the page's tone at full VOL
 
     function WfCwSidetone(opts) {
         this.enabled = !!opts.enabled;
@@ -96,7 +97,10 @@
         this._setTimeout = opts.setTimeout || function (f, ms) { return setTimeout(f, ms); };
         this._clearTimeout = opts.clearTimeout || function (t) { clearTimeout(t); };
         this._onLatency = opts.onLatency || function () {};   // (ms) once a new context is playing
-        this.ctx = null; this.master = null;
+        // (MediaStream | null) the tone at a fixed level, for the recorder;
+        // a new stream with every new context, null when it closes.
+        this._onStream = opts.onStream || null;
+        this.ctx = null; this.master = null; this.tap = null;
         this.osc = null; this.env = null;
         this._idleTimer = null;
         this._end = 0;        // audio time of the furthest element scheduled
@@ -131,8 +135,9 @@
             this.env.disconnect();
         }
         if (this.master) this.master.disconnect();
+        if (this.tap) { this.tap.disconnect(); if (this._onStream) this._onStream(null); }
         try { if (this.ctx.close) this.ctx.close(); } catch (e) {}
-        this.ctx = null; this.master = null;
+        this.ctx = null; this.master = null; this.tap = null;
         this.osc = null; this.env = null;
         this._end = 0;
         this._resetPending = false;
@@ -148,6 +153,14 @@
         if (!this.ctx) return false;
         this.master = this.ctx.createGain();
         this.master.connect(this.ctx.destination);
+        // The recording gets the tone ahead of VOL, as it gets the RX audio.
+        if (this._onStream && this.ctx.createMediaStreamDestination) {
+            this.tap = this.ctx.createGain();
+            this.tap.gain.value = CW_TONE_TAP_LEVEL;
+            var out = this.ctx.createMediaStreamDestination();
+            this.tap.connect(out);
+            this._onStream(out.stream);
+        }
         if (this.ctx.state === 'suspended' && this.ctx.resume) this.ctx.resume();
         // outputLatency is only known once the context plays: report it
         // then, so a slow output (Bluetooth) can be flagged.
@@ -164,6 +177,7 @@
             this.env = this.ctx.createGain();
             this.env.gain.value = 0;
             this.env.connect(this.master);
+            if (this.tap) this.env.connect(this.tap);
             this.osc = this.ctx.createOscillator();
             this.osc.type = 'sine';
             this.osc.frequency.value = this._pitch();

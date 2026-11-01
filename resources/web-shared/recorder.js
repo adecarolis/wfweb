@@ -5,6 +5,7 @@
 //   Recorder.feedRx()     every received chunk          (handleAudioData)
 //   Recorder.feedTx()     every 0x03 frame actually sent (sendTxAudio)
 //   Recorder.feedTxPcm()  the 0x04 packet-TX tee         (handleBinaryMessage)
+// plus the CW sidetone (TONE) as a MediaStream, Recorder.setSidetone(),
 // and a mixer worklet turns those into one real-time mono track.
 //
 //   Audio recording → MP3, encoded by the vendored lamejs in a worker.
@@ -19,6 +20,11 @@
 
 var DEFAULT_RATE = 48000;
 var MIC_RATE = 48000;            // micAudioCtx is fixed at 48 kHz in both builds
+// Mic frames are dropped this long after a modem frame: the transports drop
+// them on the way to the rig while modem audio flows (their single-writer
+// rule, 300 ms), and the rig stays keyed a little after the modem's last
+// frame, until the unkey and its readback.
+var MODEM_HOLD_MS = 1000;
 var MP3_KBPS = 64;
 var VIDEO = { w: 1280, h: 720, fps: 15, bps: 2000000 };
 var HEADER_H = 132;              // status header height inside the video frame
@@ -44,6 +50,8 @@ var btn = null;
 var timeEl = null;      // elapsed-time label inside the button
 var menu = null;
 var rec = null;         // the recording in progress
+var sidetone = null;    // the CW sidetone's MediaStream (setSidetone)
+var lastModemMs = 0;    // when the last modem-tagged TX frame went out
 var busy = false;       // starting or finalising — the button ignores taps
 var uiTimer = null;
 
@@ -56,6 +64,9 @@ var uiTimer = null;
 // RX resumes exactly where the transmission ended. TX replaces RX rather than
 // adding to it — a rig with MONITOR on loops the transmit audio back into the
 // RX stream and summing would record it twice.
+//
+// The CW sidetone comes in on the node's input, live, and is added after the
+// same 200 ms delay, as the operator hears it on top of the receiver.
 // ---------------------------------------------------------------------------
 function mixerWorklet() {
     var PCM_BLOCK = 4800;
@@ -82,6 +93,7 @@ function mixerWorklet() {
             this.rx = new Fifo(); this.tx = new Fifo();
             this.rxArmed = false; this.txArmed = false; this.txWait = 0;
             this.pcm = null; this.pcmPos = 0; this.done = false;
+            this.tone = new Float32Array(Math.round(sampleRate * 0.2)); this.tonePos = 0;
             this.port.onmessage = function (e) {
                 var m = e.data;
                 if (m.k === 'rx') self.rx.push(m.d);
@@ -115,6 +127,14 @@ function mixerWorklet() {
             }
             // A burst after a stall must not push the recording behind real time.
             if (rx.len > sampleRate) rx.take(null, rx.len - delay);
+
+            var tin = inputs[0] && inputs[0][0], tone = this.tone, tp = this.tonePos;
+            for (var j = 0; j < n; j++) {
+                out[j] += tone[tp];
+                tone[tp] = tin ? tin[j] : 0;
+                if (++tp === tone.length) tp = 0;
+            }
+            this.tonePos = tp;
 
             if (this.pcm) {
                 for (var i = 0; i < n; i++) {
@@ -204,7 +224,11 @@ function post(r, kind, f32) {
 
 function feedRx(pcm, rate) {
     if (!rec) return;
-    post(rec, 'rx', resample(rec.rxRs, pcm, rate || DEFAULT_RATE, rec.ctx.sampleRate));
+    var f32 = resample(rec.rxRs, pcm, rate || DEFAULT_RATE, rec.ctx.sampleRate);
+    // A paddle mutes the playback while the rig's own sidetone trails the
+    // fist (WfCwRxMute); the recording follows, as it has the browser tone.
+    if (global.rxPaddleMuted) f32.fill(0);
+    post(rec, 'rx', f32);
 }
 
 // frame: a [0x03][tag][seq u16][0 u16][Int16 PCM] ArrayBuffer. modemRate is the
@@ -215,10 +239,31 @@ function feedTx(frame, modemRate) {
     if (head[0] !== 0x03) return;
     var modem = (head[1] & 0x01) !== 0;
     // The mic streams for as long as it is enabled, keyed or not — only the
-    // part that actually goes on the air belongs in the recording.
-    if (!modem && !host.isTx()) return;
+    // part that actually goes on the air belongs in the recording: not while
+    // modem audio owns the channel (RTTY sends no digiTxActive, so its mic
+    // frames are still sent and dropped by the transport), and never in CW,
+    // where the rig keys its keyer and the sidetone is what is heard.
+    if (modem) lastModemMs = Date.now();
+    else if (!host.isTx() || Date.now() - lastModemMs < MODEM_HOLD_MS ||
+             /^CW/.test(global.currentMode || '')) return;
     var pcm = new Int16Array(frame, 6, (frame.byteLength - 6) >> 1);
     post(rec, 'tx', resample(rec.txRs, pcm, modem ? (modemRate || DEFAULT_RATE) : MIC_RATE, rec.ctx.sampleRate));
+}
+
+// The CW sidetone's stream (WfCwSidetone onStream), or null when its audio
+// context closes. A recording in progress switches to the new one.
+function setSidetone(stream) {
+    sidetone = stream;
+    if (rec) attachSidetone(rec);
+}
+
+function attachSidetone(r) {
+    if (r.toneSrc) { r.toneSrc.disconnect(); r.toneSrc = null; }
+    if (!sidetone) return;
+    try {
+        r.toneSrc = r.ctx.createMediaStreamSource(sidetone);
+        r.toneSrc.connect(r.node);
+    } catch (e) { r.toneSrc = null; console.warn('[recorder] sidetone not recorded:', e); }
 }
 
 function feedTxPcm(pcm, rate) {
@@ -400,8 +445,8 @@ function wrap(text, n, first) {
 // Mode views. The page's mode code is not modular, so — as js8-panel.mjs does
 // with its host helpers — these readers take what they need straight from
 // page globals and from what the page has already rendered. All page access
-// for the mode views is in cwView(), ft8View(), js8View(), packetView() and
-// freedvView(); each returns null when its mode is not in use.
+// for the mode views is in cwView(), ft8View(), js8View(), packetView(),
+// sstvView() and freedvView(); each returns null when its mode is not in use.
 // ---------------------------------------------------------------------------
 var CW_PANEL_H = 250;
 var CW_SEED_CHARS = 100;         // decoded text carried in when recording starts mid-QSO
@@ -427,6 +472,22 @@ function cwView() {
         band: band && band.classList.contains('active')
             ? { top: parseFloat(band.style.top) / 100, height: parseFloat(band.style.height) / 100 } : null,
         wpm: global.cwSpeed,
+        partner: partner ? partner.value.trim().toUpperCase() : ''
+    };
+}
+
+// The RTTY bar (rtty-panel.js) keeps its lines as a conversation already:
+// RX lines of committed text, TX lines of what we sent, the worker's
+// pending tail on the last RX line.
+function rttyView() {
+    var p = global.RttyPanel;
+    if (!p || !p.visible()) return null;
+    var st = p.state, partner = byId('rttyQsoInput');
+    return {
+        decoding: !!st.decoding,
+        lines: st.lines.filter(function (l) { return l.dir !== 'sys'; }), pending: st.pending || '',
+        mark: st.mark, afsk: !!st.afsk, tx: !!st.txBusy,
+        scope: st.decoding ? byId('rttyScopeCanvas') : null,
         partner: partner ? partner.value.trim().toUpperCase() : ''
     };
 }
@@ -518,6 +579,26 @@ function js8View() {
         lo: global.WF_FREQ_LOW || 300, hi: global.WF_FREQ_HIGH || 2800,
         waterfall: byId('js8WfCanvas'), txMarker: markerOf('js8WfTxMarker'),
         heard: heard, feed: feed
+    };
+}
+
+// SSTV keeps its state on SstvPanel.state: the RX / TX canvases, the status
+// line, the TX sweep and the mode names; the gallery is left out (it is the
+// same picture again).
+function sstvView() {
+    var s = global.SstvPanel && global.SstvPanel.state;
+    if (!s || !(s.visible || s.suspended)) return null;
+    function picked(id) { var el = byId(id); return el && el.selectedOptions[0] ? el.selectedOptions[0].value : ''; }
+    return {
+        rx: s.rxCanvas, tx: s.txCanvas,
+        rxName: s.rx ? s.rx.name : (s.lastRx ? s.lastRx.name : ''),
+        rxLine: s.rx ? s.rx.rows + ' / ' + s.rx.h : '',
+        txName: picked('sstvTxModeSel') || s.txModeName,
+        txBusy: !!s.txBusy,
+        txFrac: s.txBusy ? (s.txFrac || 0) : 0,
+        status: s.status || '',
+        rxMode: picked('sstvRxModeSel') || 'AUTO',
+        strip: byId('sstvScopeCanvas')
     };
 }
 
@@ -674,6 +755,54 @@ function drawCwPanel(r, v, top, st) {
                 g.fillText(words[k], textX + col * charW, ly);
                 col += words[k].length;
             }
+        }
+    }
+}
+
+function drawRttyPanel(r, v, top, st) {
+    var g = r.g, W = VIDEO.w, H = VIDEO.h, T = r.theme, y = top;
+    g.fillStyle = T.bar; g.fillRect(0, y, W, 30);
+    g.font = 'bold 15px ' + T.mono;
+    tile(g, 12, y + 4, 60, 22, '#7a2', '#000', 'RTTY');
+    g.fillStyle = T.dim;
+    g.fillText(['45.45 BD ' + v.mark + '/' + (v.mark + 170) + ' HZ', v.afsk ? 'AFSK' : '', v.tx ? 'TX' : '',
+                v.partner ? 'QSO ' + v.partner : ''].filter(Boolean).join('   '), 84, y + 16);
+    y += 34;
+    if (v.scope && v.scope.width && v.scope.height) {
+        g.drawImage(v.scope, 12, y, W - 24, 48);
+        y += 56;
+    }
+    g.font = 'bold 20px ' + T.mono;
+    var charW = g.measureText('M').width, textX = 76, lineH = 26;
+    var perLine = Math.floor((W - textX - 12) / charW);
+    var maxLines = Math.floor((H - 6 - y) / lineH);
+    var lines = [], i, k;
+    var src = v.lines.slice(-maxLines - 2);
+    for (i = 0; i < src.length; i++) {
+        var text = src[i].text + (i === src.length - 1 && src[i].dir === 'rx' ? v.pending : '');
+        var spans = wrap(text, perLine);
+        if (!spans.length) spans = [[0, 0]];
+        for (k = 0; k < spans.length; k++) {
+            lines.push({ dir: src[i].dir, first: k === 0, text: text.slice(spans[k][0], spans[k][1]),
+                         dimFrom: i === src.length - 1 ? src[i].text.length - spans[k][0] : Infinity });
+        }
+    }
+    lines = lines.slice(-maxLines);
+    var myCall = (st.call || '').toUpperCase();
+    for (i = 0; i < lines.length; i++) {
+        var ln = lines[i], ly = y + i * lineH + lineH / 2;
+        if (ln.first) {
+            g.font = 'bold 15px ' + T.mono;
+            tile(g, 12, ly - 11, 48, 22, ln.dir === 'tx' ? '#a00' : '#075', '#fff', ln.dir === 'tx' ? 'TX' : 'RX');
+            g.font = 'bold 20px ' + T.mono;
+        }
+        if (ln.dir === 'tx') { g.fillStyle = CW_COLORS.tx; g.fillText(ln.text, textX, ly); continue; }
+        var words = ln.text.split(/(\s+)/), col = 0;
+        for (k = 0; k < words.length; k++) {
+            var dim = col >= ln.dimFrom;
+            g.fillStyle = dim ? CW_COLORS.pending : isCallsign(words[k]) && words[k] !== myCall ? CW_COLORS.call : CW_COLORS.rx;
+            g.fillText(words[k], textX + col * charW, ly);
+            col += words[k].length;
         }
     }
 }
@@ -889,6 +1018,52 @@ function drawJs8Body(r, v) {
         g.textAlign = 'left';
         line += n;
     }
+}
+
+// --- SSTV -------------------------------------------------------------------
+
+// The RX picture on the left, the TX picture on the right, the tuning strip
+// under them.  The RX picture is its own progress (it fills row by row);
+// the TX picture carries the panel's sweep: a line at the row going out,
+// what is still to come dimmed under it.
+function drawSstvBody(r, v) {
+    var g = r.g, W = VIDEO.w, H = VIDEO.h, T = r.theme, y = HEADER_H;
+
+    g.fillStyle = T.bar; g.fillRect(0, y, W, 32);
+    g.font = 'bold 15px ' + T.mono;
+    tile(g, 12, y + 5, 60, 22, '#74b', '#fff', 'SSTV');
+    g.fillStyle = v.txBusy ? '#ff8a8a' : T.text; g.fillText(v.status, 84, y + 17);
+    g.textAlign = 'right';
+    g.fillStyle = T.dim; g.fillText('RX ' + v.rxMode, W - 12, y + 17);
+    g.textAlign = 'left';
+    y += 36;
+
+    var stripH = 64, gap = 12, colW = Math.floor((W - 3 * gap) / 2);
+    var picH = H - y - stripH - 56;
+    function card(x, title, sub, cv, sweep) {
+        g.font = 'bold 14px ' + T.mono;
+        g.fillStyle = T.dim; g.fillText(title, x + 4, y + 12);
+        g.textAlign = 'right'; g.fillStyle = T.text; g.fillText(sub, x + colW - 4, y + 12); g.textAlign = 'left';
+        var top = y + 22;
+        g.fillStyle = '#000'; g.fillRect(x, top, colW, picH);
+        if (cv && cv.width && cv.height) {
+            var s = Math.min(colW / cv.width, picH / cv.height), dw = cv.width * s, dh = cv.height * s;
+            var dx = x + (colW - dw) / 2, dy = top + (picH - dh) / 2;
+            g.drawImage(cv, dx, dy, dw, dh);
+            if (sweep != null) {
+                var ly = Math.round(dy + dh * Math.max(0, Math.min(1, sweep)));
+                g.fillStyle = 'rgba(0, 0, 0, 0.62)'; g.fillRect(dx, ly, dw, dy + dh - ly);
+                g.save();
+                g.shadowColor = '#c9f'; g.shadowBlur = 8;
+                g.fillStyle = '#fff'; g.fillRect(dx, ly - 1, dw, 3);
+                g.restore();
+            }
+        }
+    }
+    card(gap, 'RX', v.rxName + (v.rxLine ? '  line ' + v.rxLine : ''), v.rx, null);
+    card(gap * 2 + colW, 'TX', v.txName, v.tx, v.txBusy ? v.txFrac : null);
+    y += 22 + picH + 10;
+    drawSource(g, v.strip, gap, y, W - 2 * gap, stripH);
 }
 
 // --- Packet -----------------------------------------------------------------
@@ -1150,10 +1325,12 @@ function drawFrame(r) {
     if ((view = ft8View())) return drawFt8Body(r, view);
     if ((view = js8View())) return drawJs8Body(r, view);
     if ((view = packetView())) return drawPacketBody(r, view);
-    var cw = cwView(), fdv = cw ? null : freedvView();
-    var panelH = cw ? CW_PANEL_H : fdv ? FDV_PANEL_H : 0;
+    if ((view = sstvView())) return drawSstvBody(r, view);
+    var cw = cwView(), rtty = cw ? null : rttyView(), fdv = (cw || rtty) ? null : freedvView();
+    var panelH = (cw || rtty) ? CW_PANEL_H : fdv ? FDV_PANEL_H : 0;
     drawScopeBody(g, cv, HEADER_H, H - panelH);
     if (cw) drawCwPanel(r, cw, H - panelH, st);
+    else if (rtty) drawRttyPanel(r, rtty, H - panelH, st);
     else if (fdv) drawFreedvPanel(r, fdv, H - panelH, st);
 }
 
@@ -1260,7 +1437,8 @@ function start(kind) {
     return r.ctx.audioWorklet.addModule(url).then(function () {
         URL.revokeObjectURL(url);
         r.node = new AudioWorkletNode(r.ctx, 'wfweb-rec-mixer',
-            { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [1] });
+            { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
+        attachSidetone(r);
         // Always connected: it keeps the worklet pulled, and it is the audio
         // track of a video recording. Nothing goes to the speakers.
         r.dest = r.ctx.createMediaStreamDestination();
@@ -1408,6 +1586,7 @@ global.Recorder = {
     feedRx: feedRx,
     feedTx: feedTx,
     feedTxPcm: feedTxPcm,
+    setSidetone: setSidetone,
     start: start,
     stop: stop,
     isRecording: function () { return !!rec; }

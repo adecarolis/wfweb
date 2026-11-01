@@ -17,6 +17,16 @@
         <file alias="models/deepcw.onnx">web-shared/models/deepcw.onnx</file>
         <file alias="models/deepcw.onnx.json">web-shared/models/deepcw.onnx.json</file>
         <file alias="models/deepcw-LICENSE">web-shared/models/deepcw-LICENSE</file>
+        <file alias="rtty.js">web-shared/rtty.js</file>
+        <file alias="rtty-panel.js">web-shared/rtty-panel.js</file>
+        <file alias="rtty-panel.css">web-shared/rtty-panel.css</file>
+        <file alias="sstv-panel.js">web-shared/sstv-panel.js</file>
+        <file alias="sstv-panel.css">web-shared/sstv-panel.css</file>
+        <file alias="sstv-worker.js">web-shared/sstv-worker.js</file>
+        <file alias="rtty-decoder-worker.js">web-shared/rtty-decoder-worker.js</file>
+        <file alias="models/deeprtty.onnx">web-shared/models/deeprtty.onnx</file>
+        <file alias="models/deeprtty.onnx.json">web-shared/models/deeprtty.onnx.json</file>
+        <file alias="models/deeprtty-LICENSE">web-shared/models/deeprtty-LICENSE</file>
         <file alias="ort/ort.wasm.min.mjs">web-shared/ort/ort.wasm.min.mjs</file>
         <file alias="ort/ort-wasm-simd-threaded.mjs">web-shared/ort/ort-wasm-simd-threaded.mjs</file>
         <file alias="ort/ort-wasm-simd-threaded.wasm">web-shared/ort/ort-wasm-simd-threaded.wasm</file>
@@ -43,5 +53,9 @@
         <file alias="aprs-symbols/aprs-symbols-24-1@2x.png">web-shared/aprs-symbols/aprs-symbols-24-1@2x.png</file>
         <file alias="wasm/js8.mjs">web-standalone/wasm/js8.mjs</file>
         <file alias="wasm/js8.wasm">web-standalone/wasm/js8.wasm</file>
+        <file alias="wasm/sstv.wasm">web-standalone/wasm/sstv.wasm</file>
+        <file alias="wasm/sstv-LICENSE">web-standalone/wasm/sstv-LICENSE</file>
+        <file alias="wasm/sstv-codec.mjs">web-standalone/wasm/sstv-codec.mjs</file>
+        <file alias="wasm/asyncify.mjs">web-standalone/wasm/asyncify.mjs</file>
     </qresource>
 </RCC>

@@ -1,0 +1,135 @@
+diff --git a/src/decode/assembler/cutter.rs b/src/decode/assembler/cutter.rs
+index 7940bdc..1c0d106 100644
+--- a/src/decode/assembler/cutter.rs
++++ b/src/decode/assembler/cutter.rs
+@@ -8,6 +8,7 @@ use alloc::vec::Vec;
+ 
+ use super::clock::SampleClock;
+ use super::estimates::Estimates;
++use super::sync_lock::SyncLock;
+ use super::tone_in_progress::CompletedTone;
+ use crate::modes::step::Step;
+ use crate::modes::{Mode, SYNC_FREQUENCY};
+@@ -101,6 +102,16 @@ pub(super) struct SequenceCutter {
+     sequence_start: f64,
+     /// Where the next sequence begins, once its sync pulse has been seen.
+     next_sequence_start: Option<f64>,
++    /// The timing is lost: the last sequence was cut at nominal timing
++    /// because its sync pulse did not land where expected, and none has
++    /// since. An audio frame dropped or stalled on the way (a sound card
++    /// underrun, a lost network packet) moves every later sync pulse off
++    /// the nominal timing by the same amount, so it never lands in the
++    /// window again and nominal timing garbles the rest of the image.
++    lost: bool,
++    /// While lost, watches for three evenly spaced sync pulses in the new
++    /// timing to re-anchor on, exactly as a headerless signal is acquired.
++    relock: Option<SyncLock>,
+     sequences_left: usize,
+ }
+ 
+@@ -113,6 +124,8 @@ impl SequenceCutter {
+             clock,
+             sequence_start,
+             next_sequence_start: None,
++            lost: false,
++            relock: None,
+             sequences_left: mode.resolution.1 / mode.lines_per_sequence,
+         }
+     }
+@@ -142,6 +155,15 @@ impl SequenceCutter {
+         self.sequences_left == 0
+     }
+ 
++    pub const fn is_lost(&self) -> bool {
++        self.lost
++    }
++
++    /// The length of a timing sequence, in samples.
++    pub const fn sequence_length(&self) -> f64 {
++        self.layout.length
++    }
++
+     /// Take a tone split where the frequency changes as the next sequence's
+     /// sync pulse, if it is one and ends about where expected.
+     pub fn sync_found(&mut self, completed: CompletedTone) {
+@@ -154,9 +176,39 @@ impl SequenceCutter {
+         let sequence_start = completed.end as f64 - layout.sync_end;
+         if (sequence_start - self.expected_next_start()).abs() <= layout.sync_window {
+             self.next_sequence_start = Some(sequence_start);
++            self.lost = false;
++            self.relock = None;
+         }
+     }
+ 
++    /// While the timing is lost, take in a tone split where the frequency
++    /// changes: once three sync pulses one line apart have been seen in the
++    /// signal's new timing, the current sequence is re-anchored on them.
++    /// Sequences with several sync pulses (Robot 36's line pair) take the
++    /// alignment whose control tones match, so the colour differences do
++    /// not swap. The sequences cut at nominal timing meanwhile are garbled;
++    /// everything after follows the signal again.
++    pub fn relock(&mut self, completed: CompletedTone, estimates: &Estimates) {
++        if !self.lost {
++            return;
++        }
++        let lock = self
++            .relock
++            .get_or_insert_with(|| SyncLock::new(self.mode, self.clock));
++        let Some(first_sync_end) = lock.push(completed) else {
++            return;
++        };
++        let start = lock.first_sequence_start(first_sync_end, estimates);
++        // The sequence the signal is in now: the start, in the new timing,
++        // nearest the one assumed for the current sequence.
++        let length = self.layout.length;
++        let sequences = ((self.sequence_start - start) / length).round();
++        self.sequence_start = start + sequences * length;
++        self.next_sequence_start = None;
++        self.lost = false;
++        self.relock = None;
++    }
++
+     /// Where the next sequence begins once the current one can be cut: at
+     /// its sync pulse once seen, or at the nominal timing once the sync pulse
+     /// is overdue. `None` while it may still arrive.
+@@ -192,6 +244,7 @@ impl SequenceCutter {
+             Tone::new(estimates.mean(start, length), self.clock.duration(length))
+         }));
+ 
++        self.lost = self.next_sequence_start.is_none();
+         self.sequence_start = next_start;
+         self.next_sequence_start = None;
+         self.sequences_left -= 1;
+diff --git a/src/decode/assembler/mod.rs b/src/decode/assembler/mod.rs
+index 172cf2b..cc4f77c 100644
+--- a/src/decode/assembler/mod.rs
++++ b/src/decode/assembler/mod.rs
+@@ -178,7 +178,10 @@ impl<I: Iterator<Item = Frequency>> ImageTones<I> {
+                 self.cut_remaining();
+                 return;
+             }
+-            Reading::Tone(completed) => self.cutter.sync_found(completed),
++            Reading::Tone(completed) => {
++                self.cutter.sync_found(completed);
++                self.cutter.relock(completed, &self.track.estimates);
++            }
+             Reading::Frequency => {}
+         }
+         if let Some(next_start) = self.cutter.next_start_if_ready(self.track.estimates.end()) {
+@@ -199,7 +202,15 @@ impl<I: Iterator<Item = Frequency>> ImageTones<I> {
+     fn cut(&mut self, next_start: f64) {
+         self.cutter
+             .cut(next_start, &self.track.estimates, &mut self.queue);
+-        self.track.estimates.forget_before(next_start as u64);
++        // With the timing lost, the previous sequence is kept too: the
++        // re-lock scores the sync pulses it has seen against its control
++        // tones.
++        let keep_from = if self.cutter.is_lost() {
++            next_start - self.cutter.sequence_length()
++        } else {
++            next_start
++        };
++        self.track.estimates.forget_before(keep_from.max(0.0) as u64);
+         self.done = self.cutter.is_finished();
+     }
+ }

@@ -1,0 +1,29 @@
+[package]
+name = "wfweb-sstv-shim"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Plain C ABI around the sstv crate for wfweb's WebAssembly SSTV codec"
+license = "MIT"
+
+[lib]
+crate-type = ["cdylib"]
+path = "src/lib.rs"
+
+[dependencies]
+# The crate is vendored under vendor/sstv (v0.3.1, commit 9761c4c6,
+# 2026-10-03) with wfweb's re-lock patch applied (sstv-relock.patch,
+# README-vendoring.md): a timing jump in the audio (a dropped or stalled
+# frame) used to garble the rest of the picture. Default features = "std":
+# the crate's no_std + alloc build at this commit calls f64::round / ceil,
+# which only exist with std (upstream gap); the wasm32-unknown-unknown
+# target has std, so nothing is lost. The optional image / wav / mp3
+# features are not in the vendored copy.
+sstv = { path = "vendor/sstv" }
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

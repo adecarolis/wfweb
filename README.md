@@ -2,7 +2,7 @@
 
 **Control your Icom radio from any browser — phone, tablet, or desktop.**
 
-wfweb turns your transceiver into a web-accessible station. Waterfall, SSB, CW decoding, FT8/FT4, JS8 messaging, FreeDV digital voice, [RADE](https://youtu.be/Rj9E1CAQ9Ls), and AX.25 packet (APRS, connected QSOs, file transfer) — all in the browser, no client software required.
+wfweb turns your transceiver into a web-accessible station. Waterfall, SSB, CW decoding, RTTY, SSTV pictures, FT8/FT4, JS8 messaging, FreeDV digital voice, [RADE](https://youtu.be/Rj9E1CAQ9Ls), and AX.25 packet (APRS, connected QSOs, file transfer) — all in the browser, no client software required.
 
 This README is the overview. The **[wiki](https://github.com/adecarolis/wfweb/wiki)** is the manual: installation, which rigs are known to work, the radio menus that matter, troubleshooting, and a page per mode.
 
@@ -21,6 +21,14 @@ This README is the overview. The **[wiki](https://github.com/adecarolis/wfweb/wi
 ![CW mode with decoder](cw.png)
 
 **CW** — built-in decoder and keyer, editable macros, break-in, a paddle through a MIDI controller or USB keyboard adapter, and one-click QSO logging.
+
+![RTTY bar — AFSK over in progress, macros and the passband tuning strip](rtty.png)
+
+**RTTY** — a neural decoder with a passband waterfall and one-click auto-tune; type-ahead AFSK transmit through the rig's data input, with macros.
+
+![SSTV panel — a Martin 2 picture received, a Scottie 2 picture with a text overlay ready to send](sstv.png)
+
+**SSTV** — receive and send pictures in 18 modes, with a camera or file as the source, a text overlay, and a gallery every device sees.
 
 ![AX.25 packet — connected session with a BBS, YAPP file transfer available](packet.png)
 
@@ -49,6 +57,8 @@ wfweb keeps wfview's radio engine and replaces the desktop GUI with a built-in w
 | Browser RX audio streaming | — | ✓ |
 | Browser TX audio (mic to rig) | — | ✓ |
 | CW decoder (DeepCW neural model in-browser; ggmorse fallback) | — | ✓ |
+| RTTY decoder (DeepRTTY neural model in-browser; classic FSK fallback) + AFSK keying | — | ✓ |
+| SSTV (18 modes in-browser, picture gallery shared across devices) | — | ✓ |
 | CW paddle input (MIDI controller or USB keyboard adapter) | — | ✓ |
 | MIDI controller (CTR2-MIDI presets, MIDI learn) | — | ✓ |
 | FT8/FT4 DIGI panel (full QSO) | — | ✓ |
@@ -76,7 +86,7 @@ wfweb ships in two flavours. Both run in the browser; they differ in what drives
 | LAN-attached rig | — | ✓ |
 | Browser | Chromium-family only | any |
 | Headless / multi-user / unattended | — | ✓ |
-| FT8/FT4, JS8, CW, AX.25 packet | ✓ | ✓ |
+| FT8/FT4, JS8, CW, RTTY, SSTV, AX.25 packet | ✓ | ✓ |
 | RADE voice | ✓ | ✓ |
 | Classic FreeDV (700D/700E/1600) | — | ✓ |
 | PSK Reporter / FreeDV Reporter spotting | — | ✓ |
@@ -87,7 +97,7 @@ wfweb ships in two flavours. Both run in the browser; they differ in what drives
 2. Open **[https://wfweb.k1fm.us](https://wfweb.k1fm.us)** in Chrome, Edge, or another Chromium-family browser (Brave, Arc, Opera).
 3. Click the connection dot in the top-right corner → **Connect rig**, and pick the rig's USB serial port from the OS picker. wfweb auto-probes baud rates and identifies the rig from its CI-V address.
 
-Frequency, mode, filter, audio, FT8/FT4, JS8, CW, AX.25 packet, and RADE V1 voice all run in the browser. Subsequent visits auto-reconnect to the same port — no picker on return.
+Frequency, mode, filter, audio, FT8/FT4, JS8, CW, RTTY, SSTV, AX.25 packet, and RADE V1 voice all run in the browser. Subsequent visits auto-reconnect to the same port — no picker on return.
 
 If you'd rather not depend on a third-party host, build the static bundle yourself and serve it from any HTTPS site — see [Self-hosting Standalone](#self-hosting-standalone) below.
 
@@ -267,7 +277,7 @@ Packet runs entirely server-side using a built-in [Direwolf](https://github.com/
 
 Tune to a packet frequency in a voice mode (LSB/USB/FM/AM), open the **Packet** panel, pick the demodulator, and frames stream into the monitor as they decode. To open a connected QSO type the peer call, optional digipeater path, and press **Connect** — once `CONNECTED` shows you can send messages or push files via YAPP.
 
-The shared station callsign (gear dialog) is reused across CW, FT8/FT4, JS8, FreeDV reporter, APRS, the AX.25 link and the logbook, so you set it once and every mode uses it. On the Server build it is kept on the server, so every browser sees the same one.
+The shared station callsign (gear dialog) is reused across CW, RTTY, SSTV, FT8/FT4, JS8, FreeDV reporter, APRS, the AX.25 link and the logbook, so you set it once and every mode uses it. On the Server build it is kept on the server, so every browser sees the same one.
 
 ---
 
@@ -307,6 +317,40 @@ The **PADDLE** button at the end of the CW bar's CALL/QSO row opens the paddle s
 
 ---
 
+## RTTY — DeepRTTY decoder and AFSK keyboard
+
+Put the rig in **RTTY** (MODE › RTTY; press it again for RTTY-R) and the RTTY bar opens under the scope, as the CW bar does. Everything runs in the browser, in both builds.
+
+| Capability | Details |
+|------------|---------|
+| **Decoder** | [DeepRTTY](https://github.com/e04/DeepRTTY) neural model, 45.45 Bd / 170 Hz shift. The newest characters show dim and may still change; older ones are committed. A classic FSK demodulator takes over on browsers without WebAssembly SIMD or too slow for the model (a CLASSIC tag says so) |
+| **Tuning** | A waterfall of the whole passband with the mark / space pair marked; click a signal to tune onto it, **AUTOTUNE** finds the strongest RTTY pair and moves the dial, **ZOOM** narrows the strip to the pair, **REV** swaps mark and space |
+| **Transmit** | AFSK through the rig's data input on LSB (2125 / 2295 Hz): the rig's own RTTY mode keys FSK from its key jack, which CI-V cannot drive. On by default; the top bar reads `RTTY - LSB` while it runs |
+| **Keyboard** | **TX** keys up and sends what you type as you type it, with idle diddles in between; **TX** again ends the over once everything has gone out. Backspace takes back a character not sent yet, Escape or **STOP** cuts at once. **SEND** sends one line as one over |
+| **Macros** | Ten, with `[CALL]`, `[QSO]` and `[RST]` filled in; a macro ending in `[HOLD]` leaves the transmitter on so you can keep typing |
+| **Logging** | CALL / QSO / RST fields and **LOG QSO** into the shared logbook |
+
+Closing the bar puts the rig back in the mode it was in before RTTY. The model (about 6 MB) loads on first use and stays in the browser's cache.
+
+---
+
+## SSTV — pictures, with a gallery every device sees
+
+**MODE › SSTV** opens the SSTV panel. The codec (the [sstv](https://github.com/unexcellent/sstv) Rust crate, compiled to WebAssembly) runs in the browser, in both builds. The panel keeps the rig's voice mode (USB, LSB, FM for 2 m and the ISS, AM) and otherwise sets USB; the BAND list tunes the usual SSTV frequencies, and closing the panel puts the VFO back.
+
+| Capability | Details |
+|------------|---------|
+| **Modes** | 18: Robot 36 / 72, Scottie 1 / 2 / DX, Martin 1 / 2, PD 50 / 90 / 120 / 160 / 180 / 240 / 290, Pasokon P3 / P5 / P7, Wraase SC2-180 |
+| **Receive** | **AUTO** reads the VIS header, down to about -3 dB SNR; a pinned mode also locks on the sync pulses alone. **START** catches a picture whose header was missed: it names the mode from the line spacing and keeps the lines already heard. A dropped audio frame costs a few rows, not the rest of the picture |
+| **Transmit** | A file (**IMAGE**), the **CAMERA**, or a gallery picture, **FIT** (letterboxed) or **FILL** (cropped). A **TEXT** overlay (your callsign by default, up to four lines, size, position, colour, a dark **BOX** behind it) and a **PIP** picture in a corner. A line sweeps down the picture as it goes out |
+| **Tuning** | Spectrum strip from 1000 to 2500 Hz with 1200, 1500, 1900 and 2300 Hz marked; a click on a sideband puts the signal on 1900 Hz |
+| **Gallery** | RECEIVED and LOADED pictures, each with **TO TX**, **PIP**, **SAVE** and **DELETE**. Server build: kept on the server (`--sstv-dir`), every browser sees a new picture arrive. Standalone: kept in this browser |
+| **Logging** | **LOG** opens the QSO entry in SSTV mode |
+
+Every received picture goes to the gallery, finished or not (an ISS pass often ends mid-picture).
+
+---
+
 ## Phones and tablets
 
 On a touch screen the operating controls change; a desktop keeps its five soft keys and hold-to-talk.
@@ -317,7 +361,7 @@ On a touch screen the operating controls change; a desktop keeps its five soft k
 
 ## Logbook and remote logging
 
-Every QSO logged from FT8/FT4, JS8, CW or by hand goes into one ADIF logbook.
+Every QSO logged from FT8/FT4, JS8, CW, RTTY, SSTV or by hand goes into one ADIF logbook.
 
 - **Server build:** the log is a file on the server (`logbook.adi` in wfweb's data directory — `~/.local/share/wfweb/wfweb/` on Linux, `/data/wfweb/wfweb/` in Docker; `--logbook <file>` puts it elsewhere), shared by every browser and sized for a lifetime log. The log panel's **Log management** menu downloads the QSOs not yet exported (plain ADIF, ready for LoTW, QRZ, Club Log…), downloads the full logbook, or imports an ADIF file with duplicates skipped. Each QSO carries your station callsign (`STATION_CALLSIGN`).
 - **Standalone:** the log is kept in the browser.
@@ -332,9 +376,11 @@ The logbook is also reachable over REST (paged listing, ADIF import/export, stat
 
 The **REC** button in the top bar records what you hear, in either build. Pick a type from its menu; tap the button again to stop, and the file downloads to the device you are operating from.
 
-- **Audio** — an MP3 of the received audio, with your own transmit audio (mic, FT8/FT4, JS8, packet) in its place while you transmit.
+- **Audio** — an MP3 of the received audio, with your own transmit audio (mic, CW sidetone, FT8/FT4, JS8, RTTY, SSTV, packet) in its place while you transmit.
 - **Video** — the same audio under a 1280×720 picture: frequency, mode, filter bandwidth, VFO, RX/TX state, meter, rig name, callsign and UTC time above the live spectrum and waterfall. Saved as MP4 where the browser can write it, WebM otherwise (Firefox).
   - **CW:** with the decoder on (or once you have keyed something), a panel under the waterfall shows the decoder's tone waterfall and the contact as a conversation — what you copied and what you sent, turn by turn.
+  - **RTTY:** with the RTTY bar open, the decoder's tuning strip and the contact as a conversation, the copy and your own overs.
+  - **SSTV:** with the SSTV panel open, the picture being received as it fills in and the picture being sent, with a line sweeping down it as it goes out.
   - **FT8/FT4:** with the DIGI panel open, the picture becomes the FT8 audio waterfall with its callsign labels, the band activity list, and your own QSO (messages to you, your transmissions, logged contacts).
   - **JS8:** with the JS8 panel open, the JS8 audio waterfall, the stations heard, and the message feed — messages to you and your own messages highlighted, with their send progress.
   - **Packet:** with the packet panel open, the modem spectrogram, the frame monitor, and either the terminal session as a conversation or the APRS stations heard, whichever tab you have selected.
@@ -368,10 +414,12 @@ All settings can be passed as CLI flags. Run `wfweb --help` for the full list.
 | `--rigctld-port <port>` | Enable Hamlib rigctld TCP server (server build) | disabled |
 | `--rigctld-bind-all` | Bind rigctld to all interfaces instead of localhost | localhost only |
 | `--no-rigctld` | Disable rigctld even if enabled in settings | — |
-| `-n --name <tag>` | Name shown in the web UI top bar and browser tab (handy with several instances) | rig model || `--logbook <file>` | ADIF logbook the server keeps (see REST_API.md) | `<data dir>/logbook.adi` |
+| `-n --name <tag>` | Name shown in the web UI top bar and browser tab (handy with several instances) | rig model |
+| `--logbook <file>` | ADIF logbook the server keeps (see REST_API.md) | `<data dir>/logbook.adi` |
 | `--remote-log <host[:port]>` | Send every logged QSO to an external logging program (GridTracker, JTAlert, Log4OM… via the WSJT-X UDP protocol) | off |
 | `--no-remote-log` | Disable remote logging even if enabled in settings | — |
 | `--remote-log-decodes` | Also forward FT8/FT4 decodes to the remote logger | — |
+| `--sstv-dir <dir>` | Where the server keeps the SSTV gallery (received and loaded pictures) | `<data dir>/sstv` |
 | `--no-autoconnect` | Start without connecting to the rig (LAN only; connect via web UI Reconnect). Env: `WFWEB_NO_AUTOCONNECT=1` | autoconnect |
 | `--no-tui` | Print the plain log on an interactive terminal instead of the status page. Env: `WFWEB_NO_TUI=1` | status page on a terminal |
 
@@ -557,6 +605,7 @@ Password=
 | `Callsign` / `Grid` | `[Station]` | Station callsign and locator (also set from the web UI) | `K1ABC` / `FN42` |
 | `Macro1` … `Macro10` | `[CW]` | CW keyer macros, shared by every browser (also set from the CW bar's EDIT/SET; `[CALL]` and `[QSO]` are filled in when sent) | `CQ CQ DE [CALL] [CALL] K` |
 | `Logbook` | `[General]` | ADIF logbook path; relative paths resolve next to the settings file | `station.adi` |
+| `SstvDir` | `[General]` | SSTV gallery directory; relative paths resolve next to the settings file | `sstv` |
 | `Enabled` / `Target` / `Decodes` | `[RemoteLog]` | Remote logging (see [Logbook](#logbook-and-remote-logging)) | `true` / `127.0.0.1:2237` / `false` |
 
 > Audio streams directly between the radio and the browser — no server-side audio configuration is needed for web operation.
@@ -573,7 +622,7 @@ See **[BUILDING.md](BUILDING.md)** for platform-specific prerequisites and build
 
 **Squelch makes no difference to what I hear.** The GAIN panel's **SQL** slider sets the radio's squelch, and an **SQL n%** tile on the spectrum shows it whenever it is above 0. The radio squelches its own speaker, but the audio it sends over USB, which is what wfweb plays in the browser, is squelched only if the radio is set up for it: on the IC-7300 that is **MENU › SET › Connectors › ACC/USB AF SQL** ON (other Icoms have a similar USB AF SQL setting). It ships OFF (OPEN).
 
-**COMP goes off while I transmit FT8 (or JS8, FreeDV…).** That is on purpose. wfweb's digital modes (FT8/FT4, JS8, TUNE, FreeDV / RADE, packet) transmit in plain USB / LSB, where the radio keeps the speech compressor in the path and distorts the signal, so wfweb switches COMP off just before it keys for one of them and back on after; the **COMP n** tile on the spectrum disappears for that time. It never switches COMP on if it was off, and pressing FUNC › **COMP** during the transmission takes over. GAIN › **COMP** sets the level (0-10, as on the radio).
+**COMP goes off while I transmit FT8 (or JS8, RTTY, SSTV, FreeDV…).** That is on purpose. wfweb's digital modes (FT8/FT4, JS8, RTTY, SSTV, TUNE, FreeDV / RADE, packet) transmit in plain USB / LSB, where the radio keeps the speech compressor in the path and distorts the signal, so wfweb switches COMP off just before it keys for one of them and back on after; the **COMP n** tile on the spectrum disappears for that time. It never switches COMP on if it was off, and pressing FUNC › **COMP** during the transmission takes over. GAIN › **COMP** sets the level (0-10, as on the radio).
 
 **The CW sidetone is late, or I hear every element twice.** The CW bar's **TONE** button (on by default) plays a sidetone made in the browser, at the radio's CW pitch and at the VOL level, in step with the text as it is keyed and with a paddle connected to wfweb. Over LAN it is the only sidetone there is. Its delay is that of the audio output: through Bluetooth headphones it is too late to send a paddle by ear, and TONE turns amber to say so. A paddle plugged into the radio's own key jack is not heard through TONE. For true full break-in with that paddle on a USB-connected radio, switch TONE off and let the radio send its own sidetone over the audio channel: on the IC-7300 and other USB-connected Icoms that is **MENU › SET › Connectors › ACC/USB AF Beep/Speech… Output** ON (it ships OFF; the radio's beeps come along too). You then hear the sidetone exactly as the radio keys it, paddle included, with the received signal between the elements, delayed only by the RX audio buffer. Keep just one of the two on, or you hear every element twice.
 
@@ -611,6 +660,9 @@ Please support the original project at **https://wfview.org** and **https://www.
 The FT8/FT4 DIGI panel is powered by [ft8ts](https://github.com/e04/ft8ts) by e04.
 JS8 weak-signal messaging uses a WebAssembly build of [JS8Call-improved](https://github.com/JS8Call-improved/JS8Call-improved), itself a fork of JS8Call by Jordan Sherer KN4CRD.
 The CW decoder runs the [DeepCW](https://github.com/e04/deepcw-engine) neural model by e04 (AGPL-3.0) on [ONNX Runtime Web](https://github.com/microsoft/onnxruntime) in the browser, and falls back to [ggmorse](https://github.com/ggerganov/ggmorse) by Georgi Gerganov where that cannot run (no WebAssembly SIMD, or a browser too slow to keep up).
+
+The RTTY decoder runs the [DeepRTTY](https://github.com/e04/DeepRTTY) neural model by e04 (MIT) on the same runtime, with a classic FSK demodulator as the fallback.
+SSTV encoding and decoding use the [sstv](https://github.com/unexcellent/sstv) Rust crate (MIT), the engine behind [slowscan.space](https://slowscan.space), compiled to WebAssembly (vendored with two small patches: one re-locks on the sync pulses after a timing jump in the audio, the other makes a mode's line layout public).
 FreeDV digital voice uses [codec2](https://github.com/drowe67/codec2) by David Rowe VK5DGR and contributors, and [radae_nopy](https://github.com/peterbmarks/radae_nopy) by Peter Marks VK5APM (a standalone C implementation of the RADE Radio Autoencoder).
 AX.25 packet — modems, framing, link control, APRS, and YAPP — is powered by [Direwolf](https://github.com/wb2osz/direwolf) by John Langner WB2OSZ.
 MP3 recording uses [lamejs](https://github.com/zhuker/lamejs), a JavaScript port of the [LAME](https://lame.sourceforge.io) encoder (LGPL).

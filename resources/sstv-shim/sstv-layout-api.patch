@@ -1,0 +1,56 @@
+--- a/src/modes/mode.rs
++++ b/src/modes/mode.rs
+@@ -82,7 +82,7 @@
+     }
+ 
+     /// The duration of one pass through the timing sequence.
+-    pub(crate) fn sequence_duration(&self) -> Duration {
++    pub fn sequence_duration(&self) -> Duration {
+         self.sequence.iter().map(Step::duration).sum()
+     }
+ 
+@@ -95,6 +95,17 @@
+         })
+     }
+ 
++    /// Each fixed control tone of the sequence (sync pulses, porches,
++    /// separator pulses) with the offset at which it begins; the channel
++    /// scans are left out. For a receiver that locates the image itself and
++    /// hands the decoder a known start.
++    pub fn control_tones(&self) -> impl Iterator<Item = (Duration, Tone)> + '_ {
++        self.step_offsets().filter_map(|(offset, step)| match step {
++            Step::Control(tone) => Some((offset, *tone)),
++            Step::Scan(..) => None,
++        })
++    }
++
+     /// The offset at which each sync pulse starts.
+     pub(crate) fn sync_offsets(&self) -> impl Iterator<Item = Duration> {
+         self.step_offsets().filter_map(|(offset, step)| {
+@@ -109,7 +120,7 @@
+     }
+ 
+     /// The spacing of the sync pulses — the duration of one transmitted line.
+-    pub(crate) fn sync_spacing(&self) -> Duration {
++    pub fn sync_spacing(&self) -> Duration {
+         self.sequence_duration() / self.sync_count() as u32
+     }
+ 
+@@ -117,7 +128,7 @@
+     ///
+     /// Zero offset for most modes; Scottie places the sync pulse between the
+     /// Blue and Red scans.
+-    pub(crate) fn sync_pulse(&self) -> (Duration, Duration) {
++    pub fn sync_pulse(&self) -> (Duration, Duration) {
+         for (offset, step) in self.step_offsets() {
+             if let Step::Control(tone) = step
+                 && tone.frequency == SYNC_FREQUENCY
+@@ -131,7 +142,7 @@
+ 
+     /// Whether the mode transmits one extra sync pulse between the header and
+     /// the first line. Only Scottie modes do.
+-    pub(crate) const fn has_starting_sync_pulse(self) -> bool {
++    pub const fn has_starting_sync_pulse(self) -> bool {
+         self.starting_sync_pulse
+     }
+ 

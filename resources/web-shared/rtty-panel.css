@@ -1,0 +1,140 @@
+/*
+ * RTTY bar styles — shared by both the server build (resources/web/index.html,
+ * via web.qrc alias) and the standalone build (tools/build-static.sh).
+ * The bar is built by rtty-panel.js next to #cwBar and docks at the bottom
+ * of #scopeArea exactly like the CW bar; the kit (.wf-*) is tinted by
+ * .mode-rtty in theme.css.
+ */
+.rtty-bar {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 200;
+    display: flex;
+    flex-direction: column;
+    max-height: 65%;
+    overflow-y: auto;
+}
+.rtty-bar.hidden { display: none; }
+.rtty-bar-header { flex-wrap: wrap; }
+.rtty-bar-header .wf-btn.loading { background: #1a1a00; border-color: #aa0; color: #aa0; }
+.rtty-bar-header .wf-btn:disabled { opacity: 0.45; cursor: default; }
+.rtty-mark-sel { width: auto; padding: 2px 4px; font-size: var(--fs-sm); }
+.rtty-bar .rtty-close-btn { margin-left: auto; }
+#rttyCloseBtn { margin-left: auto; }
+
+/* Tuning strip: the passband (ZOOM: the pair +/- 250 Hz), ~8 Hz bins, time
+   scrolling left, mark / space lines; AUTOTUNE and ZOOM in its corner. */
+.rtty-scope-row { position: relative; height: 112px; margin: 4px 10px 0; }
+#rttyScopeCanvas { display: block; width: 100%; height: 112px; background: #000; border: 1px solid var(--mode-accent-dim); border-radius: 4px; cursor: crosshair; }
+.rtty-tone-line { position: absolute; left: 0; right: 0; height: 0; border-top: 1px dashed rgba(255, 255, 255, 0.7); pointer-events: none; }
+.rtty-tone-line span { position: absolute; left: 64px; top: -11px; font: bold 9px var(--font-mono); color: rgba(255, 255, 255, 0.85); line-height: 1; }
+.rtty-scale { position: absolute; left: 4px; top: 2px; bottom: 2px; pointer-events: none; font: 9px var(--font-mono); color: rgba(255, 255, 255, 0.55); }
+.rtty-scale-hi { position: absolute; top: 0; left: 0; white-space: nowrap; }
+.rtty-scale-lo { position: absolute; bottom: 0; left: 0; white-space: nowrap; }
+.rtty-engine-tag { position: absolute; left: 6px; top: 3px; font: 9px var(--font-mono); letter-spacing: 1px; color: #fc8; background: rgba(0, 0, 0, 0.6); padding: 1px 4px; border-radius: 3px; }
+.rtty-scope-btns { position: absolute; right: 4px; top: 4px; display: flex; gap: 4px; }
+.rtty-scope-btns .wf-btn { height: 24px; padding: 0 8px; font-size: 10px; letter-spacing: 1px; background: rgba(0, 0, 0, 0.75); }
+#rttyAutoTune { min-width: 84px; }
+#rttyAutoTune.busy { opacity: 0.6; cursor: progress; }
+#rttyAutoTune.ok { background: var(--mode-accent-dim); color: var(--on-accent); border-color: var(--mode-accent); }
+#rttyAutoTune.warn { background: #1a1a00; border-color: #aa0; color: #aa0; }
+
+/* The teleprinter: a few lines, newest at the bottom */
+.rtty-text {
+    margin: 4px 10px;
+    height: 84px;
+    overflow-y: auto;
+    background: #000;
+    border: 1px solid var(--mode-accent-dim);
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-family: var(--font-mono);
+    font-size: 16px;
+    line-height: 20px;
+    color: var(--mode-accent);
+    scrollbar-width: thin;
+}
+.rtty-line { white-space: pre-wrap; word-break: break-all; min-height: 20px; }
+.rtty-line.rtty-tx { color: #fd9; }
+.rtty-line.rtty-tx::before { content: 'TX\00a0'; color: #a55; font-weight: bold; }
+.rtty-line.rtty-sys { color: #fc8; font-size: 0.85em; }
+.rtty-line.rtty-sys::before { content: '\2014\00a0'; }
+.rtty-pending { color: var(--mode-accent-dim); }
+/* The over going out, a character at a time (the CW transcript's states) */
+.rtty-ch { display: inline; }
+.rtty-ch.sent { color: #a97a4a; }
+.rtty-ch.pending { color: #fd9; opacity: 0.55; }
+.rtty-ch.sending { color: #fff; text-shadow: 0 0 5px #fd9; }
+.rtty-ch.cursor { color: #fd9; animation: rtty-cursor 1s steps(2) infinite; }
+.rtty-ch.cursor.ending { color: #a55; animation: none; }
+@keyframes rtty-cursor { 0% { opacity: 1; } 100% { opacity: 0; } }
+.rtty-macro-btn.hold { border-style: dashed; }
+#rttyTxBtn { min-width: 52px; font-weight: bold; }
+#rttyTxBtn.active { background: #a33; border-color: #e55; color: #fff; }
+.rtty-bar.rtty-typing .rtty-input { border-color: #e55; }
+@keyframes rtty-attn { 0%, 100% { box-shadow: 0 0 0 0 transparent; } 50% { box-shadow: 0 0 0 3px #fc8; } }
+.wf-btn.rtty-attn { animation: rtty-attn 0.6s ease-in-out 4; }
+.rtty-call { color: #ff0; cursor: pointer; text-decoration: underline; }
+.rtty-call:hover { color: #000; background: #ff0; }
+
+.rtty-callsign-row { display: flex; gap: 6px; padding: 4px 10px; align-items: center; background: var(--bg); border-top: 1px solid var(--mode-accent-dim); }
+.rtty-callsign-label { font: bold var(--fs-sm) var(--font-mono); color: var(--mode-accent-dim); }
+.rtty-callsign-input { width: 100px; text-transform: uppercase; }
+.rtty-rst-input { width: 44px; text-align: center; }
+
+/* Macros: two rows of five like the CW bar, slot 5 = EDIT/SET */
+.rtty-macro-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; padding: 4px 10px; background: var(--bg-app); }
+.rtty-macro-btn { min-height: 30px; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; }
+.rtty-macro-btn.empty { color: #555; font-style: italic; }
+.rtty-macro-btn.editable { border: 2px solid #ff0; animation: pulse-border 1.5s ease-in-out infinite; }
+.rtty-macro-btn.edit-set-btn { color: var(--mode-accent-dim); font-size: 10px; }
+.rtty-macro-btn.edit-set-btn.editing { background: var(--mode-accent-dim); color: var(--on-accent); }
+
+/* The macro editor: the CW bar's dialog, tinted by .mode-rtty */
+.rtty-macro-editor { z-index: 250; padding: 20px; align-items: flex-start; overflow-y: auto; }
+.rtty-macro-editor .editor-dialog { background: var(--bg); border: 2px solid var(--mode-accent-dim); padding: 16px; max-width: 90%; width: 350px; margin: 40px auto auto; box-shadow: 0 4px 20px rgba(160, 255, 80, 0.25); }
+.rtty-macro-editor .editor-title { color: var(--mode-accent); font-size: 14px; font-weight: bold; margin-bottom: 8px; text-transform: uppercase; }
+.rtty-macro-editor .editor-hint { color: #888; font-size: 11px; margin-bottom: 12px; }
+.rtty-macro-editor textarea { width: 100%; height: 70px; background: var(--mode-accent-bg); border: 1px solid var(--mode-accent-dim); color: var(--mode-accent); font-family: var(--font-mono); padding: 8px; font-size: 13px; resize: vertical; box-sizing: border-box; text-transform: uppercase; }
+.rtty-macro-editor .editor-buttons { margin-top: 12px; display: flex; gap: 8px; }
+.rtty-macro-editor .editor-buttons button { flex: 1; border: none; padding: 10px 6px; font-weight: bold; cursor: pointer; font-size: 11px; text-transform: uppercase; font-family: var(--font-mono); }
+#rttyMacroSave { background: var(--mode-accent-dim); color: var(--on-accent); }
+#rttyMacroClear { background: #333; color: #888; }
+#rttyMacroCancel { background: #1a1a1a; color: var(--mode-accent-dim); border: 1px solid var(--mode-accent-dim) !important; }
+@media (min-width: 600px) { .rtty-macro-editor .editor-dialog { max-width: 400px; } }
+.rtty-bar.rtty-no-tx .rtty-macro-btn:not(.toggle) { opacity: 0.45; }
+.rtty-bar.rtty-tx .rtty-macro-btn:not(.toggle) { opacity: 0.6; }
+
+.rtty-compose-row { display: flex; gap: 6px; padding: 0 10px 6px; background: var(--bg-app); }
+.rtty-input { flex: 1 1 auto; min-width: 0; text-transform: uppercase; resize: none; overflow-y: auto; line-height: 1.3; box-sizing: border-box; }
+.rtty-input.rtty-hint::placeholder { color: #fc8; opacity: 1; }
+.rtty-bar .wf-btn:disabled { opacity: 0.45; cursor: default; }
+
+/* Phones, portrait: the bar must leave the scope its top 35 % */
+@media (orientation: portrait) and (max-width: 600px) {
+    .rtty-bar-header { gap: 2px; padding: 3px; flex-wrap: nowrap; }
+    .rtty-label { display: none; }
+    .rtty-wide { display: none; }
+    .rtty-bar-header .wf-btn { padding: 5px 5px; font-size: 10px; min-height: 28px; }
+    #rttyCloseBtn { flex: 0 0 28px; }
+    .rtty-mark-sel { font-size: 10px; padding: 2px; }
+    .rtty-scope-row { height: 64px; margin: 3px 6px 0; }
+    #rttyScopeCanvas { height: 64px; }
+    .rtty-scale { display: none; }
+    .rtty-scope-btns .wf-btn { height: 22px; padding: 0 5px; font-size: 9px; }
+    #rttyAutoTune { min-width: 0; }   /* "AUTOTUNE" reads "AUTO" (.rtty-wide) */
+    .rtty-text { height: 60px; font-size: 13px; line-height: 16px; margin: 3px 6px; }
+    .rtty-line { min-height: 16px; }
+    .rtty-callsign-row { padding: 3px 6px; gap: 4px; }
+    .rtty-callsign-input { width: 0; flex: 1 1 0; min-width: 0; }
+    .rtty-rst-input { width: 40px; padding: 5px 2px; font-size: 12px; }
+    .rtty-macro-grid { gap: 3px; padding: 3px 6px; }
+    .rtty-macro-btn { min-height: 28px; font-size: 9px; padding: 6px 3px; }
+    .rtty-macro-editor { padding: 0; }
+    .rtty-macro-editor .editor-dialog { padding: 12px; width: calc(100% - 20px); margin: 20px 10px 10px; max-height: 50vh; }
+    .rtty-macro-editor textarea { height: 50px; font-size: 12px; }
+    .rtty-macro-editor .editor-buttons button { padding: 8px 4px; font-size: 10px; }
+    .rtty-compose-row { padding: 0 6px 4px; }
+}
