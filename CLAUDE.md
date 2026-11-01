@@ -763,7 +763,15 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 - A mixer AudioWorklet in its own 48 kHz context builds one mono timeline.
   **TX replaces RX while TX audio is queued** — a rig with MONITOR on loops TX
   back into the RX stream, and summing would record it twice. Mic frames are
-  only kept while `isTransmitting` (the mic streams whenever it is enabled).
+  only kept while `isTransmitting` (the mic streams whenever it is enabled),
+  never in CW / CW-R, and not within `MODEM_HOLD_MS` (1 s) of a modem-tagged
+  frame: the transports' single-writer rule keeps the mic off the air there,
+  and RTTY's open channel sets no `digiTxActive`, so the page still sends it.
+  The CW TONE sidetone reaches the recording as a MediaStream
+  (`WfCwSidetone` `onStream` -> `Recorder.setSidetone`, a fixed-level tap
+  ahead of VOL, a new stream per context), added on the mixer's input after
+  the same 200 ms delay; RX is zeroed while `rxPaddleMuted`, as the page
+  mutes it. `tests/recorder_browser.mjs` (via `tests/test_recorder.py`).
 - Audio → MP3 via vendored `lamejs/lame.min.js` in a Blob worker. Video → a
   composited 1280×720 canvas (header + `meterCanvas` / `spectrumCanvas` /
   `waterfallCanvas`) through `MediaRecorder`; MP4 where supported, else WebM.

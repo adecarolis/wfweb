@@ -9321,6 +9321,7 @@ var cwSidetone = new WfCwSidetone({
     createContext: function() { return new (window.AudioContext || window.webkitAudioContext)({ latencyHint: 'interactive' }); },
     pitch: function() { return cwPitchHz; },
     gain: function() { return 0.2 * rxVolumeGain(); },
+    onStream: function(stream) { Recorder.setSidetone(stream); },
     onLatency: function(ms) {
         cwToneLatencyMs = ms;
         if (ms > CW_TONE_SLOW_MS) console.warn('[CW] tone delay ' + ms + ' ms: the audio output is slow (Bluetooth?)');

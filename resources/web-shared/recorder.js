@@ -5,6 +5,7 @@
 //   Recorder.feedRx()     every received chunk          (handleAudioData)
 //   Recorder.feedTx()     every 0x03 frame actually sent (sendTxAudio)
 //   Recorder.feedTxPcm()  the 0x04 packet-TX tee         (handleBinaryMessage)
+// plus the CW sidetone (TONE) as a MediaStream, Recorder.setSidetone(),
 // and a mixer worklet turns those into one real-time mono track.
 //
 //   Audio recording → MP3, encoded by the vendored lamejs in a worker.
@@ -19,6 +20,11 @@
 
 var DEFAULT_RATE = 48000;
 var MIC_RATE = 48000;            // micAudioCtx is fixed at 48 kHz in both builds
+// Mic frames are dropped this long after a modem frame: the transports drop
+// them on the way to the rig while modem audio flows (their single-writer
+// rule, 300 ms), and the rig stays keyed a little after the modem's last
+// frame, until the unkey and its readback.
+var MODEM_HOLD_MS = 1000;
 var MP3_KBPS = 64;
 var VIDEO = { w: 1280, h: 720, fps: 15, bps: 2000000 };
 var HEADER_H = 132;              // status header height inside the video frame
@@ -44,6 +50,8 @@ var btn = null;
 var timeEl = null;      // elapsed-time label inside the button
 var menu = null;
 var rec = null;         // the recording in progress
+var sidetone = null;    // the CW sidetone's MediaStream (setSidetone)
+var lastModemMs = 0;    // when the last modem-tagged TX frame went out
 var busy = false;       // starting or finalising — the button ignores taps
 var uiTimer = null;
 
@@ -56,6 +64,9 @@ var uiTimer = null;
 // RX resumes exactly where the transmission ended. TX replaces RX rather than
 // adding to it — a rig with MONITOR on loops the transmit audio back into the
 // RX stream and summing would record it twice.
+//
+// The CW sidetone comes in on the node's input, live, and is added after the
+// same 200 ms delay, as the operator hears it on top of the receiver.
 // ---------------------------------------------------------------------------
 function mixerWorklet() {
     var PCM_BLOCK = 4800;
@@ -82,6 +93,7 @@ function mixerWorklet() {
             this.rx = new Fifo(); this.tx = new Fifo();
             this.rxArmed = false; this.txArmed = false; this.txWait = 0;
             this.pcm = null; this.pcmPos = 0; this.done = false;
+            this.tone = new Float32Array(Math.round(sampleRate * 0.2)); this.tonePos = 0;
             this.port.onmessage = function (e) {
                 var m = e.data;
                 if (m.k === 'rx') self.rx.push(m.d);
@@ -115,6 +127,14 @@ function mixerWorklet() {
             }
             // A burst after a stall must not push the recording behind real time.
             if (rx.len > sampleRate) rx.take(null, rx.len - delay);
+
+            var tin = inputs[0] && inputs[0][0], tone = this.tone, tp = this.tonePos;
+            for (var j = 0; j < n; j++) {
+                out[j] += tone[tp];
+                tone[tp] = tin ? tin[j] : 0;
+                if (++tp === tone.length) tp = 0;
+            }
+            this.tonePos = tp;
 
             if (this.pcm) {
                 for (var i = 0; i < n; i++) {
@@ -204,7 +224,11 @@ function post(r, kind, f32) {
 
 function feedRx(pcm, rate) {
     if (!rec) return;
-    post(rec, 'rx', resample(rec.rxRs, pcm, rate || DEFAULT_RATE, rec.ctx.sampleRate));
+    var f32 = resample(rec.rxRs, pcm, rate || DEFAULT_RATE, rec.ctx.sampleRate);
+    // A paddle mutes the playback while the rig's own sidetone trails the
+    // fist (WfCwRxMute); the recording follows, as it has the browser tone.
+    if (global.rxPaddleMuted) f32.fill(0);
+    post(rec, 'rx', f32);
 }
 
 // frame: a [0x03][tag][seq u16][0 u16][Int16 PCM] ArrayBuffer. modemRate is the
@@ -215,10 +239,31 @@ function feedTx(frame, modemRate) {
     if (head[0] !== 0x03) return;
     var modem = (head[1] & 0x01) !== 0;
     // The mic streams for as long as it is enabled, keyed or not — only the
-    // part that actually goes on the air belongs in the recording.
-    if (!modem && !host.isTx()) return;
+    // part that actually goes on the air belongs in the recording: not while
+    // modem audio owns the channel (RTTY sends no digiTxActive, so its mic
+    // frames are still sent and dropped by the transport), and never in CW,
+    // where the rig keys its keyer and the sidetone is what is heard.
+    if (modem) lastModemMs = Date.now();
+    else if (!host.isTx() || Date.now() - lastModemMs < MODEM_HOLD_MS ||
+             /^CW/.test(global.currentMode || '')) return;
     var pcm = new Int16Array(frame, 6, (frame.byteLength - 6) >> 1);
     post(rec, 'tx', resample(rec.txRs, pcm, modem ? (modemRate || DEFAULT_RATE) : MIC_RATE, rec.ctx.sampleRate));
+}
+
+// The CW sidetone's stream (WfCwSidetone onStream), or null when its audio
+// context closes. A recording in progress switches to the new one.
+function setSidetone(stream) {
+    sidetone = stream;
+    if (rec) attachSidetone(rec);
+}
+
+function attachSidetone(r) {
+    if (r.toneSrc) { r.toneSrc.disconnect(); r.toneSrc = null; }
+    if (!sidetone) return;
+    try {
+        r.toneSrc = r.ctx.createMediaStreamSource(sidetone);
+        r.toneSrc.connect(r.node);
+    } catch (e) { r.toneSrc = null; console.warn('[recorder] sidetone not recorded:', e); }
 }
 
 function feedTxPcm(pcm, rate) {
@@ -1383,7 +1428,8 @@ function start(kind) {
     return r.ctx.audioWorklet.addModule(url).then(function () {
         URL.revokeObjectURL(url);
         r.node = new AudioWorkletNode(r.ctx, 'wfweb-rec-mixer',
-            { numberOfInputs: 0, numberOfOutputs: 1, outputChannelCount: [1] });
+            { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
+        attachSidetone(r);
         // Always connected: it keeps the worklet pulled, and it is the audio
         // track of a video recording. Nothing goes to the speakers.
         r.dest = r.ctx.createMediaStreamDestination();
@@ -1531,6 +1577,7 @@ global.Recorder = {
     feedRx: feedRx,
     feedTx: feedTx,
     feedTxPcm: feedTxPcm,
+    setSidetone: setSidetone,
     start: start,
     stop: stop,
     isRecording: function () { return !!rec; }
