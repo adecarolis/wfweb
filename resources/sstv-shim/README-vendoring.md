@@ -2,7 +2,9 @@
 
 Upstream: https://github.com/unexcellent/sstv (Rust crate `sstv`)
 Vendored commit: `9761c4c61a6353d7ae2173e1579e434e6c1b1ce3` (v0.3.1, 2026-10-03)
-License: MIT (`vendor/sstv/LICENSE`)
+License: MIT (`vendor/sstv/LICENSE`). The notice also ships next to the compiled
+module as `resources/web-standalone/wasm/sstv-LICENSE` and is in
+`THIRD_PARTY_LICENSES`: update both when re-vendoring.
 
 `vendor/sstv/` is the crate's `src/`, `build.rs`, `README.md` and `LICENSE`
 at that commit, with `sstv-relock.patch` and `sstv-layout-api.patch`

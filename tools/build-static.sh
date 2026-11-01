@@ -89,6 +89,8 @@ fi
 if ls "$SRC"/wasm/*.wasm >/dev/null 2>&1; then
     cp "$SRC"/wasm/*.wasm "$DIST/wasm/"
 fi
+# MIT notice of the sstv crate compiled into sstv.wasm.
+cp "$SRC"/wasm/sstv-LICENSE "$DIST/wasm/"
 
 # FT8/FT4 module + sourcemap (the index.html imports it from /ft8ts.mjs)
 cp "$FT8/ft8ts.mjs"     "$DIST/"

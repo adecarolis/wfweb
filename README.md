@@ -662,7 +662,7 @@ JS8 weak-signal messaging uses a WebAssembly build of [JS8Call-improved](https:/
 The CW decoder runs the [DeepCW](https://github.com/e04/deepcw-engine) neural model by e04 (AGPL-3.0) on [ONNX Runtime Web](https://github.com/microsoft/onnxruntime) in the browser, and falls back to [ggmorse](https://github.com/ggerganov/ggmorse) by Georgi Gerganov where that cannot run (no WebAssembly SIMD, or a browser too slow to keep up).
 
 The RTTY decoder runs the [DeepRTTY](https://github.com/e04/DeepRTTY) neural model by e04 (MIT) on the same runtime, with a classic FSK demodulator as the fallback.
-SSTV encoding and decoding use the [sstv](https://github.com/unexcellent/sstv) Rust crate (MIT), the engine behind [slowscan.space](https://slowscan.space), compiled to WebAssembly (vendored with a small patch that re-locks on the sync pulses after a timing jump in the audio).
+SSTV encoding and decoding use the [sstv](https://github.com/unexcellent/sstv) Rust crate (MIT), the engine behind [slowscan.space](https://slowscan.space), compiled to WebAssembly (vendored with two small patches: one re-locks on the sync pulses after a timing jump in the audio, the other makes a mode's line layout public).
 FreeDV digital voice uses [codec2](https://github.com/drowe67/codec2) by David Rowe VK5DGR and contributors, and [radae_nopy](https://github.com/peterbmarks/radae_nopy) by Peter Marks VK5APM (a standalone C implementation of the RADE Radio Autoencoder).
 AX.25 packet — modems, framing, link control, APRS, and YAPP — is powered by [Direwolf](https://github.com/wb2osz/direwolf) by John Langner WB2OSZ.
 MP3 recording uses [lamejs](https://github.com/zhuker/lamejs), a JavaScript port of the [LAME](https://lame.sourceforge.io) encoder (LGPL).
