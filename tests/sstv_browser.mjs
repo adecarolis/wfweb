@@ -284,16 +284,43 @@ try {
   await B.click('#sstvPipBtn'); await B.click('#sstvPipBtn'); await B.click('#sstvPipBtn'); await B.click('#sstvPipBtn');
   check(await B.evaluate(() => window.SstvPanel.state.pip === null && document.getElementById('sstvPipBtn').hidden), 'B: the PIP button walks the corners and then takes it off');
 
-  // START: a decode from this moment on, without a header, in the last
-  // received mode; DISCARD puts the decoder back to AUTO.
-  await B.click('#sstvRxStartBtn');
-  await B.waitForFunction(() => /started by hand/.test(window.SstvPanel.state.status), null, { timeout: 5000 });
-  await B.waitForFunction(() => window.SstvPanel.state.rx !== null && window.SstvPanel.state.rx.name === 'Robot 36', null, { timeout: 10000 });
-  check(await B.evaluate(() => window.SstvPanel.state.rxForce && window.SstvPanel.state.rxForce.name === 'Robot 36' && document.getElementById('sstvRxMeta').textContent.indexOf('Robot 36') === 0),
-        'B: START begins a Robot 36 picture at once on the noise (the last received mode)');
+  // START mid-flight: A sends again; B drops the decode after a few lines
+  // and presses START under AUTO. The worker locks on three sync pulses,
+  // names Robot 36 from their spacing and decodes from the lines it has
+  // buffered, so the picture holds everything from the lock on, shifted up
+  // by the lines gone before.
+  await A.click('#sstvSendBtn');
+  await B.waitForFunction(() => window.SstvPanel.state.rx !== null && window.SstvPanel.state.rx.rows > 20, null, { timeout: 30000 });
   await B.click('#sstvRxDiscardBtn');
-  await B.waitForFunction(() => window.SstvPanel.state.rx === null && window.SstvPanel.state.rxForce === null && document.getElementById('sstvRxMeta').textContent === 'AUTO', null, { timeout: 5000 });
-  check(true, 'B: DISCARD drops it and the decoder is back on AUTO');
+  await B.waitForFunction(() => window.SstvPanel.state.rx === null, null, { timeout: 5000 });
+  await B.click('#sstvRxStartBtn');
+  await B.waitForFunction(() => /START/.test(window.SstvPanel.state.status) && document.getElementById('sstvRxMeta').textContent === 'START', null, { timeout: 5000 });
+  await B.waitForFunction(() => window.SstvPanel.state.rx !== null, null, { timeout: 10000 });
+  const lock = await B.evaluate(() => ({ name: window.SstvPanel.state.rx.name, via: window.SstvPanel.state.rx.via, status: window.SstvPanel.state.status, force: !!window.SstvPanel.state.rxForce }));
+  check(lock.name === 'Robot 36' && lock.via === 'sync' && lock.force, `B: START under AUTO locks on the sync pulses and names Robot 36 (${lock.name} via ${lock.via}: ${lock.status})`);
+  await B.waitForFunction(() => window.SstvPanel.state.rx === null && /saved/.test(window.SstvPanel.state.status), null, { timeout: 90000 });
+  await A.waitForFunction(() => !window.SstvPanel.state.txBusy, null, { timeout: 20000 });
+  const got2 = await B.evaluate(() => Array.from(document.getElementById('sstvRxCanvas').getContext('2d').getImageData(0, 0, 320, 240).data));
+  // (Compared in the gradient two thirds of the test picture: the colour
+  // bars on top are the same on every row and would hide the shift.)
+  let bestShift = { shift: 0, mae: 1e9 };
+  for (let shift = 0; shift < 50; shift++) {
+    let e = 0, n = 0;
+    for (let y = 100; y < 190; y += 2) for (let x = 0; x < 320; x += 4) {
+      const g = (y * 320 + x) * 4, sIdx = ((y + shift) * 320 + x) * 4;
+      for (let c = 0; c < 3; c++) { e += Math.abs(got2[g + c] - sent[sIdx + c]); n++; }
+    }
+    if (e / n < bestShift.mae) bestShift = { shift, mae: e / n };
+  }
+  check(bestShift.mae < 25 && bestShift.shift >= 10, `B: the START picture holds the lines from the lock on (shifted up ${bestShift.shift} rows, mean abs error ${bestShift.mae.toFixed(1)})`);
+  check(await B.evaluate(() => window.SstvPanel.state.rxForce === null && document.getElementById('sstvRxMeta').textContent === 'AUTO'), 'B: after that picture the decoder is back on AUTO');
+  await B.waitForFunction((id) => window.SstvPanel.state.gallery.length >= 1 && window.SstvPanel.state.gallery[0].id !== id, item.id, { timeout: 10000 });
+  const startItem = await B.evaluate(() => window.SstvPanel.state.gallery[0]);
+  check(startItem.mode === 'Robot 36' && startItem.kind === 'rx', `B: the START picture is filed as received (${JSON.stringify(startItem)})`);
+  if (B2) {
+    await B2.waitForFunction((n) => window.SstvPanel.state.gallery.length === n + 2, B2.before, { timeout: 10000 });
+    check(true, 'B2: the other browser sees the second picture arrive');
+  }
 
   // Delete from the gallery: two presses, no confirm() dialog.
   await B.evaluate(() => { window.confirm = () => { throw new Error('confirm() must not be used'); }; });
@@ -302,13 +329,13 @@ try {
   await B.waitForFunction(() => document.getElementById('sstvViewer').style.display !== 'none');
   await B.click('#sstvViewerDelete');
   await B.waitForTimeout(300);
-  check(await B.evaluate((id) => document.getElementById('sstvViewerDelete').textContent === 'SURE?' && window.SstvPanel.state.gallery.some(g => g.id === id), item.id),
+  check(await B.evaluate((id) => document.getElementById('sstvViewerDelete').textContent === 'SURE?' && window.SstvPanel.state.gallery.some(g => g.id === id), startItem.id),
         'B: the first DELETE press only arms the button');
   await B.click('#sstvViewerDelete');
-  await B.waitForFunction((id) => !window.SstvPanel.state.gallery.some(g => g.id === id), item.id, { timeout: 10000 });
+  await B.waitForFunction((id) => !window.SstvPanel.state.gallery.some(g => g.id === id), startItem.id, { timeout: 10000 });
   check(true, 'B: the second press removes the image from the gallery');
   if (B2) {
-    await B2.waitForFunction((n) => window.SstvPanel.state.gallery.length === n, B2.before, { timeout: 10000 });
+    await B2.waitForFunction((n) => window.SstvPanel.state.gallery.length === n + 1, B2.before, { timeout: 10000 });
     check(true, 'B2: the other browser sees the picture go');
   }
 

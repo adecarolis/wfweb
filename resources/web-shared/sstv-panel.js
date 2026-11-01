@@ -70,8 +70,8 @@
         txModeName: 'Robot 36', rxModeName: 'AUTO',
         fit: 'fit', overlayOn: true, overlayText: '',
         inputRate: 0,
-        rx: null,                           // {mode, name, w, h, rows, startedAt}
-        rxForce: null,                      // the mode START decodes in, until that picture ends
+        rx: null,                           // {mode, name, w, h, rows, startedAt, via: 'vis' | 'sync'}
+        rxForce: null,                      // START pressed: {mode} (null = the worker tells it from the sync pulses), until that picture ends
         rxCanvas: null, txCanvas: null,
         status: 'Waiting for a signal…', progress: 0,
         txBusy: false, txSeconds: 0, txHeaderSeconds: 0, txStartedAt: 0, txImage: null, txName: '',
@@ -463,24 +463,27 @@
         if (!worker || !S.modes.length) return;
         var rate = host('audioSampleRate') || 48000;
         S.inputRate = rate;
-        var pin = S.rxForce || modeByName(S.rxModeName);
-        worker.postMessage({ type: 'config', rate: rate, pinMode: pin ? pin.id : -1, force: !!S.rxForce });
+        var pin = modeByName(S.rxModeName);
+        worker.postMessage({ type: 'config', rate: rate, pinMode: pin ? pin.id : -1 });
         S.rx = null;
+        S.rxForce = null;
         setProgress('sstvRxProgress', 0);
         $('sstvRxMeta').textContent = pin ? pin.name : 'AUTO';
     }
-    // START: decode from this moment on, no header search, for a picture
-    // whose VIS was missed (the lines start at the next sync pulse the
-    // decoder sees, so the picture is cut where the start was pressed).
-    // The mode is the pinned RX mode; under AUTO the last received mode,
-    // else the TX mode -- the station worked usually keeps its mode.
+    // START: a picture whose VIS was missed. The worker locks on the next
+    // three line sync pulses (one line apart) and begins the picture at the
+    // first of them -- it keeps the last seconds of audio, so lines already
+    // heard are not lost -- in the pinned RX mode, or under AUTO in the
+    // mode the pulse spacing names. A decode in progress is dropped.
     function startRx() {
         if (!worker || !S.modes.length) return;
-        var m = modeByName(S.rxModeName) || (S.lastRx && modeByName(S.lastRx.name)) || modeByName(S.txModeName);
-        if (!m) return;
-        S.rxForce = m;
-        configureWorker();
-        setStatus(m.name + ' · started by hand');
+        var pinned = modeByName(S.rxModeName) || null;
+        S.rx = null;
+        S.rxForce = { mode: pinned };
+        worker.postMessage({ type: 'start', pinMode: pinned ? pinned.id : -1 });
+        setProgress('sstvRxProgress', 0);
+        setStatus((pinned ? pinned.name + ' · ' : '') + 'START · waiting for sync pulses…');
+        $('sstvRxMeta').textContent = pinned ? pinned.name : 'START';
     }
     function onWorkerMessage(e) {
         var m = e.data;
@@ -493,12 +496,12 @@
                 break;
             case 'image': {
                 var md = modeById(m.mode);
-                S.rx = { mode: m.mode, name: md ? md.name : ('mode ' + m.mode), w: m.w, h: m.h, rows: 0, startedAt: Date.now(), freqHz: host('currentFreq') || 0 };
+                S.rx = { mode: m.mode, name: md ? md.name : ('mode ' + m.mode), w: m.w, h: m.h, rows: 0, startedAt: Date.now(), freqHz: host('currentFreq') || 0, via: m.via || 'vis' };
                 var cv = S.rxCanvas;
                 cv.width = m.w; cv.height = m.h;
                 var g = cv.getContext('2d');
                 g.fillStyle = '#000'; g.fillRect(0, 0, m.w, m.h);
-                setStatus(S.rx.name + (S.rxForce ? ' · started by hand' : ' · receiving'));
+                setStatus(S.rx.name + (m.via === 'sync' ? ' · locked on the sync pulses' : ' · receiving'));
                 $('sstvRxMeta').textContent = S.rx.name + ' ' + m.w + '×' + m.h;
                 setProgress('sstvRxProgress', 0);
                 break;

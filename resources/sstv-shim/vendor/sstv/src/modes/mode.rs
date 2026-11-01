@@ -82,7 +82,7 @@ impl Mode {
     }
 
     /// The duration of one pass through the timing sequence.
-    pub(crate) fn sequence_duration(&self) -> Duration {
+    pub fn sequence_duration(&self) -> Duration {
         self.sequence.iter().map(Step::duration).sum()
     }
 
@@ -92,6 +92,17 @@ impl Mode {
             let offset = *at;
             *at = *at + step.duration();
             Some((offset, step))
+        })
+    }
+
+    /// Each fixed control tone of the sequence (sync pulses, porches,
+    /// separator pulses) with the offset at which it begins; the channel
+    /// scans are left out. For a receiver that locates the image itself and
+    /// hands the decoder a known start.
+    pub fn control_tones(&self) -> impl Iterator<Item = (Duration, Tone)> + '_ {
+        self.step_offsets().filter_map(|(offset, step)| match step {
+            Step::Control(tone) => Some((offset, *tone)),
+            Step::Scan(..) => None,
         })
     }
 
@@ -109,7 +120,7 @@ impl Mode {
     }
 
     /// The spacing of the sync pulses — the duration of one transmitted line.
-    pub(crate) fn sync_spacing(&self) -> Duration {
+    pub fn sync_spacing(&self) -> Duration {
         self.sequence_duration() / self.sync_count() as u32
     }
 
@@ -117,7 +128,7 @@ impl Mode {
     ///
     /// Zero offset for most modes; Scottie places the sync pulse between the
     /// Blue and Red scans.
-    pub(crate) fn sync_pulse(&self) -> (Duration, Duration) {
+    pub fn sync_pulse(&self) -> (Duration, Duration) {
         for (offset, step) in self.step_offsets() {
             if let Step::Control(tone) = step
                 && tone.frequency == SYNC_FREQUENCY
@@ -131,7 +142,7 @@ impl Mode {
 
     /// Whether the mode transmits one extra sync pulse between the header and
     /// the first line. Only Scottie modes do.
-    pub(crate) const fn has_starting_sync_pulse(self) -> bool {
+    pub const fn has_starting_sync_pulse(self) -> bool {
         self.starting_sync_pulse
     }
 

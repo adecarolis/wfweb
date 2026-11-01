@@ -100,6 +100,28 @@ export async function loadSstvCodec(opts = {}) {
         modeSamples(id, rate) { return ex.sstv_mode_samples(id, rate); },
         /** Length of the header (VOX tones, leader, VIS) in samples at `rate`. */
         modeHeaderSamples(id, rate) { return ex.sstv_mode_header_samples(id, rate); },
+        /** The mode's VIS code (0..127), or -1. */
+        modeVis(id) { return ex.sstv_mode_vis(id); },
+        /**
+         * The mode's timing layout, for the worker's own image search:
+         * {sequenceS, spacingS (one transmitted line), syncOffsetS,
+         * syncDurS, startingSync, controls: [{offsetS, durS, hz}]} -- the
+         * fixed tones of one sequence (sync pulses, porches, separators).
+         */
+        modeLayout(id) {
+            let n = ex.sstv_mode_layout(id, 0, 0);
+            if (!n) return null;
+            const ptr = ex.sstv_alloc(n * 8);
+            try {
+                n = ex.sstv_mode_layout(id, ptr, n);
+                const v = new Float64Array(memory.buffer, ptr, n);
+                const controls = [];
+                for (let i = 6; i + 2 < n; i += 3) controls.push({ offsetS: v[i], durS: v[i + 1], hz: v[i + 2] });
+                return { sequenceS: v[0], spacingS: v[1], syncOffsetS: v[2], syncDurS: v[3], startingSync: v[4] > 0.5, controls };
+            } finally {
+                ex.sstv_free(ptr, n * 8);
+            }
+        },
 
         /** Append Int16 samples to the RX ring. */
         pushRx(int16) {

@@ -158,6 +158,47 @@ pub extern "C" fn sstv_mode_header_samples(id: i32, rate: u32) -> u32 {
     (ns * u64::from(rate) / 1_000_000_000) as u32
 }
 
+/// The mode's VIS code (0..127), -1 for an unknown id.
+#[no_mangle]
+pub extern "C" fn sstv_mode_vis(id: i32) -> i32 {
+    mode_by_id(id).map_or(-1, |mode| i32::from(u8::from(mode.vis_code())))
+}
+
+/// The mode's timing layout, for a receiver that locates the image itself:
+/// writes up to `cap` f64 values at `out` -- sequence duration (s), sync
+/// spacing (s, one transmitted line), the first sync pulse's offset in the
+/// sequence (s) and duration (s), 1.0 when the mode sends one extra sync
+/// pulse between the header and the first line (Scottie), the number of
+/// control tones, then per control tone its offset (s), duration (s) and
+/// frequency (Hz). Returns the number of values the layout has (more than
+/// `cap` means a longer buffer is needed); 0 for an unknown id.
+#[no_mangle]
+pub extern "C" fn sstv_mode_layout(id: i32, out: *mut f64, cap: usize) -> usize {
+    let Some(mode) = mode_by_id(id) else { return 0 };
+    let secs = |d: sstv::Duration| d.ns() as f64 / 1e9;
+    let (sync_offset, sync_duration) = mode.sync_pulse();
+    let mut values = vec![
+        secs(mode.sequence_duration()),
+        secs(mode.sync_spacing()),
+        secs(sync_offset),
+        secs(sync_duration),
+        if mode.has_starting_sync_pulse() { 1.0 } else { 0.0 },
+        0.0,
+    ];
+    let mut count = 0usize;
+    for (offset, tone) in mode.control_tones() {
+        values.extend([secs(offset), secs(tone.duration), f64::from(tone.frequency.hz())]);
+        count += 1;
+    }
+    values[5] = count as f64;
+    if !out.is_null() && cap >= values.len() {
+        // SAFETY: the host provided `cap` f64 slots at `out` (from `sstv_alloc`).
+        let slice = unsafe { std::slice::from_raw_parts_mut(out, values.len()) };
+        slice.copy_from_slice(&values);
+    }
+    values.len()
+}
+
 /// Length of a whole transmission in samples at `rate` (header included),
 /// for progress bars. 0 for an unknown id.
 #[no_mangle]

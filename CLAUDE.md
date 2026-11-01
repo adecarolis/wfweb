@@ -256,7 +256,10 @@ slowscan.space) behind a plain C ABI in `resources/sstv-shim/`, built by
 `tools/build-sstv-wasm.sh` into `resources/web-standalone/wasm/sstv.wasm`
 (committed, ~74 KB; needs rustup + `wasm32-unknown-unknown` + `wasm-opt`).
 The crate is **vendored** under `resources/sstv-shim/vendor/sstv/` (v0.3.1,
-commit in `README-vendoring.md`) with `sstv-relock.patch` applied: upstream
+commit in `README-vendoring.md`) with two patches applied.
+`sstv-layout-api.patch` only makes a mode's sequence layout public (sync
+spacing, control tones), which the shim exports as `sstv_mode_layout` /
+`sstv_mode_vis` for the worker's own image search. `sstv-relock.patch`: upstream
 re-anchors a timing sequence only when its sync pulse lands within one
 pulse length of nominal timing, so one audio frame dropped or stalled on
 the way (the bench put a 20 ms silent frame in the air from a TX underrun,
@@ -267,8 +270,9 @@ looked like a Robot 36 line-pair slip. The patch marks the timing lost on
 a cut without its sync and re-acquires with the crate's own `SyncLock`
 (three pulses one line apart, the Robot 36 pair aligned by its separator
 tones), keeping one extra sequence of estimates meanwhile; two to four rows
-stay garbled. `sstv_rx_decode(rate, pin, headerless)` also takes the
-crate's `without_header()` start for the panel's START button.
+stay garbled. `sstv_rx_decode(rate, pin, headerless)` is always called
+headerless and pinned (the crate's `without_header()`): **the worker finds
+the picture, not the crate** (see below).
 The crate's decoder *pulls* samples from an iterator, which cannot wait for
 audio inside WebAssembly, so the build runs Binaryen **Asyncify** on it:
 `RingIter` calls the imported `sstv_await_samples()` when its ring runs dry,
@@ -282,27 +286,46 @@ Pages cannot send and which break the APRS map tiles. Note the crate's
 with its default `std` feature, fine on wasm32. `wasm/sstv-codec.mjs` is
 the loader (`new URL('./sstv.wasm', import.meta.url)`, fingerprinted).
 **Worker** `resources/web-shared/sstv-worker.js` (module worker) owns the
-codec: `config {rate, pinMode, force}` / `pcm` / `gap` / `reset` / `encode`
-in, `ready {modes}` / `image` / `row` / `done` / `spectrum` /
-`encoded {int16, seconds, headerSeconds}` out (contract in the file
-header); `force` makes the next decode take the image to start at the
-next sample, no header search. The crate measures frequency by midline
+codec: `config {rate, pinMode}` / `start {pinMode}` / `pcm` / `gap` /
+`reset` / `encode` in, `ready {modes}` / `image {mode, w, h, via}` / `row`
+/ `done` / `spectrum` / `encoded {int16, seconds, headerSeconds}` out
+(contract in the file header). The crate measures frequency by midline
 crossings and needs a tone to hold within +/-50 Hz for 3 ms: raw receiver
 audio fails that from ~27 dB SNR down, so the worker demodulates first (mix
 to 1900 Hz, 4th-order Butterworth I/Q low-pass at 900 Hz, phase difference,
-0.6 ms moving average, re-synthesized as a clean tone) and reaches +12 dB
-SNR in 2.5 kHz with white noise; the table of the sweep is in the file
-(`tests/sstv_codec_sim.mjs --sweep`). Below that the crate's VIS / sync
-detection gives up: this is a strong-signal decoder, MMSSTV goes lower.
-Each `config` / `reset` bumps a generation so the suspended decode aborts
-cleanly; rows of an aborted generation are dropped.
+0.6 ms moving average, re-synthesized as a clean tone). Even so the crate's
+own VIS / sync detection gave up below +12 dB SNR (2.5 kHz) and missed
+starts on the air (2026-10-31), so **the worker runs its own image search**
+and the crate only ever decodes from a start it is handed: the VIS is read
+from coherent DFT energies of the raw audio at 1100 / 1200 / 1300 / 1900 Hz
+over each bit's middle 20 ms, in a bank of five tuning offsets (+/-60 Hz),
+with the leader, the framing bits, a 3 dB margin per bit and even parity
+(reads the header down to -3 dB; the crate's splitter never saw a bit as a
+tone below +12); sync pulses are runs of the 0.5 ms frequency track below
+1350 Hz, three of them one line apart (within 2.5 ms) name the mode from
+the spacing table -- the smallest that fits, so a Robot 36 pair is not read
+as Robot 72 -- and the sequence's other control tones pick the alignment
+(the Robot 36 line pair). What the crate eats waits in a 4 s delay buffer,
+so a picture found 300 ms (VIS) or two lines (sync) after it began is
+decoded from its first sample. A VIS heard while a picture decodes cuts it
+short (`done` incomplete) and starts the new one, so a station that stops
+early or a START on noise never leaves the decoder deaf for a mode's
+duration. Picture *quality* is the limit now: the pixel error is ~40 at
++6 dB and the picture is mush at 0 dB, where the header still reads. The
+sweep table is in the file (`tests/sstv_codec_sim.mjs --sweep`). Each
+start / `config` / `reset` bumps a generation so the suspended decode
+aborts cleanly; rows of an aborted generation are dropped.
 **RX** taps the rig's raw PCM in `handleAudioData` (`SstvPanel.feedRx`,
 silence `gap` while we transmit), paints rows with `putImageData`, and
 on `done` (complete or not: ISS passes end mid-image) PNG-encodes the
-canvas into the **gallery**. START (`S.rxForce`) decodes from this moment
-in the pinned RX mode, else the last received mode, else the TX mode, for
-a picture whose VIS was missed; that picture's `done` or DISCARD puts the
-worker back on the RX setting. **TX**: file / camera / gallery picture ->
+canvas into the **gallery**. START (`S.rxForce`, worker `start`) is for a
+picture whose VIS was missed: the worker locks on the next three line
+sync pulses, in the pinned RX mode or, under AUTO, in the mode their
+spacing names, and begins the picture at the first of them out of its
+delay buffer, so the lines heard before the press are kept and the
+picture comes out shifted up by the lines gone before; that picture's
+`done` or DISCARD puts the worker back on the RX setting. With a mode
+pinned the worker locks on sync pulses without a START, as the crate did. **TX**: file / camera / gallery picture ->
 canvas at the mode's resolution (FIT letterbox / FILL crop, overlay text
 defaulting to the callsign, an optional PIP: a gallery picture in a
 corner, `S.pip` / `S.pipCorner`, the PIP button walks the corners then
@@ -336,10 +359,12 @@ request at 16 MB (413), a picture at 4 MB. The recorder draws the panel
 (`sstvView` / `drawSstvBody`). **Tests**: `tests/test_sstv.py` runs
 `tests/sstv_codec_sim.mjs` (the real worker under node: clean / 8 kHz /
 clock error / back to back / reset / pinned / a 20 ms frame inserted and
-dropped / START / +12 and +15 dB, sweep mode for tuning), the wasm export
+dropped / START mid-picture with the mode from the sync spacing and a
+header cutting that decode short / +12, +15, +6 and +3 dB, sweep mode for
+tuning), the wasm export
 check, the wiring check and `tests/sstv_browser.mjs` (two Standalone
-virtual rigs: A sends, B decodes and files, TO TX, PIP, START, the
-two-press DELETE, the sweep; with `WFWEB_SSTV_URLS` the same on the C++
+virtual rigs: A sends, B decodes and files, TO TX, PIP, a START
+mid-flight on a second picture, the two-press DELETE, the sweep; with `WFWEB_SSTV_URLS` the same on the C++
 bench with a second browser on B watching the shared gallery; a wrong
 picture dumps B's 48 kHz PCM next to the screenshots, which the sim's
 machinery replays); `tests/test_sstv_gallery.py` covers the REST store.

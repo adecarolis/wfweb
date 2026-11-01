@@ -60,6 +60,7 @@ console.log(JSON.stringify({ex, im}));
     import json
     info = json.loads(out)
     for name in ("sstv_alloc", "sstv_free", "sstv_mode_count", "sstv_mode_name", "sstv_mode_samples", "sstv_mode_header_samples",
+                 "sstv_mode_vis", "sstv_mode_layout",
                  "sstv_rx_push", "sstv_rx_reset", "sstv_rx_decode", "sstv_tx_begin", "sstv_tx_fill", "sstv_tx_end",
                  "asyncify_start_unwind", "asyncify_stop_unwind", "asyncify_start_rewind", "asyncify_stop_rewind",
                  "asyncify_get_state", "memory"):
@@ -97,6 +98,13 @@ def test_sstv_codec_assets_wired_into_both_builds():
     cutter = (vendored / "src" / "decode" / "assembler" / "cutter.rs").read_text(encoding="utf-8")
     assert "pub fn relock(" in cutter and "relock: Option<SyncLock>" in cutter, "sstv-relock.patch not applied to the vendored crate"
     assert "pub fn relock(" in (shim / "sstv-relock.patch").read_text(encoding="utf-8")
+    # ... and the layout patch: the worker's own image search reads each
+    # mode's sequence (sync spacing, control tones) through the shim.
+    mode_rs = (shim / "vendor" / "sstv" / "src" / "modes" / "mode.rs").read_text(encoding="utf-8")
+    assert "pub fn control_tones(" in mode_rs and "pub fn sync_spacing(" in mode_rs, "sstv-layout-api.patch not applied to the vendored crate"
+    assert "pub fn control_tones(" in (shim / "sstv-layout-api.patch").read_text(encoding="utf-8")
+    worker = (ROOT / "resources" / "web-shared" / "sstv-worker.js").read_text(encoding="utf-8")
+    assert "modeLayout(" in worker and "modeVis(" in worker and "case 'start':" in worker
 
 
 def test_sstv_browser():

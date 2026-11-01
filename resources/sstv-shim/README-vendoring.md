@@ -5,7 +5,8 @@ Vendored commit: `9761c4c61a6353d7ae2173e1579e434e6c1b1ce3` (v0.3.1, 2026-10-03)
 License: MIT (`vendor/sstv/LICENSE`)
 
 `vendor/sstv/` is the crate's `src/`, `build.rs`, `README.md` and `LICENSE`
-at that commit, with `sstv-relock.patch` applied and a trimmed `Cargo.toml`
+at that commit, with `sstv-relock.patch` and `sstv-layout-api.patch`
+applied and a trimmed `Cargo.toml`
 (no examples, tests, dev-dependencies or the `image` / `wav` / `mp3`
 extras). It is built with its default `std` feature (its `no_std` + `alloc`
 build at this commit calls `f64::round` / `ceil`, which need std; the wasm
@@ -33,6 +34,16 @@ can score its control tones.
 
 Worth offering upstream; until then the patch is carried here.
 
+## The patch: a public sequence layout
+
+`sstv-layout-api.patch` (`src/modes/mode.rs`) makes `sequence_duration`,
+`sync_spacing`, `sync_pulse` and `has_starting_sync_pulse` public and adds
+`control_tones()` (each fixed tone of the sequence with its offset). The
+shim exports them as `sstv_mode_layout` / `sstv_mode_vis`, which the
+worker's own image search (`resources/web-shared/sstv-worker.js`) uses to
+name a mode from the spacing of its sync pulses and to align the Robot 36
+line pair. No behaviour change in the crate.
+
 `src/lib.rs` is wfweb's own code: a plain C ABI (no wasm-bindgen) that the
 JS glue in `resources/web-standalone/wasm/sstv-codec.mjs` calls. The RX
 path is Asyncified so the crate's pull-based decoder can wait for audio;
@@ -54,8 +65,9 @@ or the vendored crate changes.
 
 ## Updating
 
-1. Clone upstream at the new commit; `git apply sstv-relock.patch` (drop
-   the patch once upstream re-locks on its own); copy `src/`, `build.rs`,
+1. Clone upstream at the new commit; `git apply sstv-relock.patch
+   sstv-layout-api.patch` (drop the re-lock patch once upstream re-locks
+   on its own; the layout one once it exposes the sequence); copy `src/`, `build.rs`,
    `README.md`, `LICENSE` over `vendor/sstv/`, keep our `Cargo.toml` there
    unless upstream's dependencies changed; update the commit above.
 2. `tools/build-sstv-wasm.sh` (refreshes `Cargo.lock` and `sstv.wasm`).

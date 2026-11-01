@@ -17,13 +17,17 @@
 //   - a 20 ms audio frame inserted or dropped mid-picture (a TX underrun, a
 //     lost packet) garbles a few rows and the rest follows the signal again
 //     (the vendored crate's re-lock patch);
-//   - config {force} (the START button) decodes the lines from the next
-//     sample in the pinned mode, and the next picture by its header;
-//   - white noise at +12 dB SNR (in 2.5 kHz) for Scottie 1 and +15 dB for
-//     Robot 36 (its 9 ms syncs make it the harder one; +12 dB is marginal)
-//     through the worker's quadrature front end still reads the VIS and
-//     delivers every row; the raw path is run at +15 dB for the table only
-//     (it needs ~27 dB), and +12 / +9 / +6 dB are measured and printed.
+//   - 'start' (the START button) pressed mid-picture under AUTO locks on
+//     three sync pulses, names the mode from their spacing and decodes the
+//     lines from the delay buffer on, Scottie 2 clean, Robot 36 at +15 dB,
+//     Martin 1 at +6 dB; a header arriving while that decode still runs
+//     cuts it short and the next picture decodes whole;
+//   - white noise (SNR in 2.5 kHz) through the worker's quadrature front
+//     end and its own VIS search: Scottie 1 at +12 dB, Robot 36 at +15 and
+//     +6 dB, Scottie 2 at +6 dB still read the VIS and deliver every row
+//     (the crate's own search gave up below +12 dB); the raw path is run at
+//     +15 dB for the table only (it needs ~27 dB), +12 / +9 dB and +3 dB
+//     are measured and printed.
 //   `--sweep [mode]` (env SSTV_SWEEP_SNR, SSTV_SWEEP_FE, SSTV_IQ_SMOOTH_MS)
 //   prints the SNR table alone, for tuning the front end.
 // Exit status 0 when everything passes.  Takes ~60 s.
@@ -182,7 +186,9 @@ await run('Robot 36 at +15 dB', 'Robot 36', { snrDb: 15, maxErr: 30 });
 await run('Robot 36 at +15 dB, raw', 'Robot 36', { snrDb: 15, frontend: 'raw', assert: false });
 await run('Robot 36 at +12 dB', 'Robot 36', { snrDb: 12, assert: false });
 await run('Robot 36 at +9 dB', 'Robot 36', { snrDb: 9, assert: false });
-await run('Robot 36 at +6 dB', 'Robot 36', { snrDb: 6, assert: false });
+await run('Robot 36 at +6 dB', 'Robot 36', { snrDb: 6, maxErr: 70 });
+await run('Scottie 2 at +6 dB', 'Scottie 2', { snrDb: 6, maxErr: 70 });
+await run('Scottie 2 at +3 dB', 'Scottie 2', { snrDb: 3, assert: false });
 
 // Two images back to back after a 1 s gap, one stream.
 {
@@ -273,32 +279,50 @@ for (const [label, modeName, insert] of [['20 ms inserted', 'Robot 36', true], [
           `${modeName}, ${label} at 30 %: ${rows.length}/${m.h} rows, ${bad.length} rows garbled (${bad.join(' ')}), error after the jump ${e.toFixed(1)}`);
 }
 
-// START (config {force}): the decoder takes the image to begin at the next
-// sample, no header search -- a picture whose VIS was missed.  The samples
-// after the header (the worker reports its length with the encode) decode
-// from row 0; the following picture, header and all, decodes the normal way.
-{
-    const m = modeByName('Scottie 1');
+// START (the 'start' message): a picture whose VIS was missed. Pressed in
+// the middle of the picture under AUTO, the worker locks on three sync
+// pulses one line apart, names the mode from their spacing (Robot 36 by its
+// 150 ms, not Robot 72's 300) and begins the picture at the first pulse's
+// line out of its delay buffer, so no line heard after the press is lost;
+// the picture comes out shifted up by the lines gone before. The next
+// picture then arrives with its header while that decode still runs out
+// its rows: the VIS cuts the old picture short ('done' incomplete) and the
+// new one decodes whole -- the decoder is never deaf for a mode's duration.
+for (const [modeName, frac, snr, maxErr] of [['Scottie 2', 0.413, 99, 6], ['Robot 36', 0.3, 15, 30], ['Martin 1', 0.3, 6, 40]]) {
+    const m = modeByName(modeName);
     const rgb = testImage(m);
     const tx = await encode(m, rgb, 12000);
-    check(tx.headerSeconds > 1 && tx.headerSeconds < 3, `the encode reports the header length (${tx.headerSeconds.toFixed(2)} s)`);
     const rate = 48000;
-    const lines = resample(tx.int16.slice(Math.round(12000 * tx.headerSeconds)), 12000, rate);
-    await send({ type: 'config', rate, pinMode: m.id, force: true });
+    const hdr = Math.round(12000 * tx.headerSeconds);
+    const lineSamples = (tx.int16.length - hdr) / m.h;
+    const startRow = Math.floor(m.h * frac);
+    const cut = hdr + Math.round(lineSamples * (startRow + 0.37));          // mid-line
+    await send({ type: 'config', rate, pinMode: -1 });
+    await send({ type: 'start', pinMode: -1 });
     take('row'); take('image'); take('done');
-    await feed(withNoise(lines, rate, 99, { lead: 0, tail: 1 }), rate);
-    await until(() => replies.some(msg => msg.type === 'done'), 5000).catch(() => {});
-    let rows = take('row'), done = take('done'), img = take('image');
-    const first = rows.length ? Math.min(...rows.map(r => r.index)) : -1;
-    const e = rows.length ? errorOf(rows, rgb, m.w) : 999;
-    check(img.length === 1 && img[0].mode === m.id && first === 0 && rows.length >= m.h - 2 && done.length === 1 && e < 20,
-          `START decodes the lines from this moment (row ${first}, ${rows.length}/${m.h} rows, error ${e.toFixed(1)})`);
-    // The next picture, with its header, through the same (still pinned) config.
+    await feed(withNoise(resample(tx.int16.slice(cut), 12000, rate), rate, snr, { lead: 0, tail: 1 }), rate);
+    const rows = take('row'), imgs = take('image');
+    // Row k of the decode is picture row startRow + shift + k, for the shift the lines fit best.
+    let best = null;
+    for (const shift of [0, 1, 2, 3]) {
+        const fit = rows.filter(r => r.index >= 3 && r.index + startRow + shift < m.h).map(r => ({ index: r.index + startRow + shift, rgb: r.rgb }));
+        const e = fit.length ? errorOf(fit, rgb, m.w) : 999;
+        if (!best || e < best.e) best = { shift, e, n: fit.length };
+    }
+    const label = `START mid-picture, ${modeName} at ${snr} dB`;
+    check(imgs.length === 1 && imgs[0].mode === m.id && imgs[0].via === 'sync', `${label}: the sync pulses name ${imgs.length ? MODES[imgs[0].mode].name + ' (' + imgs[0].via + ')' : 'nothing'}`);
+    check(best.n >= m.h - startRow - 8 && best.shift <= 3 && best.e < maxErr, `${label}: lines from ${best.shift} rows after the press, ${best.n} rows, error ${best.e.toFixed(1)} < ${maxErr}`);
+    check(take('done').length === 0, `${label}: the decode is still running out its rows`);
+    // The next picture, header and all, while the old decode still runs.
     const tx2 = await encode(m, rgb, 12000);
     await feed(withNoise(resample(tx2.int16, 12000, rate), rate, 99), rate);
-    await until(() => replies.some(msg => msg.type === 'done'), 5000).catch(() => {});
-    rows = take('row'); done = take('done');
-    check(rows.length >= m.h - 2 && done.length === 1 && take('image').length === 1, `after a START the next picture decodes by its header (${rows.length}/${m.h} rows)`);
+    await until(() => replies.filter(msg => msg.type === 'done').length >= 2, 5000).catch(() => {});
+    const iImg = replies.findIndex(r => r.type === 'image');
+    const rows2 = iImg >= 0 ? replies.slice(iImg).filter(r => r.type === 'row') : [];
+    const done = take('done'), imgs2 = take('image');
+    take('row');
+    check(done.length === 2 && done[0].complete === false && imgs2.length === 1 && imgs2[0].via === 'vis', `${label}: the next header cuts the old picture short (${done.map(d => d.complete).join(', ')})`);
+    check(done.length === 2 && done[1].complete === true && rows2.length >= m.h - 2 && errorOf(rows2, rgb, m.w) < 6, `${label}: and the next picture decodes whole (${rows2.length}/${m.h} rows)`);
 }
 
 // Spectrum messages carry the 1000-2500 Hz band.
