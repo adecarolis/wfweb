@@ -22,7 +22,11 @@ This README is the overview. The **[wiki](https://github.com/adecarolis/wfweb/wi
 
 **CW** — built-in decoder and keyer, editable macros, break-in, a paddle through a MIDI controller or USB keyboard adapter, and one-click QSO logging.
 
+![RTTY bar — AFSK over in progress, macros and the passband tuning strip](rtty.png)
+
 **RTTY** — a neural decoder with a passband waterfall and one-click auto-tune; type-ahead AFSK transmit through the rig's data input, with macros.
+
+![SSTV panel — a Martin 2 picture received, a Scottie 2 picture with a text overlay ready to send](sstv.png)
 
 **SSTV** — receive and send pictures in 18 modes, with a camera or file as the source, a text overlay, and a gallery every device sees.
 
