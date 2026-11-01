@@ -208,8 +208,12 @@ try {
   check((await cmds(A, 'enableMic')).some(c => c.value === true), 'A: the over is bracketed with enableMic');
   check(await A.evaluate(() => window.SstvPanel.state.txBusy && window.digiTxActive === true), 'A: TX is marked busy and the ALC loop armed');
   await A.waitForTimeout(3000);
+  // The sweep covers the picture's rectangle inside the object-fit canvas
+  // (4:3 in a frame of whatever shape the layout leaves it).
   check(await A.evaluate(() => { const sw = document.getElementById('sstvTxSweep'), cv = document.getElementById('sstvTxCanvas');
-        const p = parseFloat(sw.style.getPropertyValue('--p')); return getComputedStyle(sw).display === 'block' && p > 0 && p < 0.5 && Math.abs(sw.clientWidth - cv.clientWidth) <= 2; }),
+        const p = parseFloat(sw.style.getPropertyValue('--p'));
+        const s = Math.min(cv.clientWidth / cv.width, cv.clientHeight / cv.height), dw = cv.width * s, dh = cv.height * s;
+        return getComputedStyle(sw).display === 'block' && p > 0 && p < 0.5 && Math.abs(sw.clientWidth - dw) <= 2 && Math.abs(sw.clientHeight - dh) <= 2; }),
         'A: the sweep crosses the TX picture while it goes out');
 
   // B: the VIS, the rows, the gallery.

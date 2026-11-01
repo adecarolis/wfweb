@@ -583,7 +583,7 @@ function js8View() {
 }
 
 // SSTV keeps its state on SstvPanel.state: the RX / TX canvases, the status
-// line, the progress and the mode names; the gallery is left out (it is the
+// line, the TX sweep and the mode names; the gallery is left out (it is the
 // same picture again).
 function sstvView() {
     var s = global.SstvPanel && global.SstvPanel.state;
@@ -593,10 +593,9 @@ function sstvView() {
         rx: s.rxCanvas, tx: s.txCanvas,
         rxName: s.rx ? s.rx.name : (s.lastRx ? s.lastRx.name : ''),
         rxLine: s.rx ? s.rx.rows + ' / ' + s.rx.h : '',
-        rxFrac: s.progress || 0,
         txName: picked('sstvTxModeSel') || s.txModeName,
         txBusy: !!s.txBusy,
-        txFrac: s.txBusy && s.txSeconds && s.txStartedAt ? Math.min(1, (Date.now() - s.txStartedAt) / 1000 / s.txSeconds) : 0,
+        txFrac: s.txBusy ? (s.txFrac || 0) : 0,
         status: s.status || '',
         rxMode: picked('sstvRxModeSel') || 'AUTO',
         strip: byId('sstvScopeCanvas')
@@ -1023,8 +1022,10 @@ function drawJs8Body(r, v) {
 
 // --- SSTV -------------------------------------------------------------------
 
-// The RX picture on the left, the TX picture on the right, each with its
-// progress, the tuning strip under them.
+// The RX picture on the left, the TX picture on the right, the tuning strip
+// under them.  The RX picture is its own progress (it fills row by row);
+// the TX picture carries the panel's sweep: a line at the row going out,
+// what is still to come dimmed under it.
 function drawSstvBody(r, v) {
     var g = r.g, W = VIDEO.w, H = VIDEO.h, T = r.theme, y = HEADER_H;
 
@@ -1038,8 +1039,8 @@ function drawSstvBody(r, v) {
     y += 36;
 
     var stripH = 64, gap = 12, colW = Math.floor((W - 3 * gap) / 2);
-    var picH = H - y - stripH - 70;
-    function card(x, title, sub, cv, frac, tx) {
+    var picH = H - y - stripH - 56;
+    function card(x, title, sub, cv, sweep) {
         g.font = 'bold 14px ' + T.mono;
         g.fillStyle = T.dim; g.fillText(title, x + 4, y + 12);
         g.textAlign = 'right'; g.fillStyle = T.text; g.fillText(sub, x + colW - 4, y + 12); g.textAlign = 'left';
@@ -1047,13 +1048,21 @@ function drawSstvBody(r, v) {
         g.fillStyle = '#000'; g.fillRect(x, top, colW, picH);
         if (cv && cv.width && cv.height) {
             var s = Math.min(colW / cv.width, picH / cv.height), dw = cv.width * s, dh = cv.height * s;
-            g.drawImage(cv, x + (colW - dw) / 2, top + (picH - dh) / 2, dw, dh);
+            var dx = x + (colW - dw) / 2, dy = top + (picH - dh) / 2;
+            g.drawImage(cv, dx, dy, dw, dh);
+            if (sweep != null) {
+                var ly = Math.round(dy + dh * Math.max(0, Math.min(1, sweep)));
+                g.fillStyle = 'rgba(0, 0, 0, 0.62)'; g.fillRect(dx, ly, dw, dy + dh - ly);
+                g.save();
+                g.shadowColor = '#c9f'; g.shadowBlur = 8;
+                g.fillStyle = '#fff'; g.fillRect(dx, ly - 1, dw, 3);
+                g.restore();
+            }
         }
-        drawProgress(g, x, top + picH + 6, colW, frac, tx);
     }
-    card(gap, 'RX', v.rxName + (v.rxLine ? '  line ' + v.rxLine : ''), v.rx, v.rxFrac, false);
-    card(gap * 2 + colW, 'TX', v.txName, v.tx, v.txFrac, v.txBusy);
-    y += 22 + picH + 24;
+    card(gap, 'RX', v.rxName + (v.rxLine ? '  line ' + v.rxLine : ''), v.rx, null);
+    card(gap * 2 + colW, 'TX', v.txName, v.tx, v.txBusy ? v.txFrac : null);
+    y += 22 + picH + 10;
     drawSource(g, v.strip, gap, y, W - 2 * gap, stripH);
 }
 

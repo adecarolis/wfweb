@@ -326,8 +326,12 @@ delay buffer, so the lines heard before the press are kept and the
 picture comes out shifted up by the lines gone before; that picture's
 `done` or DISCARD puts the worker back on the RX setting. With a mode
 pinned the worker locks on sync pulses without a START, as the crate did. **TX**: file / camera / gallery picture ->
-canvas at the mode's resolution (FIT letterbox / FILL crop, overlay text
-defaulting to the callsign, an optional PIP: a gallery picture in a
+canvas at the mode's resolution (FIT letterbox / FILL crop, a text
+overlay defaulting to the callsign: a one-row textarea that grows to four
+lines on Shift+Enter like the RTTY compose box, with a style row -- size
+S/M/L as a fraction of the picture height, TOP / MIDDLE / BOTTOM, LEFT /
+CENTER / RIGHT, a colour swatch cycle, BOX for a dark band behind it --
+in `wfSstvOverlayStyle`, `drawOverlayText`; an optional PIP: a gallery picture in a
 corner, `S.pip` / `S.pipCorner`, the PIP button walks the corners then
 off) -> worker `encode` at 12 kHz -> the RTTY/FT8 recipe (`enableMic
 true`, `streamDigiAudio`, `setPTT {digital: true}`, `digiTxActive` for
@@ -356,7 +360,9 @@ it, being one origin).
 `scripts/testrig.sh` passes `--sstv-dir .testrig/sstv_<i>` so bench
 pictures stay out of the operator's data dir. The HTTP reader now caps any
 request at 16 MB (413), a picture at 4 MB. The recorder draws the panel
-(`sstvView` / `drawSstvBody`). **Tests**: `tests/test_sstv.py` runs
+(`sstvView` / `drawSstvBody`) with the same sweep over the TX picture and
+no progress bars: the RX picture filling row by row is its own progress,
+so the panel has no RX bar either. **Tests**: `tests/test_sstv.py` runs
 `tests/sstv_codec_sim.mjs` (the real worker under node: clean / 8 kHz /
 clock error / back to back / reset / pinned / a 20 ms frame inserted and
 dropped / START mid-picture with the mode from the sync spacing and a

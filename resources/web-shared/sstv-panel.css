@@ -90,14 +90,16 @@ body.sstv-open #bottomBar { grid-row: 5; }
     background: #fff;
     box-shadow: 0 0 6px 2px var(--mode-accent);
 }
-.sstv-card .wf-progress { flex: 0 0 auto; }
 .sstv-card-btns { display: flex; gap: 4px; flex-wrap: wrap; }
 .sstv-card-btns .wf-btn { flex: 1 1 auto; padding: 5px 6px; }
 .sstv-card-btns .wf-btn:disabled { opacity: 0.45; cursor: default; }
 .sstv-card-btns .wf-btn[hidden] { display: none; }
 .sstv-bar.sstv-tx #sstvSendBtn { opacity: 0.45; }
-.sstv-overlay-row { display: flex; gap: 4px; }
-.sstv-overlay-input { flex: 1 1 auto; min-width: 0; text-transform: uppercase; }
+.sstv-overlay-row { display: flex; gap: 4px; flex: 0 0 auto; }
+.sstv-overlay-row[hidden] { display: none; }
+.sstv-overlay-input { flex: 1 1 auto; min-width: 0; text-transform: uppercase; resize: none; overflow-y: auto; line-height: 1.3; box-sizing: border-box; }
+.sstv-overlay-style .wf-btn { flex: 1 1 0; padding: 4px 4px; font-size: var(--fs-xs); }
+.sstv-swatch span { display: inline-block; width: 14px; height: 14px; border-radius: 2px; border: 1px solid rgba(255, 255, 255, 0.5); vertical-align: middle; }
 /* No camera on a desktop (no `capture` support): the file picker does the job */
 @media (hover: hover) and (pointer: fine) { .sstv-camera { display: none; } }
 

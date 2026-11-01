@@ -13,7 +13,9 @@
 //     missed: the crate's headerless start;
 //   - TX: an image from a file, the phone camera or the gallery, fitted
 //     (letterbox) or filled (centre crop) to the TX MODE's resolution with
-//     an optional text overlay (the callsign by default) and an optional
+//     an optional text overlay (the callsign by default; up to four lines,
+//     Shift+Enter breaks one; size, top / middle / bottom, alignment,
+//     colour and a dark band behind it from the style row) and an optional
 //     picture-in-picture from the gallery (PIP, a corner), synthesized by
 //     the worker at 12 kHz and keyed through the FT8 TX path
 //     (streamDigiAudio, enableMic, setPTT {digital: true}); while it goes
@@ -37,11 +39,17 @@
 // sets their mode.  The mic level goes to DIGI_MOD_LEVEL while the panel is
 // open, as the DIGI bar does, and the VFO snapshot is put back on close.
 // Settings: wfSstvTxMode, wfSstvRxMode, wfSstvFit, wfSstvOverlay,
-// wfSstvOverlayOn, wfSstvPipCorner, wfSstvOpen.
+// wfSstvOverlayOn, wfSstvOverlayStyle, wfSstvPipCorner, wfSstvOpen.
 (function () {
     'use strict';
 
     var STRIP_LO = 1000, STRIP_HI = 2500;
+    // The text overlay's style row: size as a fraction of the picture height,
+    // vertical position, alignment, colour.
+    var OV_MAX_LINES = 4;
+    var OV_SIZES = ['s', 'm', 'l'], OV_SIZE_DIV = { s: 16, m: 10, l: 7 };
+    var OV_POSITIONS = ['top', 'mid', 'bot'], OV_ALIGNS = ['left', 'center', 'right'];
+    var OV_COLORS = ['#fff', '#ff0', '#0ff', '#0f0', '#f0f', '#f44', '#000'];
     var MARKS = [{ hz: 1200, label: 'SYNC' }, { hz: 1500, label: 'BLACK' }, { hz: 1900, label: '1900' }, { hz: 2300, label: 'WHITE' }];
     var LEADER_HZ = 1900;
     var TX_RATE = 12000;
@@ -69,12 +77,13 @@
         modes: [],                          // from the worker: [{id, key, name, w, h}]
         txModeName: 'Robot 36', rxModeName: 'AUTO',
         fit: 'fit', overlayOn: true, overlayText: '',
+        overlayStyle: { size: 'm', pos: 'bot', align: 'left', color: '#fff', box: false },
         inputRate: 0,
         rx: null,                           // {mode, name, w, h, rows, startedAt, via: 'vis' | 'sync'}
         rxForce: null,                      // START pressed: {mode} (null = the worker tells it from the sync pulses), until that picture ends
         rxCanvas: null, txCanvas: null,
-        status: 'Waiting for a signal…', progress: 0,
-        txBusy: false, txSeconds: 0, txHeaderSeconds: 0, txStartedAt: 0, txImage: null, txName: '',
+        status: 'Waiting for a signal…',
+        txBusy: false, txSeconds: 0, txHeaderSeconds: 0, txStartedAt: 0, txFrac: 0, txImage: null, txName: '',
         pip: null, pipCorner: 'tr',         // picture-in-picture on the TX image: an ImageBitmap / <img> and its corner
         micWasOn: false, savedModLevel: -1,
         gallery: [], galleryKind: '',
@@ -123,7 +132,6 @@
               '<section class="sstv-card sstv-card-rx" data-pane="rx">' +
                 '<div class="sstv-card-head"><span>RX</span><span id="sstvRxMeta" class="sstv-meta"></span></div>' +
                 '<div class="sstv-frame"><canvas id="sstvRxCanvas" width="320" height="256"></canvas></div>' +
-                '<div class="wf-progress"><div id="sstvRxProgress" class="wf-progress-bar"></div></div>' +
                 '<div class="sstv-card-btns">' +
                   '<button id="sstvRxStartBtn" class="wf-btn" title="Start decoding now, for a picture whose header was missed: in the RX mode, or under AUTO the last received mode (else the TX mode)">START</button>' +
                   '<button id="sstvRxSaveBtn" class="wf-btn" title="Download the image on screen as PNG">SAVE</button>' +
@@ -144,8 +152,15 @@
                   '<button id="sstvAbortBtn" class="wf-btn danger" title="Stop transmitting">ABORT</button>' +
                 '</div>' +
                 '<div class="sstv-overlay-row">' +
-                  '<button id="sstvOverlayBtn" class="wf-btn toggle" title="Write this text on the picture (bottom left)">TEXT</button>' +
-                  '<input type="text" id="sstvOverlayInput" class="wf-field sstv-overlay-input" maxlength="24" autocomplete="off" autocapitalize="characters" placeholder="CALLSIGN">' +
+                  '<button id="sstvOverlayBtn" class="wf-btn toggle" title="Write this text on the picture">TEXT</button>' +
+                  '<textarea id="sstvOverlayInput" class="wf-field sstv-overlay-input" rows="1" maxlength="96" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="CALLSIGN" title="Up to four lines: Shift+Enter breaks a line"></textarea>' +
+                '</div>' +
+                '<div id="sstvOverlayStyle" class="sstv-overlay-row sstv-overlay-style">' +
+                  '<button id="sstvOvSizeBtn" class="wf-btn" title="Text size">M</button>' +
+                  '<button id="sstvOvPosBtn" class="wf-btn" title="Where the text goes: top, middle or bottom of the picture">BOTTOM</button>' +
+                  '<button id="sstvOvAlignBtn" class="wf-btn" title="Left, centred or right">LEFT</button>' +
+                  '<button id="sstvOvColorBtn" class="wf-btn sstv-swatch" title="Text colour"><span></span></button>' +
+                  '<button id="sstvOvBoxBtn" class="wf-btn toggle" title="A dark band behind the text, for a busy picture">BOX</button>' +
                 '</div>' +
               '</section>' +
               '<section class="sstv-card sstv-card-gallery" data-pane="gallery">' +
@@ -240,8 +255,31 @@
             savePrefs(); renderTxImage(); updateButtons();
         });
         var ov = $('sstvOverlayInput');
-        ov.addEventListener('input', function () { S.overlayText = ov.value.toUpperCase(); savePrefs(); renderTxImage(); });
+        ov.addEventListener('keydown', function (e) {
+            e.stopPropagation();           // the page's shortcuts must not see typing
+            if (e.key !== 'Enter') return;
+            // Shift+Enter breaks a line (the textarea's own insert), up to
+            // OV_MAX_LINES; Enter alone is done: it closes a phone keyboard.
+            if (e.shiftKey && ov.value.split('\n').length < OV_MAX_LINES) return;
+            e.preventDefault();
+            if (!e.shiftKey) ov.blur();
+        });
+        ov.addEventListener('input', function () { S.overlayText = ov.value.toUpperCase(); fitOverlayInput(); savePrefs(); renderTxImage(); });
         window.addEventListener('appCallsignChanged', function () { if (!S.overlayText) renderTxImage(); setOverlayPlaceholder(); });
+        function styleBtn(id, key, list) {
+            $(id).addEventListener('click', function () {
+                S.overlayStyle[key] = list[(list.indexOf(S.overlayStyle[key]) + 1) % list.length];
+                savePrefs(); renderTxImage(); updateButtons();
+            });
+        }
+        styleBtn('sstvOvSizeBtn', 'size', OV_SIZES);
+        styleBtn('sstvOvPosBtn', 'pos', OV_POSITIONS);
+        styleBtn('sstvOvAlignBtn', 'align', OV_ALIGNS);
+        styleBtn('sstvOvColorBtn', 'color', OV_COLORS);
+        $('sstvOvBoxBtn').addEventListener('click', function () {
+            S.overlayStyle.box = !S.overlayStyle.box;
+            savePrefs(); renderTxImage(); updateButtons();
+        });
         $('sstvGallery').addEventListener('click', function (e) {
             var tile = e.target.closest('.sstv-thumb');
             if (tile) openViewer(tile.dataset.id);
@@ -305,11 +343,17 @@
             S.fit = localStorage.getItem('wfSstvFit') === 'fill' ? 'fill' : 'fit';
             S.overlayOn = localStorage.getItem('wfSstvOverlayOn') !== '0';
             S.overlayText = (localStorage.getItem('wfSstvOverlay') || '').toUpperCase();
+            var st = JSON.parse(localStorage.getItem('wfSstvOverlayStyle') || '{}') || {};
+            if (OV_SIZES.indexOf(st.size) >= 0) S.overlayStyle.size = st.size;
+            if (OV_POSITIONS.indexOf(st.pos) >= 0) S.overlayStyle.pos = st.pos;
+            if (OV_ALIGNS.indexOf(st.align) >= 0) S.overlayStyle.align = st.align;
+            if (OV_COLORS.indexOf(st.color) >= 0) S.overlayStyle.color = st.color;
+            S.overlayStyle.box = !!st.box;
             var c = localStorage.getItem('wfSstvPipCorner');
             if (PIP_CORNERS.indexOf(c) >= 0) S.pipCorner = c;
         } catch (e) { /* no storage */ }
         var ov = $('sstvOverlayInput');
-        if (ov) ov.value = S.overlayText;
+        if (ov) { ov.value = S.overlayText; fitOverlayInput(); }
     }
     function savePrefs() {
         try {
@@ -318,6 +362,7 @@
             localStorage.setItem('wfSstvFit', S.fit);
             localStorage.setItem('wfSstvOverlayOn', S.overlayOn ? '1' : '0');
             localStorage.setItem('wfSstvOverlay', S.overlayText);
+            localStorage.setItem('wfSstvOverlayStyle', JSON.stringify(S.overlayStyle));
             localStorage.setItem('wfSstvPipCorner', S.pipCorner);
         } catch (e) { /* no storage */ }
     }
@@ -326,6 +371,16 @@
         if (ov) ov.placeholder = myCall() || 'CALLSIGN';
     }
     function overlayText() { return S.overlayOn ? (S.overlayText || myCall()) : ''; }
+    // The text box is a one-row textarea that grows with its lines
+    // (Shift+Enter), up to OV_MAX_LINES, like the RTTY compose box.
+    function fitOverlayInput() {
+        var ov = $('sstvOverlayInput');
+        if (!ov) return;
+        if (!ov.offsetParent) { ov.style.height = ''; return; }   // hidden: nothing to measure (show() fits it)
+        ov.style.height = 'auto';
+        var line = parseFloat(getComputedStyle(ov).lineHeight) || 18;
+        ov.style.height = Math.min(ov.scrollHeight + 2, OV_MAX_LINES * line + 14) + 'px';
+    }
 
     function populateModes() {
         var rx = $('sstvRxModeSel'), tx = $('sstvTxModeSel');
@@ -402,6 +457,7 @@
         setupStore();
         refreshGallery();
         setPane(S.pane);
+        fitOverlayInput();
         setStatus('Waiting for a signal…');
         sizeScope();
         clearScope();
@@ -457,7 +513,6 @@
     function stopWorker() {
         if (worker) { worker.terminate(); worker = null; }
         S.rx = null; S.inputRate = 0;
-        setProgress('sstvRxProgress', 0);
     }
     function configureWorker() {
         if (!worker || !S.modes.length) return;
@@ -467,7 +522,6 @@
         worker.postMessage({ type: 'config', rate: rate, pinMode: pin ? pin.id : -1 });
         S.rx = null;
         S.rxForce = null;
-        setProgress('sstvRxProgress', 0);
         $('sstvRxMeta').textContent = pin ? pin.name : 'AUTO';
     }
     // START: a picture whose VIS was missed. The worker locks on the next
@@ -481,7 +535,6 @@
         S.rx = null;
         S.rxForce = { mode: pinned };
         worker.postMessage({ type: 'start', pinMode: pinned ? pinned.id : -1 });
-        setProgress('sstvRxProgress', 0);
         setStatus((pinned ? pinned.name + ' · ' : '') + 'START · waiting for sync pulses…');
         $('sstvRxMeta').textContent = pinned ? pinned.name : 'START';
     }
@@ -503,7 +556,6 @@
                 g.fillStyle = '#000'; g.fillRect(0, 0, m.w, m.h);
                 setStatus(S.rx.name + (m.via === 'sync' ? ' · locked on the sync pulses' : ' · receiving'));
                 $('sstvRxMeta').textContent = S.rx.name + ' ' + m.w + '×' + m.h;
-                setProgress('sstvRxProgress', 0);
                 break;
             }
             case 'row': {
@@ -513,7 +565,6 @@
                 for (var x = 0, p = 0, q = 0; x < S.rx.w; x++, p += 3, q += 4) { d[q] = src[p]; d[q + 1] = src[p + 1]; d[q + 2] = src[p + 2]; d[q + 3] = 255; }
                 ctx.putImageData(img, 0, m.index);
                 S.rx.rows = Math.max(S.rx.rows, m.index + 1);
-                setProgress('sstvRxProgress', S.rx.rows / S.rx.h);
                 setStatus(S.rx.name + ' · line ' + S.rx.rows + '/' + S.rx.h);
                 break;
             }
@@ -547,7 +598,6 @@
         S.rx = null;
         var forced = S.rxForce;
         S.rxForce = null;
-        setProgress('sstvRxProgress', 1);
         setStatus(rx.name + (complete ? ' · done' : ' · ended at line ' + rx.rows) + ' · saving…');
         var meta = { kind: 'rx', ts: new Date().toISOString(), mode: rx.name, freqHz: rx.freqHz || host('currentFreq') || 0, call: myCall(), complete: complete, w: rx.w, h: rx.h };
         S.rxCanvas.toBlob(function (blob) {
@@ -568,15 +618,9 @@
         else if (worker) worker.postMessage({ type: 'reset' });
         var g = S.rxCanvas.getContext('2d');
         g.fillStyle = '#000'; g.fillRect(0, 0, S.rxCanvas.width, S.rxCanvas.height);
-        setProgress('sstvRxProgress', 0);
         setStatus('Waiting for a signal…');
     }
     function setStatus(t) { S.status = t; var el = $('sstvStatus'); if (el) el.textContent = t; }
-    function setProgress(id, frac) {
-        var el = $(id);
-        if (el) el.style.width = (Math.max(0, Math.min(1, frac)) * 100) + '%';
-        if (id === 'sstvRxProgress') S.progress = frac;
-    }
 
     // ------------------------------------------------------------------
     // TX
@@ -660,18 +704,43 @@
             g.fillStyle = '#fff'; g.fillRect(px - bd, py - bd, pw + 2 * bd, ph + 2 * bd);
             g.drawImage(S.pip, px, py, pw, ph);
         }
-        var text = overlayText();
-        if (text) {
-            var px = Math.max(14, Math.round(H / 10));
-            g.font = 'bold ' + px + 'px sans-serif';
-            g.textBaseline = 'bottom';
-            g.lineJoin = 'round';
-            g.lineWidth = Math.max(2, px / 6);
-            g.strokeStyle = '#000'; g.strokeText(text, px / 2, H - px / 3);
-            g.fillStyle = '#fff'; g.fillText(text, px / 2, H - px / 3);
-            g.textBaseline = 'alphabetic';
-        }
+        drawOverlayText(g, W, H);
         updateButtons();
+    }
+    // The text overlay: up to OV_MAX_LINES lines in the style row's size
+    // (a fraction of the picture height), vertical position and alignment,
+    // outlined in the opposite shade so it reads on any picture, and with
+    // BOX a dark band behind the block.
+    function drawOverlayText(g, W, H) {
+        var text = overlayText();
+        if (!text) return;
+        var st = S.overlayStyle, lines = text.split('\n').slice(0, OV_MAX_LINES);
+        while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+        if (!lines.length) return;
+        var px = Math.max(12, Math.round(H / OV_SIZE_DIV[st.size])), lh = Math.round(px * 1.2), mg = Math.round(px / 2);
+        var blockH = lh * lines.length;
+        var y0 = st.pos === 'top' ? mg : st.pos === 'mid' ? Math.round((H - blockH) / 2) : H - mg - blockH;
+        var x = st.align === 'center' ? W / 2 : st.align === 'right' ? W - mg : mg;
+        g.font = 'bold ' + px + 'px sans-serif';
+        g.textAlign = st.align === 'center' ? 'center' : st.align === 'right' ? 'right' : 'left';
+        g.textBaseline = 'top';
+        var i, wmax = 0;
+        for (i = 0; i < lines.length; i++) wmax = Math.max(wmax, g.measureText(lines[i]).width);
+        if (st.box) {
+            var pad = Math.round(px / 4), bw = Math.min(W, wmax + 2 * pad);
+            var bx = st.align === 'center' ? (W - bw) / 2 : st.align === 'right' ? W - mg + pad - bw : mg - pad;
+            g.fillStyle = 'rgba(0, 0, 0, 0.55)';
+            g.fillRect(Math.max(0, bx), y0 - pad, bw, blockH + 2 * pad);
+        }
+        g.lineJoin = 'round';
+        g.lineWidth = Math.max(2, px / 6);
+        g.strokeStyle = st.color === '#000' ? '#fff' : '#000';
+        g.fillStyle = st.color;
+        for (i = 0; i < lines.length; i++) {
+            g.strokeText(lines[i], x, y0 + i * lh);
+            g.fillText(lines[i], x, y0 + i * lh);
+        }
+        g.textAlign = 'left'; g.textBaseline = 'alphabetic';
     }
     function sendImage() {
         if (S.txBusy || !S.txImage || !worker) return;
@@ -759,6 +828,13 @@
         $('sstvFitBtn').textContent = S.fit === 'fill' ? 'FILL' : 'FIT';
         $('sstvFitBtn').classList.toggle('active', S.fit === 'fill');
         $('sstvOverlayBtn').classList.toggle('active', S.overlayOn);
+        var st = S.overlayStyle;
+        $('sstvOverlayStyle').hidden = !S.overlayOn;
+        $('sstvOvSizeBtn').textContent = st.size.toUpperCase();
+        $('sstvOvPosBtn').textContent = { top: 'TOP', mid: 'MIDDLE', bot: 'BOTTOM' }[st.pos];
+        $('sstvOvAlignBtn').textContent = { left: 'LEFT', center: 'CENTER', right: 'RIGHT' }[st.align];
+        $('sstvOvColorBtn').firstChild.style.background = st.color;
+        $('sstvOvBoxBtn').classList.toggle('active', !!st.box);
         var pip = $('sstvPipBtn');
         pip.hidden = !S.pip;
         pip.textContent = 'PIP ' + S.pipCorner.toUpperCase();
