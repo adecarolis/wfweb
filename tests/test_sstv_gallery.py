@@ -11,9 +11,11 @@ session's wfweb (default --sstv-dir under the test HOME).
 """
 
 import json
+import socket
 import struct
 import time
 import zlib
+from urllib.parse import urlsplit
 
 import pytest
 import requests
@@ -123,10 +125,24 @@ def test_refusals(base):
 
 
 def test_oversize_request_is_refused_early(base):
-    """The HTTP reader caps any request at 16 MB (there was no cap)."""
-    r = requests.post(f"{base}?mode=X", data=b"\x89PNG\r\n\x1a\n" + b"\x00" * (17 * 1024 * 1024),
-                      headers={"Content-Type": "image/png"}, timeout=60)
-    assert r.status_code == 413
+    """The HTTP reader caps any request at 16 MB (there was no cap): a
+    Content-Length over it gets 413 before any of the body is read.  Headers
+    only, on a raw socket: the server closes on the 413, and with upload
+    data still unread that close is a reset, which on the CI runners beat
+    requests to the reply."""
+    url = urlsplit(base)
+    with socket.create_connection((url.hostname, url.port), timeout=10) as s:
+        s.sendall(f"POST {url.path}?mode=X HTTP/1.1\r\n"
+                  f"Host: {url.netloc}\r\n"
+                  "Content-Type: image/png\r\n"
+                  f"Content-Length: {17 * 1024 * 1024}\r\n\r\n".encode())
+        reply = b""
+        while b"\r\n" not in reply:
+            data = s.recv(4096)
+            if not data:
+                break
+            reply += data
+    assert reply.startswith(b"HTTP/1.1 413 ")
 
 
 def test_change_is_broadcast(wfweb_instance, base):
