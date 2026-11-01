@@ -717,6 +717,10 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 
 ### Web UI Command Flow
 - `enableMic` — mic on/off (ALSA setup/teardown, DATA MOD switch)
+  On iOS (`micFollowsPtt`, both forks) MIC ON only arms the mic: the browser
+  capture is open from a voice `setPTT true` to its `false` (hooked in `send()`),
+  because WebKit plays the receiver several times quieter while a capture is
+  open (#151). `tests/mic_ptt_browser.mjs` via `tests/test_mic_ptt.py`.
 - `setPTT` — radio TX on/off (CI-V command). EOO generation happens here, NOT in enableMic
 - These are separate commands: mic stays enabled across PTT cycles
 

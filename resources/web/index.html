@@ -3145,6 +3145,9 @@ var micWorkletNode = null;
 var micSeq = 0;
 var micStarting = false;   // startMic() is waiting on getUserMedia / the capture worklet
 var micStartGen = 0;       // bumped by stopMic(): a start still in flight drops what it gets
+var micSource = null;      // the open capture's MediaStreamSource into micWorkletNode
+var micCaptureGen = 0;     // bumped by closeMicCapture(): a reopen in flight drops its stream
+var micVoiceKeyed = false; // a voice setPTT true has gone out and no false since
 var micError = null;       // { state, hint }: why the last start failed, shown on the MIC tile
 var micDeviceLabel = '';   // what getUserMedia handed us, reported to the server
 var micDeviceWarn = '';    // server's micWarning: the mic is the radio's own codec
@@ -3520,6 +3523,7 @@ function scheduleReconnect() {
 }
 
 function send(obj) {
+    if (obj.cmd === 'setPTT') micFollowPtt(obj);
     if (wsTransport) wsTransport.sendCommand(obj);
 }
 
@@ -7647,8 +7651,9 @@ setRxVolume(rxVolume, false);
 // the page name the category (navigator.audioSession.type), and a page-set
 // type overrides WebKit's inference, so claim play-and-record only while the
 // mic is open and go back to ambient (what a page with only Web Audio gets)
-// the rest of the time. The drop while the mic is open is WebKit policy and
-// stays; this ends it when the mic goes off. A no-op everywhere else.
+// the rest of the time. The drop while the mic is open is WebKit policy;
+// this ends it when the mic goes off, and on iOS the mic is only open while
+// keyed (micFollowsPtt). A no-op everywhere else.
 function setAudioSessionType(type) {
     var s = navigator.audioSession;
     if (!s || !('type' in s)) return;
@@ -7707,7 +7712,7 @@ function startPendingAudio() {
 
 function startAudio() {
     audioStartPending = false;
-    if (!micEnabled && !micStarting) setAudioSessionType('ambient');
+    if (!micStream && !micStarting) setAudioSessionType('ambient');
     var primed = audioCtx && !audioGainNode && audioCtx.state !== 'closed'
         && audioCtx.sampleRate === audioSampleRate;
     if (audioCtx && !primed) stopAudio();
@@ -7991,6 +7996,7 @@ function startMic() {
             URL.revokeObjectURL(url);
             if (gen !== micStartGen) return;   // stopMic() already closed it
             micWorkletNode = new AudioWorkletNode(micAudioCtx, 'wfweb-capture-processor');
+            micSource = source;
             source.connect(micWorkletNode);
             micWorkletNode.port.onmessage = function(e) {
                 // Suppress during DIGI TX or TUNE (FT8/JS8/tune audio uses
@@ -8012,6 +8018,7 @@ function startMic() {
                 sendTxAudio(frame);
             };
             micEnabled = true; micStarting = false;
+            if (micFollowsPtt && !micVoiceKeyed) closeMicCapture();
             var en = { cmd: 'enableMic', value: true, device: micDeviceLabel };
             if (micAutoSwitchedFrom) en.autoSwitchedFrom = micAutoSwitchedFrom;
             send(en);
@@ -8026,11 +8033,51 @@ function stopMic() {
     micEnabled = false; micStarting = false; micStartGen++;
     micDeviceLabel = ''; micDeviceWarn = '';
     if (micWorkletNode) { micWorkletNode.disconnect(); micWorkletNode = null; }
-    if (micStream) { micStream.getTracks().forEach(function(t) { t.stop(); }); micStream = null; }
+    closeMicCapture();
     if (micAudioCtx) { micAudioCtx.close(); micAudioCtx = null; }
-    setAudioSessionType('ambient');
     micSeq = 0;
     micRepaint();
+}
+
+// iOS (#151): with the microphone open WebKit keeps the session in
+// play-and-record, and the speaker plays the receiver several times quieter
+// for as long as the capture lasts - setAudioSessionType() only ends that
+// once the mic is closed. Operation is half duplex, so on iOS the capture
+// follows the voice PTT: MIC stays ON (armed: the server keeps its TX audio
+// set up, nothing is asked again), but the microphone itself is open only
+// from a voice key to its unkey, and the receiver plays at full level
+// between overs. iOS takes a moment to open it, so the very start of an over
+// can be lost. Every other browser keeps the mic open while it is ON.
+var micFollowsPtt = /iPhone|iPad|iPod/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+// From send(): every setPTT the page sends. A digital key (FT8, JS8, TUNE,
+// RTTY, SSTV) carries its own audio, so only a voice key opens the mic.
+function micFollowPtt(obj) {
+    micVoiceKeyed = !!obj.value && !obj.digital;
+    if (!micFollowsPtt || !micEnabled) return;
+    if (micVoiceKeyed) openMicCapture(); else closeMicCapture();
+}
+
+function openMicCapture() {
+    if (micStream || !micAudioCtx || !micWorkletNode) return;
+    var gen = ++micCaptureGen;
+    setAudioSessionType('play-and-record');
+    acquireMic().then(function(stream) {
+        if (gen !== micCaptureGen) { stream.getTracks().forEach(function(t) { t.stop(); }); return; }
+        micStream = stream;
+        micSource = micAudioCtx.createMediaStreamSource(stream);
+        micSource.connect(micWorkletNode);
+        if (micAudioCtx.state !== 'running') micAudioCtx.resume().catch(function() {});
+    }).catch(function(err) { if (gen === micCaptureGen) micStartFailed('getUserMedia (PTT) failed:', err); });
+}
+
+// Also cancels a reopen in flight: its callback sees a newer micCaptureGen.
+function closeMicCapture() {
+    micCaptureGen++;
+    if (micSource) { micSource.disconnect(); micSource = null; }
+    if (micStream) { micStream.getTracks().forEach(function(t) { t.stop(); }); micStream = null; }
+    setAudioSessionType('ambient');
 }
 
 function handleAudioData(buffer) {
