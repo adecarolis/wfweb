@@ -187,8 +187,8 @@ The REST port is always web port + 1.
 
 The image points Qt's configuration and data roots at a single `/data`
 directory, so one volume persists everything: the settings file
-(`/data/wfweb/wfweb.conf`), the TLS certificate and the ADIF logbook (both
-under `/data/wfweb/wfweb/`).
+(`/data/wfweb/wfweb.conf`), the TLS certificate, the ADIF logbook and the
+SSTV gallery (all under `/data/wfweb/wfweb/`).
 
 ```bash
 docker run --rm -it \
@@ -282,6 +282,7 @@ Server:
                           (GridTracker, JTAlert, ... via WSJT-X UDP; port 2237)
   --no-remote-log         Disable remote logging even if enabled in settings
   --remote-log-decodes    Also forward FT8/FT4 decodes to the remote logger
+  --sstv-dir <dir>        SSTV gallery (default /data/wfweb/wfweb/sstv)
 
 Audio:
   --audio-system <id>     Audio backend (0=Qt, 1=PortAudio, 2=RtAudio)
