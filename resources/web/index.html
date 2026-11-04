@@ -2617,7 +2617,7 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
                 <span id="digiClock" class="digi-period-clock">15</span>
                 <span class="digi-mobile-break"></span>
                 <span class="digi-field-label">DX:</span>
-                <input type="text" id="digiDxCall" class="digi-callsign-input wf-field" maxlength="10" placeholder="DX" autocomplete="off">
+                <input type="text" id="digiDxCall" class="digi-callsign-input wf-field" maxlength="11" placeholder="DX" autocomplete="off">
                 <button id="digiEnableTxBtn" class="digi-enable-tx-btn wf-btn">Enable TX</button>
                 <button id="digiHaltBtn" class="digi-halt-btn wf-btn danger">Halt TX</button>
                 <button id="digiTuneBtn" class="digi-tune-btn wf-btn">Tune</button>
@@ -2684,7 +2684,7 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
             <div class="digi-settings-modal-title">Station Settings</div>
             <div class="digi-settings-field">
                 <span class="digi-field-label">MY CALL:</span>
-                <input type="text" id="digiMyCall" class="digi-callsign-input wf-field" maxlength="10" placeholder="CALL" autocomplete="off">
+                <input type="text" id="digiMyCall" class="digi-callsign-input wf-field" maxlength="11" placeholder="CALL" autocomplete="off">
             </div>
             <div class="digi-settings-field">
                 <span class="digi-field-label">MY GRID:</span>
@@ -2967,6 +2967,7 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
 <script src="transport/rig-transport.js"></script>
 <script src="transport/websocket-transport.js"></script>
 <script src="urltune.js"></script>
+<script src="digi-msg.js"></script>
 <script src="reporters.js"></script>
 <script src="wf-canvas.js"></script>
 <script src="needle-meter.js"></script>
@@ -10114,7 +10115,10 @@ function checkDigiCallGrid() {
     }
     return true;
 }
-function getDxCall() { return ((document.getElementById('digiDxCall') || {}).value || '').toUpperCase(); }
+function getDxCall() { return ((document.getElementById('digiDxCall') || {}).value || '').toUpperCase().replace(/[<>]/g, ''); }
+// Hashes the decoder must always resolve, like WSJT-X: ours and the DX's. A
+// call first heard as <...> would otherwise never read as addressed to us.
+function digiHashCalls() { return [getMyCall(), getDxCall()]; }
 
 // Creates and resumes the shared TX AudioContext during a user gesture.
 // Must be called from button click handlers — never from timers.
@@ -10464,7 +10468,7 @@ function onFt8DecodeResult(results, decodedSlotIndex) {
     // Expire labels older than 5 slot periods
     wfLabels = wfLabels.filter(function(l) { return decodedSlotIndex - l.slotIndex < 5; });
     for (var j = 0; j < results.length; j++) {
-        var parts = results[j].msg.trim().split(/\s+/);
+        var parts = digiStripHash(results[j].msg).trim().split(/\s+/);
         var isCq = parts[0].toUpperCase() === 'CQ';
         var is73 = parts[parts.length - 1] === '73';
         if (!isCq && !is73) continue; // only show CQ and 73 transmissions on the waterfall
@@ -10515,6 +10519,7 @@ function initFt8Worker() {
         'self.onmessage = function(ev) {',
         '    var d = ev.data;',
         '    if (!hashBook) { try { hashBook = new HashCallBook(); } catch(e) {} }',
+        '    if (hashBook && d.calls) d.calls.forEach(function(c) { hashBook.save(c); });',
         '    var opts = { sampleRate: d.sampleRate, freqLow: d.freqLow, freqHigh: d.freqHigh, depth: d.depth };',
         '    if (hashBook) opts.hashCallBook = hashBook;',
         '    try {',
@@ -10569,7 +10574,7 @@ function triggerDigiDecode() {
             mode: digiMode,
             samples: samples.buffer,
             sampleRate: 12000, freqLow: 300, freqHigh: 2800, depth: 2,
-            id: decodedSlotIndex
+            calls: digiHashCalls(), id: decodedSlotIndex
         }, [samples.buffer]);
         return;
     }
@@ -10579,7 +10584,10 @@ function triggerDigiDecode() {
     if (!lib) { updateDigiStatus('ft8ts not loaded', ''); return; }
     if (!digiHashBook) { try { digiHashBook = new lib.HashCallBook(); } catch(e) { digiHashBook = null; } }
     var opts = { sampleRate: 12000, freqLow: 300, freqHigh: 2800, depth: 2 };
-    if (digiHashBook) opts.hashCallBook = digiHashBook;
+    if (digiHashBook) {
+        digiHashCalls().forEach(function(c) { digiHashBook.save(c); });
+        opts.hashCallBook = digiHashBook;
+    }
     try {
         var results = (digiMode === 'FT8' ? lib.decodeFT8 : lib.decodeFT4)(samples, opts);
         onFt8DecodeResult(results, decodedSlotIndex);
@@ -10614,42 +10622,6 @@ function digiWorkedAdd(call, band) {
     (digiWorked.calls[call] = digiWorked.calls[call] || {})[band] = 1;
     var e = window.dxccLookup ? dxccLookup(call) : null;
     if (e) (digiWorked.ents[e.name] = digiWorked.ents[e.name] || {})[band] = 1;
-}
-
-// A DXpedition / multi-answer decode ("K1ABC RR73; W9XYZ <KH1/KH7Z> -08") is
-// one station sending two messages in a single transmission (#129). Returns
-// them in the usual "TO FROM DATA" form; anything else comes back as it is.
-function digiSplitMulti(msg) {
-    var m = /^(\S+)\s+RR73;\s+(\S+)\s+<(\S+)>\s+(\S+)$/i.exec((msg || '').trim());
-    if (!m) return [msg];
-    return [m[1] + ' ' + m[3] + ' RR73', m[2] + ' ' + m[3] + ' ' + m[4]];
-}
-
-// The form of a decode the QSO logic should read: for a multi-answer, the
-// half addressed to myCall when there is one, else the first.
-function digiStdMsg(msg, myCall) {
-    var halves = digiSplitMulti(msg);
-    var me = (myCall || '').toUpperCase();
-    for (var i = 0; me && i < halves.length; i++) {
-        if (halves[i].toUpperCase().indexOf(me + ' ') === 0) return halves[i];
-    }
-    return halves[0];
-}
-
-// The sender of a decoded FT8/FT4 message ("CQ [mod] CALL GRID", "A B rpt"),
-// or '' when the message has none we can trust (free text, telemetry).
-function digiSenderCall(msg) {
-    var parts = digiSplitMulti(msg || '')[0].trim().toUpperCase().split(/\s+/);
-    var tok = '';
-    if (parts[0] === 'CQ' || parts[0] === 'QRZ' || parts[0] === 'DE') {
-        // Skip modifiers without digits (DX, POTA, FD...) and grids (FN42).
-        for (var p = 1; p < parts.length; p++) {
-            if (/\d/.test(parts[p]) && !/^[A-R]{2}\d{2}$/.test(parts[p])) { tok = parts[p]; break; }
-        }
-    } else if (parts.length >= 2) {
-        tok = parts[1];
-    }
-    return tok.replace(/^<(.*)>$/, '$1');
 }
 
 // Hints for one decode: sender call, its entity, which star (if any) and
@@ -10848,8 +10820,10 @@ function digiRowClick(el, ev) {
     var parts = msg.trim().split(/\s+/);
     var dxEl = document.getElementById('digiDxCall');
     var myCall = getMyCall();
+    // A hash we have not resolved names nobody we could call.
+    if (parts[1] === '<...>') { updateDigiStatus('Call not known yet', ''); return; }
     // Ignore clicks on our own transmissions (FROM = parts[1])
-    var fromCall = /^CQ$/i.test(parts[0]) ? (parts.length >= 3 ? parts[parts.length - 2] : parts[1]) : parts[1];
+    var fromCall = digiSenderCall(msg);
     if (myCall && fromCall && fromCall.toUpperCase() === myCall.toUpperCase()) return;
     // Move the markers to the clicked station (RX always, TX unless Hold TX; Shift = TX only)
     digiApplyClickFreq(freq, ev);
@@ -10860,8 +10834,8 @@ function digiRowClick(el, ev) {
         return;
     }
     if (/^CQ$/i.test(parts[0])) {
-        // CQ <CALL> <GRID> or CQ DX <CALL> <GRID>
-        var cqCall = parts.length >= 3 ? parts[parts.length - 2] : parts[1];
+        // CQ <CALL> <GRID>, CQ DX <CALL> <GRID> or, for a nonstandard call, CQ <CALL>
+        var cqCall = fromCall || parts[1];
         if (dxEl) dxEl.value = cqCall.toUpperCase();
         digiTheirReport = '';
         digiQsoState = 'IDLE';
@@ -10975,7 +10949,7 @@ function digiCallCq() {
     var myCall = getMyCall();
     var myGrid = getMyGrid();
     initDigiTxCtx();
-    var cqMsg = (digiContestMode === 'FD') ? ('CQ FD ' + myCall + ' ' + myGrid) : ('CQ ' + myCall + ' ' + myGrid);
+    var cqMsg = (digiContestMode === 'FD') ? ('CQ FD ' + myCall + ' ' + myGrid) : digiCqText(myCall, myGrid);
     digiQsoState = 'IDLE';
     digiQsoPartner = '';
     digiTheirReport = '';
@@ -11051,13 +11025,15 @@ function getDigiBaseMsgTexts() {
     if (isNaN(rptNum)) rptNum = 0;
     var report = (rptNum >= 0 ? '+' : '') + rptNum;
     var dash = '\u2014'; // em-dash placeholder when no DX
+    var cq = digiCqText(myCall, myGrid);
+    var q = dxCall ? digiQsoTexts(dxCall, myCall, myGrid, report) : null;
     return [
-        dxCall ? (dxCall + ' ' + myCall + ' ' + myGrid)          : ('CQ ' + myCall + ' ' + myGrid),
-        dxCall ? (dxCall + ' ' + myCall + ' ' + report)          : dash,
-        dxCall ? (dxCall + ' ' + myCall + ' R' + report)         : dash,
-        dxCall ? (dxCall + ' ' + myCall + ' RR73')               : dash,
-        dxCall ? (dxCall + ' ' + myCall + ' 73')                 : dash,
-        'CQ ' + myCall + ' ' + myGrid
+        q ? q.call    : cq,
+        q ? q.report  : dash,
+        q ? q.rreport : dash,
+        q ? q.rr73    : dash,
+        q ? q.s73     : dash,
+        cq
     ];
 }
 
@@ -11145,7 +11121,7 @@ function onDigiMsgInput(step) {
     var input = row.querySelector('.digi-msg-row-input');
     var caret = input.selectionStart;
     var filtered = input.value.toUpperCase().split('').filter(function(c) {
-        return FTALPH.indexOf(c) >= 0;
+        return FTALPH.indexOf(c) >= 0 || c === '<' || c === '>'; // <CALL> = hashed
     }).join('');
     if (filtered !== input.value) {
         var drop = input.value.length - filtered.length;
@@ -11263,7 +11239,7 @@ function scheduleDigiMsgPreview(step, text) {
     var warn = row ? row.querySelector('.digi-msg-row-warn') : null;
     if (digiMsgPreviewTimers[step]) { clearTimeout(digiMsgPreviewTimers[step]); digiMsgPreviewTimers[step] = null; }
     if (!warn) return;
-    if (!text || text.length <= 13) { warn.textContent = ''; warn.className = 'digi-msg-row-warn'; return; }
+    if (!text || (text.length <= 13 && text.indexOf('<') < 0)) { warn.textContent = ''; warn.className = 'digi-msg-row-warn'; return; }
     warn.textContent = '…checking'; warn.className = 'digi-msg-row-warn';
     digiMsgPreviewTimers[step] = setTimeout(function() {
         digiMsgPreviewTimers[step] = null;
@@ -11294,7 +11270,7 @@ function requestDigiMsgPreview(step, text) {
         ft8Worker.postMessage({
             mode: digiMode, samples: samples.buffer,
             sampleRate: 12000, freqLow: opts.freqLow, freqHigh: opts.freqHigh, depth: 1,
-            preview: true, rowIndex: step, original: text
+            calls: digiHashCalls(), preview: true, rowIndex: step, original: text
         }, [samples.buffer]);
     } else {
         try {
@@ -11329,7 +11305,7 @@ function queueDigiCqReply(dxCall, decodedSlotIndex) {
     if (!checkDigiCallGrid()) return;
     var myCall = getMyCall();
     var myGrid = getMyGrid();
-    var reply = dxCall.toUpperCase() + ' ' + myCall + ' ' + myGrid;
+    var reply = digiQsoTexts(dxCall.toUpperCase(), myCall, myGrid).call;
     digiTxQueued = reply;
     digiTxAttempts = 0;
     digiQsoState = 'CALLING';
@@ -11370,14 +11346,14 @@ function handleDigiAutoQso(decodes, decodedSlotIndex) {
             // targeted this specific station in the DX field. Never auto-select
             // random CQ callers; the user must click a decode row to start a QSO.
             if (/^CQ/.test(msg) && parts.length >= 2) {
-                var cqCall = parts[parts.length - 2] || parts[1];
+                var cqCall = digiSenderCall(msg);
                 var userDx = getDxCall();
                 if (cqCall && cqCall !== myCall && userDx && userDx === cqCall) {
                     console.log('[DIGI QSO] IDLE→CALLING: targeted station ' + cqCall + ' sent CQ');
                     digiQsoPartner = cqCall;
                     digiQsoPartnerBusyWith = '';
                     digiTxAttempts = 0;
-                    digiTxQueued = cqCall + ' ' + myCall + ' ' + myGrid;
+                    digiTxQueued = digiQsoTexts(cqCall, myCall, myGrid).call;
                     digiTxSlotParity = (dSlot + 1) % 2; // TX on slot OPPOSITE to CQ slot
                     if (digiTxEnabled) { digiTxArmed = true; console.log('[DIGI QSO] armed (parity ' + digiTxSlotParity + '): ' + digiTxQueued); }
                     else { console.log('[DIGI QSO] TX disabled — queued but not armed: ' + digiTxQueued); }
@@ -11395,7 +11371,7 @@ function handleDigiAutoQso(decodes, decodedSlotIndex) {
                 var ourSnr = decodes[i].snr;
                 digiOurReport = (ourSnr >= 0 ? '+' : '') + Math.round(ourSnr);
                 digiTxAttempts = 0;
-                digiTxQueued = digiQsoPartner + ' ' + myCall + ' R' + digiOurReport;
+                digiTxQueued = digiQsoTexts(digiQsoPartner, myCall, myGrid, digiOurReport).rreport;
                 digiTxSlotParity = (dSlot + 1) % 2; // TX on slot OPPOSITE to their slot
                 if (digiTxEnabled) { digiTxArmed = true; console.log('[DIGI QSO] armed (parity ' + digiTxSlotParity + '): ' + digiTxQueued); }
                 else { console.log('[DIGI QSO] TX disabled — queued but not armed: ' + digiTxQueued); }
@@ -11432,7 +11408,7 @@ function handleDigiAutoQso(decodes, decodedSlotIndex) {
                 console.log('[DIGI QSO] ANSWERED→RREPORT: received ' + parts[2]);
                 digiTheirReport = digiReportFromToken(parts[2]); // their R-report of us → rstRcvd
                 digiTxAttempts = 0;
-                digiTxQueued = digiQsoPartner + ' ' + myCall + ' RR73';
+                digiTxQueued = digiQsoTexts(digiQsoPartner, myCall, myGrid).rr73;
                 digiTxSlotParity = (dSlot + 1) % 2;
                 if (digiTxEnabled) { digiTxArmed = true; console.log('[DIGI QSO] armed (parity ' + digiTxSlotParity + '): ' + digiTxQueued); }
                 else { console.log('[DIGI QSO] TX disabled — queued but not armed: ' + digiTxQueued); }
@@ -11447,7 +11423,7 @@ function handleDigiAutoQso(decodes, decodedSlotIndex) {
                 (parts[2] === 'RR73' || parts[2] === 'RRR')) {
                 console.log('[DIGI QSO] ' + digiQsoState + '→LOGGED: received ' + parts[2]);
                 digiTxAttempts = 0;
-                digiTxQueued = digiQsoPartner + ' ' + myCall + ' 73';
+                digiTxQueued = digiQsoTexts(digiQsoPartner, myCall, myGrid).s73;
                 digiTxSlotParity = (dSlot + 1) % 2;
                 if (digiTxEnabled) { digiTxArmed = true; console.log('[DIGI QSO] armed (parity ' + digiTxSlotParity + '): ' + digiTxQueued); }
                 else { console.log('[DIGI QSO] TX disabled — queued but not armed: ' + digiTxQueued); }

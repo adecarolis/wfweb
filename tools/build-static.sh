@@ -49,7 +49,7 @@ for f in cw-decoder.js cw-decoder-stft.js cw-decoder-utils.js cw-decoder-worker.
          ctcss.js dxcc.js recorder.js needle-meter.js rx-jitter.js cw-keyer.js \
          cw-paddle.js midi.js paddle-panel.js \
          theme.css js8-panel.css js8-panel.mjs js8.mjs \
-         rtty.js rtty-panel.js rtty-panel.css rtty-decoder-worker.js \
+         digi-msg.js rtty.js rtty-panel.js rtty-panel.css rtty-decoder-worker.js \
          sstv-panel.js sstv-panel.css sstv-worker.js; do
     cp "$SHARED/$f" "$DIST/"
 done

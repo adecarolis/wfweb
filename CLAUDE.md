@@ -92,7 +92,7 @@ other.** No Direct/Server runtime gates: each `index.html` is single-purpose.
 |-----|---------|----------|
 | `resources/web/` | C++ server build (`wfweb.pro`) | Server-only `index.html`, `transport/websocket-transport.js` |
 | `resources/web-standalone/` | Static bundle (`tools/build-static.sh`) | Standalone `index.html`, `transport/serial-transport.js`, `civ/`, `wasm/` |
-| `resources/web-shared/` | Both | `index.html`-side modules and pure assets: `favicon.svg`, `theme.css` (design tokens + `.wf-*` kit), `packet.js`, `recorder.js` (+ vendored `lamejs/`), `needle-meter.js`, `rx-jitter.js`, `cw-keyer.js`, `cw-paddle.js`, `midi.js`, `paddle-panel.js`, `transport/rig-transport.js` (base class), CW decoder JS family (+ `ort/` ONNX Runtime Web and `models/deepcw.onnx`), JS8 family (`js8.mjs`, `js8-panel.mjs`, `js8-panel.css`), `models/`, `digits/`, `digits-sprite.png` |
+| `resources/web-shared/` | Both | `index.html`-side modules and pure assets: `favicon.svg`, `theme.css` (design tokens + `.wf-*` kit), `packet.js`, `recorder.js` (+ vendored `lamejs/`), `needle-meter.js`, `rx-jitter.js`, `digi-msg.js`, `cw-keyer.js`, `cw-paddle.js`, `midi.js`, `paddle-panel.js`, `transport/rig-transport.js` (base class), CW decoder JS family (+ `ort/` ONNX Runtime Web and `models/deepcw.onnx`), JS8 family (`js8.mjs`, `js8-panel.mjs`, `js8-panel.css`), `models/`, `digits/`, `digits-sprite.png` |
 
 The CW decoder is the DeepCW neural model (`resources/web-shared/models/deepcw.onnx`
 + `.json` metadata, AGPL-3.0, from e04/deepcw-engine) run by ONNX Runtime Web
@@ -416,6 +416,27 @@ server, `queue->add()` echoes both the read and the write through
 freq 0, the write echo is flagged by `bsrWriteEchoPending` — touching the queue
 on either deadlocks the server.
 
+### FT8 / FT4 message forms (`digi-msg.js`)
+A message holds two plain calls only when both are standard (`digiStdCall`,
+WSJT-X `stdCall`); a nonstandard one (AO40EUDXF, VE3/W9XYZ) needs a hashed form,
+or `encodeFT8` falls back to 13 characters of free text without a word: "AO40EUDXF
+VA2BBW FN35" went out as "AO40EUDXF VA2" and pskreporter spotted "VA2" (#153).
+`digiQsoTexts()` / `digiCqText()` build every TX line and follow `genStdMsgs` in
+WSJT-X: Type 1 `<NONSTD> STD grid/report`, Type 4 `NONSTD <STD> RR73/73` and
+`CQ NONSTD` with no grid. **Never build a TX line by concatenating calls.** ft8ts
+matches `ft8code` bit for bit on these forms, so a fault is on the page's side.
+Decodes reach the QSO logic through `digiStdMsg` / `digiSplitMulti`, which take
+the brackets off, so the sequencer only ever compares plain calls; an unresolved
+`<...>` stays and a click on one is refused. The worker saves our call and the DX
+into its `HashCallBook` on every decode (`digiHashCalls`), as WSJT-X always
+resolves those two: `<VA2BBW> AO40EUDXF RR73` is otherwise `<...> AO40EUDXF RR73`
+and never reads as addressed to us. The module loads *ahead of* the page script,
+whose start-up builds the rows. Two nonstandard calls, or a /P or /R call next to
+a hash, cannot carry a report at all (protocol limit, same in WSJT-X). Field Day
+keeps plain calls. Tests: `tests/test_ft8_msg.py` (`ft8_msg_sim.mjs` through the
+real codec; `ft8_msg_browser.mjs`, whole FT4 QSOs on two Standalone virtual rigs,
+or on the C++ bench with `WFWEB_FT8_URLS`).
+
 ### Mode panels put the VFO back
 FT8/FT4 and JS8 force USB and retune to their dial frequency on open. Both
 `index.html` snapshot frequency + mode + filter first (`saveVfoSnapshot`) and
@@ -647,6 +668,7 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 | `resources/web-shared/recorder.js` | Audio (MP3) / video recorder behind the top-bar REC button (both builds) |
 | `resources/web-shared/needle-meter.js` | IC-7610-style needle meter face + needle ballistics; alternative to the tile-bar meter in `index.html` (both builds) |
 | `resources/web-shared/rx-jitter.js` | Adaptive RX jitter buffer (worklet + ScriptProcessor fallback, both builds); simulated by `tests/rx_jitter_sim.mjs` |
+| `resources/web-shared/digi-msg.js` | FT8/FT4 message forms: standard vs hashed calls, reading decodes (both builds); `tests/ft8_msg_sim.mjs` |
 | `resources/web-shared/rtty.js` | ITA2 tables, AFSK synthesizer, RX frequency translator for the RTTY decoder (both builds) |
 | `resources/web-shared/rtty-panel.js` | RTTY bar: DeepRTTY decoder control, tuning strip, text, log, AFSK macros (both builds) |
 | `resources/web-shared/rtty-decoder-worker.js` | DeepRTTY on ONNX Runtime Web + classic FSK fallback (module worker, both builds); `tests/rtty_decoder_sim.mjs` |
