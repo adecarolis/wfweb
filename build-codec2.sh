@@ -6,7 +6,7 @@ set -e
 SRCDIR="$(cygpath "$1")"
 VCPKG="$(cygpath "$2")"
 
-pacman -S --noconfirm --needed mingw-w64-x86_64-cmake mingw-w64-x86_64-gcc mingw-w64-x86_64-make mingw-w64-x86_64-tools-git > /dev/null 2>&1
+pacman -S --noconfirm --needed mingw-w64-x86_64-cmake mingw-w64-x86_64-gcc mingw-w64-x86_64-make mingw-w64-ucrt-x86_64-tools > /dev/null 2>&1
 
 export PATH="/mingw64/bin:$PATH"
 export MSYSTEM=MINGW64
@@ -26,7 +26,7 @@ mkdir -p build_mingw && cd build_mingw
 cp src/libcodec2.dll "$VCPKG/bin/"
 
 # Generate .def from DLL exports
-/mingw64/bin/gendef src/libcodec2.dll
+/ucrt64/bin/gendef src/libcodec2.dll
 
 # Install headers
 mkdir -p "$VCPKG/include/codec2"

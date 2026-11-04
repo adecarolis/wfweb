@@ -695,7 +695,8 @@ jobs:
       - name: Build codec2 (FreeDV) via MSYS2 MinGW
         shell: C:\msys64\usr\bin\bash.exe -l {0}
         run: |
-          pacman -S --noconfirm --needed mingw-w64-x86_64-cmake mingw-w64-x86_64-gcc mingw-w64-x86_64-make mingw-w64-x86_64-tools-git
+          # gendef comes from ucrt64: MSYS2 no longer ships the tools package for mingw64.
+          pacman -S --noconfirm --needed mingw-w64-x86_64-cmake mingw-w64-x86_64-gcc mingw-w64-x86_64-make mingw-w64-ucrt-x86_64-tools
           export PATH="/mingw64/bin:$PATH"
           CODEC2="$(cygpath "$GITHUB_WORKSPACE")/codec2"
           cd "$CODEC2"
@@ -718,7 +719,7 @@ jobs:
           Copy-Item "codec2\build_mingw\src\libcodec2.dll" "$vcpkg\bin\" -Force
 
           # Generate MSVC import lib from MinGW DLL
-          & C:\msys64\mingw64\bin\gendef.exe codec2\build_mingw\src\libcodec2.dll
+          & C:\msys64\ucrt64\bin\gendef.exe codec2\build_mingw\src\libcodec2.dll
           lib /def:libcodec2.def /out:"$vcpkg\lib\codec2.lib" /machine:x64
 
           # Headers
