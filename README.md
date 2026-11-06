@@ -210,7 +210,7 @@ Pre-built binaries are published on [GitHub Releases](../../releases):
 > plus the `openssl` command, used to create the certificate on first start).
 > If it complains about FUSE, run it with `--appimage-extract-and-run`. To start
 > it at boot, point a systemd unit's `ExecStart` at the file (see
-> `systemd/wfweb@.service`).
+> `systemd/README`).
 
 > **Windows:** unzip and run `wfweb-launcher.exe`. It is a small window that
 > picks the serial port or LAN rig, the audio device and the web port, starts

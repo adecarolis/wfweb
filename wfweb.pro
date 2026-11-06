@@ -169,6 +169,10 @@ unix:systemd.files = systemd/wfweb@.service
 unix:systemd.path = $$PREFIX/lib/systemd/system
 INSTALLS += systemd
 
+unix:systemduser.files = systemd/wfweb.service
+unix:systemduser.path = $$PREFIX/lib/systemd/user
+INSTALLS += systemduser
+
 linux:LIBS += -L./ -lopus
 macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus -lssl -lcrypto
 

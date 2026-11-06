@@ -8,6 +8,60 @@
 #include "audiodevices.h"
 #include "logcategories.h"
 
+#if defined(Q_OS_LINUX) && (QT_VERSION >= QT_VERSION_CHECK(5,15,0)) && (QT_VERSION < QT_VERSION_CHECK(6,0,0))
+#define WFWEB_WAIT_FOR_SERVER_CODEC
+#include <QElapsedTimer>
+#include <QFile>
+#include <QThread>
+
+// The rig's USB CODEC is listed twice: raw ALSA (realm "alsa") and through the
+// sound server (PipeWire / PulseAudio, any other realm). The raw hw: device has
+// one owner, so taking it locks every other program out of the rig's audio.
+// A wfweb started together with the session (user unit, autostart) enumerates
+// within ~100 ms of WirePlumber listing its devices: it found the CODEC's
+// sink but not yet its source and settled on hw: (2026-11-06). So when a
+// sound server is there and the CODEC exists, give the server a moment to
+// list it before the choice is made.
+static void waitForServerCodec()
+{
+    const QString runtime = QString::fromLocal8Bit(qgetenv("XDG_RUNTIME_DIR"));
+    if (qEnvironmentVariableIsEmpty("PULSE_SERVER") &&
+        (runtime.isEmpty() || !QFile::exists(runtime + "/pulse/native")))
+        return;     // no sound server to wait for: raw ALSA is all there is
+
+    const int timeoutMs = 10000;
+    auto missing = [](QAudio::Mode mode) {
+        bool raw = false, served = false;
+        for (const auto &dev : QAudioDeviceInfo::availableDevices(mode)) {
+            const QString name = dev.deviceName();
+            if (!name.contains("CODEC", Qt::CaseInsensitive) || name.endsWith(QStringLiteral(".monitor")))
+                continue;
+            if (dev.realm() == "alsa") raw = true; else served = true;
+        }
+        return raw && !served;
+    };
+
+    QElapsedTimer timer;
+    timer.start();
+    bool waited = false;
+    while (missing(QAudio::AudioInput) || missing(QAudio::AudioOutput)) {
+        if (!waited) {
+            qInfo(logAudio()) << "Rig CODEC not listed by the sound server yet, waiting up to"
+                              << timeoutMs / 1000 << "s for it";
+            waited = true;
+        }
+        if (timer.elapsed() >= timeoutMs) {
+            qWarning(logAudio()) << "Rig CODEC still not listed by the sound server: using the raw ALSA"
+                                    " device, which no other program can share";
+            return;
+        }
+        QThread::msleep(200);
+    }
+    if (waited)
+        qInfo(logAudio()) << "Rig CODEC listed by the sound server after" << timer.elapsed() << "ms";
+}
+#endif
+
 audioDevices::audioDevices(audioType type, QFontMetrics fm, QObject* parent) :
     QObject(parent),
     system(type),
@@ -36,6 +90,10 @@ void audioDevices::enumerate()
         case qtAudio:
         {
             Pa_Terminate();
+
+#ifdef WFWEB_WAIT_FOR_SERVER_CODEC
+            waitForServerCodec();
+#endif
 
             qInfo(logAudio()) << "Audio device(s) found (*=default)";
 

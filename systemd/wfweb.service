@@ -1,12 +1,16 @@
 [Unit]
 Description=wfweb — browser-based remote control for amateur radio
-After=network.target
-StartLimitIntervalSec=0
+# Without PipeWire's device list wfweb falls back to the raw hw: device, which
+# locks every other program out of the rig's USB CODEC.
+Wants=pipewire-pulse.service wireplumber.service
+After=pipewire-pulse.service wireplumber.service
+
 [Service]
 Type=simple
-Restart=always
-RestartSec=1
-User=pi
+Restart=on-failure
+RestartSec=5
+Environment=QT_QPA_PLATFORM=offscreen
 ExecStart=/usr/local/bin/wfweb
+
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target

@@ -741,6 +741,39 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 
 ---
 
+## systemd units and sharing the rig's audio
+
+- Two units in `systemd/`, one to enable. `wfweb.service` is a **user** unit
+  (`systemctl --user`, `lib/systemd/user`, starts at login): wfweb runs in the
+  session, picks the CODEC's PipeWire entry and other programs can use the
+  rig's audio at the same time. `wfweb@.service` is the system unit (boot,
+  `User=%i`): no `XDG_RUNTIME_DIR`, so Qt lists no PipeWire devices, wfweb
+  opens `hw:CARD=CODEC` and that device has one owner — PipeWire's CODEC
+  source then fails for everyone else ("capture open failed: Device or
+  resource busy", xara-monitor "no audio", 2026-11-06).
+- `waitForServerCodec()` in `audiodevices.cpp` is what makes the user unit
+  safe at boot. PipeWire's probe of the CODEC waits when the capture PCM is
+  busy and lists the source within a second of it coming free (measured with
+  `arecord` holding it 3 / 6 / 9 s while WirePlumber starts); the input is
+  lost for good only when somebody keeps the raw device. That somebody was
+  wfweb: started with the session, it enumerated ~100 ms after WirePlumber,
+  found the CODEC's sink but not yet its source, fell back to `hw:` and held
+  it (first boot with linger, 2026-11-06). Now, when a sound server socket
+  exists and the CODEC is in the ALSA list, the enumeration waits up to 10 s
+  for the server's entry. **Do not blame the login screen's PipeWire**
+  (`gdm-greeter` runs its own WirePlumber with an ACL on `/dev/snd/*`): a
+  second prober only delays the listing. Bench recipe, no reboot needed: stop
+  `wireplumber`, hold the capture with `arecord -D hw:CARD=CODEC,DEV=0` for a
+  few seconds, start `wireplumber` and wfweb together; the log must say
+  "listed by the sound server after ... ms" and `fuser /dev/snd/pcmC1D0c`
+  must name pipewire, not wfweb.
+- **Lifetime.** A user unit lives with the user manager: without
+  `loginctl enable-linger` it stops when the last session (desktop or SSH)
+  closes, so a machine driven over SSH needs linger. Check
+  `loginctl list-sessions` before assuming a desktop login.
+
+---
+
 ## FreeDV / RADE Architecture
 
 ### Processing Threads
