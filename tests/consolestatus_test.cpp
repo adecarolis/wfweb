@@ -75,6 +75,7 @@ int main()
         require(contains(lines, "IC-7300 on /dev/ttyUSB0 @ 115200  CONNECTED"), "rig line");
         require(contains(lines, "14.074.000 USB  RX"), "frequency line");
         require(contains(lines, "2 connected"), "browser count");
+        require(contains(lines, "Access     open - anyone who reaches this port can transmit"), "open access is spelled out");
         require(contains(lines, "http://192.168.1.42:8081/"), "REST URL");
         require(contains(lines, "127.0.0.1:4532"), "rigctld");
         require(contains(lines, "/tmp/wfweb-20261004101500.log"), "log file");
@@ -119,6 +120,31 @@ int main()
         lines = ConsoleStatus::render(s, 80, 24);
         require(contains(lines, "Starting..."), "placeholder before the server exists");
         require(!contains(lines, "Rig"), "no rig line before the server exists");
+    }
+
+    // --- shared station and a real certificate ---
+    {
+        ConsoleSnapshot s = full;
+        s.shared = true;
+        s.setupCode = "K7QX-4MZP";
+        QStringList lines = ConsoleStatus::render(s, 80, 24);
+        require(contains(lines, "Access     shared station - SETUP CODE K7QX-4MZP"), "setup code shown while no admin exists");
+        require(!contains(lines, "anyone who reaches"), "no open-access warning with --shared");
+
+        s.setupCode.clear();
+        s.sharedUsers = 1;
+        lines = ConsoleStatus::render(s, 80, 24);
+        require(contains(lines, "Access     shared station, 1 account"), "account count, singular");
+        s.sharedUsers = 12;
+        require(contains(ConsoleStatus::render(s, 80, 24), "shared station, 12 accounts"), "account count, plural");
+
+        s.selfSigned = false;
+        lines = ConsoleStatus::render(s, 80, 24);
+        require(!contains(lines, "self-signed"), "no certificate note with the operator's own certificate");
+        require(contains(lines, "https://192.168.1.42:8080/"), "URL still https");
+
+        s.web = ConsoleSnapshot::WebDisabled;
+        require(!contains(ConsoleStatus::render(s, 80, 24), "Access"), "no access row without a web server");
     }
 
     // --- rig not there yet, transmitting, hostile text ---

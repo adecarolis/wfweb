@@ -108,6 +108,16 @@ servermain::servermain(const QString settingsFile, const cmdLineOverrides& overr
                                   Q_ARG(bool, cliOverrides.remoteLogDecodes));
         QMetaObject::invokeMethod(web, "configureSstvDir", Qt::QueuedConnection,
                                   Q_ARG(QString, cliOverrides.sstvDir));
+        // Both before init(): the certificate is loaded there, and the first
+        // connection must already be gated.
+        QMetaObject::invokeMethod(web, "configureTls", Qt::QueuedConnection,
+                                  Q_ARG(QString, cliOverrides.certFile),
+                                  Q_ARG(QString, cliOverrides.keyFile));
+        QMetaObject::invokeMethod(web, "configureShared", Qt::QueuedConnection,
+                                  Q_ARG(bool, cliOverrides.shared),
+                                  Q_ARG(QString, cliOverrides.sharedDir),
+                                  Q_ARG(bool, cliOverrides.sharedResetAdmin),
+                                  Q_ARG(QString, cliOverrides.trustProxy));
         connect(queue, SIGNAL(rigCapsUpdated(rigCapabilities*)), web, SLOT(receiveRigCaps(rigCapabilities*)));
         connect(webThread, SIGNAL(finished()), web, SLOT(deleteLater()));
         connect(web, &webServer::requestPowerOn, this, &servermain::powerRigOn);
@@ -400,6 +410,10 @@ ConsoleSnapshot servermain::consoleSnapshot()
     } else {
         snap.webPort = (cliOverrides.webPort > 0) ? cliOverrides.webPort : prefs.webPort;
         snap.https = web->httpsActive();
+        snap.selfSigned = web->selfSignedCert();
+        snap.shared = web->sharedMode();
+        snap.sharedUsers = web->sharedUserCount();
+        snap.setupCode = web->sharedSetupCode();
         snap.browsers = web->browserCount();
         switch (web->webListenState()) {
         case webServer::ListenPending: snap.web = ConsoleSnapshot::WebStarting; break;

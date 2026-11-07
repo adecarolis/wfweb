@@ -244,6 +244,15 @@ int main(int argc, char *argv[])
         "                          WFWEB_NO_TUI=1 in the environment\n"
         "  --logbook <file>        QSO logbook (ADIF; default: <data dir>/logbook.adi)\n"
         "  --sstv-dir <dir>        Received SSTV pictures (default: <data dir>/sstv)\n"
+        "  --cert <file> --key <file>  Serve HTTPS with this certificate and private key\n"
+        "                          (PEM, unencrypted; the certificate file may carry its\n"
+        "                          chain) instead of the generated self-signed one\n"
+        "  --shared                Shared Station: accounts, login and access control\n"
+        "                          (see SHARED_STATION.md; Shared/Enabled=true in settings)\n"
+        "  --shared-dir <dir>      Accounts, sessions, audit log (default: <data dir>/shared)\n"
+        "  --shared-reset-admin    Print a setup code that resets or creates an admin\n"
+        "  --trust-proxy <cidr>    Reverse proxy address(es), comma separated, whose\n"
+        "                          X-Forwarded-For / X-Forwarded-Proto headers are trusted\n"
         "  --remote-log <host[:port]>  Send every logged QSO to an external logging\n"
         "                          program (GridTracker, JTAlert, Log4OM, ...) which\n"
         "                          listens for the WSJT-X UDP protocol; port 2237 if omitted\n"
@@ -460,6 +469,28 @@ int main(int argc, char *argv[])
         {
             if (argc > c + 1) overrides.sstvDir = argv[++c];
             else { std::cout << "Error: --sstv-dir requires a directory\n"; return -1; }
+        }
+        else if (currentArg == "--cert")
+        {
+            if (argc > c + 1) overrides.certFile = argv[++c];
+            else { std::cout << "Error: --cert requires a file\n"; return -1; }
+        }
+        else if (currentArg == "--key")
+        {
+            if (argc > c + 1) overrides.keyFile = argv[++c];
+            else { std::cout << "Error: --key requires a file\n"; return -1; }
+        }
+        else if (currentArg == "--shared") overrides.shared = true;
+        else if (currentArg == "--shared-dir")
+        {
+            if (argc > c + 1) overrides.sharedDir = argv[++c];
+            else { std::cout << "Error: --shared-dir requires a directory\n"; return -1; }
+        }
+        else if (currentArg == "--shared-reset-admin") overrides.sharedResetAdmin = true;
+        else if (currentArg == "--trust-proxy")
+        {
+            if (argc > c + 1) overrides.trustProxy = argv[++c];
+            else { std::cout << "Error: --trust-proxy requires an address or CIDR block\n"; return -1; }
         }
         else if (currentArg == "--remote-log")
         {

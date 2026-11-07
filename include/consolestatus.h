@@ -21,7 +21,13 @@ struct ConsoleSnapshot {
 
     WebState web = WebStarting;
     quint16 webPort = 0;
-    bool https = false;         // self-signed certificate in use
+    bool https = false;
+    bool selfSigned = true;     // wfweb's own certificate: the browser warns once
+    // Shared Station: access control on; accounts; the setup code while the
+    // first admin is still to be created (or --shared-reset-admin is on).
+    bool shared = false;
+    int sharedUsers = 0;
+    QString setupCode;
     QStringList urls;           // one per reachable address, best first
     QString restUrl;            // plain-HTTP REST endpoint, empty when none
     bool restFailed = false;

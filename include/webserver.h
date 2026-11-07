@@ -20,9 +20,13 @@
 #include <QUdpSocket>
 #include <QUrlQuery>
 #include <QSettings>
+#include <QMutex>
+#include <QPointer>
 #include <memory>
 #include <atomic>
+#include <functional>
 #include "logbook.h"
+#include "access.h"
 
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 #include <QAudioDeviceInfo>
@@ -54,13 +58,15 @@ class TlsProxyWorker;
 class SslTcpServer : public QTcpServer {
 public:
     QSslCertificate cert;
+    QList<QSslCertificate> chain;   // cert first, then intermediates (--cert fullchain.pem)
     QSslKey key;
     explicit SslTcpServer(QObject *parent = nullptr) : QTcpServer(parent) {}
 protected:
     void incomingConnection(qintptr handle) override {
         QSslSocket *socket = new QSslSocket(this);
         if (socket->setSocketDescriptor(handle)) {
-            socket->setLocalCertificate(cert);
+            if (chain.size() > 1) socket->setLocalCertificateChain(chain);
+            else socket->setLocalCertificate(cert);
             socket->setPrivateKey(key);
             socket->startServerEncryption();
             addPendingConnection(socket);
@@ -85,6 +91,14 @@ public:
     ListenState restListenState() const { return ListenState(restListen_.load()); }
     bool httpsActive() const { return httpsActive_.load(); }
     int browserCount() const { return browserCount_.load(); }
+    // Certificate the page is served with: wfweb's own (the browser warns
+    // once) or one handed in with --cert/--key.
+    bool selfSignedCert() const { return selfSigned_.load(); }
+    // Shared Station (--shared): access control on; account count; the
+    // first-run / recovery setup code while one is valid (empty otherwise).
+    bool sharedMode() const { return sharedMode_.load(); }
+    int sharedUserCount() const { return sharedUsers_.load(); }
+    QString sharedSetupCode() const;
 
 signals:
     void closed();
@@ -132,6 +146,14 @@ public slots:
     // Where received SSTV pictures are kept (--sstv-dir, SstvDir= in the
     // settings file, default <data dir>/sstv); runs once on the web thread.
     void configureSstvDir(const QString &sstvDirOverride);
+    // --cert/--key (or Web/CertFile, Web/KeyFile): serve this certificate
+    // instead of the generated self-signed one.  Must run before init().
+    void configureTls(const QString &certFile, const QString &keyFile);
+    // Shared Station: --shared / Shared/Enabled, --shared-dir / Shared/Dir,
+    // --shared-reset-admin, --trust-proxy / Shared/TrustProxy.  Must run
+    // before init() so the first connection is already gated.
+    void configureShared(bool enableOverride, const QString &dirOverride,
+                         bool resetAdmin, const QString &trustProxyOverride);
     // PTT requested via rigctld (Hamlib TCP). Routed through the same
     // setPTT path the WebSocket clients use, so RADE EOO synthesis,
     // packet TX gating and ALC meter polling stay coherent.
@@ -209,7 +231,174 @@ private:
     void handleRestRequest(QTcpSocket *socket, const QString &method,
                            const QString &path, const QUrlQuery &query,
                            const QByteArray &body);
-    void sendRestResponse(QTcpSocket *socket, int statusCode, const QJsonObject &json);
+    void sendRestResponse(QTcpSocket *socket, int statusCode, const QJsonObject &json,
+                          const QByteArray &extraHeaders = QByteArray());
+
+    // --- HTTP connection hygiene -------------------------------------------
+    // Every socket from accept to close: a request that never completes its
+    // headers (slowloris, a TLS client that never handshakes) is cut after
+    // kHttpHeaderTimeoutMs, a client that stops reading its response after
+    // kHttpDrainStallMs, and no more than kHttpMaxConnections are kept at
+    // once.  Sockets handed to the WebSocket server leave the table.
+    struct HttpConn {
+        qint64 openedMs = 0;
+        bool requestDone = false;      // response handed to the socket
+        qint64 lastProgressMs = 0;     // bytesToWrite() last went down
+        qint64 lastBytesToWrite = 0;
+    };
+    QHash<QTcpSocket *, HttpConn> httpConns;
+    QTimer *httpSweepTimer = nullptr;
+    void sweepHttpConnections();
+    void httpRequestDone(QTcpSocket *socket);
+    static const int kHttpMaxConnections = 128;
+    static const int kHttpHeaderTimeoutMs = 10000;
+    static const int kHttpDrainStallMs = 60000;
+    static QByteArray headerValue(const QByteArray &headerSection, const QByteArray &name);
+    static QString hostOf(const QString &hostOrOrigin);
+    // TLS on this socket itself (QSslSocket, or the macOS proxy's backend).
+    bool connectionIsSecure(QTcpSocket *socket) const;
+    static QString peerIp(const QHostAddress &addr);
+
+    // --- Shared Station ----------------------------------------------------
+    // What a request arrives as: the client address (through a trusted
+    // proxy's X-Forwarded-For), whether it is on TLS (or the proxy says
+    // https), which port, and who it is once its cookie or bearer token is
+    // resolved.
+    struct RequestContext {
+        QString ip;
+        QString userAgent;
+        bool secure = false;
+        bool restPort = false;
+        AccessPrincipal who;
+    };
+    static QJsonObject userJson(const AccessPrincipal &who);
+    void closeUserClients(const QString &userId, const QString &reason);
+    RequestContext requestContext(QTcpSocket *socket, const QByteArray &headerSection);
+    bool trustedProxy(const QHostAddress &peer) const;
+    void handleAuthRequest(QTcpSocket *socket, const QString &method, const QString &path,
+                           const QByteArray &body, const RequestContext &ctx);
+    void handleSharedUsersRequest(QTcpSocket *socket, const QString &method, const QString &path,
+                                  const QByteArray &body, const RequestContext &ctx);
+    QJsonObject authMeJson(const RequestContext &ctx) const;
+    QByteArray sessionCookieHeader(const QByteArray &token, bool secure) const;
+    void closeSessionClients(const QByteArray &sessionHash, const QString &reason);
+    void sharedHousekeeping();
+    void updateSharedStats();
+    // PBKDF2 takes hundreds of milliseconds: run it on a worker thread and
+    // call back on this thread, where the socket is answered.
+    void hashPasswordAsync(const QString &password, std::function<void(QString)> done);
+    void verifyPasswordAsync(const QString &password, const QString &hash, std::function<void(bool)> done);
+
+    std::unique_ptr<AccessControl> access_;
+    std::atomic<bool> sharedMode_{false};
+    std::atomic<int> sharedUsers_{0};
+    mutable QMutex sharedMutex_;
+    QString sharedSetupCode_;
+    QList<QPair<QHostAddress, int>> trustedProxies_;
+    // One record per WebSocket: who it is (a visitor without a session has
+    // a principal too, unauthenticated, with the role the policy gives
+    // visitors), a short id the admin's connection list refers to, where
+    // from and since when.
+    struct WsClient {
+        AccessPrincipal who;
+        QString id;
+        QString ip;
+        qint64 sinceMs = 0;
+        bool warnedTxAudio = false;   // one 'denied' per stream of 0x03 frames, not per frame
+    };
+    QHash<QWebSocket *, WsClient> wsInfo;
+    QTimer *sharedTimer = nullptr;
+
+    // --- policy: admin-settable, kept in the settings file ---------------
+    Access::Role sharedAnonymous_ = Access::Role::None;   // what a visitor without a session may do
+    bool txInhibit_ = false;                              // nobody keys the rig
+    int txTimeoutSecs_ = 600;                             // a key held this long is released
+    int maxClients_ = 20;                                 // non-admin connections at once
+    QJsonObject policyJson() const;
+    void applyPolicy(const QJsonObject &in, const QString &by);
+    void reroleAnonymousClients();
+    void broadcastPolicy();
+    QJsonArray connectionsJson() const;
+    void handleSharedPolicyRequest(QTcpSocket *socket, const QString &method, const QByteArray &body,
+                                   const RequestContext &ctx);
+    void handleSharedConnectionsRequest(QTcpSocket *socket, const QString &method, const QString &path,
+                                        const RequestContext &ctx);
+
+    // --- the gate ------------------------------------------------------------
+    Access::Role clientRole(QWebSocket *client) const;    // Admin in open mode
+    void deny(QWebSocket *client, const QString &cmd, Access::Cap cap, const QString &reason = QString());
+    // Every key-down and key-up on record, and the time-out behind them.
+    void pttAccounting(bool on, QWebSocket *client);
+    void forceUnkey(const QString &reason);
+    QString operatingText();
+    QTimer *txTimeoutTimer = nullptr;
+    qint64 pttSinceMs = 0;
+    QString pttWho;
+    QString restWho_;      // the REST caller while handleRestRequest runs, for the PTT audit
+
+    // --- the seat: one browser drives the radio at a time ---------------
+    // Whoever holds it tunes and, with the role for it, keys; everyone else
+    // watches.  It is taken when free, asked for when held (the holder is
+    // prompted; an unanswered request is granted after seatRequestSecs_),
+    // kept for seatGraceSecs_ by a holder whose socket drops (a reload, a
+    // phone off the network), given up on idleness, and offered down a
+    // queue when it frees.  Admins take it outright.
+    struct Seat {
+        QWebSocket *holder = nullptr;
+        qint64 sinceMs = 0;
+        qint64 lastActivityMs = 0;
+        bool privateMode = false;        // the holder's choice, when the policy allows it
+        QByteArray graceSession;         // a dropped holder's session, reserved until graceUntilMs
+        QString graceName;
+        qint64 graceUntilMs = 0;
+        QWebSocket *requester = nullptr; // the request the holder has not answered
+        qint64 requestDeadlineMs = 0;    // 0 = never granted unasked
+        QList<QWebSocket *> queue;       // waiting, first in line first
+        QWebSocket *offerTo = nullptr;   // the head of the queue, while the seat is free for them
+        qint64 offerUntilMs = 0;
+        bool warnedIdle = false;
+        bool warnedMax = false;
+    } seat_;
+    bool seatEnabled_ = true;
+    int seatIdleSecs_ = 600;
+    int seatGraceSecs_ = 30;
+    int seatRequestSecs_ = 60;
+    int seatOfferSecs_ = 30;
+    int seatMaxSecs_ = 0;                // seat time while others wait; 0 = unlimited
+    bool seatPreemptHigher_ = false;     // a higher role may take the seat after a 30 s warning
+    bool listenIn_ = true;               // others hear and see while someone has the seat
+    bool allowPrivate_ = false;          // the holder may switch the others' audio and scope off
+    QTimer *seatTimer = nullptr;
+    void seatTick();
+    // Reservations (phase 4): the seat follows the schedule.  During a
+    // slot its owner takes the seat at will, is given it at the start when
+    // connected, and a free seat waits for them for kReservationHoldSecs;
+    // their seat is never handed on unasked while the slot runs.
+    std::unique_ptr<Reservations> reservations_;
+    static const int kReservationHoldSecs = 15 * 60;
+    QString seatResKey_;        // the occurrence the start hand-over was done for
+    QString seatResWarnKey_;    // the occurrence the five-minute warning went out for
+    Occurrence activeReservation() const;
+    bool ownsSlot(QWebSocket *client, const Occurrence &occ) const;
+    QWebSocket *socketOfUser(const QString &userId) const;
+    QJsonObject occurrenceJson(const Occurrence &occ) const;
+    void handleSharedReservationsRequest(QTcpSocket *socket, const QString &method, const QString &path,
+                                         const QByteArray &body, const RequestContext &ctx);
+    bool seatRequired(QWebSocket *client, const QString &cmd, Access::Cap cap) const;
+    bool seatHides(QWebSocket *client) const;     // no audio / spectrum for this client right now
+    bool seatHolderIs(const QString &userId) const;
+    void denySeat(QWebSocket *client, const QString &cmd);
+    QString seatLabel(QWebSocket *client) const;  // "W1ABC" / "visitor"
+    void seatGive(QWebSocket *client, const QString &how);
+    void seatFree(const QString &why, bool tellHolder = true);
+    void seatOfferNext();
+    void seatLeaveQueue(QWebSocket *client);
+    void seatOnDisconnect(QWebSocket *client, const AccessPrincipal &who);
+    void seatOnConnect(QWebSocket *client);
+    void seatCommand(QWebSocket *client, const QString &type, const QJsonObject &cmd);
+    QJsonObject seatJson(QWebSocket *client) const;
+    void broadcastSeat();
+    void handleSharedSeatRequest(QTcpSocket *socket, const QString &method, const RequestContext &ctx);
     // SSTV image gallery: /api/v1/sstv/images (list, upload, fetch, delete)
     void handleSstvRequest(QTcpSocket *socket, const QString &method, const QString &path,
                            const QUrlQuery &query, const QByteArray &body);
@@ -332,7 +521,15 @@ private:
     // SSL
     bool sslEnabled = false;
     QSslCertificate sslCert;
+    QList<QSslCertificate> sslChain;
     QSslKey sslKey;
+    // A configuration the server cannot run with (a certificate file that is
+    // not there, --shared without TLS): logged, then the process exits.
+    void fatalConfig(const QString &message);
+    QJsonObject accessJson(const AccessPrincipal &who) const;
+    QString tlsCertFile_;              // --cert / Web/CertFile; empty = generated self-signed
+    QString tlsKeyFile_;
+    std::atomic<bool> selfSigned_{true};
 #ifdef Q_OS_MACOS
     QString sslCertPath;
     QString sslKeyPath;

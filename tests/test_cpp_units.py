@@ -1,7 +1,8 @@
 """Build and run the self-contained C++ unit tests (no rig, no server).
 
 Each entry is a test program under tests/ plus the sources it needs.  They
-link only against Qt5Core, so a plain g++ + pkg-config is enough.
+link only against Qt5Core (plus the modules MODULES names, Qt5Network for
+the access control's PBKDF2), so a plain g++ + pkg-config is enough.
 """
 
 import shutil
@@ -25,6 +26,14 @@ UNITS = {
     # and the server log lines the launcher reacts to.
     "launcher": ["launcher/src/launchconfig.cpp", "launcher/src/logparser.cpp",
                  "launcher/src/portowner.cpp"],
+    # Shared Station access control: password hashing, accounts, setup code,
+    # lockout, sessions, API tokens, audit log.
+    "access": ["src/access.cpp"],
+}
+
+# Qt modules beyond Qt5Core a unit needs.
+MODULES = {
+    "access": ["Qt5Network"],
 }
 
 
@@ -32,14 +41,15 @@ UNITS = {
 def test_cpp_unit(unit, tmp_path):
     if not shutil.which("g++") or not shutil.which("pkg-config"):
         pytest.skip("C++ compiler/pkg-config unavailable")
+    modules = ["Qt5Core", *MODULES.get(unit, [])]
     flags = subprocess.run(
-        ["pkg-config", "--cflags", "--libs", "Qt5Core"],
+        ["pkg-config", "--cflags", "--libs", *modules],
         check=False,
         capture_output=True,
         text=True,
     )
     if flags.returncode:
-        pytest.skip("Qt5Core development package unavailable")
+        pytest.skip(f"{' '.join(modules)} development package unavailable")
 
     executable = tmp_path / f"{unit}_test"
     command = [

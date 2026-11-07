@@ -23,7 +23,8 @@ Both builds share the SPA frontend (see "Frontend layout — three forks" below)
 # Server build — Linux. ALWAYS use wfweb.pro, NOT wfview.pro
 qmake wfweb.pro && make -j$(nproc)
 
-# Server flags: -b (daemon), -l (logfile), -s (settings file), -n (top-bar name tag)
+# Server flags: -b (daemon), -l (logfile), -s (settings file), -n (top-bar name tag),
+#   --shared (accounts + access control, SHARED_STATION.md), --cert/--key (own TLS cert)
 
 # Windows GUI launcher (separate exe, Qt Widgets) — build.bat and the Windows
 # CI job build it after the server; standalone:  cd launcher && qmake && nmake release
@@ -377,6 +378,124 @@ machinery replays); `tests/test_sstv_gallery.py` covers the REST store.
 Run them after any change to the worker, the shim, the vendored crate or
 the panel.
 
+### Shared Station (`--shared`): accounts and the gate
+Server build only; off by default and then nothing changes. `AccessControl`
+(`include/access.h`, `src/access.cpp`) owns accounts, sessions, API tokens,
+the setup code, the lockout and `audit.log` in `<data dir>/shared`
+(`--shared-dir`); it is Qt5Core + QtNetwork only (`QPasswordDigestor`), no
+sockets, so `tests/access_test.cpp` links it alone. Passwords are
+PBKDF2-HMAC-SHA256 with the round count in the hash; the rounds run through
+libcrypto's `PKCS5_PBKDF2_HMAC` resolved at runtime with `QLibrary` (Qt
+already loads libcrypto for TLS; ten times faster than Qt's own, no build
+dependency) and fall back to Qt. **Never hash or verify on the web thread**:
+`hashPasswordAsync` / `verifyPasswordAsync` run it on a `std::thread` and
+come back by `QMetaObject::invokeMethod`, else a login stalls every
+listener's audio for the duration. Login is three steps for that reason
+(`loginPrecheck` -> verify -> `loginFinish`), with a decoy hash for unknown
+names so the timing does not say which names exist.
+`webServer` maps HTTP onto it: `requestContext()` resolves the
+`wfweb_session` cookie or `Authorization: Bearer` on every `/api/v1/`
+request, `handleAuthRequest` (`/api/v1/auth/*`) and
+`handleSharedUsersRequest` (`/api/v1/shared/users`, admins) are the routes,
+and `onWsNewConnection` reads the cookie off `QWebSocket::request()`: no
+session -> `{type:'authRequired'}` then close 4401 before any state is sent;
+with one -> `{type:'access', user}` first, then `sendCurrentState`.
+Roles `listen < control < operate < admin` are enforced by one table,
+`Access::commandCapability` in `access.cpp` (View / Control / Tx / Admin;
+**a command not in the table is Admin-only**, so classify every new
+WebSocket command there) and `Access::restCapability` (every GET is View,
+writes by route). `handleCommand` asks it first for any browser (`client`
+non-null; nullptr is rigctld / REST, gated earlier), `onWsBinaryMessage`
+drops 0x03 frames from anyone below operate (one `denied` per stream), and
+the REST gate in `onHttpReadyRead` answers 403 `{need}`. A refused command
+gets `{type:'denied', cmd, need, reason}`; the `access` message carries
+`role`, `can`, `denied` (cmd -> level, so the page's `send()` refuses locally
+with a toast, `accessToast`) and `policy`. Policy lives in the settings file
+(`Shared/Anonymous` none|listen|control, `Shared/TxInhibit`,
+`Shared/TxTimeoutSecs` 600, `Shared/MaxClients` 20), changed by
+`PUT /api/v1/shared/policy` (`applyPolicy`, broadcast as `sharedPolicy`).
+Visitors (no session) get the anonymous role as an unauthenticated
+principal (`via: "anonymous"`), re-roled in place or cut (4401) when the
+policy changes; one past `maxClients` gets `stationFull` + 4503 (admins
+always get in). TX inhibit holds in `setPTT` for every caller and releases
+a held key (`forceUnkey`); `pttAccounting` writes key-down (freq + mode)
+and key-up (duration) to the audit log and runs the time-out timer; the
+REST caller's name reaches it through `restWho_`. The page
+(`resources/web/index.html` only) shows `#loginOverlay` on `authRequired` /
+close 4401 (setup variant when `setupRequired`; a visitor opens it from the
+LOG IN tag and may put it away), holds the auto-reconnect while it is up,
+a `#userTag` with a LOG OUT menu, `#txInhibitTag`, body classes
+`access-listen` / `access-notx` / `access-admin` / `tx-inhibit` that dim
+PTT etc., and FUNC > SHARED (`#sharedOverlay`, `renderSharedOverlay`) for
+admins: visitor policy, TX inhibit / time-out / max connections, the
+connection list with KICK (`/api/v1/shared/connections`), accounts. `--shared` without TLS is refused unless
+`--trust-proxy <cidr>` names the proxy whose `X-Forwarded-For/-Proto` to
+believe; logins are refused on the plain REST port. The console status page
+shows the setup code while no admin exists and "open - anyone who reaches
+this port can transmit" without `--shared`. HTTP hygiene that came with it,
+flag or not: header-read timeout 10 s, 128-connection cap, a 60 s drain
+stall cut (`sweepHttpConnections`), the `Origin`/`Host` check on the WSS
+upgrade (`hostOf`), `nosniff` / `Referrer-Policy`, HSTS only with a user
+certificate (`--cert/--key`, `Web/CertFile`; chain and EC keys accepted).
+**The seat** (phase 3, `Seat seat_` in webserver.h): one socket holds it;
+Control / Tx commands need it unless `Access::seatExempt` (decoder
+bookkeeping, the seat commands) -- `seatRequired` in the gate, the 0x03
+path, and the REST gate (409 unless the seat is free or held by the
+token's own account; rigctld is never held to it). `seatCommand` handles
+`seatTake` (free: take, or the offer / grace; held: request, `force` for
+admins), `seatRelease`, `seatHandover {accept}`, `seatCancel`,
+`seatAccept`, `seatPrivate`, `seatClear`; `seatTick` (1 s) runs grace
+expiry (`seatGraceSecs_`, a dropped holder's session gets it back in
+`seatOnConnect`), the offer down the queue (`seatOfferNext`, 30 s each),
+the unanswered-request grant (`seatRequestSecs_`, never while the holder
+keys), idle release and the max-time-while-others-wait release, with a
+`seatNotice` a minute before. `seatGive` / `seatFree` force-unkey a keyed
+previous holder and audit `seat-take` / `seat-release` / `seat-request` /
+`seat-declined` / `seat-grace` / `seat-private`. `seatHides(client)` keeps
+audio (`sendBinaryToAudioClients`) and spectrum (`sendBinaryToAll`) from
+non-holders when the holder is private or listen-in is off; admins always
+see. State goes out per socket as `seat` (`seatJson`: holder, mine, queue,
+position, request / requested / offer / grace with seconds), `seatLost`,
+`seatNotice`. Page: `seatState`, `#seatTag` (one tap does the right thing:
+take / ask / withdraw / accept), `#seatPrompt` (HAND OVER / DECLINE or TAKE
+IT / PASS), `#seatMenu` (release, private), `body.seat-watch` dimming,
+`send()` refuses `needsSeat` commands locally. Policy knobs `Shared/Seat`,
+`SeatIdleSecs`, `SeatRequestSecs`, `SeatMaxSecs`, `SeatPreemptHigher`,
+`ListenIn`, `AllowPrivate` in the SHARED window's seat section.
+Tests: `tests/access_test.cpp` (unit, the capability table included),
+`tests/test_access.py` (the real server with `--shared`: setup, cookie on
+the WS upgrade, tokens on the plain port, account management, lockout last
+since it locks 127.0.0.1), `tests/test_access_roles.py` (its own server
+with the seat OFF: the command / 0x03 / REST gates per role, visitors, TX
+inhibit, time-out, the cap, KICK, the audit lines; `launch_shared_wfweb`
+and `SharedServer` in conftest), `tests/test_access_seat.py` (the seat:
+gate, request / decline / hand-over, queue and offers, grace, the clocks
+at 2 s, admin take and clear, TX following the seat, REST 409, private and
+listen-in, seat off), `tests/test_http_hardening.py`. Docs:
+`SHARED_STATION.md`.
+**Reservations** (phase 4): `Reservation` / `Occurrence` / `Reservations`
+in access.h (pure: `expand` steps a day or a week from the first start
+and skips straight to the window, `add` refuses an overlap on any run in
+the next year naming the other slot, `activeAt` / `nextAfter`;
+`reservations.json` in the shared dir; unit-tested with fixed dates).
+`webServer::seatTick` makes the seat follow it: at a slot's start the
+owner is given the seat if connected (`seatResKey_` marks the run so it
+happens once; never mid-transmission), else the holder is told; five
+minutes before, a non-owner holder is warned (`seatResWarnKey_`); a free
+seat waits for the owner for `kReservationHoldSecs` (15 min); the owner's
+`seatTake` while someone else holds it is immediate; the unanswered-request
+grant and the max-time release skip a holder who owns the running slot.
+`seatJson` carries `reservation` (with `mine`, `holdUntil`) and `next`.
+REST `/api/v1/shared/reservations` (GET any account, POST / DELETE admin,
+409 `{conflict}`); removing an account removes its slots. Page: the
+RESERVATIONS section of the SHARED window (datetime-local in the browser's
+zone -> ISO UTC), the SCHEDULE entry of the user menu (`#scheduleOverlay`,
+`renderSchedule`) for everyone, the seat tag's `RESERVED · name` / `TAKE`
+states and tooltip. Tests: `tests/test_access_reservations.py` (REST
+rules, owner priority with the owner away then arriving, hand-over at the
+start, the holder told when the owner is absent, a weekly slot a week old
+running now, account removal, audit). Next: proxy identity (phase 5).
+
 ### Shared theme + component kit (`theme.css`)
 `resources/web-shared/theme.css` is the single source of UI styling for both
 builds (linked from each `index.html`, aliased in `web.qrc`, copied by
@@ -652,6 +771,8 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 | `include/servermain.h` | Main app header (contains `preferences` struct) |
 | `src/webserver.cpp` | Web server backend |
 | `include/webserver.h` | Web server header |
+| `src/access.cpp` / `include/access.h` | Shared Station accounts, sessions, API tokens, setup code, lockout, audit log (Qt5Core + QtNetwork only; `tests/access_test.cpp`) |
+| `SHARED_STATION.md` | Shared Station: setup, files, deployment behind a proxy / VPN, REST, what the hardening changed |
 | `src/rigctld.cpp` | Hamlib rigctld TCP emulation (server build) |
 | `include/rigctld.h` | rigctld header (signals: `pttRequested`) |
 | `src/consolestatus.cpp` | Terminal status page: ANSI rendering, raw-mode keys, log ring buffer |

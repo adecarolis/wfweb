@@ -374,7 +374,8 @@ SOURCES += \
     src/webserver.cpp \
     src/wsjtxmessage.cpp \
     src/logbook.cpp \
-    src/memorystore.cpp
+    src/memorystore.cpp \
+    src/access.cpp
 
 macx:SOURCES += src/tlsproxy.cpp
 
@@ -417,6 +418,7 @@ HEADERS  += \
     include/audiotaper.h \
     include/keyboard.h \
     include/consolestatus.h \
+    include/access.h \
     include/wfwebtypes.h \
     include/pttyhandler.h \
     include/icomudpaudio.h \

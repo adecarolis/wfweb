@@ -258,6 +258,162 @@ html, body {
     background: #a00;
     color: #fff;
 }
+/* Shared Station login sheet: up whenever the server wants a session (the
+   WebSocket closes with 4401 after an authRequired message).  Same stage as
+   the power-off screen; the card doubles as the first-run admin setup. */
+#loginOverlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%);
+    z-index: 10002;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    font-family: var(--font-ui);
+    color: #ccc;
+}
+#loginOverlay.visible { display: flex; }
+#loginOverlay .login-card {
+    background: #12121f;
+    border: 1px solid #333;
+    border-radius: 12px;
+    padding: 28px 32px;
+    width: min(340px, calc(100vw - 32px));
+    box-sizing: border-box;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    display: flex; flex-direction: column; gap: 10px;
+}
+#loginOverlay .login-brand {
+    font-size: 30px; font-weight: bold; color: #0aa; text-align: center;
+    text-shadow: 0 0 20px rgba(0,170,170,0.4);
+}
+#loginOverlay .login-title { font-size: 14px; color: #999; text-align: center; margin-bottom: 6px; }
+#loginOverlay input {
+    background: #0a0a14; border: 1px solid #334; color: #eee;
+    font-size: 15px; padding: 10px 12px; border-radius: 6px; outline: none;
+}
+#loginOverlay input:focus { border-color: #0aa; }
+#loginOverlay button {
+    padding: 12px; font-size: 15px; font-weight: bold; border: none; border-radius: 6px;
+    cursor: pointer; margin-top: 4px; color: #000;
+    background: linear-gradient(135deg, #0cc 0%, #088 100%);
+}
+#loginOverlay button:disabled { opacity: 0.5; cursor: default; }
+#loginOverlay .login-error { color: #f66; font-size: 13px; min-height: 16px; text-align: center; }
+#loginOverlay .login-note { color: #777; font-size: 12px; text-align: center; line-height: 1.4; }
+#loginOverlay .login-version { position: absolute; bottom: 20px; left: 20px; font-size: 11px; color: #555; }
+/* Who is logged in (Shared Station only): a tag in the top bar; a tap opens
+   the menu with the role and LOG OUT. */
+#userTag {
+    color: #0aa; font-family: var(--font-mono); font-size: 11px; font-weight: bold;
+    white-space: nowrap; max-width: 120px; overflow: hidden; text-overflow: ellipsis;
+    cursor: pointer; padding: 1px 6px; border: 1px solid #066; border-radius: 3px;
+}
+#userTag:empty { display: none; }
+#userMenu {
+    display: none;
+    position: fixed; top: 36px; right: 8px; z-index: 9000;
+    background: #12121f; border: 1px solid #333; border-radius: 8px;
+    padding: 10px 14px; min-width: 150px;
+    font-family: var(--font-ui); font-size: 13px; color: #ccc;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+#userMenu.visible { display: block; }
+/* The power-off screen covers the top bar: say who is logged in there too,
+   with a way out. */
+#powerOffUser:empty { display: none; }
+#powerOffUser a { color: #0aa; cursor: pointer; margin-left: 8px; font-weight: bold; }
+#userMenu .um-name { font-weight: bold; color: #0cc; }
+#userMenu .um-role { color: #888; font-size: 12px; margin: 2px 0 10px; }
+#userMenu button {
+    width: 100%; padding: 8px; font-size: 13px; font-weight: bold; border: none;
+    border-radius: 5px; cursor: pointer; background: #333; color: #ddd; margin-top: 6px;
+}
+#scheduleOverlay { z-index: 9100; }
+.shared-panel .sp-slot { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; padding: 4px 0; border-bottom: 1px solid #023; }
+.shared-panel .sp-slot.now { background: #002; }
+.shared-panel .sp-when { color: #8cf; font-family: var(--font-mono); font-size: 12px; }
+.shared-panel .sp-who { color: #cde; }
+/* A visitor (no login, the policy's role): the tag is the way in. */
+#userTag.anon { color: #ee0; border-color: #880; }
+/* The seat: who drives the radio.  Green when it can be taken, filled when
+   it is ours, amber while someone else has it or we are in line, blinking
+   while it is on offer to us. */
+#seatTag {
+    font-family: var(--font-mono); font-size: 11px; font-weight: bold; white-space: nowrap;
+    cursor: pointer; padding: 1px 6px; border: 1px solid #555; border-radius: 3px; color: #aaa;
+    max-width: 170px; overflow: hidden; text-overflow: ellipsis;
+}
+#seatTag.free { color: #0f0; border-color: #080; }
+#seatTag.mine { color: #000; background: #0a0; border-color: #0c0; }
+#seatTag.held, #seatTag.queued { color: #ee0; border-color: #880; }
+#seatTag.queued { background: #221; }
+#seatTag.offer { color: #000; background: #ee0; border-color: #ff0; animation: seatBlink 1s step-start infinite; }
+@keyframes seatBlink { 50% { opacity: 0.55; } }
+#seatPrompt {
+    display: none;
+    position: fixed; top: 36px; left: 50%; transform: translateX(-50%); z-index: 9400;
+    background: #1a1a2e; border: 1px solid #556; border-radius: 8px; padding: 8px 12px;
+    font-family: var(--font-ui); font-size: 13px; color: #eee;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5); gap: 10px; align-items: center;
+    max-width: calc(100vw - 24px);
+}
+#seatPrompt.visible { display: flex; }
+#seatPrompt button {
+    padding: 6px 12px; font-size: 12px; font-weight: bold; border: none; border-radius: 5px;
+    cursor: pointer; background: #0a0; color: #000; white-space: nowrap;
+}
+#seatPrompt button.no { background: #444; color: #ddd; }
+#seatMenu {
+    display: none;
+    position: fixed; top: 36px; right: 8px; z-index: 9000;
+    background: #12121f; border: 1px solid #333; border-radius: 8px;
+    padding: 10px 14px; min-width: 170px;
+    font-family: var(--font-ui); font-size: 13px; color: #ccc;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+#seatMenu.visible { display: block; }
+#seatMenu .um-name { font-weight: bold; color: #0c0; }
+#seatMenu .um-role { color: #888; font-size: 12px; margin: 2px 0 10px; }
+#seatMenu button {
+    display: block; width: 100%; padding: 8px; margin-top: 6px; font-size: 13px; font-weight: bold;
+    border: none; border-radius: 5px; cursor: pointer; background: #333; color: #ddd;
+}
+/* Watching while somebody else has the seat: the controls are there, dimmed. */
+body.seat-watch .ptt-btn { opacity: 0.35; }
+body.seat-watch #freqDisplay, body.seat-watch #modeBtn { opacity: 0.55; }
+#txInhibitTag {
+    color: #f44; font-family: var(--font-mono); font-size: 11px; font-weight: bold;
+    border: 1px solid #a22; border-radius: 3px; padding: 1px 6px; white-space: nowrap;
+}
+#loginCancel a { color: #0aa; cursor: pointer; }
+/* What the server would refuse is refused here first, with a word why. */
+#accessToast {
+    display: none;
+    position: fixed; left: 50%; bottom: 76px; transform: translateX(-50%);
+    background: rgba(20,20,40,0.95); border: 1px solid #556; color: #fdd;
+    padding: 8px 14px; border-radius: 6px; z-index: 10003;   /* above the power-off and login screens */
+    font-family: var(--font-ui); font-size: 13px; text-align: center;
+    max-width: calc(100vw - 32px); pointer-events: none;
+}
+#accessToast.visible { display: block; }
+/* The controls a role lacks are dimmed, not hidden: the page keeps its
+   shape, and a tap says why (the toast). */
+body.access-listen .ptt-btn, body.access-notx .ptt-btn, body.tx-inhibit .ptt-btn { opacity: 0.35; }
+body.access-listen #freqDisplay, body.access-listen #modeBtn { opacity: 0.55; }
+/* SHARED window body */
+.shared-panel { overflow-y: auto; font-family: var(--font-ui); font-size: 12px; color: #cde; }
+.shared-panel h4 { margin: 8px 0 4px; font-size: 11px; letter-spacing: 1px; color: #5af; font-family: var(--font-mono); }
+.shared-panel .sp-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 3px 0; }
+.shared-panel .sp-row.sp-user { border-bottom: 1px solid #023; padding: 4px 0; }
+.shared-panel .sp-name { font-weight: bold; color: #8cf; min-width: 90px; }
+.shared-panel .sp-dim { color: #679; font-size: 11px; }
+.shared-panel .sp-field { width: 96px; }
+.shared-panel .wf-btn.danger { --mode-accent: #f66; --mode-accent-dim: #a33; --mode-accent-bg: #200; }
+.shared-panel .wf-btn.warn { --mode-accent: #ee0; --mode-accent-dim: #990; --mode-accent-bg: #220; }
+.shared-panel select.wf-field { padding: 3px 6px; }
+.shared-panel .sp-empty { color: #567; font-style: italic; }
 
 /* ============ ROW 2: METER + FREQUENCY ============ */
 #meterFreqRow {
@@ -2338,7 +2494,7 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
         </div>
     </div>
     <div style="position: absolute; bottom: 20px; left: 20px; font-size: 11px; color: #555;">
-        <span id="powerOffVersion">wfweb</span>
+        <span id="powerOffVersion">wfweb</span><span id="powerOffUser"></span>
     </div>
 </div>
 <div id="powerConfirm">
@@ -2351,6 +2507,47 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
         </div>
     </div>
 </div>
+<div id="loginOverlay">
+    <form class="login-card" id="loginForm" onsubmit="return authSubmit(event)">
+        <div class="login-brand">wfweb</div>
+        <div class="login-title" id="loginTitle">Log in</div>
+        <input type="text" id="loginCode" placeholder="Setup code" autocomplete="off" autocapitalize="characters" spellcheck="false" style="display:none">
+        <input type="text" id="loginUser" placeholder="User name" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+        <input type="password" id="loginPass" placeholder="Password" autocomplete="current-password" required>
+        <input type="text" id="loginCall" placeholder="Callsign (optional)" autocomplete="off" autocapitalize="characters" spellcheck="false" style="display:none">
+        <div class="login-error" id="loginError"></div>
+        <button type="submit" id="loginBtn">LOG IN</button>
+        <div class="login-note" id="loginNote"></div>
+        <div class="login-note" id="loginCancel" style="display:none"><a onclick="hideLoginSheet()">continue without logging in</a></div>
+    </form>
+    <div class="login-version"><span id="loginVersion">wfweb</span></div>
+</div>
+<div id="userMenu">
+    <div class="um-name" id="userMenuName"></div>
+    <div class="um-role" id="userMenuRole"></div>
+    <button id="userMenuSchedule" onclick="openScheduleModal()">SCHEDULE</button>
+    <button onclick="authLogout()">LOG OUT</button>
+</div>
+<!-- The schedule, for everyone with an account: who has the seat when. -->
+<div id="scheduleOverlay" class="mem-modal mode-digi">
+    <div class="mem-modal-title">
+        <span>Seat schedule</span>
+        <button class="digi-settings-close" style="width:auto;margin:0;padding:2px 12px" onclick="closeScheduleModal()">&#x2715; Close</button>
+    </div>
+    <div id="schedulePanel" class="shared-panel"></div>
+</div>
+<!-- The seat: a request to the holder, or an offer to the next in line. -->
+<div id="seatPrompt">
+    <span id="seatPromptText"></span>
+    <button id="seatPromptYes" onclick="seatPromptAnswer(true)">HAND OVER</button>
+    <button id="seatPromptNo" class="no" onclick="seatPromptAnswer(false)">DECLINE</button>
+</div>
+<div id="seatMenu">
+    <div class="um-name">You have the seat</div>
+    <div class="um-role" id="seatMenuSince"></div>
+    <button onclick="seatAction('seatRelease'); hideSeatMenu();">RELEASE THE SEAT</button>
+    <button id="seatPrivateBtn" onclick="seatTogglePrivate()">GO PRIVATE</button>
+</div>
 <div id="radio">
     <!-- Row 1: Top bar -->
     <div id="topBar">
@@ -2361,6 +2558,9 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
         <span id="filterText" onclick="openFilterModal()">FIL1</span>
         <span id="dspIndicators"></span>
         <span class="flex-space"></span>
+        <span id="seatTag" style="display:none" onclick="seatTagClick(event)"></span>
+        <span id="txInhibitTag" style="display:none" title="Transmitting is inhibited by the admin">TX INHIBIT</span>
+        <span id="userTag" title="Logged in" onclick="toggleUserMenu(event)"></span>
         <span id="rigTag" title="Rig"></span>
         <button id="recBtn" class="rec-btn" title="Record">REC</button>
         <button id="qsoLogBtn" class="qso-log-btn" title="Log QSO">LOG</button>
@@ -2488,6 +2688,16 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
         <!-- MIDI window: controller on/off, map (CTR2-MIDI presets + MIDI
              learn) and the paddle keyer's options. The body is built by
              WfMidiPanel (midi.js), shared by both builds. -->
+        <!-- SHARED window (FUNC > SHARED, admins of a Shared Station): the
+             visitor policy, TX inhibit and time-out, who is connected, the
+             accounts. Body built by renderSharedOverlay() from the REST API. -->
+        <div id="sharedOverlay" class="mem-modal mode-digi">
+            <div class="mem-modal-title">
+                <span>Shared station</span>
+                <button class="digi-settings-close" style="width:auto;margin:0;padding:2px 12px" onclick="closeSharedModal()">&#x2715; Close</button>
+            </div>
+            <div id="sharedPanel" class="shared-panel"></div>
+        </div>
         <div id="midiOverlay" class="mem-modal">
             <div class="mem-modal-title">
                 <span>MIDI controller</span>
@@ -3486,7 +3696,12 @@ function onTransportOpen() {
     if (rCb && rCb.checked) sendReporterConfig();
 }
 
-function onTransportClose() {
+function onTransportClose(e) {
+    // 4401: the server wants a session (Shared Station).  Normally the
+    // authRequired message got here first and the sheet is already up; a
+    // bare 4401 (a session that expired while we were away) shows it now.
+    var closeCode = e && e.detail && e.detail.code;
+    if (closeCode === 4401 && !authSheet.shown) showLoginSheet(false, '');
     dropPttLatch();
     document.getElementById('connDot').classList.remove('connected');
     document.getElementById('connDot').title = 'Disconnected';
@@ -3515,12 +3730,659 @@ function connect() {
 }
 
 function scheduleReconnect() {
+    if (authSheet.shown) return;   // the login sheet reconnects on success
     if (!reconnectTimer) {
         reconnectTimer = setTimeout(function () { reconnectTimer = null; connect(); }, 3000);
     }
 }
 
+// ============================================================
+// Shared Station: who we are, and the login sheet
+// ============================================================
+// The server says who this browser is right after the WebSocket opens
+// ({type:'access', shared, user}); without a session it says
+// {type:'authRequired'} and closes with 4401.  Login and setup are plain
+// same-origin fetches: the session cookie they set rides on the next
+// WebSocket upgrade by itself.
+// accessState: who this browser is and what it may do.  In open mode
+// (shared false) everything is allowed and nothing below shows.  `denied`
+// maps a command to the role it needs; `policy` is the admin's policy.
+var accessState = { shared: false, user: null, role: 'admin', anonymous: false,
+                    can: { control: true, tx: true, admin: true }, denied: {}, needsSeat: {}, policy: null };
+var authSheet = { shown: false, mode: 'login', cancelable: false };
+
+function applyAccessMessage(msg) {
+    accessState.shared = !!msg.shared;
+    if (!accessState.shared) {
+        accessState = { shared: false, user: null, role: 'admin', anonymous: false,
+                        can: { control: true, tx: true, admin: true }, denied: {}, needsSeat: {}, policy: null };
+    } else {
+        accessState.user = msg.user || null;
+        accessState.role = msg.role || 'listen';
+        accessState.anonymous = !!msg.anonymous;
+        accessState.can = msg.can || { control: false, tx: false, admin: false };
+        accessState.denied = msg.denied || {};
+        accessState.needsSeat = msg.needsSeat || {};
+        accessState.policy = msg.policy || null;
+    }
+    updateAccessUi();
+}
+
+function updateAccessUi() {
+    var b = document.body;
+    var inhibit = !!(accessState.shared && accessState.policy && accessState.policy.txInhibit);
+    b.classList.toggle('access-listen', accessState.shared && !accessState.can.control);
+    b.classList.toggle('access-notx', accessState.shared && !accessState.can.tx);
+    b.classList.toggle('access-admin', accessState.shared && accessState.can.admin);
+    b.classList.toggle('tx-inhibit', inhibit);
+    var ti = document.getElementById('txInhibitTag');
+    if (ti) ti.style.display = inhibit ? '' : 'none';
+    updateUserTag();
+    updateSeatUi();
+    if (currentPanel === 'func') renderFuncOverlay();
+    var so = document.getElementById('sharedOverlay');
+    if (so && so.classList.contains('visible')) renderSharedOverlay();
+}
+
+// ---- The seat: who drives the radio ----
+// The server's 'seat' message is the whole truth, per browser (mine,
+// position, request, offer); the page only counts the seconds down between
+// two of them.
+var seatState = { enabled: false, holder: null, mine: false, queue: [], position: 0,
+                  request: null, requested: null, offer: null, grace: null,
+                  privateNow: false, listenIn: true, allowPrivate: false };
+var seatCountdownTimer = null;
+
+function updateSeatUi() {
+    var tag = document.getElementById('seatTag');
+    var prompt = document.getElementById('seatPrompt');
+    if (!tag || !prompt) return;
+    var on = accessState.shared && seatState.enabled;
+    document.body.classList.toggle('seat-watch', on && !seatState.mine && accessState.can.control);
+    document.body.classList.toggle('seat-mine', on && seatState.mine);
+    if (!on) {
+        tag.style.display = 'none';
+        tag.className = '';
+        prompt.classList.remove('visible');
+        hideSeatMenu();
+        stopSeatCountdown();
+        return;
+    }
+    tag.style.display = '';
+    var h = seatState.holder;
+    var cls = '', text = '', title = '';
+    if (seatState.mine) {
+        cls = 'mine'; text = h && h.private ? 'SEAT · PRIVATE' : 'SEAT';
+        title = 'You have the seat — tap for options';
+    } else if (seatState.offer) {
+        cls = 'offer'; text = 'TAKE SEAT (' + seatState.offer.secs + ')';
+        title = 'The seat is free for you';
+    } else if (h) {
+        if (seatState.requested) {
+            cls = 'queued'; text = h.name + ' · ASKED' + (seatState.requested.secs ? ' ' + seatState.requested.secs : '');
+            title = 'You asked ' + h.name + ' for the seat — tap to withdraw';
+        } else if (seatState.position) {
+            cls = 'queued'; text = h.name + ' · #' + seatState.position;
+            title = 'In line for the seat — tap to leave the line';
+        } else {
+            cls = 'held'; text = h.name + (accessState.can.control ? ' · ASK' : '');
+            title = h.name + ' has the seat' + (accessState.can.control ? ' — tap to ask for it' : '');
+        }
+    } else if (seatState.grace) {
+        cls = 'held'; text = seatState.grace.name + ' · back?';
+        title = 'The seat is kept for ' + seatState.grace.name + ' for ' + seatState.grace.secs + ' s';
+    } else if (seatState.reservation && !seatState.reservation.mine && new Date(seatState.reservation.holdUntil) > new Date()) {
+        cls = 'held'; text = 'RESERVED · ' + seatState.reservation.name;
+        title = 'The seat is reserved for ' + seatState.reservation.name + ' until ' + new Date(seatState.reservation.holdUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else if (accessState.can.control) {
+        cls = 'free'; text = 'TAKE SEAT'; title = 'Nobody has the seat — tap to take it';
+    } else {
+        cls = ''; text = 'SEAT FREE'; title = 'Nobody has the seat';
+    }
+    // The schedule, in the tooltip: the slot running, or the one coming.
+    var r = seatState.reservation, n = seatState.next;
+    if (r) title += '\n' + (r.mine ? 'Your' : r.name + '’s') + ' reserved slot until ' + new Date(r.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    else if (n) title += '\n' + (n.mine ? 'Your' : n.name + '’s') + ' slot starts at ' + new Date(n.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    if (h && r && !r.mine && seatState.mine === false && accessState.can.control && r.name === (accessState.user && accessState.user.name)) text = h.name + ' · TAKE';
+    tag.className = cls;
+    tag.textContent = text;
+    tag.title = title;
+
+    // The prompt bar: a request to me, or an offer to me.
+    var yes = document.getElementById('seatPromptYes'), no = document.getElementById('seatPromptNo');
+    if (seatState.mine && seatState.request) {
+        document.getElementById('seatPromptText').textContent = seatState.request.name + ' asks for the seat'
+            + (seatState.request.secs ? ' (' + seatState.request.secs + ' s)' : '');
+        yes.textContent = 'HAND OVER'; no.textContent = 'DECLINE';
+        prompt.dataset.kind = 'request';
+        prompt.classList.add('visible');
+    } else if (seatState.offer) {
+        document.getElementById('seatPromptText').textContent = 'The seat is free for you (' + seatState.offer.secs + ' s)';
+        yes.textContent = 'TAKE IT'; no.textContent = 'PASS';
+        prompt.dataset.kind = 'offer';
+        prompt.classList.add('visible');
+    } else {
+        prompt.classList.remove('visible');
+    }
+    var pb = document.getElementById('seatPrivateBtn');
+    if (pb) {
+        pb.style.display = seatState.allowPrivate ? '' : 'none';
+        pb.textContent = (h && h.private) ? 'STOP PRIVATE' : 'GO PRIVATE';
+    }
+    var since = document.getElementById('seatMenuSince');
+    if (since && h && h.since) since.textContent = 'since ' + new Date(h.since).toLocaleTimeString();
+    if (!seatState.mine) hideSeatMenu();
+    var so = document.getElementById('sharedOverlay');
+    if (so && so.classList.contains('visible')) renderSharedOverlay();
+    // Seconds tick down locally until the next message says otherwise.
+    var counting = seatState.offer || seatState.request || seatState.requested || seatState.grace;
+    if (counting && !seatCountdownTimer) {
+        seatCountdownTimer = setInterval(function () {
+            ['offer', 'request', 'requested', 'grace'].forEach(function (k) {
+                if (seatState[k] && seatState[k].secs > 0) seatState[k].secs--;
+            });
+            updateSeatUi();
+        }, 1000);
+    } else if (!counting) {
+        stopSeatCountdown();
+    }
+}
+
+function stopSeatCountdown() {
+    if (seatCountdownTimer) { clearInterval(seatCountdownTimer); seatCountdownTimer = null; }
+}
+
+function seatAction(cmd, extra) {
+    var o = extra || {};
+    o.cmd = cmd;
+    send(o);
+}
+
+function seatTagClick(ev) {
+    if (ev) ev.stopPropagation();
+    if (!accessState.can.control) return;
+    if (seatState.mine) { toggleSeatMenu(); return; }
+    if (seatState.offer) { seatAction('seatAccept'); return; }
+    if (seatState.requested || seatState.position) { seatAction('seatCancel'); return; }
+    seatAction('seatTake');
+}
+
+function seatPromptAnswer(yes) {
+    var kind = document.getElementById('seatPrompt').dataset.kind;
+    if (kind === 'request') seatAction('seatHandover', { accept: !!yes });
+    else seatAction(yes ? 'seatAccept' : 'seatCancel');
+}
+
+function seatTogglePrivate() {
+    var h = seatState.holder;
+    seatAction('seatPrivate', { value: !(h && h.private) });
+    hideSeatMenu();
+}
+
+function toggleSeatMenu() {
+    var menu = document.getElementById('seatMenu');
+    if (!menu) return;
+    if (menu.classList.contains('visible')) { hideSeatMenu(); return; }
+    hideUserMenu();
+    menu.classList.add('visible');
+    setTimeout(function () { document.addEventListener('click', hideSeatMenu, { once: true }); }, 0);
+}
+
+function hideSeatMenu() {
+    var menu = document.getElementById('seatMenu');
+    if (menu) menu.classList.remove('visible');
+}
+
+function accessDeniedText(need) {
+    if (accessState.anonymous) return 'Needs ' + need + ' access — log in';
+    return 'Needs ' + need + ' access (you have ' + accessState.role + ')';
+}
+
+var accessToastTimer = null;
+function accessToast(text) {
+    var el = document.getElementById('accessToast');
+    if (!el) {
+        el = document.createElement('div');
+        el.id = 'accessToast';
+        document.body.appendChild(el);
+    }
+    el.textContent = text;
+    el.classList.add('visible');
+    if (accessToastTimer) clearTimeout(accessToastTimer);
+    accessToastTimer = setTimeout(function () { el.classList.remove('visible'); accessToastTimer = null; }, 2500);
+}
+
+function showLoginSheet(setupRequired, reason, cancelable) {
+    authSheet.shown = true;
+    authSheet.mode = setupRequired ? 'setup' : 'login';
+    authSheet.cancelable = !!cancelable;
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+    hideUserMenu();
+    // Whoever we were, we are nobody until the next login -- unless we are
+    // a visitor choosing to log in, who stays a visitor meanwhile.
+    if (!cancelable) {
+        accessState.user = null;
+        updateUserTag();
+    }
+    document.getElementById('loginCancel').style.display = cancelable ? '' : 'none';
+    var station = rigTagName || rigModelName || 'Shared station';
+    document.getElementById('loginTitle').textContent = setupRequired
+        ? 'First run: create the admin account' : station + ' — log in';
+    document.getElementById('loginCode').style.display = setupRequired ? '' : 'none';
+    document.getElementById('loginCall').style.display = setupRequired ? '' : 'none';
+    document.getElementById('loginPass').setAttribute('autocomplete', setupRequired ? 'new-password' : 'current-password');
+    document.getElementById('loginBtn').textContent = setupRequired ? 'CREATE ADMIN' : 'LOG IN';
+    document.getElementById('loginNote').textContent = setupRequired
+        ? 'The setup code is on the server’s console and in its log.' : (reason || '');
+    document.getElementById('loginError').textContent = '';
+    document.getElementById('loginBtn').disabled = false;
+    var lv = document.getElementById('loginVersion');
+    if (lv && serverVersion) lv.textContent = 'wfweb v. ' + serverVersion;
+    document.getElementById('loginOverlay').classList.add('visible');
+    document.getElementById(setupRequired ? 'loginCode' : 'loginUser').focus();
+}
+
+function hideLoginSheet() {
+    var wasCancelable = authSheet.cancelable;
+    authSheet.shown = false;
+    authSheet.cancelable = false;
+    document.getElementById('loginOverlay').classList.remove('visible');
+    document.getElementById('loginPass').value = '';
+    document.getElementById('loginCode').value = '';
+    // A visitor who closed the sheet with the socket gone meanwhile.
+    if (wasCancelable && !(ws && ws.readyState === WebSocket.OPEN)) scheduleReconnect();
+}
+
+function authSubmit(ev) {
+    if (ev) ev.preventDefault();
+    var btn = document.getElementById('loginBtn');
+    var err = document.getElementById('loginError');
+    var body = {
+        username: document.getElementById('loginUser').value.trim(),
+        password: document.getElementById('loginPass').value
+    };
+    var url = '/api/v1/auth/login';
+    if (authSheet.mode === 'setup') {
+        url = '/api/v1/auth/setup';
+        body.code = document.getElementById('loginCode').value.trim();
+        body.callsign = document.getElementById('loginCall').value.trim();
+    }
+    btn.disabled = true;
+    err.textContent = '';
+    fetch(url, { method: 'POST', credentials: 'same-origin',
+                 headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+        .then(function (r) {
+            return r.json().catch(function () { return {}; })
+                .then(function (j) { return { ok: r.ok, status: r.status, body: j }; });
+        })
+        .then(function (res) {
+            btn.disabled = false;
+            if (!res.ok) {
+                var text = res.body.error || ('Login failed (' + res.status + ')');
+                if (res.status === 429 && res.body.retryAfter) text += ' — try again in ' + res.body.retryAfter + ' s';
+                err.textContent = text;
+                return;
+            }
+            hideLoginSheet();
+            connect();
+        })
+        .catch(function () {
+            btn.disabled = false;
+            err.textContent = 'Cannot reach the server';
+        });
+    return false;
+}
+
+function authLogout() {
+    hideUserMenu();
+    // The server ends the session and closes our socket with 4401; the
+    // sheet comes up from that.
+    fetch('/api/v1/auth/logout', { method: 'POST', credentials: 'same-origin' }).catch(function () {});
+}
+
+function updateUserTag() {
+    var el = document.getElementById('userTag');
+    if (!el) return;
+    var u = accessState.shared ? accessState.user : null;
+    var visitor = accessState.shared && accessState.anonymous;
+    el.textContent = u ? u.name : (visitor ? 'LOG IN' : '');
+    el.title = u ? ((u.callsign ? u.callsign + ' — ' : '') + u.role)
+                 : (visitor ? 'Visitor with ' + accessState.role + ' access — log in for more' : '');
+    el.classList.toggle('anon', visitor);
+    var pu = document.getElementById('powerOffUser');
+    if (pu) {
+        pu.textContent = '';
+        if (u) {
+            pu.textContent = ' · logged in as ' + u.name;
+            var a = document.createElement('a');
+            a.textContent = 'LOG OUT';
+            a.onclick = authLogout;
+            pu.appendChild(a);
+        }
+    }
+}
+
+function toggleUserMenu(ev) {
+    if (ev) ev.stopPropagation();
+    var menu = document.getElementById('userMenu');
+    var u = accessState.user;
+    if (!u && accessState.shared && accessState.anonymous) {
+        // A visitor: the tag opens the login sheet, which can be put away.
+        showLoginSheet(false, 'Visitors have ' + accessState.role + ' access here.', true);
+        return;
+    }
+    if (!u || menu.classList.contains('visible')) { hideUserMenu(); return; }
+    document.getElementById('userMenuName').textContent = u.name + (u.callsign ? ' · ' + u.callsign : '');
+    document.getElementById('userMenuRole').textContent = u.role;
+    menu.classList.add('visible');
+    setTimeout(function () {
+        document.addEventListener('click', hideUserMenu, { once: true });
+    }, 0);
+}
+
+function hideUserMenu() {
+    var menu = document.getElementById('userMenu');
+    if (menu) menu.classList.remove('visible');
+}
+
+// ---- SHARED window: policy, connections, accounts (admins) ----
+// Everything goes through the REST API with the session cookie; the server
+// pushes policy changes back as sharedPolicy, so the window re-renders from
+// what it answers, never from what it hoped.
+var sharedView = { users: [], connections: [], max: 0, pwFor: null, confirmDel: null, confirmTimer: null,
+                   reservations: [], upcoming: [] };
+
+// ---- The schedule (everyone with an account) ----
+function whenText(iso, withDate) {
+    var d = new Date(iso);
+    var opts = { hour: '2-digit', minute: '2-digit' };
+    if (withDate) { opts.weekday = 'short'; opts.month = 'short'; opts.day = 'numeric'; }
+    return d.toLocaleString([], opts);
+}
+
+function renderSchedule(panel, upcoming, active, admin) {
+    panel.innerHTML = '';
+    if (!upcoming.length) { panel.appendChild(sharedEl('div', 'sp-empty', 'nothing scheduled in the next two weeks')); return; }
+    upcoming.forEach(function (o) {
+        var row = sharedEl('div', 'sp-slot' + (active && active.id === o.id && active.start === o.start ? ' now' : ''));
+        row.appendChild(sharedEl('span', 'sp-when', whenText(o.start, true) + ' – ' + whenText(o.end, false)));
+        row.appendChild(sharedEl('span', 'sp-who', o.name + (o.callsign ? ' · ' + o.callsign : '') + (o.title ? ' · ' + o.title : '') + (o.repeat !== 'once' ? ' (' + o.repeat + ')' : '')));
+        panel.appendChild(row);
+    });
+}
+
+function openScheduleModal() {
+    hideUserMenu();
+    var panel = document.getElementById('schedulePanel');
+    panel.innerHTML = '';
+    panel.appendChild(sharedEl('div', 'sp-dim', 'loading…'));
+    document.getElementById('scheduleOverlay').classList.add('visible');
+    sharedApi('GET', '/api/v1/shared/reservations')
+        .then(function (j) { renderSchedule(panel, j.upcoming || [], j.active, false); })
+        .catch(function (e) { panel.innerHTML = ''; panel.appendChild(sharedEl('div', 'sp-empty', e.message)); });
+}
+
+function closeScheduleModal() {
+    document.getElementById('scheduleOverlay').classList.remove('visible');
+}
+
+function sharedApi(method, path, body) {
+    var opts = { method: method, credentials: 'same-origin', headers: {} };
+    if (body !== undefined) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+    return fetch(path, opts).then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (j) {
+            if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+            return j;
+        });
+    });
+}
+
+function openSharedModal() {
+    setPanel('default');
+    document.getElementById('sharedOverlay').classList.add('visible');
+    sharedReload();
+}
+
+function closeSharedModal() {
+    document.getElementById('sharedOverlay').classList.remove('visible');
+}
+
+function sharedReload() {
+    Promise.all([sharedApi('GET', '/api/v1/shared/users'), sharedApi('GET', '/api/v1/shared/connections'),
+                 sharedApi('GET', '/api/v1/shared/reservations')])
+        .then(function (res) {
+            sharedView.users = res[0].users || [];
+            sharedView.connections = res[1].connections || [];
+            sharedView.max = res[1].max || 0;
+            sharedView.reservations = res[2].reservations || [];
+            sharedView.upcoming = res[2].upcoming || [];
+            sharedView.active = res[2].active || null;
+            renderSharedOverlay();
+        })
+        .catch(function (e) { accessToast('Shared station: ' + e.message); });
+}
+
+function sharedSetPolicy(patch) {
+    sharedApi('PUT', '/api/v1/shared/policy', patch)
+        .then(function (j) { accessState.policy = j.policy || accessState.policy; updateAccessUi(); })
+        .catch(function (e) { accessToast('Policy: ' + e.message); });
+}
+
+function sharedEl(tag, cls, text) {
+    var el = document.createElement(tag);
+    if (cls) el.className = cls;
+    if (text !== undefined) el.textContent = text;
+    return el;
+}
+
+function sharedBtn(label, cls, onclick) {
+    var b = sharedEl('button', 'wf-btn ' + (cls || ''), label);
+    b.type = 'button';
+    b.onclick = onclick;
+    return b;
+}
+
+function renderSharedOverlay() {
+    var panel = document.getElementById('sharedPanel');
+    if (!panel) return;
+    var pol = accessState.policy || {};
+    panel.innerHTML = '';
+
+    // Visitors
+    panel.appendChild(sharedEl('h4', '', 'VISITORS WITHOUT A LOGIN'));
+    var vrow = sharedEl('div', 'sp-row');
+    [['none', 'REFUSED'], ['listen', 'LISTEN'], ['control', 'CONTROL']].forEach(function (opt) {
+        var b = sharedBtn(opt[1], 'toggle' + ((pol.anonymous || 'none') === opt[0] ? ' active' : ''), function () { sharedSetPolicy({ anonymous: opt[0] }); });
+        vrow.appendChild(b);
+    });
+    vrow.appendChild(sharedEl('span', 'sp-dim', pol.anonymous === 'control' ? 'anyone who reaches the page can tune the radio' :
+                               pol.anonymous === 'listen' ? 'anyone who reaches the page can listen' : 'a login is required'));
+    panel.appendChild(vrow);
+
+    // Transmit
+    panel.appendChild(sharedEl('h4', '', 'TRANSMIT'));
+    var trow = sharedEl('div', 'sp-row');
+    trow.appendChild(sharedBtn(pol.txInhibit ? 'TX INHIBIT ON' : 'TX INHIBIT OFF', 'toggle danger' + (pol.txInhibit ? ' active' : ''), function () { sharedSetPolicy({ txInhibit: !pol.txInhibit }); }));
+    trow.appendChild(sharedEl('span', 'sp-dim', 'time-out'));
+    var tin = sharedEl('input', 'wf-field sp-field'); tin.type = 'number'; tin.min = 0; tin.max = 3600; tin.value = pol.txTimeoutSecs || 0; tin.title = 'seconds a key may stay down; 0 = no limit';
+    trow.appendChild(tin);
+    trow.appendChild(sharedEl('span', 'sp-dim', 's'));
+    trow.appendChild(sharedEl('span', 'sp-dim', 'max connections'));
+    var min = sharedEl('input', 'wf-field sp-field'); min.type = 'number'; min.min = 1; min.max = 500; min.value = pol.maxClients || 20;
+    trow.appendChild(min);
+    trow.appendChild(sharedBtn('SET', '', function () { sharedSetPolicy({ txTimeoutSecs: parseInt(tin.value, 10) || 0, maxClients: parseInt(min.value, 10) || 20 }); }));
+    panel.appendChild(trow);
+
+    // The seat
+    panel.appendChild(sharedEl('h4', '', 'THE SEAT'));
+    var srow = sharedEl('div', 'sp-row');
+    var seatOn = pol.seat !== false;
+    srow.appendChild(sharedBtn(seatOn ? 'SEAT ON' : 'SEAT OFF', 'toggle' + (seatOn ? ' active' : ''), function () { sharedSetPolicy({ seat: !seatOn }); }));
+    var sh = seatState.holder;
+    srow.appendChild(sharedEl('span', 'sp-dim', !seatOn ? 'everyone with the role controls the radio'
+        : sh ? 'held by ' + sh.name + (sh.private ? ' (private)' : '') + (seatState.queue.length ? ', ' + seatState.queue.length + ' waiting' : '')
+        : seatState.grace ? 'kept for ' + seatState.grace.name : 'free'));
+    if (seatOn && sh && !seatState.mine) {
+        srow.appendChild(sharedBtn('TAKE', 'warn', function () { seatAction('seatTake', { force: true }); }));
+        srow.appendChild(sharedBtn('CLEAR', 'danger', function () { seatAction('seatClear'); }));
+    }
+    panel.appendChild(srow);
+    var krow = sharedEl('div', 'sp-row');
+    krow.appendChild(sharedEl('span', 'sp-dim', 'idle'));
+    var kIdle = sharedEl('input', 'wf-field sp-field'); kIdle.type = 'number'; kIdle.min = 0; kIdle.max = 1440; kIdle.value = Math.round((pol.seatIdleSecs || 0) / 60); kIdle.title = 'minutes without touching the radio before the seat is released; 0 = never';
+    krow.appendChild(kIdle);
+    krow.appendChild(sharedEl('span', 'sp-dim', 'min · request granted after'));
+    var kReq = sharedEl('input', 'wf-field sp-field'); kReq.type = 'number'; kReq.min = 0; kReq.max = 3600; kReq.value = pol.seatRequestSecs || 0; kReq.title = 'seconds an unanswered request waits before the seat changes hands; 0 = only by hand';
+    krow.appendChild(kReq);
+    krow.appendChild(sharedEl('span', 'sp-dim', 's · max when others wait'));
+    var kMax = sharedEl('input', 'wf-field sp-field'); kMax.type = 'number'; kMax.min = 0; kMax.max = 1440; kMax.value = Math.round((pol.seatMaxSecs || 0) / 60); kMax.title = 'minutes a seat may be kept while others are in line; 0 = no limit';
+    krow.appendChild(kMax);
+    krow.appendChild(sharedEl('span', 'sp-dim', 'min'));
+    krow.appendChild(sharedBtn('SET', '', function () {
+        sharedSetPolicy({ seatIdleSecs: (parseInt(kIdle.value, 10) || 0) * 60, seatRequestSecs: parseInt(kReq.value, 10) || 0, seatMaxSecs: (parseInt(kMax.value, 10) || 0) * 60 });
+    }));
+    panel.appendChild(krow);
+    var frow = sharedEl('div', 'sp-row');
+    frow.appendChild(sharedBtn('HIGHER ROLE MAY TAKE OVER', 'toggle' + (pol.seatPreemptHigher ? ' active' : ''), function () { sharedSetPolicy({ seatPreemptHigher: !pol.seatPreemptHigher }); }));
+    frow.appendChild(sharedBtn('LISTEN-IN', 'toggle' + (pol.listenIn !== false ? ' active' : ''), function () { sharedSetPolicy({ listenIn: pol.listenIn === false }); }));
+    frow.appendChild(sharedBtn('PRIVATE ALLOWED', 'toggle' + (pol.allowPrivate ? ' active' : ''), function () { sharedSetPolicy({ allowPrivate: !pol.allowPrivate }); }));
+    panel.appendChild(frow);
+
+    // Reservations: who has the seat when.  Times are entered and shown in
+    // this browser's time zone; the server keeps UTC.
+    panel.appendChild(sharedEl('h4', '', 'RESERVATIONS'));
+    if (!sharedView.reservations.length) panel.appendChild(sharedEl('div', 'sp-empty', 'none'));
+    sharedView.reservations.forEach(function (r) {
+        var row = sharedEl('div', 'sp-row sp-user');
+        row.appendChild(sharedEl('span', 'sp-name', r.name || r.userId));
+        row.appendChild(sharedEl('span', 'sp-dim', whenText(r.start, true) + ' · ' + r.minutes + ' min · ' + r.repeat
+            + (r.until ? ' until ' + new Date(r.until).toLocaleDateString() : '') + (r.title ? ' · ' + r.title : '')));
+        row.appendChild(sharedBtn(sharedView.confirmDel === r.id ? 'SURE?' : 'DELETE', 'danger', function () {
+            if (sharedView.confirmDel !== r.id) {
+                sharedView.confirmDel = r.id;
+                if (sharedView.confirmTimer) clearTimeout(sharedView.confirmTimer);
+                sharedView.confirmTimer = setTimeout(function () { sharedView.confirmDel = null; renderSharedOverlay(); }, 3000);
+                renderSharedOverlay();
+                return;
+            }
+            sharedView.confirmDel = null;
+            sharedApi('DELETE', '/api/v1/shared/reservations/' + r.id).then(sharedReload).catch(function (e) { accessToast(e.message); sharedReload(); });
+        }));
+        panel.appendChild(row);
+    });
+    var rrow = sharedEl('div', 'sp-row');
+    var rUser = sharedEl('select', 'wf-field');
+    sharedView.users.filter(function (u) { return u.role !== 'listen' && !u.disabled; }).forEach(function (u) {
+        var o = sharedEl('option', '', u.name); o.value = u.id; rUser.appendChild(o);
+    });
+    var rStart = sharedEl('input', 'wf-field'); rStart.type = 'datetime-local'; rStart.title = 'start, your local time';
+    var rMin = sharedEl('input', 'wf-field sp-field'); rMin.type = 'number'; rMin.min = 5; rMin.max = 1440; rMin.value = 60; rMin.title = 'minutes';
+    var rRep = sharedEl('select', 'wf-field');
+    [['once', 'once'], ['daily', 'every day'], ['weekly', 'every week']].forEach(function (p) { var o = sharedEl('option', '', p[1]); o.value = p[0]; rRep.appendChild(o); });
+    var rUntil = sharedEl('input', 'wf-field'); rUntil.type = 'date'; rUntil.title = 'last day (repeating slots; empty = for good)';
+    var rTitle = sharedEl('input', 'wf-field sp-field'); rTitle.placeholder = 'title'; rTitle.maxLength = 80;
+    [rUser, rStart, rMin, sharedEl('span', 'sp-dim', 'min'), rRep, rUntil, rTitle].forEach(function (el) { rrow.appendChild(el); });
+    rrow.appendChild(sharedBtn('ADD', '', function () {
+        if (!rStart.value) { accessToast('a start time is required'); return; }
+        var body = { userId: rUser.value, start: new Date(rStart.value).toISOString(), minutes: parseInt(rMin.value, 10) || 60,
+                     repeat: rRep.value, title: rTitle.value.trim() };
+        if (rUntil.value) body.until = new Date(rUntil.value + 'T23:59:59').toISOString();
+        sharedApi('POST', '/api/v1/shared/reservations', body).then(sharedReload)
+            .catch(function (e) { accessToast(e.message); });
+    }));
+    panel.appendChild(rrow);
+    var up = sharedEl('div', '');
+    renderSchedule(up, sharedView.upcoming.slice(0, 8), sharedView.active, true);
+    panel.appendChild(up);
+
+    // Connected now
+    panel.appendChild(sharedEl('h4', '', 'CONNECTED NOW (' + sharedView.connections.length + (sharedView.max ? ' of ' + sharedView.max : '') + ')'));
+    if (!sharedView.connections.length) panel.appendChild(sharedEl('div', 'sp-empty', 'nobody'));
+    sharedView.connections.forEach(function (c) {
+        var row = sharedEl('div', 'sp-row');
+        row.appendChild(sharedEl('span', 'sp-name', c.anonymous ? 'visitor' : c.name));
+        row.appendChild(sharedEl('span', 'sp-dim', c.role + (c.callsign ? ' · ' + c.callsign : '') + ' · ' + c.ip + (c.seat ? ' · SEAT' : '') + (c.keying ? ' · KEYING' : '')));
+        row.appendChild(sharedBtn('KICK', 'warn', function () {
+            sharedApi('DELETE', '/api/v1/shared/connections/' + c.id).then(sharedReload).catch(function (e) { accessToast(e.message); });
+        }));
+        panel.appendChild(row);
+    });
+
+    // Accounts
+    panel.appendChild(sharedEl('h4', '', 'ACCOUNTS'));
+    sharedView.users.forEach(function (u) {
+        var row = sharedEl('div', 'sp-row sp-user');
+        row.appendChild(sharedEl('span', 'sp-name', u.name));
+        row.appendChild(sharedEl('span', 'sp-dim', (u.callsign || '') + (u.disabled ? ' · DISABLED' : '')));
+        var sel = sharedEl('select', 'wf-field');
+        ['listen', 'control', 'operate', 'admin'].forEach(function (r) {
+            var o = sharedEl('option', '', r); o.value = r; if (r === u.role) o.selected = true; sel.appendChild(o);
+        });
+        sel.onchange = function () {
+            sharedApi('PUT', '/api/v1/shared/users/' + u.id, { role: sel.value }).then(sharedReload)
+                .catch(function (e) { accessToast(e.message); sharedReload(); });
+        };
+        row.appendChild(sel);
+        row.appendChild(sharedBtn(u.disabled ? 'ENABLE' : 'DISABLE', 'toggle' + (u.disabled ? '' : ' warn'), function () {
+            sharedApi('PUT', '/api/v1/shared/users/' + u.id, { disabled: !u.disabled }).then(sharedReload).catch(function (e) { accessToast(e.message); });
+        }));
+        if (sharedView.pwFor === u.id) {
+            var pw = sharedEl('input', 'wf-field sp-field'); pw.type = 'password'; pw.placeholder = 'new password'; pw.autocomplete = 'new-password';
+            row.appendChild(pw);
+            row.appendChild(sharedBtn('SET', '', function () {
+                sharedApi('PUT', '/api/v1/shared/users/' + u.id, { password: pw.value }).then(function () { sharedView.pwFor = null; sharedReload(); })
+                    .catch(function (e) { accessToast(e.message); });
+            }));
+            setTimeout(function () { pw.focus(); }, 0);
+        } else {
+            row.appendChild(sharedBtn('PASSWORD', '', function () { sharedView.pwFor = u.id; renderSharedOverlay(); }));
+        }
+        // Two presses to delete: no confirm() dialog, it would stall the audio.
+        var del = sharedBtn(sharedView.confirmDel === u.id ? 'SURE?' : 'DELETE', 'danger', function () {
+            if (sharedView.confirmDel !== u.id) {
+                sharedView.confirmDel = u.id;
+                if (sharedView.confirmTimer) clearTimeout(sharedView.confirmTimer);
+                sharedView.confirmTimer = setTimeout(function () { sharedView.confirmDel = null; renderSharedOverlay(); }, 3000);
+                renderSharedOverlay();
+                return;
+            }
+            sharedView.confirmDel = null;
+            sharedApi('DELETE', '/api/v1/shared/users/' + u.id).then(sharedReload).catch(function (e) { accessToast(e.message); sharedReload(); });
+        });
+        row.appendChild(del);
+        panel.appendChild(row);
+    });
+
+    // Add account
+    var add = sharedEl('div', 'sp-row');
+    var nName = sharedEl('input', 'wf-field sp-field'); nName.placeholder = 'user name'; nName.autocomplete = 'off'; nName.autocapitalize = 'none';
+    var nPass = sharedEl('input', 'wf-field sp-field'); nPass.type = 'password'; nPass.placeholder = 'password'; nPass.autocomplete = 'new-password';
+    var nCall = sharedEl('input', 'wf-field sp-field'); nCall.placeholder = 'callsign'; nCall.autocomplete = 'off'; nCall.autocapitalize = 'characters';
+    var nRole = sharedEl('select', 'wf-field');
+    ['listen', 'control', 'operate', 'admin'].forEach(function (r) { var o = sharedEl('option', '', r); o.value = r; nRole.appendChild(o); });
+    nRole.value = 'operate';
+    [nName, nPass, nCall, nRole].forEach(function (el) { add.appendChild(el); });
+    add.appendChild(sharedBtn('ADD', '', function () {
+        sharedApi('POST', '/api/v1/shared/users', { username: nName.value.trim(), password: nPass.value, callsign: nCall.value.trim(), role: nRole.value })
+            .then(sharedReload).catch(function (e) { accessToast(e.message); });
+    }));
+    panel.appendChild(add);
+}
+
 function send(obj) {
+    // Shared Station: what this role may not send is refused here, with the
+    // reason on screen; the server refuses it again regardless.
+    if (accessState.shared && obj && accessState.denied[obj.cmd]) {
+        accessToast(accessDeniedText(accessState.denied[obj.cmd]));
+        return;
+    }
+    // ... and what needs the seat, while somebody else has it or nobody does.
+    if (accessState.shared && obj && seatState.enabled && !seatState.mine && accessState.needsSeat[obj.cmd]) {
+        accessToast(seatState.holder
+            ? seatState.holder.name + ' has the seat' + (accessState.can.control ? ' — tap the seat tag to ask for it' : '')
+            : 'Take the seat first (the tag in the top bar)');
+        return;
+    }
     if (wsTransport) wsTransport.sendCommand(obj);
 }
 
@@ -3897,6 +4759,32 @@ function handleMessage(msg) {
             micDeviceWarn = msg.message || '';
             console.warn('Mic:', micDeviceWarn);
             updateWarningVisibility();
+            break;
+        case 'access':
+            applyAccessMessage(msg);
+            break;
+        case 'authRequired':
+            showLoginSheet(!!msg.setupRequired, msg.reason || '', false);
+            break;
+        case 'stationFull':
+            showLoginSheet(false, 'The station is full (' + msg.max + ' connections). Reload to try again.', false);
+            break;
+        case 'sharedPolicy':
+            accessState.policy = msg.policy || null;
+            updateAccessUi();
+            break;
+        case 'denied':
+            accessToast(msg.reason || ('needs ' + msg.need + ' access'));
+            break;
+        case 'seat':
+            seatState = msg;
+            updateSeatUi();
+            break;
+        case 'seatLost':
+            accessToast('You lost the seat' + (msg.to ? ' to ' + msg.to : '') + ': ' + msg.reason);
+            break;
+        case 'seatNotice':
+            accessToast(msg.text);
             break;
         case 'error':
             console.error('Server error:', msg.message);
@@ -5697,6 +6585,13 @@ function renderFuncOverlay() {
     // permission no controller can be seen; the window is then reached from
     // the CW bar's PADDLE window (its MIDI... button).
     if (midi.devices.length) grid.appendChild(makeFuncBtn('MIDI', midi.enabled ? 'ON' : 'OFF', midi.enabled, openMidiModal));
+
+    // SHARED: the station's access policy and accounts, for its admins.
+    if (accessState.shared && accessState.can.admin) {
+        var pol = accessState.policy || {};
+        var sharedState = pol.txInhibit ? 'TX INHIBIT' : (pol.anonymous && pol.anonymous !== 'none' ? 'VISITORS ' + pol.anonymous.toUpperCase() : 'LOGIN ONLY');
+        grid.appendChild(makeFuncBtn('SHARED', sharedState, !!pol.txInhibit, openSharedModal));
+    }
 
     // RX audio / TX audio / jitter buffer: the AUDIO / TX overlay, which is
     // otherwise only reachable while audio is off.

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 import subprocess
 import sys
 import time
@@ -448,3 +449,103 @@ def usb_poll(usb_rest_url):
             time.sleep(0.2)
         pytest.fail(f"usb_poll({endpoint}) timed out. Last: {last_data}")
     return _poll
+
+
+# ---------------------------------------------------------------------------
+# Shared Station (--shared) server, for test_access.py and test_access_roles.py
+# ---------------------------------------------------------------------------
+
+SETUP_CODE_RE = re.compile(r"setup code ([A-Z2-9]{4}-[A-Z2-9]{4})")
+SESSION_COOKIE = "wfweb_session"
+
+
+class SharedServer:
+    """A --shared wfweb: URLs, the setup code from its log, request helpers."""
+
+    def __init__(self, proc, web_port, shared_dir, log_path):
+        self.proc = proc
+        self.web_port = web_port
+        self.https = f"https://127.0.0.1:{web_port}"
+        self.http = f"http://127.0.0.1:{web_port + 1}"
+        self.shared_dir = shared_dir
+        self.log_path = log_path
+        self.admin_cookie = None       # set once the admin exists, used by the rest
+        self.admin_password = "club-admin-pw-2026"
+
+    def setup_code(self):
+        with open(self.log_path, errors="replace") as f:
+            codes = SETUP_CODE_RE.findall(f.read())
+        assert codes, f"no setup code in the log:\n{wfweb_output_tail(self.proc)}"
+        return codes[-1]
+
+    def req(self, method, path, *, cookie=None, token=None, plain=False, **kw):
+        base = self.http if plain else self.https
+        headers = dict(kw.pop("headers", {}) or {})
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        cookies = {SESSION_COOKIE: cookie} if cookie else None
+        return requests.request(method, base + path, headers=headers, cookies=cookies,
+                                verify=False, timeout=10, **kw)
+
+    def get(self, path, **kw):
+        return self.req("GET", path, **kw)
+
+    def post(self, path, body=None, **kw):
+        return self.req("POST", path, json=body or {}, **kw)
+
+    def ws(self, cookie=None, timeout=10.0):
+        """A browser-style WSS socket, with the session cookie when given."""
+        pytest.importorskip("websockets")
+        import ssl
+        from websockets.sync.client import connect
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        headers = {"Cookie": f"{SESSION_COOKIE}={cookie}"} if cookie else None
+        return connect(f"wss://127.0.0.1:{self.web_port}", ssl=ctx, open_timeout=timeout,
+                       additional_headers=headers)
+
+
+def set_cookie(resp):
+    """The session cookie a response sets, with its attributes."""
+    header = resp.headers.get("Set-Cookie", "")
+    m = re.match(rf"{SESSION_COOKIE}=([^;]*);(.*)", header)
+    assert m, f"no session cookie in {header!r}"
+    return m.group(1), m.group(2)
+
+
+def launch_shared_wfweb(mock, event_loop, home, extra_args=()):
+    """Start wfweb --shared against mock, its accounts under home/station,
+    and wait until the auth routes answer (the rig may still be connecting).
+    Stop it with _stop_wfweb(server.proc)."""
+    if not WFWEB_BIN.exists():
+        pytest.skip(f"wfweb binary not found at {WFWEB_BIN}")
+    home = Path(home)
+    shared_dir = home / "station"
+    web_port = _find_free_port()
+    log_path = home / "wfweb.log"
+    cmd = [
+        str(WFWEB_BIN), "-p", str(web_port),
+        "--lan", "127.0.0.1", "--lan-control", str(mock.control_port),
+        "--lan-user", "testuser", "--lan-pass", "testpass", "--civ", "0x98",
+        "--shared", "--shared-dir", str(shared_dir),
+        "-l", str(log_path), *extra_args,
+    ]
+    env = dict(os.environ, HOME=str(home))
+    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT, env=env)
+    proc.output_path = str(log_path)
+    _ensure_loop_thread(event_loop)
+    srv = SharedServer(proc, web_port, shared_dir, str(log_path))
+
+    deadline = time.monotonic() + 20
+    while time.monotonic() < deadline:
+        try:
+            if srv.get("/api/v1/auth/me").status_code == 200:
+                return srv
+        except requests.ConnectionError:
+            pass
+        if proc.poll() is not None:
+            pytest.fail(f"wfweb exited with {proc.returncode}:\n{wfweb_output_tail(proc)}")
+        time.sleep(0.3)
+    _stop_wfweb(proc)
+    pytest.fail(f"--shared wfweb not answering:\n{wfweb_output_tail(proc)}")

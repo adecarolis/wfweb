@@ -5,8 +5,11 @@
 The wfview web server exposes a REST API over HTTP for scripting and integration with external tools. All radio control operations available via WebSocket are also available via REST.
 
 **Format:** JSON (`Content-Type: application/json`)
-**Authentication:** None (Phase 4)
-**CORS:** `Access-Control-Allow-Origin: *` on all responses
+**Authentication:** None by default. With `--shared` (Shared Station, see
+`SHARED_STATION.md`) every route but `/api/v1/auth/*` needs a session cookie
+or an API token (`Authorization: Bearer <token>`), else `401`.
+**CORS:** `Access-Control-Allow-Origin: *` on all responses (no credentials
+are ever accepted cross-origin: the cookie is `SameSite=Strict`)
 
 ## Ports
 
@@ -23,6 +26,9 @@ wfview runs two HTTP listeners simultaneously when SSL is available:
 When SSL is not available on the host system, port 8080 is plain HTTP and port 8081 is the WebSocket port (no separate REST HTTP server in that case — use port 8080).
 
 > **Microcontrollers (ESP32, Pico W, Arduino):** use port 8081 with plain HTTP. No TLS stack needed.
+> With `--shared`, send an API token as `Authorization: Bearer <token>` on every request
+> (made once from a logged-in browser: `POST /api/v1/auth/tokens`). Logins themselves are
+> refused on this port — a password must not travel in clear.
 
 > **Hamlib rigctld** (server build only): TCP, default port 4532, bound to `127.0.0.1`. Disabled by default — enable with `--rigctld-port 4532` or `RigCtldEnabled=true` in settings. Pass `--rigctld-bind-all` to listen on all interfaces (the Hamlib protocol is unauthenticated, so binding to a network interface hands PTT to anyone on the LAN). PTT requests route through the same path the WebSocket `setPTT` command uses, so RADE EOO synthesis and packet TX coordination stay intact. Use any Hamlib client (`rigctl`, fldigi, WSJT-X, POTACAT, gpredict) with `-m 2 -r 127.0.0.1:4532`.
 
@@ -53,13 +59,48 @@ All responses are JSON objects.
 | `200` | OK — GET success |
 | `202` | Accepted — PUT/POST/DELETE queued |
 | `400` | Bad Request — malformed JSON or missing required field |
+| `401` | Unauthorized — `--shared` is on and the request carries no session cookie or API token |
+| `403` | Forbidden — not allowed for this account, or a login attempted over plain HTTP |
 | `404` | Not Found — unknown API path |
 | `405` | Method Not Allowed |
+| `429` | Too Many Requests — login lockout (`Retry-After` says for how long) |
 | `503` | Service Unavailable — rig not connected |
 
 ---
 
 ## Endpoints
+
+### Authentication (Shared Station)
+
+Only meaningful with `--shared`; without it `GET /api/v1/auth/me` answers
+`{"shared": false}` and the other routes `404`. Full description, the account
+management routes under `/api/v1/shared/users` and the deployment notes are in
+`SHARED_STATION.md`.
+
+| Route | Does |
+|-------|------|
+| `GET /api/v1/auth/me` | who the caller is: `{shared, authenticated, user:{id,name,callsign,role}, setupRequired, recovery, secure}` |
+| `POST /api/v1/auth/setup` `{code, username, password, callsign}` | first run: the setup code from the console creates the admin and logs them in |
+| `POST /api/v1/auth/login` `{username, password}` | HTTPS only; sets the `wfweb_session` cookie (`HttpOnly; SameSite=Strict; Secure`) |
+| `POST /api/v1/auth/logout` | ends the session, clears the cookie, closes its WebSockets |
+| `POST /api/v1/auth/password` `{current, password}` | changes the caller's password |
+| `GET` / `POST {name}` / `DELETE /<id>` `/api/v1/auth/tokens` | the caller's API tokens; the token value is returned once, on creation |
+
+A browser without a session gets `{"type":"authRequired","setupRequired":bool}`
+on the WebSocket and close code `4401` (unless the admin admits visitors);
+with one, the first message is `{"type":"access","shared":true,"user":{...},
+"role":...,"can":{...},"denied":{...},"policy":{...}}`.
+
+With `--shared` every route needs the account's level: any `GET` is `listen`;
+writes to `/radio/*` are `control`, except `PUT /radio/ptt`, `/radio/cw` and
+the logbook (`operate`); `/station`, `/cw/macros`, memory writes and
+`/api/v1/shared/*` are `admin`. Short of it the answer is
+`403 {"error":"needs operate access","need":"operate"}`; with TX inhibit on,
+every `operate` write is `403` too. While another account's browser holds the
+seat, a write to the radio answers `409 {"error":"W1ABC has the seat"}`.
+Policy, connections, the seat and the reservations (`/api/v1/shared/policy`,
+`/api/v1/shared/connections`, `/api/v1/shared/seat`,
+`/api/v1/shared/reservations`) are described in `SHARED_STATION.md`.
 
 ### Station identity
 
