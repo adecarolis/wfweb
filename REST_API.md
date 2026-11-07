@@ -290,6 +290,7 @@ curl -s http://localhost:8081/api/v1/radio | jq .
     "split": false,
     "tuner": 0,
     "preamp": 1,
+    "attenuator": 0,
     "autoNotch": false,
     "nb": false,
     "nr": false,

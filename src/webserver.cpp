@@ -4138,6 +4138,12 @@ QJsonObject webServer::buildStatusJson()
     cacheItem preamp = queue->getCache(funcPreamp, 0);
     if (preamp.value.isValid()) status["preamp"] = preamp.value.toInt();
 
+    // Attenuator. Without it a page that connects with ATT already on reads
+    // OFF, and its P.AMP/ATT button keeps asking for the ATT the rig already
+    // has: nothing changes, no update comes back, the button looks dead.
+    cacheItem att = queue->getCache(funcAttenuator, 0);
+    if (att.value.isValid()) status["attenuator"] = att.value.toInt();
+
     // Antenna selector (+ RX antenna flag) — only cached on rigs that have one
     cacheItem antCache = queue->getCache(funcAntenna, 0);
     if (antCache.value.isValid() && !strcmp(antCache.value.typeName(), "antennaInfo")) {

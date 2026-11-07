@@ -26,6 +26,7 @@ CMD_FREQ_READ = 0x03
 CMD_MODE_READ = 0x04
 CMD_FREQ_SET = 0x05
 CMD_MODE_SET = 0x06
+CMD_ATTENUATOR = 0x11
 CMD_LEVEL = 0x14
 CMD_FUNC = 0x16
 CMD_METER = 0x15
@@ -118,6 +119,8 @@ class CivRadioBase:
         self._mic_gain: int = 128
         # Speech compressor ON at level 5 (128 of 255), as a voice operator leaves it.
         self.compressor: int = 1
+        # Attenuator byte as the rig sends it: BCD dB, 0x20 = 20 dB, 0 = off
+        self.attenuator: int = 0
         self._comp_level: int = 128
         self._s_meter: int = 120
         self._swr: int = 10
@@ -228,6 +231,13 @@ class CivRadioBase:
             if not payload:
                 return self.civ_ack(to, frm)
             return self._handle_meter(to, frm, payload[0])
+
+        if cmd == CMD_ATTENUATOR:
+            if payload:
+                self.attenuator = payload[0]
+                return self.civ_ack(to, frm)
+            return self.civ_frame(to, frm, CMD_ATTENUATOR,
+                                  data=bytes([self.attenuator]))
 
         if cmd == CMD_FUNC and payload and payload[0] == SUB_COMPRESSOR:
             if len(payload) > 1:
