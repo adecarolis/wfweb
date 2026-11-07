@@ -209,7 +209,7 @@ The code is valid for that run only, until it is used.
 | `--shared`, `Shared/Enabled=true` | access control on |
 | `--shared-dir <dir>`, `Shared/Dir=` | where accounts, sessions and the audit log live |
 | `--shared-reset-admin` | setup code to reset or create an admin (this run only) |
-| `--trust-proxy <cidr>[,<cidr>]`, `Shared/TrustProxy=` | reverse proxy address(es) whose `X-Forwarded-For` / `X-Forwarded-Proto` are believed (see *Deployment*) |
+| `--trust-proxy <cidr>[,<cidr>]`, `Shared/TrustProxy=` | reverse proxy address(es) whose `X-Forwarded-For` / `X-Forwarded-Proto` are believed (see *Deployment*). The client is the rightmost `X-Forwarded-For` entry that is not itself a trusted proxy: Cloudflare and nginx append to a list the client may have started, so the first entry is never believed |
 | `Shared/Anonymous=none\|listen\|control` | what a visitor without a login gets (default `none`); set from the SHARED window |
 | `Shared/TxInhibit=true` | nobody keys the rig (default off); the SHARED window's switch |
 | `Shared/TxTimeoutSecs=` | a key held this long is released (default 600, 0 = never) |

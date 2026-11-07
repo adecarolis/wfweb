@@ -430,7 +430,12 @@ PTT etc., and FUNC > SHARED (`#sharedOverlay`, `renderSharedOverlay`) for
 admins: visitor policy, TX inhibit / time-out / max connections, the
 connection list with KICK (`/api/v1/shared/connections`), accounts. `--shared` without TLS is refused unless
 `--trust-proxy <cidr>` names the proxy whose `X-Forwarded-For/-Proto` to
-believe; logins are refused on the plain REST port. The console status page
+believe; logins are refused on the plain REST port. The client address is
+the rightmost `X-Forwarded-For` entry not in the trusted set
+(`AccessControl::forwardedClient`, both `requestContext` and the WS
+upgrade): Cloudflare and nginx append to a list the client may start, so
+the first entry was the client's to choose, which defeated the per-address
+lockout and forged the audit log (2026-11-07; `tests/test_access_forwarded.py`). The console status page
 shows the setup code while no admin exists and "open - anyone who reaches
 this port can transmit" without `--shared`. HTTP hygiene that came with it,
 flag or not: header-read timeout 10 s, 128-connection cap, a 60 s drain

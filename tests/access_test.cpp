@@ -141,6 +141,30 @@ int main()
             "tokens are 32 random bytes, base64url");
     require(AccessControl::tokenHash("a").size() == 64, "token hash is SHA-256 hex");
 
+    // --- the client address behind a proxy (X-Forwarded-For) ---
+    {
+        using Subnets = QList<QPair<QHostAddress, int>>;
+        const Subnets lo{QHostAddress::parseSubnet("127.0.0.1/32")};
+        const Subnets lan{QHostAddress::parseSubnet("127.0.0.1/32"), QHostAddress::parseSubnet("10.0.0.0/8")};
+        const QHostAddress peer("127.0.0.1"), other("192.0.2.5");
+        require(AccessControl::forwardedClient(other, "203.0.113.9", lo) == other, "untrusted peer: header ignored");
+        require(AccessControl::forwardedClient(peer, "", lo) == peer, "trusted peer, no header: the peer");
+        require(AccessControl::forwardedClient(peer, "203.0.113.9", lo) == QHostAddress("203.0.113.9"), "one address");
+        require(AccessControl::forwardedClient(peer, "1.2.3.4, 203.0.113.9", lo) == QHostAddress("203.0.113.9"),
+                "Cloudflare / nginx append: the rightmost address, not the client's own first entry");
+        require(AccessControl::forwardedClient(peer, "203.0.113.9, 10.0.0.2", lan) == QHostAddress("203.0.113.9"),
+                "an inner proxy's own address is skipped");
+        require(AccessControl::forwardedClient(peer, "10.0.0.7, 10.0.0.2", lan) == QHostAddress("10.0.0.7"),
+                "every entry trusted: the leftmost");
+        require(AccessControl::forwardedClient(peer, "unknown, 203.0.113.9:4711", lo) == QHostAddress("203.0.113.9"),
+                "garbage skipped, port stripped");
+        require(AccessControl::forwardedClient(peer, "[2001:db8::1]:443", lo) == QHostAddress("2001:db8::1"),
+                "bracketed IPv6 with a port");
+        require(AccessControl::forwardedClient(QHostAddress("::ffff:127.0.0.1"), "203.0.113.9", lo)
+                        == QHostAddress("203.0.113.9"), "IPv4-mapped peer matches the v4 block");
+        require(AccessControl::forwardedClient(peer, "nonsense", lo) == peer, "nothing usable: the peer");
+    }
+
     QTemporaryDir tmp;
     require(tmp.isValid(), "temporary directory");
     const QString dir = tmp.filePath("shared");

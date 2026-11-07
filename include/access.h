@@ -4,8 +4,10 @@
 #include <QByteArray>
 #include <QDateTime>
 #include <QHash>
+#include <QHostAddress>
 #include <QJsonObject>
 #include <QList>
+#include <QPair>
 #include <QString>
 #include <functional>
 
@@ -208,6 +210,16 @@ public:
     // --- HTTP helpers (pure) ------------------------------------------------
     static QByteArray cookieValue(const QByteArray &cookieHeader, const QByteArray &name);
     static QByteArray bearerToken(const QByteArray &authorizationHeader);
+    // The client behind a trusted proxy: the rightmost X-Forwarded-For
+    // address that is not itself a trusted proxy.  Cloudflare and nginx
+    // append the connecting address to a list the client may have started,
+    // so the first entry is the client's to choose and only the last
+    // untrusted one is the address that reached the proxy.  An untrusted
+    // peer is the client itself, header or not; a list with nothing usable
+    // in it falls back to the peer.
+    static QHostAddress forwardedClient(const QHostAddress &peer, const QByteArray &forwardedFor,
+                                        const QList<QPair<QHostAddress, int>> &trustedProxies);
+    static bool inSubnets(const QHostAddress &addr, const QList<QPair<QHostAddress, int>> &subnets);
     static QByteArray randomToken();                   // 32 bytes, base64url, no padding
     static QByteArray tokenHash(const QByteArray &token); // SHA-256, hex
     static QString randomId(int bytes = 8);            // hex

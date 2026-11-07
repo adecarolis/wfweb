@@ -391,6 +391,44 @@ QByteArray AccessControl::bearerToken(const QByteArray &authorizationHeader)
     return h.mid(7).trimmed();
 }
 
+bool AccessControl::inSubnets(const QHostAddress &addrIn, const QList<QPair<QHostAddress, int>> &subnets)
+{
+    if (subnets.isEmpty()) return false;
+    // A v4 peer on a dual-stack listener arrives as ::ffff:a.b.c.d, which
+    // isInSubnet() would not place in a v4 block.
+    bool v4 = false;
+    const quint32 ip4 = addrIn.toIPv4Address(&v4);
+    const QHostAddress addr = v4 ? QHostAddress(ip4) : addrIn;
+    for (const auto &subnet : subnets)
+        if (addr.isInSubnet(subnet.first, subnet.second)) return true;
+    return false;
+}
+
+QHostAddress AccessControl::forwardedClient(const QHostAddress &peer, const QByteArray &forwardedFor,
+                                            const QList<QPair<QHostAddress, int>> &trustedProxies)
+{
+    if (!inSubnets(peer, trustedProxies)) return peer;
+    const QList<QByteArray> parts = forwardedFor.split(',');
+    QHostAddress leftmost;
+    for (int i = parts.size() - 1; i >= 0; --i) {
+        QString item = QString::fromLatin1(parts.at(i).trimmed());
+        // Some proxies write the port too: "[2001:db8::1]:443", "203.0.113.9:443".
+        if (item.startsWith('[')) {
+            const int end = item.indexOf(']');
+            if (end > 0) item = item.mid(1, end - 1);
+        } else if (item.count(':') == 1) {
+            item = item.left(item.indexOf(':'));
+        }
+        const QHostAddress addr(item);
+        if (addr.isNull()) continue;
+        if (!inSubnets(addr, trustedProxies)) return addr;
+        leftmost = addr;    // a proxy's own address: keep walking left
+    }
+    // Every entry was a trusted proxy (a block drawn too wide): the furthest
+    // one is the best guess.  Nothing parseable: the peer.
+    return leftmost.isNull() ? peer : leftmost;
+}
+
 QString AccessControl::who(const QString &name, const QString &ip)
 {
     return QString("%1@%2").arg(name.isEmpty() ? QStringLiteral("-") : name,

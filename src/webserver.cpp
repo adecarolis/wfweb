@@ -2072,10 +2072,9 @@ void webServer::onWsNewConnection()
     QString ip = peerIp(pSocket->peerAddress());
     if (sharedMode_ && access_) {
         const QNetworkRequest req = pSocket->request();
-        if (trustedProxy(pSocket->peerAddress())) {
-            const QByteArray fwd = req.rawHeader("X-Forwarded-For");
-            if (!fwd.isEmpty()) ip = QString::fromLatin1(fwd.split(',').first().trimmed());
-        }
+        if (trustedProxy(pSocket->peerAddress()))
+            ip = peerIp(AccessControl::forwardedClient(pSocket->peerAddress(), req.rawHeader("X-Forwarded-For"),
+                                                       trustedProxies_));
         who = access_->resolveSession(AccessControl::cookieValue(req.rawHeader("Cookie"), "wfweb_session"));
         if (!who.authenticated) {
             if (sharedAnonymous_ == Access::Role::None) {
@@ -9173,15 +9172,9 @@ void webServer::configureShared(bool enableOverride, const QString &dirOverride,
         qWarning().noquote() << "Shared: no admin account yet - open the web page and enter setup code" << code;
 }
 
-bool webServer::trustedProxy(const QHostAddress &peerIn) const
+bool webServer::trustedProxy(const QHostAddress &peer) const
 {
-    if (trustedProxies_.isEmpty()) return false;
-    bool v4 = false;
-    const quint32 ip4 = peerIn.toIPv4Address(&v4);
-    const QHostAddress peer = v4 ? QHostAddress(ip4) : peerIn;
-    for (const auto &subnet : trustedProxies_)
-        if (peer.isInSubnet(subnet.first, subnet.second)) return true;
-    return false;
+    return AccessControl::inSubnets(peer, trustedProxies_);
 }
 
 webServer::RequestContext webServer::requestContext(QTcpSocket *socket, const QByteArray &headerSection)
@@ -9192,8 +9185,10 @@ webServer::RequestContext webServer::requestContext(QTcpSocket *socket, const QB
     ctx.restPort = socket->property("isRestPort").toBool();
     ctx.userAgent = QString::fromLatin1(headerValue(headerSection, "User-Agent")).left(200);
     if (trustedProxy(socket->peerAddress())) {
-        const QByteArray fwd = headerValue(headerSection, "X-Forwarded-For");
-        if (!fwd.isEmpty()) ctx.ip = QString::fromLatin1(fwd.split(',').first().trimmed());
+        // The rightmost address that is not a proxy of ours: the first entry
+        // is whatever the client put there (Cloudflare and nginx append).
+        ctx.ip = peerIp(AccessControl::forwardedClient(socket->peerAddress(),
+                                                       headerValue(headerSection, "X-Forwarded-For"), trustedProxies_));
         if (headerValue(headerSection, "X-Forwarded-Proto").toLower() == "https") ctx.secure = true;
     }
     if (sharedMode_ && access_) {
