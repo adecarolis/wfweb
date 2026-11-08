@@ -344,7 +344,13 @@ queuePriority cachingQueue::del(funcs func, uchar receiver)
         //auto it(queue.begin());
         if (it != queue.end()) {
             prio = it.key();
-            int count = queue.remove(it.key(),it.value());
+            // By value: QMultiMap::remove(key, value) erases the node as it
+            // walks the entries of that key and compares the rest with the
+            // value it was handed -- a reference into the first node read
+            // freed memory once another entry shared the priority (ASan,
+            // setPTT false from the browser; 2026-11-07).
+            const queueItem item = it.value();
+            int count = queue.remove(prio, item);
             if (count>0)
                 qDebug() << "cachingQueue()::del" << count << "entries from queue for" << funcString[func] << "on receiver" << receiver;
         }

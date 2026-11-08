@@ -5,6 +5,9 @@
 #include "logcategories.h"
 #include "wfweb_version.h"
 #include "wsjtxmessage.h"
+#include <cmath>
+
+static quint64 jsonHz(const QJsonValue &v);   // a Hz field from JSON, bounded; defined above handleCommand
 
 #include <QStandardPaths>
 #include <QDir>
@@ -806,13 +809,14 @@ void webServer::sweepHttpConnections()
             if (now - c.openedMs > kHttpHeaderTimeoutMs) dead.append(s);
             continue;
         }
-        const qint64 pending = s->bytesToWrite();
+        const qint64 pending = pendingWriteBytes(s);
         if (pending < c.lastBytesToWrite) {
             c.lastBytesToWrite = pending;
             c.lastProgressMs = now;
         }
         if (pending > 0 && now - c.lastProgressMs > kHttpDrainStallMs) dead.append(s);
     }
+    sweepWsClients();
     for (QTcpSocket *s : dead) {
         qInfo() << "Web: dropping stalled HTTP connection from" << s->peerAddress().toString();
         httpConns.remove(s);
@@ -822,13 +826,34 @@ void webServer::sweepHttpConnections()
     }
 }
 
+qint64 webServer::httpPendingWriteBytes() const
+{
+    qint64 total = 0;
+    for (auto it = httpConns.constBegin(); it != httpConns.constEnd(); ++it)
+        if (it->requestDone) total += pendingWriteBytes(it.key());
+    return total;
+}
+
 void webServer::httpRequestDone(QTcpSocket *socket)
 {
     auto it = httpConns.find(socket);
     if (it == httpConns.end()) return;
     it->requestDone = true;
     it->lastProgressMs = QDateTime::currentMSecsSinceEpoch();
-    it->lastBytesToWrite = socket->bytesToWrite();
+    it->lastBytesToWrite = pendingWriteBytes(socket);
+}
+
+qint64 webServer::pendingWriteBytes(QTcpSocket *socket)
+{
+    qint64 n = socket->bytesToWrite();
+    if (QSslSocket *ssl = qobject_cast<QSslSocket *>(socket)) n += ssl->encryptedBytesToWrite();
+    return n;
+}
+
+qint64 webServer::wsPendingBytes(QWebSocket *client) const
+{
+    const QPointer<QTcpSocket> raw = wsRawSocket_.value(client);
+    return raw ? pendingWriteBytes(raw) : client->bytesToWrite();
 }
 
 QByteArray webServer::headerValue(const QByteArray &headerSection, const QByteArray &name)
@@ -877,6 +902,19 @@ void webServer::onHttpReadyRead()
     QTcpSocket *socket = qobject_cast<QTcpSocket *>(sender());
     if (!socket) return;
 
+    // One request per connection: every response says Connection: close
+    // and the socket is on its way out once it is written.  Bytes that
+    // arrive after that are not a second request -- without this, 200
+    // requests for the page in one segment, never read, were 200 copies of
+    // it (130 MB) in this socket's write buffer until the drain-stall cut.
+    {
+        auto it = httpConns.constFind(socket);
+        if (it != httpConns.constEnd() && it->requestDone) {
+            socket->readAll();
+            return;
+        }
+    }
+
     // WebSocket upgrade applies to SSL sockets or connections through the TLS proxy
     if (connectionIsSecure(socket)) {
         const QByteArray peek = socket->peek(4096);
@@ -900,6 +938,7 @@ void webServer::onHttpReadyRead()
             disconnect(socket, &QTcpSocket::readyRead, this, &webServer::onHttpReadyRead);
             disconnect(socket, &QTcpSocket::disconnected, this, &webServer::onHttpDisconnected);
             httpConns.remove(socket);
+            wsHandover_.insert(peerKey(socket->peerAddress(), socket->peerPort()), QPointer<QTcpSocket>(socket));
             wsServer->handleConnection(socket);
             return;
         }
@@ -951,6 +990,17 @@ void webServer::onHttpReadyRead()
             body = request.mid(sepIdx + 4, contentLength);
     }
     socketBuffers.remove(socket);
+
+    // Every response is buffered whole in its socket.  What the connections
+    // already answered are still holding is bounded here: past the cap a
+    // request is turned away (the browser's model fetch retries on its own)
+    // rather than adding another 15 MB a client may never read.
+    if (httpPendingWriteBytes() > kHttpMaxPendingWriteBytes) {
+        qWarning() << "Web: refusing request from" << socket->peerAddress().toString()
+                   << "- too much unsent response data pending";
+        sendRestResponse(socket, 503, QJsonObject{{"error", "Server busy, try again"}}, "Retry-After: 5\r\n");
+        return;
+    }
 
     // Parse first line: METHOD /path HTTP/1.1
     int firstLineEnd = headerSection.indexOf("\r\n");
@@ -1072,6 +1122,16 @@ void webServer::onHttpDisconnected()
 
 void webServer::serveStaticFile(QTcpSocket *socket, const QString &path, const QByteArray &headerSection)
 {
+    // The resource engine cleans the path (".." and "." segments, doubled
+    // slashes), so "/models/../index.html" was the page under the model's
+    // caching policy and "/.." reached the rest of the resource tree.  Only
+    // the literal path of a file under :/web is served.
+    if (path.contains(QLatin1String("..")) || path.contains(QLatin1String("//"))
+            || path.contains(QLatin1String("/./")) || path.endsWith(QLatin1String("/."))) {
+        sendHttpResponse(socket, 404, "Not Found", "text/plain", "Not Found");
+        return;
+    }
+
     // Serve from Qt resource system
     QString resourcePath = ":/web" + path;
     QFile file(resourcePath);
@@ -1516,7 +1576,7 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
                 QJsonObject e; e["error"] = "Missing field: hz";
                 sendRestResponse(socket, 400, e); return;
             }
-            quint64 hz = obj["hz"].toVariant().toULongLong();
+            quint64 hz = jsonHz(obj["hz"]);
             if (hz == 0) {
                 QJsonObject e; e["error"] = "Invalid frequency";
                 sendRestResponse(socket, 400, e); return;
@@ -2063,6 +2123,18 @@ void webServer::onWsNewConnection()
 {
     QWebSocket *pSocket = wsServer->nextPendingConnection();
     if (!pSocket) return;
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
+    // Qt's own limit is 2 GB per frame and per message, all of it buffered
+    // before the handler sees a byte.
+    pSocket->setMaxAllowedIncomingFrameSize(kWsMaxIncomingBytes);
+    pSocket->setMaxAllowedIncomingMessageSize(kWsMaxIncomingBytes);
+#endif
+    // The socket this QWebSocket was upgraded from (see wsPendingBytes);
+    // kept in wsRawSocket_ only for a client that is let in, below.
+    // Hand-overs whose handshake never completed are dropped here too.
+    const QPointer<QTcpSocket> rawSocket = wsHandover_.take(peerKey(pSocket->peerAddress(), pSocket->peerPort()));
+    for (auto it = wsHandover_.begin(); it != wsHandover_.end();)
+        it = it.value().isNull() ? wsHandover_.erase(it) : ++it;
 
     // Shared Station: the browser's session cookie rides on the upgrade
     // request.  Without a live session the socket gets one message saying
@@ -2112,6 +2184,7 @@ void webServer::onWsNewConnection()
     connect(pSocket, &QWebSocket::binaryMessageReceived, this, &webServer::onWsBinaryMessage);
     connect(pSocket, &QWebSocket::disconnected, this, &webServer::onWsDisconnected);
 
+    wsRawSocket_.insert(pSocket, rawSocket);
     wsClients.append(pSocket);
     browserCount_ = wsClients.size();
     if (who.authenticated)
@@ -2205,6 +2278,7 @@ void webServer::onWsDisconnected()
                 info.who.authenticated ? info.who.name : QStringLiteral("anonymous"), info.ip));
         }
         wsClients.removeAll(pClient);
+        wsRawSocket_.remove(pClient);
         browserCount_ = wsClients.size();
         // After the removal: the seat must not be offered to a socket on
         // its way out.
@@ -2451,6 +2525,16 @@ static bool labelIsRigCapture(const QString &label, const QString &rigName)
     return label.contains(codec, Qt::CaseInsensitive) && rigName.contains(codec, Qt::CaseInsensitive);
 }
 
+// A frequency in Hz from a JSON number: 0 for anything that is not a
+// finite non-negative number below 1 THz.  A double straight into a
+// quint64 is undefined past 2^64 (UBSan, "lower": 1e30 from a fuzzed
+// client) and QVariant's own conversion rounds through qint64 first.
+static quint64 jsonHz(const QJsonValue &v)
+{
+    const double d = v.toDouble();
+    return (std::isfinite(d) && d >= 0.0 && d < 1.0e12) ? static_cast<quint64>(d) : 0;
+}
+
 void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
 {
     QString type = cmd["cmd"].toString();
@@ -2516,7 +2600,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
                                        {"unexported", logbook_.unexportedCount()}});
     }
     else if (type == "setFrequency") {
-        quint64 hz = cmd["value"].toVariant().toULongLong();
+        quint64 hz = jsonHz(cmd["value"]);
         if (hz > 0) {
             freqt f;
             f.Hz = hz;
@@ -2974,8 +3058,8 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         // 1 and 2 as the operator set them on the rig, then that set is
         // selected (0x27 0x16). Rigs without a range table in their rig file
         // don't get here: rigInfo reports scopeFixedEdges=false.
-        quint64 lower = static_cast<quint64>(cmd["lower"].toDouble());
-        quint64 upper = static_cast<quint64>(cmd["upper"].toDouble());
+        quint64 lower = jsonHz(cmd["lower"]);
+        quint64 upper = jsonHz(cmd["upper"]);
         if (rigCaps && upper > lower && rigCaps->commands.contains(funcScopeFixedEdgeFreq) && rigCaps->commands.contains(funcScopeEdge)) {
             scopeEdgeSetting e;
             for (const genericType &r : rigCaps->scopeEdgeRanges) {
@@ -4074,7 +4158,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             QString mode = cmd["mode"].toString().toUpper().trimmed();
             if (mode != "FT8" && mode != "FT4") mode = digiMode;
             int snr = cmd["snr"].toInt();
-            quint64 freqHz = cmd["freq"].toVariant().toULongLong();
+            quint64 freqHz = jsonHz(cmd["freq"]);
             if (freqHz > 0) pskReporter->updateFrequency(freqHz);
             pskReporter->updateRxSpotWithGrid(call, grid, mode, snr);
         }
@@ -5103,6 +5187,7 @@ void webServer::sendBinaryToAll(const QByteArray &data)
 {
     for (QWebSocket *client : wsClients) {
         if (seatHides(client)) continue;
+        if (wsPendingBytes(client) > kWsBinaryPendingBytes) continue;   // not keeping up: skip this frame
         client->sendBinaryMessage(data);
     }
 }
@@ -5111,7 +5196,24 @@ void webServer::sendBinaryToAudioClients(const QByteArray &data)
 {
     for (QWebSocket *client : audioClients) {
         if (seatHides(client)) continue;
+        if (wsPendingBytes(client) > kWsBinaryPendingBytes) continue;
         client->sendBinaryMessage(data);
+    }
+}
+
+// Once a second (from the HTTP sweep's timer): a WebSocket client that has
+// let kWsMaxPendingBytes pile up unsent is not reading -- a tab the OS
+// froze, or a connection opened to hold our memory -- and is cut.  abort(),
+// not close(): a close frame would wait behind the backlog for good.
+void webServer::sweepWsClients()
+{
+    const QList<QWebSocket *> clients = wsClients;
+    for (QWebSocket *c : clients) {
+        const qint64 pending = wsPendingBytes(c);
+        if (pending <= kWsMaxPendingBytes) continue;
+        qWarning() << "Web: client" << c->peerAddress().toString() << "is not reading,"
+                   << pending << "bytes pending - disconnecting";
+        c->abort();
     }
 }
 

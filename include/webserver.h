@@ -250,7 +250,33 @@ private:
     QTimer *httpSweepTimer = nullptr;
     void sweepHttpConnections();
     void httpRequestDone(QTcpSocket *socket);
+    qint64 httpPendingWriteBytes() const;
     static const int kHttpMaxConnections = 128;
+    // Responses are buffered whole in the socket; a client that asks for
+    // the CW model (15 MB) on every connection it may open and reads none
+    // of it would otherwise hold kHttpMaxConnections x that in memory.
+    static const qint64 kHttpMaxPendingWriteBytes = 128 * 1024 * 1024;
+    // WebSocket clients: a message bigger than anything the page sends is
+    // refused by Qt before it is buffered; spectrum / audio frames are
+    // dropped for a client more than kWsBinaryPendingBytes behind (it is
+    // not keeping up; fresher frames serve it better), and one that lets
+    // kWsMaxPendingBytes pile up is not reading at all and is cut, else a
+    // visitor who connects and never reads holds the whole stream in RAM.
+    static const quint64 kWsMaxIncomingBytes = 16 * 1024 * 1024;
+    static const qint64 kWsBinaryPendingBytes = 2 * 1024 * 1024;
+    static const qint64 kWsMaxPendingBytes = 8 * 1024 * 1024;
+    void sweepWsClients();
+    // The write backlog of a socket: QSslSocket::bytesToWrite() counts only
+    // what is still to be encrypted; what is encrypted and unsent sits in
+    // encryptedBytesToWrite(), which is where a stalled reader's data is.
+    static qint64 pendingWriteBytes(QTcpSocket *socket);
+    qint64 wsPendingBytes(QWebSocket *client) const;
+    // QWebSocket hides its socket (and bytesToWrite() has the same blind
+    // spot), so the QTcpSocket handed to the WebSocket server is kept, by
+    // peer address and port until the QWebSocket exists, then by it.
+    QHash<QString, QPointer<QTcpSocket>> wsHandover_;
+    QHash<QWebSocket *, QPointer<QTcpSocket>> wsRawSocket_;
+    static QString peerKey(const QHostAddress &addr, quint16 port) { return addr.toString() + ':' + QString::number(port); }
     static const int kHttpHeaderTimeoutMs = 10000;
     static const int kHttpDrainStallMs = 60000;
     static QByteArray headerValue(const QByteArray &headerSection, const QByteArray &name);

@@ -442,6 +442,28 @@ flag or not: header-read timeout 10 s, 128-connection cap, a 60 s drain
 stall cut (`sweepHttpConnections`), the `Origin`/`Host` check on the WSS
 upgrade (`hostOf`), `nosniff` / `Referrer-Policy`, HSTS only with a user
 certificate (`--cert/--key`, `Web/CertFile`; chain and EC keys accepted).
+A sanitizer fuzz pass over the parser and the WS handlers (2026-11-07,
+`tests/fuzz_webserver.py`, run short by `tests/test_fuzz_webserver.py`;
+`--duration 900` by hand) found no memory bug in the parser but four ways
+to hold the server's memory from a client before login, all fixed in
+`webserver.cpp`: one request per connection (bytes after the response are
+dropped, every response is `Connection: close`), a 128 MB cap on unsent
+response data across connections (`kHttpMaxPendingWriteBytes`, 503 past
+it), a WebSocket client with 8 MB unread is cut and spectrum / audio frames
+are skipped for one 2 MB behind (`sweepWsClients`, `kWsBinaryPendingBytes`;
+Qt's incoming frame / message limit set to 16 MB), and `serveStaticFile`
+takes the literal path only (the resource engine cleaned `..`).  **Pending
+bytes on a QSslSocket are `encryptedBytesToWrite()`**, not
+`bytesToWrite()` (which the drain-stall cut used to read, so it never fired
+on TLS): `pendingWriteBytes()`, and `wsRawSocket_` keeps the socket a
+QWebSocket was upgraded from for the same reason.  The pass also caught a
+use-after-free in `cachingQueue::del` (a reference into the node being
+erased; `setPTT false`).  Build for it: `qmake wfweb.pro CONFIG+=debug
+"QMAKE_CXXFLAGS+=-fsanitize=address,undefined,float-cast-overflow -g1 -O1"
+"QMAKE_LFLAGS+=-fsanitize=address,undefined"`, `ASAN_OPTIONS=detect_leaks=0`;
+the radio side prints UBSan "load of value ... not a valid value" for
+uninitialised enums at start-up (`rigidentities.h`, `icomudpbase.h`,
+`audioconverter.h`), not the parser's, so never set `halt_on_error`.
 **The seat** (phase 3, `Seat seat_` in webserver.h): one socket holds it;
 Control / Tx commands need it unless `Access::seatExempt` (decoder
 bookkeeping, the seat commands) -- `seatRequired` in the gate, the 0x03

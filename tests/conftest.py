@@ -263,9 +263,10 @@ def _launch_wfweb(mock, event_loop, rigctld_port, civ, home):
     # failures quote.
     output_path = os.path.join(home, "wfweb.log")
     cmd += ["-l", output_path]
+    capture = os.environ.get("WFWEB_TEST_CAPTURE")   # see launch_shared_wfweb
     proc = subprocess.Popen(
         cmd,
-        stdout=subprocess.DEVNULL,
+        stdout=open(os.path.join(home, "wfweb.stderr"), "wb") if capture else subprocess.DEVNULL,
         stderr=subprocess.STDOUT,
         env=env,
     )
@@ -514,10 +515,11 @@ def set_cookie(resp):
     return m.group(1), m.group(2)
 
 
-def launch_shared_wfweb(mock, event_loop, home, extra_args=()):
+def launch_shared_wfweb(mock, event_loop, home, extra_args=(), output=None):
     """Start wfweb --shared against mock, its accounts under home/station,
     and wait until the auth routes answer (the rig may still be connecting).
-    Stop it with _stop_wfweb(server.proc)."""
+    Stop it with _stop_wfweb(server.proc).  output: a path for the
+    process's stdout / stderr (sanitizer reports); dropped by default."""
     if not WFWEB_BIN.exists():
         pytest.skip(f"wfweb binary not found at {WFWEB_BIN}")
     home = Path(home)
@@ -532,7 +534,12 @@ def launch_shared_wfweb(mock, event_loop, home, extra_args=()):
         "-l", str(log_path), *extra_args,
     ]
     env = dict(os.environ, HOME=str(home))
-    proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT, env=env)
+    # WFWEB_TEST_CAPTURE=1 keeps every test server's stdout / stderr (a
+    # sanitizer report, a qFatal) in <home>/wfweb.stderr for a post-mortem.
+    if output is None and os.environ.get("WFWEB_TEST_CAPTURE"):
+        output = home / "wfweb.stderr"
+    out = open(output, "wb") if output else subprocess.DEVNULL
+    proc = subprocess.Popen(cmd, stdout=out, stderr=subprocess.STDOUT, env=env)
     proc.output_path = str(log_path)
     _ensure_loop_thread(event_loop)
     srv = SharedServer(proc, web_port, shared_dir, str(log_path))

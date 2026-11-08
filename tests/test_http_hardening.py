@@ -292,3 +292,177 @@ def test_connection_cap(wfweb_instance):
         time.sleep(0.2)
     else:
         pytest.fail(f"server not answering after the flood: {last}")
+
+
+# --- Found by tests/fuzz_webserver.py (2026-11-07) ---------------------------
+
+def _status_lines(data):
+    return [l for l in data.split(b"\r\n") if l.startswith(b"HTTP/1.1 ")]
+
+
+def test_one_request_per_connection(wfweb_instance):
+    """Every response says Connection: close, so bytes after the first
+    request on a connection are not a second request.  The parser used to
+    answer each of them: 200 requests for the page in one segment, never
+    read, were 200 copies of it (130 MB) in that socket's write buffer until
+    the drain-stall cut, from a client that had sent 12 KB."""
+    _, web_port = wfweb_instance
+    s = _tls_connect(web_port)
+    try:
+        s.sendall(f"GET /index.html HTTP/1.1\r\nHost: 127.0.0.1:{web_port}\r\n\r\n".encode() * 50)
+        time.sleep(1.0)                      # let every segment land before reading
+        data = b""
+        s.settimeout(10.0)
+        while True:
+            try:
+                chunk = s.recv(1 << 20)
+            except ssl.SSLWantReadError:
+                continue
+            except OSError:
+                break
+            if not chunk:
+                break
+            data += chunk
+    finally:
+        s.close()
+    statuses = _status_lines(data)
+    assert statuses and statuses[0].startswith(b"HTTP/1.1 200 "), data[:200]
+    assert len(statuses) == 1, f"{len(statuses)} responses to 50 pipelined requests"
+
+
+@pytest.mark.parametrize("path", ["/models/../index.html", "//index.html", "/./index.html",
+                                  "/index.html/../theme.css", "/..", "/../web/index.html", "/index.html/."])
+def test_static_paths_are_literal(wfweb_instance, path):
+    """The resource engine cleans '..', '.' and doubled slashes, so
+    '/models/../index.html' was the page served under the model's caching
+    policy and '/..' walked the resource tree.  Only the literal path of a
+    file under :/web is served; everything else is 404."""
+    _, web_port = wfweb_instance
+    s = _tls_connect(web_port)
+    try:
+        s.sendall(f"GET {path} HTTP/1.1\r\nHost: 127.0.0.1:{web_port}\r\n\r\n".encode())
+        head = _read_head(s)
+    finally:
+        s.close()
+    assert head.startswith(b"HTTP/1.1 404 "), head[:200]
+
+
+def test_pending_response_bytes_are_capped(wfweb_instance):
+    """Responses are buffered whole in their sockets.  Twelve connections
+    each asking for the 15 MB CW model and reading none of it hold ~180 MB
+    (kHttpMaxPendingWriteBytes is 128 MB); the next request is turned away
+    with 503 instead of adding to it, and once they are gone the file is
+    served again.  Before the cap, 128 such connections were 1.9 GB."""
+    _, web_port = wfweb_instance
+    model = f"GET /models/deepcw.onnx HTTP/1.1\r\nHost: 127.0.0.1:{web_port}\r\n\r\n".encode()
+    held = []
+    try:
+        for _ in range(12):
+            s = _tls_connect(web_port)
+            s.sendall(model)
+            held.append(s)
+        time.sleep(2.0)                      # the server has read and answered each
+        s = _tls_connect(web_port)
+        s.sendall(f"GET /api/v1/radio/info HTTP/1.1\r\nHost: 127.0.0.1:{web_port}\r\n\r\n".encode())
+        head = _read_head(s)
+        s.close()
+        assert head.startswith(b"HTTP/1.1 503 "), head[:200]
+        assert b"Retry-After" in head
+    finally:
+        for s in held:
+            s.close()
+    deadline = time.monotonic() + 10.0
+    while time.monotonic() < deadline:
+        s = _tls_connect(web_port)
+        s.sendall(f"GET /api/v1/radio/info HTTP/1.1\r\nHost: 127.0.0.1:{web_port}\r\n\r\n".encode())
+        head = _read_head(s)
+        s.close()
+        if head.startswith(b"HTTP/1.1 200 "):
+            break
+        time.sleep(0.3)
+    else:
+        pytest.fail(f"still refusing after the readers are gone: {head[:100]!r}")
+
+
+def _ws_frame(payload, opcode=1):
+    """One masked client frame (RFC 6455) carrying payload."""
+    import struct
+    n = len(payload)
+    if n < 126:
+        head = bytes([0x80 | opcode, 0x80 | n])
+    elif n < 65536:
+        head = bytes([0x80 | opcode, 0x80 | 126]) + struct.pack(">H", n)
+    else:
+        head = bytes([0x80 | opcode, 0x80 | 127]) + struct.pack(">Q", n)
+    key = b"\x01\x02\x03\x04"
+    return head + key + bytes(b ^ key[i % 4] for i, b in enumerate(payload))
+
+
+def _ws_raw(web_port):
+    """A WebSocket over TLS with the handshake done, as a raw socket."""
+    s = _tls_connect(web_port)
+    s.sendall(("GET / HTTP/1.1\r\n"
+               f"Host: 127.0.0.1:{web_port}\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n"
+               "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n").encode())
+    head = _read_head(s, timeout=5.0)
+    assert head.startswith(b"HTTP/1.1 101 "), head[:200]
+    return s
+
+
+def test_websocket_client_that_does_not_read_is_cut(wfweb_instance):
+    """Everything the server sends a WebSocket client sits in that socket's
+    write buffer until the client reads it.  A client that never reads --
+    a frozen tab, or a visitor opened to hold the server's memory -- had the
+    whole spectrum and audio stream pile up there without bound.  Now a
+    backlog past kWsMaxPendingBytes (8 MB) gets the socket cut at the next
+    sweep.  The lever here is getStatus, answered with the whole state
+    (tens of KB), asked thousands of times without reading a byte; the
+    server must log the disconnect (the socket left wsClients) and go on
+    serving."""
+    proc, web_port = wfweb_instance
+    s = _ws_raw(web_port)
+    try:
+        frame = _ws_frame(b'{"cmd":"getStatus"}')
+        s.settimeout(5.0)
+        sent = 0
+        cut = False
+        deadline = time.monotonic() + 30.0
+        while time.monotonic() < deadline:
+            try:
+                s.sendall(frame * 200)
+                sent += 200
+            except OSError:
+                cut = True          # reset: the server aborted the socket
+                break
+            if sent % 2000 == 0:
+                # Not reading, only looking: a closed socket is readable
+                # with EOF / a reset; an open one just has frames waiting.
+                s.settimeout(0.0)
+                try:
+                    if s.recv(1) == b"":
+                        cut = True
+                        break
+                except (ssl.SSLWantReadError, BlockingIOError):
+                    pass
+                except OSError:
+                    cut = True
+                    break
+                s.settimeout(5.0)
+                time.sleep(0.5)
+        assert cut, f"still connected after {sent} unread getStatus replies"
+    finally:
+        s.close()
+    # The server is fine and knows the client is gone.
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        r = requests.get(f"https://127.0.0.1:{web_port}/api/v1/radio/info", verify=False, timeout=10)
+    assert r.status_code == 200
+    from conftest import wfweb_output_tail
+    deadline = time.monotonic() + 5.0
+    while time.monotonic() < deadline:
+        tail = wfweb_output_tail(proc, 80)
+        if "is not reading" in tail and "Web client disconnected" in tail:
+            break
+        time.sleep(0.2)
+    else:
+        pytest.fail(f"no non-reader disconnect in the log:\n{wfweb_output_tail(proc, 30)}")
