@@ -1279,12 +1279,17 @@ void servermain::initPeriodicPolling()
                 periodicFuncs.insert(cap.func);
             }
 
-            if (!periodicFuncs.contains(funcPowerMeter) && rigCaps->commands.contains(funcPowerMeter))
-                queue->addUnique(priorityHighest, queueItem(funcPowerMeter, true, 0));
-            if (!periodicFuncs.contains(funcSWRMeter) && rigCaps->commands.contains(funcSWRMeter))
-                queue->addUnique(priorityHighest, queueItem(funcSWRMeter, true, 0));
-            if (!periodicFuncs.contains(funcALCMeter) && rigCaps->commands.contains(funcALCMeter))
-                queue->addUnique(priorityHighest, queueItem(funcALCMeter, true, 0));
+            // The TX meters are read for the web UI and rigctld only. With --no-web the
+            // rig server forwards every reply to its LAN clients, and a wfview client
+            // then flips its main meter between S and PWR while receiving.
+            if (!cliOverrides.noWeb) {
+                if (!periodicFuncs.contains(funcPowerMeter) && rigCaps->commands.contains(funcPowerMeter))
+                    queue->addUnique(priorityHighest, queueItem(funcPowerMeter, true, 0));
+                if (!periodicFuncs.contains(funcSWRMeter) && rigCaps->commands.contains(funcSWRMeter))
+                    queue->addUnique(priorityHighest, queueItem(funcSWRMeter, true, 0));
+                if (!periodicFuncs.contains(funcALCMeter) && rigCaps->commands.contains(funcALCMeter))
+                    queue->addUnique(priorityHighest, queueItem(funcALCMeter, true, 0));
+            }
 
             if (rigCaps->hasSpectrum) {
                 queue->add(priorityImmediate, queueItem(funcScopeOnOff, QVariant::fromValue(quint8(1)), false));
