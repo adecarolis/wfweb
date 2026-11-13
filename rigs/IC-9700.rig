@@ -1,5 +1,5 @@
 [General]
-Version=2.10
+Version=2.11
 
 [Rig]
 Manufacturer=0
@@ -474,9 +474,9 @@ Commands\50\Command29=false
 Commands\50\GetCommand=true
 Commands\50\SetCommand=true
 Commands\50\Admin=false
-Commands\51\Type=AGC Time Constant
+Commands\51\Type=AGC Status
 Commands\51\String=\\x16\\x12
-Commands\51\Min=0
+Commands\51\Min=1
 Commands\51\Max=3
 Commands\51\Bytes=0
 Commands\51\Command29=false
@@ -1454,6 +1454,13 @@ Preamps\3\Name=EXT ON
 Preamps\4\Num=3
 Preamps\4\Name=INT/EXT ON
 Preamps\size=4
+AGC\1\Num=1
+AGC\1\Name=FAST
+AGC\2\Num=2
+AGC\2\Name=MID
+AGC\3\Num=3
+AGC\3\Name=SLOW
+AGC\size=3
 Antennas\size=0
 Tuning%20Steps\1\Num=0
 Tuning%20Steps\1\Name=1 Hz

@@ -46,6 +46,7 @@ SUB_RF_POWER = 0x0A
 SUB_MIC_GAIN = 0x0B
 SUB_COMP_LEVEL = 0x0E
 SUB_COMPRESSOR = 0x44  # under CMD_FUNC
+SUB_AGC = 0x12  # under CMD_FUNC
 SUB_S_METER = 0x02
 SUB_SWR_METER = 0x12
 SUB_ALC_METER = 0x13
@@ -119,6 +120,10 @@ class CivRadioBase:
         self._mic_gain: int = 128
         # Speech compressor ON at level 5 (128 of 255), as a voice operator leaves it.
         self.compressor: int = 1
+        # AGC as the IC-7300 numbers it: 1 FAST, 2 MID, 3 SLOW. In FM the rig
+        # keeps FAST and refuses a set (agc_fm_fixed), like the real one.
+        self.agc: int = 2
+        self.agc_fm_fixed: bool = True
         # Attenuator byte as the rig sends it: BCD dB, 0x20 = 20 dB, 0 = off
         self.attenuator: int = 0
         self._comp_level: int = 128
@@ -245,6 +250,16 @@ class CivRadioBase:
                 return self.civ_ack(to, frm)
             return self.civ_frame(to, frm, CMD_FUNC, sub=SUB_COMPRESSOR,
                                   data=bytes([self.compressor]))
+
+        if cmd == CMD_FUNC and payload and payload[0] == SUB_AGC:
+            in_fm = self._mode == 0x05 and self.agc_fm_fixed
+            if len(payload) > 1:
+                if in_fm or not 1 <= payload[1] <= 3:
+                    return self.civ_nak(to, frm)
+                self.agc = payload[1]
+                return self.civ_ack(to, frm)
+            return self.civ_frame(to, frm, CMD_FUNC, sub=SUB_AGC,
+                                  data=bytes([1 if in_fm else self.agc]))
 
         if cmd == CMD_POWER_CTRL:
             return self.civ_ack(to, frm)

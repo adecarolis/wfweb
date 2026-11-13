@@ -971,10 +971,16 @@ private:
     // The boolean dialect needs three writes (and answers three reads) for one
     // mode, so the folded value is briefly nonsense — TONE on its way to TSQL
     // reads as TONE(T)/TSQL(R) in between. Clients are told once things settle.
-    int slowPollTick = 0;        // 5 s tick in sendPeriodicStatus (duplex offset, tuner status)
+    int slowPollTick = 0;        // 5 s tick in sendPeriodicStatus (duplex offset, tuner status, AGC)
     QTimer *toneModeNotifyTimer = nullptr;
     void scheduleToneModeNotify();
     void addToneCaps(QJsonObject &o) const;
+    void addAgcCaps(QJsonObject &o) const;
+    bool hasAgc() const;
+    // The rig keeps an AGC setting per mode, so a mode change makes the
+    // cached one stale: the last mode seen, to re-read AGC when it changes.
+    int agcModeSeen = -1;
+    void agcFollowMode(const cacheItem &item);
     void addBandCaps(QJsonObject &o) const;
     void addTxMeterCaps(QJsonObject &o) const;
     void addTxMeterReadings(QJsonObject &o) const;

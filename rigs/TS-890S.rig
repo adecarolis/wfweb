@@ -1,5 +1,5 @@
 [General]
-Version=2.11
+Version=2.12
 
 [Rig]
 Manufacturer=1
@@ -1435,6 +1435,15 @@ Preamps\2\Name=PRE 1
 Preamps\3\Num=2
 Preamps\3\Name=PRE 2
 Preamps\size=3
+AGC\1\Num=0
+AGC\1\Name=OFF
+AGC\2\Num=1
+AGC\2\Name=SLOW
+AGC\3\Num=2
+AGC\3\Name=MID
+AGC\4\Num=3
+AGC\4\Name=FAST
+AGC\size=4
 Antennas\1\Num=1
 Antennas\1\Name=ANT1
 Antennas\2\Num=2

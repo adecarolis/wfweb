@@ -312,9 +312,22 @@ void civEmulator::onCivFromClient(const QByteArray& frame)
         }
         break;
     }
-    case 0x16: { // various toggles. Only 0x47 (break-in) is meaningful here.
+    case 0x16: { // various toggles. Only 0x47 (break-in) and 0x12 (AGC) are meaningful here.
         if (body.isEmpty()) {
             emit replyFrame(ack(true));
+        } else if ((quint8)body[0] == 0x12) {
+            if (body.size() == 1) {
+                QByteArray pl;
+                pl.append((char)0x16);
+                pl.append((char)0x12);
+                pl.append((char)agcMode);
+                emit replyFrame(buildFrame(ctlCiv, pl));
+            } else if ((quint8)body[1] >= 1 && (quint8)body[1] <= 3) {
+                agcMode = (quint8)body[1];
+                emit replyFrame(ack(true));
+            } else {
+                emit replyFrame(ack(false));   // the IC-7300 takes 1-3 only
+            }
         } else if ((quint8)body[0] == 0x47) {
             if (body.size() == 1) {
                 QByteArray pl;

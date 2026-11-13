@@ -129,6 +129,7 @@ private:
     quint8 cwPitchEncoded = 128;    // encoded → 600 Hz
     quint8 keySpeedEncoded = 115;   // encoded → ~25 WPM
     quint8 breakInMode = 1;         // 0x16 0x47: 0=off, 1=semi, 2=full
+    quint8 agcMode = 2;             // 0x16 0x12: 1=FAST, 2=MID, 3=SLOW (IC-7300)
     quint16 cwPitchHz() const  { return 300 + (quint16)cwPitchEncoded * 600 / 255; }
     quint16 keySpeedWpm() const{ return 6 + (quint16)((float)keySpeedEncoded / 6.071f); }
 

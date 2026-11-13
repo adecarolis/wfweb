@@ -179,6 +179,7 @@
         0x44: 'compressor',
         0x02: 'preamp',  // multi-state but reply still parses through here
         0x47: 'breakIn', // CW break-in, multi-state: 0 OFF, 1 SEMI, 2 FULL
+        0x12: 'agc',     // AGC, multi-state: one of the rig's agcModes values
     };
 
     var HANDLED_CMDS = {
@@ -197,6 +198,7 @@
         // Bool toggles
         setAutoNotch: true, setNoiseBlanker: true, setNoiseReduction: true,
         setMonitor: true, setCompressor: true, setPreamp: true, setAttenuator: true, setBreakIn: true,
+        setAGC: true,
         setAntenna: true,
         // VFO ops
         selectVFO: true, swapVFO: true, equalizeVFO: true, setSplit: true,
@@ -603,6 +605,8 @@
                     var modeFilter = (obj.filter >= 1 && obj.filter <= 3) ? obj.filter : null;
                     if (modeFilter) this.state.filter = modeFilter;
                     this._enqueue('setMode', civ.cmdSetMode(obj.value, modeFilter));
+                    // The rig keeps an AGC setting per mode.
+                    if (this._hasAgc) this._enqueue('readAgc', civ.cmdReadAgc());
                     this._emit('update', modeFilter ? { mode: obj.value, filter: modeFilter }
                                                     : { mode: obj.value });
                     return;
@@ -679,6 +683,17 @@
                     this.state.breakIn = bk;
                     this._enqueue('setBreakIn', civ.cmdSetBreakIn(bk));
                     this._emit('update', { breakIn: bk });
+                    return;
+                case 'setAGC':
+                    // AGC, 0x16 0x12: one of the rig's agcModes values. Read
+                    // back: in FM the rig keeps FAST and refuses the set.
+                    if (!this._hasAgc) return;
+                    var agc = obj.value | 0;
+                    if (!this._agcModes.some(function(m) { return m.num === agc; })) return;
+                    this.state.agc = agc;
+                    this._enqueue('setAGC', civ.cmdSetAgc(agc));
+                    this._enqueue('readAgc', civ.cmdReadAgc());
+                    this._emit('update', { agc: agc });
                     return;
                 case 'setAttenuator':
                     var att = (typeof obj.value === 'number') ? obj.value : 0;
@@ -1328,6 +1343,9 @@
             this._hasDuplex = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasDuplex);
             this._hasTuner = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasTuner);
             this._hasBreakIn = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasBreakIn);
+            // AGC settings, named by the rig file: the values differ per rig.
+            this._agcModes = (capsEntry && capsEntry.agcModes) || [];
+            this._hasAgc = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasAgc) && this._agcModes.length > 0;
             this._hasCompressor = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasCompressor);
             this._hasCompLevel = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasCompLevel);
             this._hasSpectrum = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasSpectrum);
@@ -1412,6 +1430,7 @@
             if (this._hasDuplex) this._enqueue('readDuplexOffset', civ.cmdReadDuplexOffset());
             if (this._hasTuner) this._enqueue('readTuner', civ.cmdReadTuner());
             if (this._hasBreakIn) this._enqueue('readBreakIn', civ.cmdReadBreakIn());
+            if (this._hasAgc) this._enqueue('readAgc', civ.cmdReadAgc());
             this._enqueueToneReads();
             this._enqueue('readScopeSpan',  civ.cmdReadScopeSpan());
             // Mod inputs: read the user's current settings first (the
@@ -1718,6 +1737,8 @@
                     // cached ones just went stale.
                     this._enqueue('readFilterWidth', civ.cmdReadFilterWidth());
                     this._enqueue('readFilterShape', civ.cmdReadBoolFunc(0x56));
+                    // So is the AGC setting, per mode.
+                    if (modeChanged && this._hasAgc) this._enqueue('readAgc', civ.cmdReadAgc());
                 }
                 return;
             }
@@ -1807,7 +1828,7 @@
                 if (bReply) {
                     var bField = BOOL_SUB_TO_FIELD[bReply.sub];
                     if (bField) {
-                        var bVal = (bReply.sub === 0x02 || bReply.sub === 0x47) ? bReply.value : !!bReply.value;
+                        var bVal = (bReply.sub === 0x02 || bReply.sub === 0x47 || bReply.sub === 0x12) ? bReply.value : !!bReply.value;
                         if (this.state[bField] !== bVal) {
                             this.state[bField] = bVal;
                             var bu = {}; bu[bField] = bVal;
@@ -2655,6 +2676,9 @@
                 hasDuplex: !!caps.hasDuplex,
                 hasTuner: !!caps.hasTuner,
                 hasBreakIn: !!caps.hasBreakIn,
+                // FUNC AGC tile: the rig's settings, value + name.
+                hasAgc: !!this._hasAgc,
+                agcModes: this._hasAgc ? this._agcModes : [],
                 hasCompressor: !!caps.hasCompressor,
                 hasCompLevel: !!caps.hasCompLevel,
                 // Switchable second meter bar: one descriptor per reading this
@@ -2737,7 +2761,7 @@
             // Pass through any cached values so the UI populates fully.
             var passthrough = ['afGain', 'rfGain', 'rfPower', 'squelch',
                 'micGain', 'monitorGain', 'pbtInner', 'pbtOuter', 'cwSpeed', 'cwPitch',
-                'autoNotch', 'nb', 'nr', 'preamp', 'attenuator', 'breakIn',
+                'autoNotch', 'nb', 'nr', 'preamp', 'attenuator', 'breakIn', 'agc',
                 'compressor', 'compLevel',
                 'antenna', 'rxAntenna',
                 'split', 'tuner', 'spanIndex', 'filterWidth', 'filterShape',
@@ -2792,6 +2816,8 @@
                     this._enqueueToneReads();
                     // BK-IN is a front-panel key too: keep the CW bar's button honest.
                     if (this._hasBreakIn) this._enqueue('readBreakIn', civ.cmdReadBreakIn());
+                    // So is AGC (the FUNC AGC tile).
+                    if (this._hasAgc) this._enqueue('readAgc', civ.cmdReadAgc());
                     // So is COMP; skipped while transmitting, when wfweb may hold it.
                     if (this._hasCompressor && !this.state.transmitting)
                         this._enqueue('read_setCompressor', civ.cmdReadBoolFunc(0x44));

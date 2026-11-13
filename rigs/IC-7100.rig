@@ -1,5 +1,5 @@
 [General]
-Version=2.11
+Version=2.12
 
 [Rig]
 Manufacturer=0
@@ -445,7 +445,7 @@ Commands\42\Command29=false
 Commands\42\GetCommand=true
 Commands\42\SetCommand=true
 Commands\42\Admin=false
-Commands\43\Type=AGC Time Constant
+Commands\43\Type=AGC Status
 Commands\43\String=\\x16\\x12
 Commands\43\Min=1
 Commands\43\Max=3
@@ -1253,6 +1253,13 @@ Preamps\2\Name=PREAMP 1
 Preamps\3\Num=2
 Preamps\3\Name=PREAMP 2
 Preamps\size=3
+AGC\1\Num=1
+AGC\1\Name=FAST
+AGC\2\Num=2
+AGC\2\Name=MID
+AGC\3\Num=3
+AGC\3\Name=SLOW
+AGC\size=3
 Antennas\size=0
 Tuning%20Steps\1\Num=0
 Tuning%20Steps\1\Name=1 Hz

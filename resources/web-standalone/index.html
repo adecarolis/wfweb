@@ -3375,6 +3375,11 @@ var hasCompressor = false;
 var hasCompLevel = false;
 var compOn = false;
 var compLevel = null;   // 0-255, null until the rig reports it
+// AGC: the FUNC AGC tile steps through the rig's own settings. rigInfo's
+// agcModes names them ([{num, name}]): the values differ per rig.
+var hasAgc = false;
+var agcModes = [];
+var agcValue = null;    // the rig's value, null until it reports one
 
 var nbOn = false;
 var nrOn = false;
@@ -3821,7 +3826,7 @@ function handleMessage(msg) {
                 if (msg.hasMainSub !== undefined) { hasMainSub = msg.hasMainSub; updateVfoDisplay(); }
                 if (msg.hasDuplex !== undefined) hasDuplex = !!msg.hasDuplex;
                 updateToneCaps(msg);
-                if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner); if (msg.hasBreakIn !== undefined) updateHasBreakIn(!!msg.hasBreakIn); if (msg.hasCompressor !== undefined || msg.hasCompLevel !== undefined) updateHasCompressor(msg);
+                if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner); if (msg.hasBreakIn !== undefined) updateHasBreakIn(!!msg.hasBreakIn); if (msg.hasCompressor !== undefined || msg.hasCompLevel !== undefined) updateHasCompressor(msg); if (msg.hasAgc !== undefined) updateHasAgc(msg);
                 if (msg.txMeters !== undefined) setTxMeterCaps(msg.txMeters, msg.poCal);
                 if (msg.cwSpeedRange) applyCwSpeedRange(msg.cwSpeedRange);
                 if (msg.manufacturer !== undefined) cwKeyerType = (msg.manufacturer === 'Icom') ? 'icom' : 'ideal';
@@ -3857,7 +3862,7 @@ function handleMessage(msg) {
             if (msg.hasMainSub !== undefined) { hasMainSub = msg.hasMainSub; updateVfoDisplay(); }
             if (msg.hasDuplex !== undefined) hasDuplex = !!msg.hasDuplex;
             updateToneCaps(msg);
-            if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner); if (msg.hasBreakIn !== undefined) updateHasBreakIn(!!msg.hasBreakIn); if (msg.hasCompressor !== undefined || msg.hasCompLevel !== undefined) updateHasCompressor(msg);
+            if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner); if (msg.hasBreakIn !== undefined) updateHasBreakIn(!!msg.hasBreakIn); if (msg.hasCompressor !== undefined || msg.hasCompLevel !== undefined) updateHasCompressor(msg); if (msg.hasAgc !== undefined) updateHasAgc(msg);
             if (msg.txMeters !== undefined) setTxMeterCaps(msg.txMeters, msg.poCal);
                 if (msg.cwSpeedRange) applyCwSpeedRange(msg.cwSpeedRange);
                 if (msg.manufacturer !== undefined) cwKeyerType = (msg.manufacturer === 'Icom') ? 'icom' : 'ideal';
@@ -3904,6 +3909,7 @@ function handleMessage(msg) {
             if (msg.monitor !== undefined) { monitorEnabled = msg.monitor; if (currentPanel === 'func') renderFuncOverlay(); }
             if (msg.monitorGain !== undefined) { monitorLevel = msg.monitorGain; updateSlider('monitorLevel', msg.monitorGain); if (currentPanel === 'func') renderFuncOverlay(); }
             if (msg.compressor !== undefined) updateCompressor(msg.compressor);
+            if (msg.agc !== undefined) updateAgc(msg.agc);
             if (msg.compLevel !== undefined) updateCompLevel(msg.compLevel);
             if (msg.split !== undefined) updateSplit(msg.split);
             if (msg.duplex !== undefined) updateDuplex(msg.duplex);
@@ -3955,6 +3961,7 @@ function handleMessage(msg) {
             if (msg.monitor !== undefined) { monitorEnabled = msg.monitor; if (currentPanel === 'func') renderFuncOverlay(); }
             if (msg.monitorGain !== undefined) { monitorLevel = msg.monitorGain; updateSlider('monitorLevel', msg.monitorGain); if (currentPanel === 'func') renderFuncOverlay(); }
             if (msg.compressor !== undefined) updateCompressor(msg.compressor);
+            if (msg.agc !== undefined) updateAgc(msg.agc);
             if (msg.compLevel !== undefined) updateCompLevel(msg.compLevel);
             if (msg.split !== undefined) updateSplit(msg.split);
             if (msg.duplex !== undefined) updateDuplex(msg.duplex);
@@ -4579,6 +4586,40 @@ function updateCompLevel(val) {
 // The radio shows the level 0-10; the CI-V value is 0-255.
 function compLevelText(val) {
     return String(Math.round(val / 255 * 10));
+}
+
+// AGC. agcModes is in the rig's own order (IC-7300 FAST, MID, SLOW; the
+// Kenwoods OFF, SLOW, MID, FAST).
+function updateHasAgc(msg) {
+    hasAgc = !!msg.hasAgc && Array.isArray(msg.agcModes) && msg.agcModes.length > 0;
+    agcModes = hasAgc ? msg.agcModes : [];
+    if (currentPanel === 'func') renderFuncOverlay();
+}
+
+function updateAgc(val) {
+    agcValue = val;
+    if (currentPanel === 'func') renderFuncOverlay();
+}
+
+function agcName(val) {
+    for (var i = 0; i < agcModes.length; i++) {
+        if (agcModes[i].num === val) return agcModes[i].name;
+    }
+    return '';
+}
+
+// The setting one press moves to: the speeds in the rig's order, then OFF on
+// the rigs that have it there (IC-785x, IC-7200, Kenwood), then round again.
+// The radio puts OFF behind a long press; here it closes the cycle, so a
+// press from a speed always lands on the next speed first.
+function nextAgc(val) {
+    var cycle = agcModes.filter(function(m) { return m.name !== 'OFF'; })
+        .concat(agcModes.filter(function(m) { return m.name === 'OFF'; }));
+    var at = -1;
+    for (var i = 0; i < cycle.length; i++) {
+        if (cycle[i].num === val) at = i;
+    }
+    return cycle[(at + 1) % cycle.length].num;
 }
 
 // The COMP n tile on the spectrum, next to SQL: shown while COMP is on.
@@ -5878,6 +5919,16 @@ function renderFuncOverlay() {
                 send({ cmd: 'setAntenna', antenna: currentAntenna, rx: !rxAntOn });
             }));
         }
+    }
+
+    // AGC, ahead of the noise functions: one press steps to the next setting,
+    // as the radio's AGC key does. Only on rigs whose rig file names the
+    // settings. The rig's readback has the last word (in FM it keeps FAST).
+    if (hasAgc) {
+        grid.appendChild(makeFuncBtn('AGC', agcName(agcValue), false, function() {
+            var want = nextAgc(agcValue);
+            if (send({ cmd: 'setAGC', value: want }) !== false) updateAgc(want);
+        }));
     }
 
     // ANF

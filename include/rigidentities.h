@@ -333,6 +333,10 @@ struct rigCapabilities {
 
     std::vector <genericType> attenuators;
     std::vector <genericType> preamps;
+    // AGC: num = the rig's "AGC Status" value, name = FAST / MID / SLOW / OFF.
+    // The values differ per rig (IC-7300 1-3 FAST-SLOW, IC-7600 0-2, IC-7200
+    // 0 = OFF, Kenwood GC 0 = OFF then SLOW up), so the rig file names them.
+    std::vector <genericType> agcModes;
     std::vector <genericType> antennas;
     std::vector <filterType> filters;
     std::vector <centerSpanData> scopeCenterSpans;

@@ -305,6 +305,8 @@ curl -s http://localhost:8081/api/v1/radio | jq .
     "audioSampleRate": 48000,
     "txAudioAvailable": true,
     "preamps": [{"num": 1, "name": "Preamp 1"}, {"num": 2, "name": "Preamp 2"}],
+    "hasAgc": true,
+    "agcModes": [{"num": 1, "name": "FAST"}, {"num": 2, "name": "MID"}, {"num": 3, "name": "SLOW"}],
     "bands": [{"num": 20, "name": "160m", "start": 1800000, "end": 2000000}, {"num": 6, "name": "2m", "start": 144000000, "end": 148000000}],
     "filters": [{"num": 1, "name": "FIL1"}, {"num": 2, "name": "FIL2"}, {"num": 3, "name": "FIL3"}],
     "spans": [{"reg": 1, "name": "±2.5kHz", "freq": 5000}],
@@ -601,9 +603,16 @@ All fields optional. Only provided fields are updated.
 | `attenuator` | int (0–255) | Attenuator level |
 | `nb` | bool | Noise Blanker on/off |
 | `nr` | bool | Noise Reduction on/off |
-| `agc` | int (0–255) | AGC mode |
+| `agc` | int (0–255) | AGC setting: one of the `num` values in `agcModes` |
 | `autoNotch` | bool | Auto Notch on/off |
 | `filterWidth` | int (0–10000) | IF filter width in Hz |
+
+`agc` is the rig's own value, which differs per rig: `agcModes` in
+`/api/v1/radio/info` names them (IC-7300 `1` FAST / `2` MID / `3` SLOW,
+IC-7600 `0`-`2` FAST-SLOW, IC-785x and IC-7200 with `0` = OFF, the Kenwoods
+`0` OFF then SLOW upward). `hasAgc` is false, and `agcModes` absent, on a rig
+whose rig file names no AGC settings. In FM the Icoms keep FAST and refuse a
+change.
 
 ```bash
 curl -s -X PUT http://localhost:8081/api/v1/radio/rx \

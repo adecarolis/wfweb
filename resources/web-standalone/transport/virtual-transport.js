@@ -49,6 +49,7 @@
         setPreamp:        'preamp',
         setAttenuator:    'attenuator',
         setBreakIn:       'breakIn',
+        setAGC:           'agc',
         setCompressor:    'compressor',
         setCompLevel:     'compLevel',
         setSplit:         'split',
@@ -60,6 +61,11 @@
         setTuner:         'tuner',
         setSpan:          'spanIndex',
     };
+
+    // AGC settings the virtual rig offers: the IC-7300's (CI-V 0x16 0x12).
+    var VIRTUAL_AGC_MODES = [
+        { num: 1, name: 'FAST' }, { num: 2, name: 'MID' }, { num: 3, name: 'SLOW' },
+    ];
 
     // Convert a peak Int16 amplitude to the SPA's S-meter scale: dB relative
     // to S9 (0 = S9, -54 = S0). drawSMeter() expects this units.
@@ -138,6 +144,8 @@
                 attenuator: 0,
                 // CW break-in, SEMI like the C++ virtual rig (civemulator).
                 breakIn: 1,
+                // AGC MID, the IC-7300's SSB default (VIRTUAL_AGC_MODES).
+                agc: 2,
                 // Speech compressor ON at level 5, as a voice operator leaves
                 // it, so the bench shows the digital-TX hold (#147).
                 compressor: true,
@@ -607,6 +615,9 @@
                 hasTuner: true,
                 // The CW bar's BK-IN button, echoed like the rest.
                 hasBreakIn: true,
+                // FUNC AGC tile: the IC-7300's settings, echoed like the rest.
+                hasAgc: true,
+                agcModes: VIRTUAL_AGC_MODES,
                 // FUNC COMP tile and GAIN COMP row, echoed like the rest.
                 hasCompressor: true,
                 hasCompLevel: true,
@@ -652,6 +663,7 @@
                 preamp: this.state.preamp,
                 attenuator: this.state.attenuator,
                 breakIn: this.state.breakIn,
+                agc: this.state.agc,
                 compressor: this.state.compressor,
                 compLevel: this.state.compLevel,
                 duplex: this.state.duplex || 'OFF',

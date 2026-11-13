@@ -1228,6 +1228,7 @@ void yaesuCommander::determineRigCaps()
 {
     // First clear all of the current settings
     rigCaps.preamps.clear();
+    rigCaps.agcModes.clear();
     rigCaps.attenuators.clear();
     rigCaps.inputs.clear();
     rigCaps.scopeCenterSpans.clear();
@@ -1453,6 +1454,16 @@ void yaesuCommander::determineRigCaps()
         }
         settings->endArray();
     }
+
+    // AGC settings the rig's AGC Status command takes, in the rig's order.
+    int numAgc = settings->beginReadArray("AGC");
+    for (int c = 0; c < numAgc; c++)
+    {
+        settings->setArrayIndex(c);
+        rigCaps.agcModes.push_back(genericType(settings->value("Num", 0).toString().toUInt(),
+            settings->value("Name", "").toString()));
+    }
+    settings->endArray();
 
     int numAntennas = settings->beginReadArray("Antennas");
     if (numAntennas == 0) {

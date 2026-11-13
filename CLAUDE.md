@@ -617,6 +617,32 @@ keyed the IC-7300 with 0 W out without it, 2026-10-31).
 Tests: `tests/test_compressor.py` (server, IC-7300 mock) and
 `tests/comp_browser.mjs` (Standalone virtual rig).
 
+### FUNC AGC tile
+The AGC tile (ahead of NOTCH) steps through the rig's settings like its AGC
+key, sending `setAGC {value}` (CI-V `16 12`, Kenwood `GC`; `agc` in status /
+update). **The values differ per rig**: IC-7300 and most Icoms 1 FAST /
+2 MID / 3 SLOW, IC-7600 0-2 FAST-SLOW, IC-785x and IC-7200 with 0 = OFF,
+TS-590SG / TS-890S 0 OFF then SLOW upward. So the rig file names them in an
+`AGC\N\Num` / `Name` list (after `Preamps`; `rigCaps.agcModes`, `agcModes`
++ `hasAgc` in rigInfo and in `rig-caps.js`) and its "AGC Status" command
+carries the real Min / Max (the commander refuses a value outside them; the
+IC-7300 file said 0-2, so SLOW never reached the radio). Values are from the
+CI-V references and Kenwood PC command guides; a rig without a verified
+source (IC-746, IC-746PRO, IC-706MKIIG, DEFAULT-KENWOOD) has no list and no
+tile. OFF, where the rig has it in that command, comes last in the cycle
+(the radio puts it behind a long press). The set is read back (in FM the
+Icoms keep FAST and NG the set), AGC is read on the 5 s slow tick and after
+every mode change (the rig keeps it per mode): `agcFollowMode` sits ahead of
+`receiveCache`'s no-clients shortcut because `cacheUpdated` fires only when
+a value changes, so a mode change seen with no browser connected is never
+reported again. Standalone does the same in `serial-transport.js` (connect,
+slow tick, mode reply, `setMode`). rigctld's `AGC` level maps hamlib's
+`agc_level_e` (OFF 0, FAST 2, SLOW 3, MEDIUM 5) through the same names. The
+server page's `send()` returns `false` when Shared Station refuses a command
+locally, so the tile only shows a setting that went out. Tests:
+`tests/test_agc.py` (IC-7300 mock, rigctld) and `tests/agc_browser.mjs`
+(virtual rig, and the Web Serial transport against a fake IC-7300).
+
 ### MODE grid: reverse modes fold into their base button
 `renderModeOverlay` (identical in both forks) shows the rig's mode list
 minus the `-R` variants whose base is also listed: CW-R and RTTY-R live

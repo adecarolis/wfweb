@@ -607,6 +607,7 @@ void webServer::receiveRigCaps(rigCapabilities *caps)
 {
     rigCaps = caps;
     tunerRejected = false;   // new rig, new evidence
+    agcModeSeen = -1;
     // Each rig keeps its own local channel list, so swapping radios doesn't
     // hand an IC-718's memories to an IC-706.
     memStore.setRig(rigCaps ? rigCaps->modelName : QString());
@@ -632,6 +633,7 @@ void webServer::receiveRigCaps(rigCapabilities *caps)
         obj["hasCompLevel"] = rigCaps->commands.contains(funcCompressorLevel);
         obj["hasPowerControl"] = rigCaps->commands.contains(funcPowerControl);
         obj["powerOnNeedsRemoteJack"] = powerOnNeedsRemoteJack(rigCaps);
+        addAgcCaps(obj);
         addToneCaps(obj);
         addBandCaps(obj);
         addTxMeterCaps(obj);
@@ -1894,7 +1896,7 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
             }
             if (obj.contains("agc")) {
                 uchar val = static_cast<uchar>(qBound(0, obj["agc"].toInt(), 255));
-                queue->add(priorityImmediate, queueItem(funcAGC, QVariant::fromValue<uchar>(val), false, 0));
+                queue->addUnique(priorityImmediate, queueItem(funcAGC, QVariant::fromValue<uchar>(val), false, 0));
             }
             if (obj.contains("autoNotch")) {
                 uchar val = obj["autoNotch"].toBool() ? 1 : 0;
@@ -2856,8 +2858,13 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         });
     }
     else if (type == "setAGC") {
+        // value = one of the rig's agcModes nums (rigInfo). Read back: in FM
+        // the rig keeps FAST and refuses the set, and the tile must say so.
         uchar val = static_cast<uchar>(qBound(0, cmd["value"].toInt(), 255));
-        queue->add(priorityImmediate, queueItem(funcAGC, QVariant::fromValue<uchar>(val), false, 0));
+        queue->addUnique(priorityImmediate, queueItem(funcAGC, QVariant::fromValue<uchar>(val), false, 0));
+        QTimer::singleShot(200, this, [this]() {
+            if (queue) queue->add(priorityImmediate, funcAGC, false, 0);
+        });
     }
     else if (type == "setCompressor") {
         bool on = cmd["value"].toBool();
@@ -4235,6 +4242,7 @@ QJsonObject webServer::buildInfoJson() const
         info["hasBreakIn"] = rigCaps->commands.contains(funcBreakIn);
         info["hasCompressor"] = rigCaps->commands.contains(funcCompressor);
         info["hasCompLevel"] = rigCaps->commands.contains(funcCompressorLevel);
+        addAgcCaps(info);
         addToneCaps(info);
         addBandCaps(info);
         addTxMeterCaps(info);
@@ -4598,6 +4606,12 @@ QJsonObject webServer::buildStatusJson()
         if (compLevel.value.isValid()) status["compLevel"] = compLevel.value.toInt();
     }
 
+    // AGC (FUNC AGC tile): the rig's value, named by rigInfo's agcModes.
+    if (hasAgc()) {
+        cacheItem agc = queue->getCache(funcAGC, 0);
+        if (agc.value.isValid()) status["agc"] = agc.value.toInt();
+    }
+
     // Tuner (0=off, 1=on, 2=tuning)
     cacheItem tuner = queue->getCache(funcTunerStatus, 0);
     if (tuner.value.isValid()) status["tuner"] = tuner.value.toInt();
@@ -4691,6 +4705,11 @@ void webServer::receiveCache(cacheItem item)
     case funcRepeaterTSQL: toneFlagTsql = item.value.toBool(); break;
     case funcRepeaterDTCS: toneFlagDtcs = item.value.toBool(); break;
     case funcTunerStatus: tunerRejected = false; break;   // the rig answered: it has a tuner
+    // AGC follows the mode whether or not a browser watches: the queue
+    // reports a mode once, when it changes, and REST and rigctld read AGC too.
+    case funcMode: case funcModeGet: case funcModeSet: case funcModeTR: case funcSelectedMode:
+        agcFollowMode(item);
+        break;
     // The tone scan reads the squelch, not the browser, so it too is serviced
     // before that shortcut — otherwise a sweep whose last client walked away
     // would run to exhaustion without noticing it had found the tone. Only the
@@ -4970,6 +4989,9 @@ void webServer::receiveCache(cacheItem item)
     case funcBreakIn:
         update["breakIn"] = item.value.toInt();   // 0 = OFF, 1 = SEMI, 2 = FULL
         break;
+    case funcAGC:
+        update["agc"] = item.value.toInt();       // one of rigInfo's agcModes nums
+        break;
     case funcNoiseReduction:
         update["nr"] = item.value.toBool();
         break;
@@ -5123,6 +5145,9 @@ void webServer::sendPeriodicStatus()
             queue->getCache(funcReadFreqOffset, 0);
         if (rigCaps->commands.contains(funcTunerStatus))
             queue->getCache(funcTunerStatus, 0);
+        // AGC is a front-panel key too, and no rig file polls it.
+        if (hasAgc())
+            queue->getCache(funcAGC, 0);
     }
 
     // Request meter updates by querying current cache values
@@ -5766,6 +5791,42 @@ bool webServer::recallMemoryOnRig(int channel, int group, QString *error)
         if (rigCaps->commands.contains(f)) queue->addUnique(priorityImmediate, f, false, 0);
     }
     return true;
+}
+
+// AGC: the FUNC AGC tile cycles the settings the rig's AGC Status command
+// takes. The values differ per rig, so the rig file names them (AGC\N\Num,
+// Name); a rig without that list has no tile, as nothing says what to send.
+bool webServer::hasAgc() const
+{
+    return rigCaps && rigCaps->commands.contains(funcAGC) && !rigCaps->agcModes.empty();
+}
+
+// The rig keeps an AGC setting per mode, so the cached one goes stale with
+// the mode: read it again. Deferred, as receiveCache can run inside
+// queue->add() with the queue's mutex held (a set's echo).
+void webServer::agcFollowMode(const cacheItem &item)
+{
+    if (item.receiver != 0 || !hasAgc()) return;
+    modeInfo m = item.value.value<modeInfo>();
+    if (m.mk == modeUnknown || int(m.mk) == agcModeSeen) return;
+    agcModeSeen = int(m.mk);
+    QTimer::singleShot(100, this, [this]() {
+        if (queue && hasAgc()) queue->add(priorityImmediate, funcAGC, false, 0);
+    });
+}
+
+void webServer::addAgcCaps(QJsonObject &o) const
+{
+    o["hasAgc"] = hasAgc();
+    if (!hasAgc()) return;
+    QJsonArray modes;
+    for (const genericType &g : rigCaps->agcModes) {
+        QJsonObject m;
+        m["num"] = g.num;
+        m["name"] = g.name;
+        modes.append(m);
+    }
+    o["agcModes"] = modes;
 }
 
 // --- Repeater access tone ---
