@@ -262,7 +262,6 @@ int main(int argc, char *argv[])
         "  -b --background         Run as daemon (not Windows)\n"
         "  -d --debug [file]       Enable verbose debug logging (optionally to file)\n"
         "  -c --clearconfig CONFIRM  Clear all settings\n"
-        "  --packet-self-test      Run Dire Wolf encode/decode loopback and exit\n"
         "  -v --version            Show version\n"
         "  -? --help               Show this help\n");
 #ifdef BUILD_WFSERVER
@@ -295,7 +294,7 @@ int main(int argc, char *argv[])
 
     // Early CLI short-circuit: run the packet self-test and exit, without
     // starting the web server or touching radio state.  Used by
-    // tests/test_packet.py.
+    // tests/test_packet.py; a developer check, so not listed in --help.
     for (int c = 1; c < argc; c++) {
         if (QString(argv[c]) == "--packet-self-test") {
             return DireWolfProcessor::runSelfTest();
