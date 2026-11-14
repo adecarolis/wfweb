@@ -261,9 +261,15 @@ void resolveNativePbkdf2()
             {"libcrypto-3-x64", nullptr}, {"libcrypto-3", nullptr},
             {"libcrypto-1_1-x64", nullptr}, {"libcrypto-1_1", nullptr},
 #elif defined(Q_OS_MACOS)
-            {"crypto", "3"}, {"crypto", "1.1"}, {"crypto", nullptr},
+            // Full paths only.  macOS answers a dlopen of the bare
+            // "libcrypto.dylib" by aborting the process ("loading libcrypto
+            // in an unsafe way"): the system's copy is a stub put there for
+            // that purpose, so every --shared server died at start-up on a
+            // Mac (CI, 2026-11-14).
             {"/opt/homebrew/opt/openssl@3/lib/libcrypto", "3"},
             {"/usr/local/opt/openssl@3/lib/libcrypto", "3"},
+            {"/opt/homebrew/opt/openssl@1.1/lib/libcrypto", "1.1"},
+            {"/usr/local/opt/openssl@1.1/lib/libcrypto", "1.1"},
 #else
             {"crypto", "3"}, {"crypto", "1.1"}, {"crypto", nullptr},
 #endif
