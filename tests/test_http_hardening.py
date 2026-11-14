@@ -361,11 +361,17 @@ def test_pending_response_bytes_are_capped(wfweb_instance):
             s = _tls_connect(web_port)
             s.sendall(model)
             held.append(s)
-        time.sleep(2.0)                      # the server has read and answered each
-        s = _tls_connect(web_port)
-        s.sendall(f"GET /api/v1/radio/info HTTP/1.1\r\nHost: 127.0.0.1:{web_port}\r\n\r\n".encode())
-        head = _read_head(s)
-        s.close()
+        # The server has to read and answer each: 2 s on a laptop, more on a
+        # loaded CI runner (macOS answered 200 after a fixed 2 s wait).
+        deadline = time.monotonic() + 30
+        while True:
+            time.sleep(2.0)
+            s = _tls_connect(web_port)
+            s.sendall(f"GET /api/v1/radio/info HTTP/1.1\r\nHost: 127.0.0.1:{web_port}\r\n\r\n".encode())
+            head = _read_head(s)
+            s.close()
+            if head.startswith(b"HTTP/1.1 503 ") or time.monotonic() > deadline:
+                break
         assert head.startswith(b"HTTP/1.1 503 "), head[:200]
         assert b"Retry-After" in head
     finally:

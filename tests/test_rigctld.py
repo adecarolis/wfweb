@@ -66,7 +66,7 @@ def test_stop_morse_still_accepted(wfweb_instance, rigctld_port):
 # ---------------------------------------------------------------------------
 
 
-def _poll_rigctl(port, command, predicate, timeout=10.0):
+def _poll_rigctl(port, command, predicate, timeout=20.0):
     """Repeat a rigctld get until predicate(lines) holds (the rig is polled)."""
     deadline = time.monotonic() + timeout
     lines = []

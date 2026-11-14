@@ -37,7 +37,7 @@ USB = 0x01
 CW = 0x03
 
 
-def _wait(predicate, timeout=8.0, what="condition", detail=None):
+def _wait(predicate, timeout=20.0, what="condition", detail=None):
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         if predicate():
