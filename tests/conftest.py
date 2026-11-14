@@ -533,7 +533,10 @@ def launch_shared_wfweb(mock, event_loop, home, extra_args=(), output=None):
         "--shared", "--shared-dir", str(shared_dir),
         "-l", str(log_path), *extra_args,
     ]
-    env = dict(os.environ, HOME=str(home))
+    # The settings file follows XDG_CONFIG_HOME when it is set (GitHub's
+    # runners set it), not HOME: without this every --shared test server
+    # shared one file and one module's policy was the next one's start.
+    env = dict(os.environ, HOME=str(home), XDG_CONFIG_HOME=str(home / ".config"))
     # WFWEB_TEST_CAPTURE=1 keeps every test server's stdout / stderr (a
     # sanitizer report, a qFatal) in <home>/wfweb.stderr for a post-mortem.
     if output is None and os.environ.get("WFWEB_TEST_CAPTURE"):

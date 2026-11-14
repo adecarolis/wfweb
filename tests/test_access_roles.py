@@ -318,8 +318,10 @@ def test_tx_inhibit(srv):
 
 
 def test_tx_timeout(srv):
-    set_policy(srv, txTimeoutSecs=2)
+    # The socket first: without the websockets package this test is skipped
+    # there, and must not leave the 2 s time-out behind for the next one.
     ws, _ = open_ws(srv, "op")
+    set_policy(srv, txTimeoutSecs=2)
     with ws:
         assert denied_for(ws, {"cmd": "setPTT", "value": True}) is None
         d = recv_until(ws, lambda m: m.get("type") == "denied" and m.get("cmd") == "setPTT", 6.0)

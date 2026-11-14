@@ -253,6 +253,7 @@ def test_slot_start_hands_the_seat_over(srv):
             assert seat_msg(op1, lambda m: m["mine"]) is not None, "the owner takes it back at will"
             lost = recv_until(admin, lambda m: m.get("type") == "seatLost", 2.0)
             assert lost is not None and "reserved slot" in lost["reason"]
+    assert "seat-reserved op1@" in (srv.shared_dir / "audit.log").read_text()
 
 
 def test_slot_start_without_the_owner_tells_the_holder(srv):
@@ -293,5 +294,4 @@ def test_removing_the_account_removes_its_slots(srv):
     assert schedule(srv)["reservations"] == []
     audit = (srv.shared_dir / "audit.log").read_text()
     assert "reservation-add clubadmin@127.0.0.1 tmp" in audit
-    assert "seat-reserved op1@" in audit
     assert "reservation-remove clubadmin@" in audit
