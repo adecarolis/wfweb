@@ -25,7 +25,7 @@ html, body {
 
 #radio {
     display: grid;
-    grid-template-rows: 34px 80px 20px 1fr 48px;
+    grid-template-rows: calc(34px + var(--station-h, 0px)) 80px 20px 1fr 48px;
     position: relative;
     width: 100%;
     height: var(--viewport-height);
@@ -308,19 +308,36 @@ html, body {
 #loginOverlay .login-error { color: #f66; font-size: 13px; min-height: 16px; text-align: center; }
 #loginOverlay .login-note { color: #777; font-size: 12px; text-align: center; line-height: 1.4; }
 #loginOverlay .login-version { position: absolute; bottom: 20px; left: 20px; font-size: 11px; color: #555; }
-/* Who is logged in (Shared Station only): a tag in the top bar; a tap opens
-   the menu with the role and LOG OUT. */
-#userTag {
-    color: #0aa; font-family: var(--font-mono); font-size: 11px; font-weight: bold;
-    white-space: nowrap; max-width: 120px; overflow: hidden; text-overflow: ellipsis;
-    cursor: pointer; padding: 1px 6px; border: 1px solid #066; border-radius: 3px;
+/* Shared Station only: the station strip, a thin row under the top bar that
+   says who has the seat (left) and who we are (right), in words, with the
+   one action that applies next to each.  It shares the grid's first row
+   with the top bar (--station-h), so no row template changes with it. */
+#topBar { grid-row: 1; grid-column: 1; margin-bottom: var(--station-h, 0px); }
+#stationStrip {
+    display: none; grid-row: 1; grid-column: 1; align-self: end; height: var(--station-h, 0px);
+    align-items: center; gap: 6px; padding: 0 8px; min-width: 0;
+    background: #0b0b16; border-bottom: 1px solid var(--border-col);
+    font-family: var(--font-ui); font-size: 11px; color: #9ab; white-space: nowrap;
+    z-index: 2;
 }
-#userTag:empty { display: none; }
+body.shared-on { --station-h: 24px; }
+body.shared-on #stationStrip { display: flex; }
+#stationStrip .ss-label { color: #567; font-size: 10px; font-weight: bold; letter-spacing: 1px; }
+#stationStrip .ss-group { display: flex; align-items: center; gap: 6px; min-width: 0; }
+#stationStrip button {
+    font-family: var(--font-ui); font-size: 11px; font-weight: bold; line-height: 1;
+    padding: 3px 8px; border-radius: 3px; cursor: pointer; white-space: nowrap;
+    background: #1c1c2c; color: #cde; border: 1px solid #445;
+}
+#seatWho { font-weight: bold; overflow: hidden; text-overflow: ellipsis; min-width: 0; color: #aaa; }
+#userTag { max-width: 46vw; overflow: hidden; text-overflow: ellipsis; }
+#userTag .ss-role { font-weight: normal; color: #789; }
+@media (max-width: 480px) { #userTag .ss-role { display: none; } }
 #userMenu {
     display: none;
-    position: fixed; top: 36px; right: 8px; z-index: 9000;
+    position: fixed; top: 62px; right: 8px; z-index: 9000;
     background: #12121f; border: 1px solid #333; border-radius: 8px;
-    padding: 10px 14px; min-width: 150px;
+    padding: 10px 14px; min-width: 170px;
     font-family: var(--font-ui); font-size: 13px; color: #ccc;
     box-shadow: 0 8px 24px rgba(0,0,0,0.5);
 }
@@ -338,29 +355,24 @@ html, body {
 #scheduleOverlay { z-index: 9100; }
 .shared-panel .sp-slot { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; padding: 4px 0; border-bottom: 1px solid #023; }
 .shared-panel .sp-slot.now { background: #002; }
-.shared-panel .sp-when { color: #8cf; font-family: var(--font-mono); font-size: 12px; }
+.shared-panel .sp-when { color: #8cf; font-size: 12px; }
 .shared-panel .sp-who { color: #cde; }
 /* A visitor (no login, the policy's role): the tag is the way in. */
-#userTag.anon { color: #ee0; border-color: #880; }
-/* The seat: who drives the radio.  Green when it can be taken, filled when
-   it is ours, amber while someone else has it or we are in line, blinking
-   while it is on offer to us. */
-#seatTag {
-    font-family: var(--font-mono); font-size: 11px; font-weight: bold; white-space: nowrap;
-    cursor: pointer; padding: 1px 6px; border: 1px solid #555; border-radius: 3px; color: #aaa;
-    max-width: 170px; overflow: hidden; text-overflow: ellipsis;
-}
-#seatTag.free { color: #0f0; border-color: #080; }
-#seatTag.mine { color: #000; background: #0a0; border-color: #0c0; }
-#seatTag.held, #seatTag.queued { color: #ee0; border-color: #880; }
-#seatTag.queued { background: #221; }
-#seatTag.offer { color: #000; background: #ee0; border-color: #ff0; animation: seatBlink 1s step-start infinite; }
+#stationStrip #userTag.anon { color: #ee0; border-color: #880; }
+/* The seat: who drives the radio.  The words say whose it is; the colour
+   repeats it: green free or ours, amber while someone else has it or we are
+   in line, the button blinking while the seat is on offer to us. */
+#stationStrip.free #seatWho { color: #3d3; }
+#stationStrip.mine #seatWho { color: #3d3; }
+#stationStrip.held #seatWho, #stationStrip.queued #seatWho, #stationStrip.offer #seatWho { color: #ee0; }
+#stationStrip.free #seatTag, #stationStrip.offer #seatTag { color: #000; background: #3c3; border-color: #5e5; }
+#stationStrip.offer #seatTag { background: #ee0; border-color: #ff0; animation: seatBlink 1s step-start infinite; }
 @keyframes seatBlink { 50% { opacity: 0.55; } }
 /* Above the start, power-off and login screens: a holder who reloaded sits
    on the start screen with the seat back (grace) and must still see a request. */
 #seatPrompt {
     display: none;
-    position: fixed; top: 36px; left: 50%; transform: translateX(-50%); z-index: 10003;
+    position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 10003;
     background: #1a1a2e; border: 1px solid #556; border-radius: 8px; padding: 8px 12px;
     font-family: var(--font-ui); font-size: 13px; color: #eee;
     box-shadow: 0 8px 24px rgba(0,0,0,0.5); gap: 10px; align-items: center;
@@ -374,7 +386,7 @@ html, body {
 #seatPrompt button.no { background: #444; color: #ddd; }
 #seatMenu {
     display: none;
-    position: fixed; top: 36px; right: 8px; z-index: 9000;
+    position: fixed; top: 62px; left: 8px; z-index: 9000;
     background: #12121f; border: 1px solid #333; border-radius: 8px;
     padding: 10px 14px; min-width: 170px;
     font-family: var(--font-ui); font-size: 13px; color: #ccc;
@@ -391,8 +403,8 @@ html, body {
 body.seat-watch .ptt-btn { opacity: 0.35; }
 body.seat-watch #freqDisplay, body.seat-watch #modeBtn { opacity: 0.55; }
 #txInhibitTag {
-    color: #f44; font-family: var(--font-mono); font-size: 11px; font-weight: bold;
-    border: 1px solid #a22; border-radius: 3px; padding: 1px 6px; white-space: nowrap;
+    color: #f55; font-size: 10px; font-weight: bold; letter-spacing: 1px;
+    border: 1px solid #a22; border-radius: 3px; padding: 2px 6px;
 }
 #loginCancel a { color: #0aa; cursor: pointer; }
 /* What the server would refuse is refused here first, with a word why. */
@@ -409,18 +421,68 @@ body.seat-watch #freqDisplay, body.seat-watch #modeBtn { opacity: 0.55; }
    shape, and a tap says why (the toast). */
 body.access-listen .ptt-btn, body.access-notx .ptt-btn, body.tx-inhibit .ptt-btn { opacity: 0.35; }
 body.access-listen #freqDisplay, body.access-listen #modeBtn { opacity: 0.55; }
-/* SHARED window body */
-.shared-panel { overflow-y: auto; font-family: var(--font-ui); font-size: 12px; color: #cde; }
-.shared-panel h4 { margin: 8px 0 4px; font-size: 11px; letter-spacing: 1px; color: #5af; font-family: var(--font-mono); }
-.shared-panel .sp-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 3px 0; }
-.shared-panel .sp-row.sp-user { border-bottom: 1px solid #023; padding: 4px 0; }
-.shared-panel .sp-name { font-weight: bold; color: #8cf; min-width: 90px; }
-.shared-panel .sp-dim { color: #679; font-size: 11px; }
-.shared-panel .sp-field { width: 96px; }
-.shared-panel .wf-btn.danger { --mode-accent: #f66; --mode-accent-dim: #a33; --mode-accent-bg: #200; }
+/* SHARED window: tabs on top, one scrolling body.  A fixed height, so the
+   window does not jump as the tabs change. */
+#sharedOverlay { width: min(96vw, 680px); height: min(86vh, 620px); max-height: none; z-index: 400; }
+.sp-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--mode-accent-dim); margin: 2px 0 10px; }
+.sp-tabs .wf-tab { flex: 1; justify-content: center; padding: 6px 4px; }
+.shared-panel { overflow-y: auto; flex: 1; min-height: 0; font-family: var(--font-ui); font-size: 13px; color: #cde; padding-right: 4px; }
+.shared-panel h4 { margin: 18px 0 8px; font-size: 11px; letter-spacing: 1.5px; color: #5af; font-family: var(--font-ui); }
+.shared-panel h4.first { margin-top: 2px; }
+.shared-panel .sp-name { font-weight: bold; color: #dff; }
+.shared-panel .sp-dim { color: #789; font-size: 12px; }
+.shared-panel .sp-empty { color: #678; font-style: italic; padding: 4px 0; }
+.shared-panel .wf-btn { font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.5px; white-space: nowrap; }
+.shared-panel .wf-btn.danger { --mode-accent: #f77; --mode-accent-dim: #a33; --mode-accent-bg: #200; }
 .shared-panel .wf-btn.warn { --mode-accent: #ee0; --mode-accent-dim: #990; --mode-accent-bg: #220; }
-.shared-panel select.wf-field { padding: 3px 6px; }
-.shared-panel .sp-empty { color: #567; font-style: italic; }
+.shared-panel .wf-field { font-family: var(--font-ui); font-size: 13px; padding: 5px 8px; min-width: 0; }
+/* NOW: a card says one thing in large type, with its action on the right. */
+.shared-panel .sp-card { display: flex; align-items: center; gap: 12px; padding: 10px 12px; margin-bottom: 8px;
+    background: #050f24; border: 1px solid #0a2a50; border-radius: 6px; }
+.shared-panel .sp-card-body { flex: 1; min-width: 0; }
+.shared-panel .sp-card-label { font-size: 10px; letter-spacing: 1.5px; color: #5af; font-weight: bold; }
+.shared-panel .sp-card-main { font-size: 17px; font-weight: bold; color: #3d3; margin: 2px 0; }
+.shared-panel .sp-card-main.held { color: #ee0; }
+.shared-panel .sp-card-main.stop { color: #f66; }
+.shared-panel .sp-card-sub { color: #89a; font-size: 12px; }
+.shared-panel .sp-card-acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+/* Lists (connections, accounts, reservations): who, a line about them, actions. */
+.shared-panel .sp-item { display: grid; grid-template-columns: minmax(110px, 1fr) minmax(0, 1.4fr) auto; gap: 4px 12px;
+    align-items: center; padding: 7px 4px; border-bottom: 1px solid #0a2240; }
+.shared-panel .sp-item.off .sp-name { color: #789; }
+.shared-panel .sp-item-id { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; }
+.shared-panel .sp-item-info { color: #89a; font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shared-panel .sp-item-acts { display: flex; gap: 6px; align-items: center; justify-content: flex-end; }
+.shared-panel .sp-item-extra { grid-column: 1 / -1; display: flex; gap: 6px; }
+.shared-panel .sp-item-extra .wf-field { flex: 1; }
+.shared-panel .sp-badge { font-size: 9px; font-weight: bold; letter-spacing: 1px; padding: 1px 5px; border-radius: 3px;
+    color: #9ab; border: 1px solid #456; }
+.shared-panel .sp-badge.seat { color: #000; background: #3c3; border-color: #3c3; }
+.shared-panel .sp-badge.tx { color: #fff; background: #c22; border-color: #c22; }
+/* Forms: every field under its own label. */
+.shared-panel .sp-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px 12px; }
+.shared-panel .sp-field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.shared-panel .sp-field-label { font-size: 11px; color: #89a; }
+.shared-panel .sp-form-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 10px; }
+/* RULES: name, control, and under them what the rule does. */
+.shared-panel .sp-rule { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; align-items: center;
+    padding: 8px 4px; border-bottom: 1px solid #0a2240; }
+.shared-panel .sp-rule-label { font-weight: bold; color: #dff; }
+.shared-panel .sp-rule-ctl { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
+.shared-panel .sp-rule-hint { grid-column: 1 / -1; color: #789; font-size: 12px; }
+.shared-panel .sp-num { width: 76px; text-align: right; }
+.shared-panel .sp-unit { color: #89a; font-size: 12px; min-width: 24px; }
+.shared-panel .sp-seg { display: flex; }
+.shared-panel .sp-seg .wf-btn { border-radius: 0; margin-left: -1px; }
+.shared-panel .sp-seg .wf-btn:first-child { border-radius: 4px 0 0 4px; margin-left: 0; }
+.shared-panel .sp-seg .wf-btn:last-child { border-radius: 0 4px 4px 0; }
+.shared-panel .sp-switch { min-width: 52px; }
+@media (max-width: 520px) {
+    .shared-panel .sp-item { grid-template-columns: auto 1fr; }
+    .shared-panel .sp-item-info { text-align: right; }
+    .shared-panel .sp-item-acts { grid-column: 1 / -1; flex-wrap: wrap; justify-content: flex-start; }
+    .shared-panel .sp-form-foot { flex-direction: column; align-items: stretch; }
+}
 
 /* ============ ROW 2: METER + FREQUENCY ============ */
 #meterFreqRow {
@@ -443,7 +505,7 @@ body.access-listen #freqDisplay, body.access-listen #modeBtn { opacity: 0.55; }
 /* Needle face (needle-meter.js): its shape is fixed, so the canvas takes its
    width from its height, the row grows to hold it and the frequency gets the
    rest of the width. */
-body.meter-needle #radio { grid-template-rows: 34px 136px 20px 1fr 48px; }
+body.meter-needle #radio { grid-template-rows: calc(34px + var(--station-h, 0px)) 136px 20px 1fr 48px; }
 body.meter-needle #meterSection { flex: 0 0 auto; }
 body.meter-needle #meterCanvas { width: auto; height: 128px; aspect-ratio: 611 / 256; }
 #freqSection {
@@ -2181,7 +2243,7 @@ body.digi-open #bottomBar { grid-row: 5; }
 
 /* ============ RESPONSIVE ============ */
 @media (max-height: 450px) {
-    #radio { grid-template-rows: 28px 64px 16px 1fr 40px; }
+    #radio { grid-template-rows: calc(28px + var(--station-h, 0px)) 64px 16px 1fr 40px; }
     #freqDisplay { height: 32px; }
     #freqDisplay .freq-digit { width: 32px; height: 32px; background-size: 332px 32px; }
     #freqDisplay .freq-digit.digit-0 { background-position: 0px 0; }
@@ -2196,7 +2258,7 @@ body.digi-open #bottomBar { grid-row: 5; }
     #freqDisplay .freq-digit.digit-9 { background-position: -292px 0; }
     #freqDisplay .freq-digit.digit-dot { width: 7px; background-position: -325px 0; }
     #meterCanvas { height: 50px; }
-    body.meter-needle #radio { grid-template-rows: 28px 92px 16px 1fr 40px; }
+    body.meter-needle #radio { grid-template-rows: calc(28px + var(--station-h, 0px)) 92px 16px 1fr 40px; }
     body.meter-needle #meterCanvas { height: 84px; }
     #bottomBar { padding: 2px 4px; }
     .softBtn { height: 34px; font-size: 11px; }
@@ -2224,7 +2286,7 @@ body.digi-open #bottomBar { grid-row: 5; }
 @media (orientation: portrait) {
     #radio {
         max-width: 100%;
-        grid-template-rows: 32px 72px 18px 1fr 46px;
+        grid-template-rows: calc(32px + var(--station-h, 0px)) 72px 18px 1fr 46px;
     }
     #freqDisplay { height: 17px; }
     #freqDisplay .freq-digit { width: 17px; height: 17px; background-size: 179px 17px; }
@@ -2241,7 +2303,7 @@ body.digi-open #bottomBar { grid-row: 5; }
     #freqDisplay .freq-digit.digit-dot { width: 4px; background-position: -175px 0; }
     #meterSection { flex: 0 0 40%; }
     #meterCanvas { height: 54px; }
-    body.meter-needle #radio { grid-template-rows: 32px 84px 18px 1fr 46px; }
+    body.meter-needle #radio { grid-template-rows: calc(32px + var(--station-h, 0px)) 84px 18px 1fr 46px; }
     body.meter-needle #meterCanvas { height: 76px; }
 }
 
@@ -2375,6 +2437,7 @@ body.ui-locked #uiLockBtn .lock-closed { display: block; }
    the meter and the scope stay at full brightness — they are what you look
    at while the lock is on. */
 body.ui-locked #topBar > :not(#txIndicator):not(#clock):not(#connDot):not(.flex-space),
+body.ui-locked #stationStrip,
 body.ui-locked #spanIndicator,
 body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
 #pttLockCap {
@@ -2425,8 +2488,8 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
     }
 }
 @media (pointer: coarse) and (orientation: portrait) {
-    #radio, body.meter-needle #radio { grid-template-rows: 32px 72px 18px 1fr auto; }
-    body.meter-needle #radio { grid-template-rows: 32px 84px 18px 1fr auto; }
+    #radio, body.meter-needle #radio { grid-template-rows: calc(32px + var(--station-h, 0px)) 72px 18px 1fr auto; }
+    body.meter-needle #radio { grid-template-rows: calc(32px + var(--station-h, 0px)) 84px 18px 1fr auto; }
     /* The PTT keeps clear of the screen's bottom edge: on Android that edge
        is the system navigation gesture (and env(safe-area-inset-bottom) is 0
        there), so a thumb landing low pulled up the nav bar mid-over. */
@@ -2534,6 +2597,7 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
     <div class="um-name" id="userMenuName"></div>
     <div class="um-role" id="userMenuRole"></div>
     <button id="userMenuSchedule" onclick="openScheduleModal()">SCHEDULE</button>
+    <button id="userMenuSettings" onclick="hideUserMenu(); openSharedModal()">STATION SETTINGS</button>
     <button onclick="authLogout()">LOG OUT</button>
 </div>
 <!-- The schedule, for everyone with an account: who has the seat when. -->
@@ -2566,9 +2630,6 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
         <span id="filterText" onclick="openFilterModal()">FIL1</span>
         <span id="dspIndicators"></span>
         <span class="flex-space"></span>
-        <span id="seatTag" style="display:none" onclick="seatTagClick(event)"></span>
-        <span id="txInhibitTag" style="display:none" title="Transmitting is inhibited by the admin">TX INHIBIT</span>
-        <span id="userTag" title="Logged in" onclick="toggleUserMenu(event)"></span>
         <span id="rigTag" title="Rig"></span>
         <button id="recBtn" class="rec-btn" title="Record">REC</button>
         <button id="qsoLogBtn" class="qso-log-btn" title="Log QSO">LOG</button>
@@ -2576,6 +2637,21 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
         <button id="fullscreenBtn" title="Full Screen" onclick="toggleFullscreen()">&#x26F6;</button>
         <button id="powerBtn" class="on" title="Power" onclick="togglePower()">&#x23FB;</button>
         <span id="connDot" title="Disconnected"></span>
+    </div>
+    <!-- Shared Station: who has the seat, who we are (row 1, under the top bar) -->
+    <div id="stationStrip">
+        <span class="ss-group" id="seatGroup">
+            <span class="ss-label">SEAT</span>
+            <span id="seatWho"></span>
+            <button id="seatTag" type="button" onclick="seatTagClick(event)"></button>
+        </span>
+        <span class="flex-space"></span>
+        <span id="txInhibitTag" style="display:none" title="Transmitting is inhibited by the admin">TX INHIBIT</span>
+        <span class="flex-space"></span>
+        <span class="ss-group">
+            <span class="ss-label">YOU</span>
+            <button id="userTag" type="button" onclick="toggleUserMenu(event)"></button>
+        </span>
     </div>
     <!-- Row 2: Meter + Frequency -->
     <div id="meterFreqRow">
@@ -2696,14 +2772,16 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
         <!-- MIDI window: controller on/off, map (CTR2-MIDI presets + MIDI
              learn) and the paddle keyer's options. The body is built by
              WfMidiPanel (midi.js), shared by both builds. -->
-        <!-- SHARED window (FUNC > SHARED, admins of a Shared Station): the
-             visitor policy, TX inhibit and time-out, who is connected, the
-             accounts. Body built by renderSharedOverlay() from the REST API. -->
+        <!-- SHARED window (station strip > YOU > STATION SETTINGS, admins of
+             a Shared Station), four tabs: NOW (the seat, TX inhibit, who is
+             connected), ACCOUNTS, SCHEDULE, RULES (the policy). Body built by
+             renderSharedOverlay() from the REST API. -->
         <div id="sharedOverlay" class="mem-modal mode-digi">
             <div class="mem-modal-title">
                 <span>Shared station</span>
                 <button class="digi-settings-close" style="width:auto;margin:0;padding:2px 12px" onclick="closeSharedModal()">&#x2715; Close</button>
             </div>
+            <div id="sharedTabs" class="sp-tabs"></div>
             <div id="sharedPanel" class="shared-panel"></div>
         </div>
         <div id="midiOverlay" class="mem-modal">
@@ -3789,6 +3867,7 @@ function updateAccessUi() {
     b.classList.toggle('access-notx', accessState.shared && !accessState.can.tx);
     b.classList.toggle('access-admin', accessState.shared && accessState.can.admin);
     b.classList.toggle('tx-inhibit', inhibit);
+    b.classList.toggle('shared-on', !!accessState.shared);
     var ti = document.getElementById('txInhibitTag');
     if (ti) ti.style.display = inhibit ? '' : 'none';
     updateUserTag();
@@ -3810,57 +3889,64 @@ var seatCountdownTimer = null;
 function updateSeatUi() {
     var tag = document.getElementById('seatTag');
     var prompt = document.getElementById('seatPrompt');
-    if (!tag || !prompt) return;
+    var strip = document.getElementById('stationStrip');
+    var who = document.getElementById('seatWho');
+    var group = document.getElementById('seatGroup');
+    if (!tag || !prompt || !strip) return;
     var on = accessState.shared && seatState.enabled;
     document.body.classList.toggle('seat-watch', on && !seatState.mine && accessState.can.control);
     document.body.classList.toggle('seat-mine', on && seatState.mine);
+    group.style.display = on ? '' : 'none';
     if (!on) {
-        tag.style.display = 'none';
-        tag.className = '';
+        strip.className = '';
         prompt.classList.remove('visible');
         hideSeatMenu();
         stopSeatCountdown();
         return;
     }
-    tag.style.display = '';
+    // Whose seat it is, in words (who), and the one thing to do about it
+    // (the button; none when there is nothing to do).
     var h = seatState.holder;
-    var cls = '', text = '', title = '';
+    var canAsk = accessState.can.control;
+    var cls = '', text = '', act = '', title = '';
     if (seatState.mine) {
-        cls = 'mine'; text = h && h.private ? 'SEAT · PRIVATE' : 'SEAT';
-        title = 'You have the seat — tap for options';
+        cls = 'mine'; text = h && h.private ? 'yours · private' : 'yours'; act = 'OPTIONS';
+        title = 'You have the seat';
     } else if (seatState.offer) {
-        cls = 'offer'; text = 'TAKE SEAT (' + seatState.offer.secs + ')';
+        cls = 'offer'; text = 'free for you · ' + seatState.offer.secs + ' s'; act = 'TAKE';
         title = 'The seat is free for you';
     } else if (h) {
         if (seatState.requested) {
-            cls = 'queued'; text = h.name + ' · ASKED' + (seatState.requested.secs ? ' ' + seatState.requested.secs : '');
-            title = 'You asked ' + h.name + ' for the seat — tap to withdraw';
+            cls = 'queued'; text = h.name + ' · you asked' + (seatState.requested.secs ? ' · ' + seatState.requested.secs + ' s' : ''); act = 'WITHDRAW';
+            title = 'You asked ' + h.name + ' for the seat';
         } else if (seatState.position) {
-            cls = 'queued'; text = h.name + ' · #' + seatState.position;
-            title = 'In line for the seat — tap to leave the line';
+            cls = 'queued'; text = h.name + ' · you are #' + seatState.position + ' in line'; act = 'LEAVE LINE';
+            title = 'In line for the seat';
         } else {
-            cls = 'held'; text = h.name + (accessState.can.control ? ' · ASK' : '');
-            title = h.name + ' has the seat' + (accessState.can.control ? ' — tap to ask for it' : '');
+            cls = 'held'; text = h.name; act = canAsk ? 'ASK' : '';
+            title = h.name + ' has the seat';
         }
     } else if (seatState.grace) {
-        cls = 'held'; text = seatState.grace.name + ' · back?';
-        title = 'The seat is kept for ' + seatState.grace.name + ' for ' + seatState.grace.secs + ' s';
+        cls = 'held'; text = 'kept for ' + seatState.grace.name + ' · ' + seatState.grace.secs + ' s';
+        title = seatState.grace.name + ' dropped off; the seat waits for them';
     } else if (seatState.reservation && !seatState.reservation.mine && new Date(seatState.reservation.holdUntil) > new Date()) {
-        cls = 'held'; text = 'RESERVED · ' + seatState.reservation.name;
+        cls = 'held'; text = 'reserved for ' + seatState.reservation.name;
         title = 'The seat is reserved for ' + seatState.reservation.name + ' until ' + new Date(seatState.reservation.holdUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    } else if (accessState.can.control) {
-        cls = 'free'; text = 'TAKE SEAT'; title = 'Nobody has the seat — tap to take it';
     } else {
-        cls = ''; text = 'SEAT FREE'; title = 'Nobody has the seat';
+        cls = 'free'; text = 'free'; act = canAsk ? 'TAKE' : '';
+        title = 'Nobody has the seat';
     }
     // The schedule, in the tooltip: the slot running, or the one coming.
     var r = seatState.reservation, n = seatState.next;
     if (r) title += '\n' + (r.mine ? 'Your' : r.name + '’s') + ' reserved slot until ' + new Date(r.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     else if (n) title += '\n' + (n.mine ? 'Your' : n.name + '’s') + ' slot starts at ' + new Date(n.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    if (h && r && !r.mine && seatState.mine === false && accessState.can.control && r.name === (accessState.user && accessState.user.name)) text = h.name + ' · TAKE';
-    tag.className = cls;
-    tag.textContent = text;
-    tag.title = title;
+    // Our own reserved slot is running and somebody else sits there: it is ours to take.
+    if (h && r && !seatState.mine && canAsk && (r.mine || r.name === (accessState.user && accessState.user.name))) act = 'TAKE';
+    strip.className = cls;
+    who.textContent = text;
+    who.title = title;
+    tag.textContent = act;
+    tag.style.display = act ? '' : 'none';
 
     // The prompt bar: a request to me, or an offer to me.
     var yes = document.getElementById('seatPromptYes'), no = document.getElementById('seatPromptNo');
@@ -3887,7 +3973,9 @@ function updateSeatUi() {
     if (since && h && h.since) since.textContent = 'since ' + new Date(h.since).toLocaleTimeString();
     if (!seatState.mine) hideSeatMenu();
     var so = document.getElementById('sharedOverlay');
-    if (so && so.classList.contains('visible')) renderSharedOverlay();
+    // Only the NOW tab shows the seat: a redraw on every countdown second
+    // would wipe a form being typed in on the others.
+    if (so && so.classList.contains('visible') && sharedView.tab === 'now') renderSharedOverlay();
     // Seconds tick down locally until the next message says otherwise.
     var counting = seatState.offer || seatState.request || seatState.requested || seatState.grace;
     if (counting && !seatCountdownTimer) {
@@ -4059,8 +4147,18 @@ function updateUserTag() {
     if (!el) return;
     var u = accessState.shared ? accessState.user : null;
     var visitor = accessState.shared && accessState.anonymous;
-    el.textContent = u ? u.name : (visitor ? 'LOG IN' : '');
-    el.title = u ? ((u.callsign ? u.callsign + ' — ' : '') + u.role)
+    el.textContent = '';
+    if (u) {
+        el.appendChild(document.createTextNode(u.name));
+        var role = document.createElement('span');
+        role.className = 'ss-role';
+        role.textContent = ' · ' + u.role;
+        el.appendChild(role);
+        el.appendChild(document.createTextNode(' ▾'));
+    } else if (visitor) {
+        el.textContent = 'visitor · LOG IN';
+    }
+    el.title = u ? ((u.callsign ? u.callsign + ' — ' : '') + u.role + ' — account, schedule' + (accessState.can.admin ? ', station settings' : ''))
                  : (visitor ? 'Visitor with ' + accessState.role + ' access — log in for more' : '');
     el.classList.toggle('anon', visitor);
     var pu = document.getElementById('powerOffUser');
@@ -4088,6 +4186,7 @@ function toggleUserMenu(ev) {
     if (!u || menu.classList.contains('visible')) { hideUserMenu(); return; }
     document.getElementById('userMenuName').textContent = u.name + (u.callsign ? ' · ' + u.callsign : '');
     document.getElementById('userMenuRole').textContent = u.role;
+    document.getElementById('userMenuSettings').style.display = accessState.can.admin ? '' : 'none';
     menu.classList.add('visible');
     setTimeout(function () {
         document.addEventListener('click', hideUserMenu, { once: true });
@@ -4103,7 +4202,7 @@ function hideUserMenu() {
 // Everything goes through the REST API with the session cookie; the server
 // pushes policy changes back as sharedPolicy, so the window re-renders from
 // what it answers, never from what it hoped.
-var sharedView = { users: [], connections: [], max: 0, pwFor: null, confirmDel: null, confirmTimer: null,
+var sharedView = { tab: 'now', users: [], connections: [], max: 0, pwFor: null, confirmDel: null, confirmTimer: null,
                    reservations: [], upcoming: [] };
 
 // ---- The schedule (everyone with an account) ----
@@ -4196,191 +4295,319 @@ function sharedBtn(label, cls, onclick) {
     return b;
 }
 
+// The window is four tabs: NOW (the seat, TX inhibit, who is connected),
+// ACCOUNTS, SCHEDULE (reservations) and RULES (the policy).  Every rule is a
+// labelled row with its unit and a line saying what it does, and applies
+// when it is changed.
+var SHARED_TABS = [['now', 'NOW'], ['accounts', 'ACCOUNTS'], ['schedule', 'SCHEDULE'], ['rules', 'RULES']];
+
+function sharedSetTab(tab) {
+    sharedView.tab = tab;
+    sharedView.pwFor = null;
+    sharedView.confirmDel = null;
+    renderSharedOverlay();
+}
+
+// Two presses to delete: no confirm() dialog, it would stall the audio.
+function sharedDeleteBtn(key, label, run) {
+    return sharedBtn(sharedView.confirmDel === key ? 'SURE?' : label, 'danger', function () {
+        if (sharedView.confirmDel !== key) {
+            sharedView.confirmDel = key;
+            if (sharedView.confirmTimer) clearTimeout(sharedView.confirmTimer);
+            sharedView.confirmTimer = setTimeout(function () { sharedView.confirmDel = null; renderSharedOverlay(); }, 3000);
+            renderSharedOverlay();
+            return;
+        }
+        sharedView.confirmDel = null;
+        run();
+    });
+}
+
+// One rule: its name, the control, and what it does.
+function sharedRule(parent, label, control, hint) {
+    var row = sharedEl('div', 'sp-rule');
+    row.appendChild(sharedEl('div', 'sp-rule-label', label));
+    var c = sharedEl('div', 'sp-rule-ctl');
+    (Array.isArray(control) ? control : [control]).forEach(function (el) { c.appendChild(el); });
+    row.appendChild(c);
+    row.appendChild(sharedEl('div', 'sp-rule-hint', hint || ''));
+    parent.appendChild(row);
+}
+
+// A number with its unit; the policy goes out when the field is left or
+// Enter is pressed.  scale: the field shows minutes, the policy keeps seconds.
+function sharedNumber(key, value, min, max, unit, scale) {
+    scale = scale || 1;
+    var inp = sharedEl('input', 'wf-field sp-num');
+    inp.type = 'number'; inp.min = min; inp.max = max; inp.value = Math.round((value || 0) / scale);
+    inp.onchange = function () {
+        var v = Math.max(min, Math.min(max, parseInt(inp.value, 10) || 0));
+        var patch = {}; patch[key] = v * scale;
+        sharedSetPolicy(patch);
+    };
+    return [inp, sharedEl('span', 'sp-unit', unit)];
+}
+
+function sharedSwitch(on, onclick) {
+    return sharedBtn(on ? 'ON' : 'OFF', 'toggle sp-switch' + (on ? ' active' : ''), onclick);
+}
+
+// A labelled field of a form.
+function sharedField(parent, label, el) {
+    var f = sharedEl('label', 'sp-field');
+    f.appendChild(sharedEl('span', 'sp-field-label', label));
+    f.appendChild(el);
+    parent.appendChild(f);
+    return el;
+}
+
 function renderSharedOverlay() {
     var panel = document.getElementById('sharedPanel');
-    if (!panel) return;
-    var pol = accessState.policy || {};
+    var tabs = document.getElementById('sharedTabs');
+    if (!panel || !tabs) return;
+    tabs.innerHTML = '';
+    SHARED_TABS.forEach(function (t) {
+        var b = sharedEl('button', 'wf-tab' + (sharedView.tab === t[0] ? ' active' : ''), t[1]);
+        b.type = 'button';
+        b.onclick = function () { sharedSetTab(t[0]); };
+        tabs.appendChild(b);
+    });
+    var scroll = panel.scrollTop;
     panel.innerHTML = '';
+    ({ now: renderSharedNow, accounts: renderSharedAccounts, schedule: renderSharedSchedule, rules: renderSharedRules })[sharedView.tab](panel, accessState.policy || {});
+    panel.scrollTop = scroll;
+}
 
-    // Visitors
-    panel.appendChild(sharedEl('h4', '', 'VISITORS WITHOUT A LOGIN'));
-    var vrow = sharedEl('div', 'sp-row');
-    [['none', 'REFUSED'], ['listen', 'LISTEN'], ['control', 'CONTROL']].forEach(function (opt) {
-        var b = sharedBtn(opt[1], 'toggle' + ((pol.anonymous || 'none') === opt[0] ? ' active' : ''), function () { sharedSetPolicy({ anonymous: opt[0] }); });
-        vrow.appendChild(b);
-    });
-    vrow.appendChild(sharedEl('span', 'sp-dim', pol.anonymous === 'control' ? 'anyone who reaches the page can tune the radio' :
-                               pol.anonymous === 'listen' ? 'anyone who reaches the page can listen' : 'a login is required'));
-    panel.appendChild(vrow);
-
-    // Transmit
-    panel.appendChild(sharedEl('h4', '', 'TRANSMIT'));
-    var trow = sharedEl('div', 'sp-row');
-    trow.appendChild(sharedBtn(pol.txInhibit ? 'TX INHIBIT ON' : 'TX INHIBIT OFF', 'toggle danger' + (pol.txInhibit ? ' active' : ''), function () { sharedSetPolicy({ txInhibit: !pol.txInhibit }); }));
-    trow.appendChild(sharedEl('span', 'sp-dim', 'time-out'));
-    var tin = sharedEl('input', 'wf-field sp-field'); tin.type = 'number'; tin.min = 0; tin.max = 3600; tin.value = pol.txTimeoutSecs || 0; tin.title = 'seconds a key may stay down; 0 = no limit';
-    trow.appendChild(tin);
-    trow.appendChild(sharedEl('span', 'sp-dim', 's'));
-    trow.appendChild(sharedEl('span', 'sp-dim', 'max connections'));
-    var min = sharedEl('input', 'wf-field sp-field'); min.type = 'number'; min.min = 1; min.max = 500; min.value = pol.maxClients || 20;
-    trow.appendChild(min);
-    trow.appendChild(sharedBtn('SET', '', function () { sharedSetPolicy({ txTimeoutSecs: parseInt(tin.value, 10) || 0, maxClients: parseInt(min.value, 10) || 20 }); }));
-    panel.appendChild(trow);
-
-    // The seat
-    panel.appendChild(sharedEl('h4', '', 'THE SEAT'));
-    var srow = sharedEl('div', 'sp-row');
+// ---- NOW: what is going on, and the things an admin does about it ----
+function renderSharedNow(panel, pol) {
     var seatOn = pol.seat !== false;
-    srow.appendChild(sharedBtn(seatOn ? 'SEAT ON' : 'SEAT OFF', 'toggle' + (seatOn ? ' active' : ''), function () { sharedSetPolicy({ seat: !seatOn }); }));
     var sh = seatState.holder;
-    srow.appendChild(sharedEl('span', 'sp-dim', !seatOn ? 'everyone with the role controls the radio'
-        : sh ? 'held by ' + sh.name + (sh.private ? ' (private)' : '') + (seatState.queue.length ? ', ' + seatState.queue.length + ' waiting' : '')
-        : seatState.grace ? 'kept for ' + seatState.grace.name : 'free'));
-    if (seatOn && sh && !seatState.mine) {
-        srow.appendChild(sharedBtn('TAKE', 'warn', function () { seatAction('seatTake', { force: true }); }));
-        srow.appendChild(sharedBtn('CLEAR', 'danger', function () { seatAction('seatClear'); }));
+    var card = sharedEl('div', 'sp-card');
+    var body = sharedEl('div', 'sp-card-body');
+    body.appendChild(sharedEl('div', 'sp-card-label', 'THE SEAT'));
+    var line, sub = '';
+    if (!seatOn) { line = 'Off'; sub = 'Everyone with the role controls the radio at once.'; }
+    else if (sh) {
+        line = (seatState.mine ? 'You have' : sh.name + ' has') + ' the seat' + (sh.private ? ' (private)' : '');
+        if (sh.since) sub = 'since ' + new Date(sh.since).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else if (seatState.grace) { line = 'Kept for ' + seatState.grace.name; sub = 'They dropped off; ' + seatState.grace.secs + ' s to come back.'; }
+    else { line = 'Free'; sub = 'Nobody is driving the radio.'; }
+    if (seatOn && seatState.queue.length) {
+        sub += (sub ? ' · ' : '') + 'waiting: ' + seatState.queue.map(function (q) { return q.name || q; }).join(', ');
     }
-    panel.appendChild(srow);
-    var krow = sharedEl('div', 'sp-row');
-    krow.appendChild(sharedEl('span', 'sp-dim', 'idle'));
-    var kIdle = sharedEl('input', 'wf-field sp-field'); kIdle.type = 'number'; kIdle.min = 0; kIdle.max = 1440; kIdle.value = Math.round((pol.seatIdleSecs || 0) / 60); kIdle.title = 'minutes without touching the radio before the seat is released; 0 = never';
-    krow.appendChild(kIdle);
-    krow.appendChild(sharedEl('span', 'sp-dim', 'min · request granted after'));
-    var kReq = sharedEl('input', 'wf-field sp-field'); kReq.type = 'number'; kReq.min = 0; kReq.max = 3600; kReq.value = pol.seatRequestSecs || 0; kReq.title = 'seconds an unanswered request waits before the seat changes hands; 0 = only by hand';
-    krow.appendChild(kReq);
-    krow.appendChild(sharedEl('span', 'sp-dim', 's · max when others wait'));
-    var kMax = sharedEl('input', 'wf-field sp-field'); kMax.type = 'number'; kMax.min = 0; kMax.max = 1440; kMax.value = Math.round((pol.seatMaxSecs || 0) / 60); kMax.title = 'minutes a seat may be kept while others are in line; 0 = no limit';
-    krow.appendChild(kMax);
-    krow.appendChild(sharedEl('span', 'sp-dim', 'min'));
-    krow.appendChild(sharedBtn('SET', '', function () {
-        sharedSetPolicy({ seatIdleSecs: (parseInt(kIdle.value, 10) || 0) * 60, seatRequestSecs: parseInt(kReq.value, 10) || 0, seatMaxSecs: (parseInt(kMax.value, 10) || 0) * 60 });
-    }));
-    panel.appendChild(krow);
-    var frow = sharedEl('div', 'sp-row');
-    frow.appendChild(sharedBtn('HIGHER ROLE MAY TAKE OVER', 'toggle' + (pol.seatPreemptHigher ? ' active' : ''), function () { sharedSetPolicy({ seatPreemptHigher: !pol.seatPreemptHigher }); }));
-    frow.appendChild(sharedBtn('LISTEN-IN', 'toggle' + (pol.listenIn !== false ? ' active' : ''), function () { sharedSetPolicy({ listenIn: pol.listenIn === false }); }));
-    frow.appendChild(sharedBtn('PRIVATE ALLOWED', 'toggle' + (pol.allowPrivate ? ' active' : ''), function () { sharedSetPolicy({ allowPrivate: !pol.allowPrivate }); }));
-    panel.appendChild(frow);
+    body.appendChild(sharedEl('div', 'sp-card-main' + (seatOn && sh ? ' held' : ''), line));
+    if (sub) body.appendChild(sharedEl('div', 'sp-card-sub', sub));
+    card.appendChild(body);
+    var acts = sharedEl('div', 'sp-card-acts');
+    if (seatOn && sh && !seatState.mine) {
+        var take = sharedBtn('TAKE IT', 'warn', function () { seatAction('seatTake', { force: true }); });
+        take.title = 'Take the seat from ' + sh.name + ' now';
+        acts.appendChild(take);
+    }
+    if (seatOn && sh) {
+        var clear = sharedBtn('CLEAR', 'danger', function () { seatAction('seatClear'); });
+        clear.title = 'Free the seat; nobody has it';
+        acts.appendChild(clear);
+    }
+    card.appendChild(acts);
+    panel.appendChild(card);
 
-    // Reservations: who has the seat when.  Times are entered and shown in
-    // this browser's time zone; the server keeps UTC.
-    panel.appendChild(sharedEl('h4', '', 'RESERVATIONS'));
-    if (!sharedView.reservations.length) panel.appendChild(sharedEl('div', 'sp-empty', 'none'));
-    sharedView.reservations.forEach(function (r) {
-        var row = sharedEl('div', 'sp-row sp-user');
-        row.appendChild(sharedEl('span', 'sp-name', r.name || r.userId));
-        row.appendChild(sharedEl('span', 'sp-dim', whenText(r.start, true) + ' · ' + r.minutes + ' min · ' + r.repeat
-            + (r.until ? ' until ' + new Date(r.until).toLocaleDateString() : '') + (r.title ? ' · ' + r.title : '')));
-        row.appendChild(sharedBtn(sharedView.confirmDel === r.id ? 'SURE?' : 'DELETE', 'danger', function () {
-            if (sharedView.confirmDel !== r.id) {
-                sharedView.confirmDel = r.id;
-                if (sharedView.confirmTimer) clearTimeout(sharedView.confirmTimer);
-                sharedView.confirmTimer = setTimeout(function () { sharedView.confirmDel = null; renderSharedOverlay(); }, 3000);
-                renderSharedOverlay();
-                return;
-            }
-            sharedView.confirmDel = null;
-            sharedApi('DELETE', '/api/v1/shared/reservations/' + r.id).then(sharedReload).catch(function (e) { accessToast(e.message); sharedReload(); });
-        }));
-        panel.appendChild(row);
-    });
-    var rrow = sharedEl('div', 'sp-row');
-    var rUser = sharedEl('select', 'wf-field');
-    sharedView.users.filter(function (u) { return u.role !== 'listen' && !u.disabled; }).forEach(function (u) {
-        var o = sharedEl('option', '', u.name); o.value = u.id; rUser.appendChild(o);
-    });
-    var rStart = sharedEl('input', 'wf-field'); rStart.type = 'datetime-local'; rStart.title = 'start, your local time';
-    var rMin = sharedEl('input', 'wf-field sp-field'); rMin.type = 'number'; rMin.min = 5; rMin.max = 1440; rMin.value = 60; rMin.title = 'minutes';
-    var rRep = sharedEl('select', 'wf-field');
-    [['once', 'once'], ['daily', 'every day'], ['weekly', 'every week']].forEach(function (p) { var o = sharedEl('option', '', p[1]); o.value = p[0]; rRep.appendChild(o); });
-    var rUntil = sharedEl('input', 'wf-field'); rUntil.type = 'date'; rUntil.title = 'last day (repeating slots; empty = for good)';
-    var rTitle = sharedEl('input', 'wf-field sp-field'); rTitle.placeholder = 'title'; rTitle.maxLength = 80;
-    [rUser, rStart, rMin, sharedEl('span', 'sp-dim', 'min'), rRep, rUntil, rTitle].forEach(function (el) { rrow.appendChild(el); });
-    rrow.appendChild(sharedBtn('ADD', '', function () {
-        if (!rStart.value) { accessToast('a start time is required'); return; }
-        var body = { userId: rUser.value, start: new Date(rStart.value).toISOString(), minutes: parseInt(rMin.value, 10) || 60,
-                     repeat: rRep.value, title: rTitle.value.trim() };
-        if (rUntil.value) body.until = new Date(rUntil.value + 'T23:59:59').toISOString();
-        sharedApi('POST', '/api/v1/shared/reservations', body).then(sharedReload)
-            .catch(function (e) { accessToast(e.message); });
-    }));
-    panel.appendChild(rrow);
-    var up = sharedEl('div', '');
-    renderSchedule(up, sharedView.upcoming.slice(0, 8), sharedView.active, true);
-    panel.appendChild(up);
+    card = sharedEl('div', 'sp-card');
+    body = sharedEl('div', 'sp-card-body');
+    body.appendChild(sharedEl('div', 'sp-card-label', 'TRANSMIT'));
+    body.appendChild(sharedEl('div', 'sp-card-main' + (pol.txInhibit ? ' stop' : ''), pol.txInhibit ? 'Inhibited' : 'Allowed'));
+    body.appendChild(sharedEl('div', 'sp-card-sub', pol.txInhibit ? 'Nobody can key the radio, and a held key was released.' : 'Whoever has the role' + (seatOn ? ' and the seat' : '') + ' can key the radio.'));
+    card.appendChild(body);
+    acts = sharedEl('div', 'sp-card-acts');
+    acts.appendChild(sharedBtn(pol.txInhibit ? 'ALLOW TX' : 'INHIBIT TX', pol.txInhibit ? '' : 'danger', function () { sharedSetPolicy({ txInhibit: !pol.txInhibit }); }));
+    card.appendChild(acts);
+    panel.appendChild(card);
 
-    // Connected now
-    panel.appendChild(sharedEl('h4', '', 'CONNECTED NOW (' + sharedView.connections.length + (sharedView.max ? ' of ' + sharedView.max : '') + ')'));
+    panel.appendChild(sharedEl('h4', '', 'CONNECTED · ' + sharedView.connections.length + (sharedView.max ? ' of ' + sharedView.max : '')));
     if (!sharedView.connections.length) panel.appendChild(sharedEl('div', 'sp-empty', 'nobody'));
+    var list = sharedEl('div', 'sp-list');
     sharedView.connections.forEach(function (c) {
-        var row = sharedEl('div', 'sp-row');
-        row.appendChild(sharedEl('span', 'sp-name', c.anonymous ? 'visitor' : c.name));
-        row.appendChild(sharedEl('span', 'sp-dim', c.role + (c.callsign ? ' · ' + c.callsign : '') + ' · ' + c.ip + (c.seat ? ' · SEAT' : '') + (c.keying ? ' · KEYING' : '')));
-        row.appendChild(sharedBtn('KICK', 'warn', function () {
+        var row = sharedEl('div', 'sp-item');
+        var id = sharedEl('div', 'sp-item-id');
+        var name = sharedEl('span', 'sp-name', c.anonymous ? 'visitor' : c.name);
+        id.appendChild(name);
+        if (c.seat) id.appendChild(sharedEl('span', 'sp-badge seat', 'SEAT'));
+        if (c.keying) id.appendChild(sharedEl('span', 'sp-badge tx', 'ON AIR'));
+        row.appendChild(id);
+        row.appendChild(sharedEl('div', 'sp-item-info', c.role + (c.callsign ? ' · ' + c.callsign : '') + ' · ' + c.ip));
+        var a = sharedEl('div', 'sp-item-acts');
+        a.appendChild(sharedBtn('KICK', 'warn', function () {
             sharedApi('DELETE', '/api/v1/shared/connections/' + c.id).then(sharedReload).catch(function (e) { accessToast(e.message); });
         }));
-        panel.appendChild(row);
+        row.appendChild(a);
+        list.appendChild(row);
     });
+    panel.appendChild(list);
+}
 
-    // Accounts
-    panel.appendChild(sharedEl('h4', '', 'ACCOUNTS'));
+// ---- ACCOUNTS ----
+function renderSharedAccounts(panel) {
+    var roles = ['listen', 'control', 'operate', 'admin'];
+    var list = sharedEl('div', 'sp-list');
     sharedView.users.forEach(function (u) {
-        var row = sharedEl('div', 'sp-row sp-user');
-        row.appendChild(sharedEl('span', 'sp-name', u.name));
-        row.appendChild(sharedEl('span', 'sp-dim', (u.callsign || '') + (u.disabled ? ' · DISABLED' : '')));
+        var row = sharedEl('div', 'sp-item' + (u.disabled ? ' off' : ''));
+        var id = sharedEl('div', 'sp-item-id');
+        id.appendChild(sharedEl('span', 'sp-name', u.name));
+        if (u.disabled) id.appendChild(sharedEl('span', 'sp-badge', 'DISABLED'));
+        row.appendChild(id);
+        row.appendChild(sharedEl('div', 'sp-item-info', u.callsign || 'no callsign'));
+        var a = sharedEl('div', 'sp-item-acts');
         var sel = sharedEl('select', 'wf-field');
-        ['listen', 'control', 'operate', 'admin'].forEach(function (r) {
-            var o = sharedEl('option', '', r); o.value = r; if (r === u.role) o.selected = true; sel.appendChild(o);
-        });
+        sel.title = 'role';
+        roles.forEach(function (r) { var o = sharedEl('option', '', r); o.value = r; if (r === u.role) o.selected = true; sel.appendChild(o); });
         sel.onchange = function () {
             sharedApi('PUT', '/api/v1/shared/users/' + u.id, { role: sel.value }).then(sharedReload)
                 .catch(function (e) { accessToast(e.message); sharedReload(); });
         };
-        row.appendChild(sel);
-        row.appendChild(sharedBtn(u.disabled ? 'ENABLE' : 'DISABLE', 'toggle' + (u.disabled ? '' : ' warn'), function () {
+        a.appendChild(sel);
+        a.appendChild(sharedBtn('PASSWORD', sharedView.pwFor === u.id ? 'active' : '', function () {
+            sharedView.pwFor = sharedView.pwFor === u.id ? null : u.id; renderSharedOverlay();
+        }));
+        a.appendChild(sharedBtn(u.disabled ? 'ENABLE' : 'DISABLE', u.disabled ? '' : 'warn', function () {
             sharedApi('PUT', '/api/v1/shared/users/' + u.id, { disabled: !u.disabled }).then(sharedReload).catch(function (e) { accessToast(e.message); });
         }));
+        a.appendChild(sharedDeleteBtn(u.id, 'DELETE', function () {
+            sharedApi('DELETE', '/api/v1/shared/users/' + u.id).then(sharedReload).catch(function (e) { accessToast(e.message); sharedReload(); });
+        }));
+        row.appendChild(a);
         if (sharedView.pwFor === u.id) {
-            var pw = sharedEl('input', 'wf-field sp-field'); pw.type = 'password'; pw.placeholder = 'new password'; pw.autocomplete = 'new-password';
-            row.appendChild(pw);
-            row.appendChild(sharedBtn('SET', '', function () {
+            var pwRow = sharedEl('div', 'sp-item-extra');
+            var pw = sharedEl('input', 'wf-field'); pw.type = 'password'; pw.placeholder = 'new password for ' + u.name; pw.autocomplete = 'new-password';
+            pwRow.appendChild(pw);
+            pwRow.appendChild(sharedBtn('SET PASSWORD', '', function () {
                 sharedApi('PUT', '/api/v1/shared/users/' + u.id, { password: pw.value }).then(function () { sharedView.pwFor = null; sharedReload(); })
                     .catch(function (e) { accessToast(e.message); });
             }));
+            row.appendChild(pwRow);
             setTimeout(function () { pw.focus(); }, 0);
-        } else {
-            row.appendChild(sharedBtn('PASSWORD', '', function () { sharedView.pwFor = u.id; renderSharedOverlay(); }));
         }
-        // Two presses to delete: no confirm() dialog, it would stall the audio.
-        var del = sharedBtn(sharedView.confirmDel === u.id ? 'SURE?' : 'DELETE', 'danger', function () {
-            if (sharedView.confirmDel !== u.id) {
-                sharedView.confirmDel = u.id;
-                if (sharedView.confirmTimer) clearTimeout(sharedView.confirmTimer);
-                sharedView.confirmTimer = setTimeout(function () { sharedView.confirmDel = null; renderSharedOverlay(); }, 3000);
-                renderSharedOverlay();
-                return;
-            }
-            sharedView.confirmDel = null;
-            sharedApi('DELETE', '/api/v1/shared/users/' + u.id).then(sharedReload).catch(function (e) { accessToast(e.message); sharedReload(); });
-        });
-        row.appendChild(del);
-        panel.appendChild(row);
+        list.appendChild(row);
     });
+    panel.appendChild(list);
 
-    // Add account
-    var add = sharedEl('div', 'sp-row');
-    var nName = sharedEl('input', 'wf-field sp-field'); nName.placeholder = 'user name'; nName.autocomplete = 'off'; nName.autocapitalize = 'none';
-    var nPass = sharedEl('input', 'wf-field sp-field'); nPass.type = 'password'; nPass.placeholder = 'password'; nPass.autocomplete = 'new-password';
-    var nCall = sharedEl('input', 'wf-field sp-field'); nCall.placeholder = 'callsign'; nCall.autocomplete = 'off'; nCall.autocapitalize = 'characters';
+    panel.appendChild(sharedEl('h4', '', 'NEW ACCOUNT'));
+    var form = sharedEl('div', 'sp-form');
+    var nName = sharedEl('input', 'wf-field'); nName.autocomplete = 'off'; nName.autocapitalize = 'none';
+    var nPass = sharedEl('input', 'wf-field'); nPass.type = 'password'; nPass.autocomplete = 'new-password';
+    var nCall = sharedEl('input', 'wf-field'); nCall.placeholder = 'optional'; nCall.autocomplete = 'off'; nCall.autocapitalize = 'characters';
     var nRole = sharedEl('select', 'wf-field');
-    ['listen', 'control', 'operate', 'admin'].forEach(function (r) { var o = sharedEl('option', '', r); o.value = r; nRole.appendChild(o); });
+    roles.forEach(function (r) { var o = sharedEl('option', '', r); o.value = r; nRole.appendChild(o); });
     nRole.value = 'operate';
-    [nName, nPass, nCall, nRole].forEach(function (el) { add.appendChild(el); });
-    add.appendChild(sharedBtn('ADD', '', function () {
+    sharedField(form, 'User name', nName);
+    sharedField(form, 'Password', nPass);
+    sharedField(form, 'Callsign', nCall);
+    sharedField(form, 'Role', nRole);
+    panel.appendChild(form);
+    var foot = sharedEl('div', 'sp-form-foot');
+    foot.appendChild(sharedEl('span', 'sp-dim', 'listen: hear and watch · control: tune the radio · operate: transmit · admin: this window'));
+    foot.appendChild(sharedBtn('ADD ACCOUNT', 'active', function () {
         sharedApi('POST', '/api/v1/shared/users', { username: nName.value.trim(), password: nPass.value, callsign: nCall.value.trim(), role: nRole.value })
             .then(sharedReload).catch(function (e) { accessToast(e.message); });
     }));
-    panel.appendChild(add);
+    panel.appendChild(foot);
+}
+
+// ---- SCHEDULE: who has the seat when.  Times are entered and shown in
+// this browser's time zone; the server keeps UTC. ----
+function renderSharedSchedule(panel) {
+    panel.appendChild(sharedEl('h4', 'first', 'RESERVATIONS'));
+    if (!sharedView.reservations.length) panel.appendChild(sharedEl('div', 'sp-empty', 'none — the seat goes to whoever takes it'));
+    var list = sharedEl('div', 'sp-list');
+    sharedView.reservations.forEach(function (r) {
+        var row = sharedEl('div', 'sp-item');
+        var id = sharedEl('div', 'sp-item-id');
+        id.appendChild(sharedEl('span', 'sp-name', r.name || r.userId));
+        if (r.title) id.appendChild(sharedEl('span', 'sp-dim', r.title));
+        row.appendChild(id);
+        row.appendChild(sharedEl('div', 'sp-item-info', whenText(r.start, true) + ' · ' + r.minutes + ' min · '
+            + (r.repeat === 'once' ? 'once' : r.repeat === 'daily' ? 'every day' : 'every week')
+            + (r.until ? ' until ' + new Date(r.until).toLocaleDateString() : '')));
+        var a = sharedEl('div', 'sp-item-acts');
+        a.appendChild(sharedDeleteBtn(r.id, 'DELETE', function () {
+            sharedApi('DELETE', '/api/v1/shared/reservations/' + r.id).then(sharedReload).catch(function (e) { accessToast(e.message); sharedReload(); });
+        }));
+        row.appendChild(a);
+        list.appendChild(row);
+    });
+    panel.appendChild(list);
+
+    panel.appendChild(sharedEl('h4', '', 'NEW RESERVATION'));
+    var form = sharedEl('div', 'sp-form');
+    var rUser = sharedEl('select', 'wf-field');
+    sharedView.users.filter(function (u) { return u.role !== 'listen' && !u.disabled; }).forEach(function (u) {
+        var o = sharedEl('option', '', u.name); o.value = u.id; rUser.appendChild(o);
+    });
+    var rStart = sharedEl('input', 'wf-field'); rStart.type = 'datetime-local';
+    var rMin = sharedEl('input', 'wf-field'); rMin.type = 'number'; rMin.min = 5; rMin.max = 1440; rMin.value = 60;
+    var rRep = sharedEl('select', 'wf-field');
+    [['once', 'once'], ['daily', 'every day'], ['weekly', 'every week']].forEach(function (p) { var o = sharedEl('option', '', p[1]); o.value = p[0]; rRep.appendChild(o); });
+    var rUntil = sharedEl('input', 'wf-field'); rUntil.type = 'date';
+    var rTitle = sharedEl('input', 'wf-field'); rTitle.placeholder = 'optional'; rTitle.maxLength = 80;
+    sharedField(form, 'Seat for', rUser);
+    sharedField(form, 'Starts (your local time)', rStart);
+    sharedField(form, 'Length, minutes', rMin);
+    sharedField(form, 'Repeats', rRep);
+    var untilField = sharedField(form, 'Last day (empty: for good)', rUntil).parentNode;
+    sharedField(form, 'Title', rTitle);
+    untilField.style.display = 'none';
+    rRep.onchange = function () { untilField.style.display = rRep.value === 'once' ? 'none' : ''; };
+    panel.appendChild(form);
+    var foot = sharedEl('div', 'sp-form-foot');
+    foot.appendChild(sharedEl('span', 'sp-dim', 'At the start the seat goes to its owner; two slots may not overlap.'));
+    foot.appendChild(sharedBtn('ADD RESERVATION', 'active', function () {
+        if (!rStart.value) { accessToast('a start time is required'); return; }
+        var body = { userId: rUser.value, start: new Date(rStart.value).toISOString(), minutes: parseInt(rMin.value, 10) || 60,
+                     repeat: rRep.value, title: rTitle.value.trim() };
+        if (rUntil.value && rRep.value !== 'once') body.until = new Date(rUntil.value + 'T23:59:59').toISOString();
+        sharedApi('POST', '/api/v1/shared/reservations', body).then(sharedReload)
+            .catch(function (e) { accessToast(e.message); });
+    }));
+    panel.appendChild(foot);
+
+    panel.appendChild(sharedEl('h4', '', 'NEXT TWO WEEKS'));
+    var up = sharedEl('div', '');
+    renderSchedule(up, sharedView.upcoming.slice(0, 8), sharedView.active, true);
+    panel.appendChild(up);
+}
+
+// ---- RULES: the policy ----
+function renderSharedRules(panel, pol) {
+    panel.appendChild(sharedEl('h4', 'first', 'ACCESS'));
+    var seg = sharedEl('div', 'sp-seg');
+    [['none', 'REFUSED'], ['listen', 'LISTEN'], ['control', 'CONTROL']].forEach(function (opt) {
+        seg.appendChild(sharedBtn(opt[1], 'toggle' + ((pol.anonymous || 'none') === opt[0] ? ' active' : ''), function () { sharedSetPolicy({ anonymous: opt[0] }); }));
+    });
+    sharedRule(panel, 'Visitors without a login', seg,
+        pol.anonymous === 'control' ? 'Anyone who reaches the page can tune the radio. They cannot transmit.' :
+        pol.anonymous === 'listen' ? 'Anyone who reaches the page can listen and watch.' : 'A login is required to see anything.');
+    sharedRule(panel, 'Connections at once', sharedNumber('maxClients', pol.maxClients || 20, 1, 500, ''),
+        'One more than this is turned away. Admins always get in.');
+    sharedRule(panel, 'TX time-out', sharedNumber('txTimeoutSecs', pol.txTimeoutSecs, 0, 3600, 's'),
+        'A key held longer than this is released. 0: no limit.');
+
+    panel.appendChild(sharedEl('h4', '', 'THE SEAT'));
+    var seatOn = pol.seat !== false;
+    sharedRule(panel, 'One operator at a time', sharedSwitch(seatOn, function () { sharedSetPolicy({ seat: !seatOn }); }),
+        seatOn ? 'Only who has the seat controls the radio; the others watch and may ask for it.'
+               : 'Off: everyone with the role controls the radio at once.');
+    if (!seatOn) return;
+    sharedRule(panel, 'Released when idle for', sharedNumber('seatIdleSecs', pol.seatIdleSecs, 0, 1440, 'min', 60),
+        'The seat is freed when its holder has not touched the radio for this long. 0: never.');
+    sharedRule(panel, 'An unanswered ASK is granted after', sharedNumber('seatRequestSecs', pol.seatRequestSecs, 0, 3600, 's'),
+        'The holder may hand over or decline before that. 0: only when the holder answers.');
+    sharedRule(panel, 'Longest turn while others wait', sharedNumber('seatMaxSecs', pol.seatMaxSecs, 0, 1440, 'min', 60),
+        'With somebody in line, the seat moves on after this long. 0: no limit.');
+    sharedRule(panel, 'A higher role takes over', sharedSwitch(!!pol.seatPreemptHigher, function () { sharedSetPolicy({ seatPreemptHigher: !pol.seatPreemptHigher }); }),
+        'An operator takes the seat from a control user at once, without asking.');
+    sharedRule(panel, 'Listen-in', sharedSwitch(pol.listenIn !== false, function () { sharedSetPolicy({ listenIn: pol.listenIn === false }); }),
+        'The others hear the audio and see the scope while somebody has the seat.');
+    sharedRule(panel, 'Private sessions', sharedSwitch(!!pol.allowPrivate, function () { sharedSetPolicy({ allowPrivate: !pol.allowPrivate }); }),
+        'The holder may hide audio and scope from the others. Admins always see.');
 }
 
 function send(obj) {
@@ -4394,8 +4621,8 @@ function send(obj) {
     // ... and what needs the seat, while somebody else has it or nobody does.
     if (accessState.shared && obj && seatState.enabled && !seatState.mine && accessState.needsSeat[obj.cmd]) {
         accessToast(seatState.holder
-            ? seatState.holder.name + ' has the seat' + (accessState.can.control ? ' — tap the seat tag to ask for it' : '')
-            : 'Take the seat first (the tag in the top bar)');
+            ? seatState.holder.name + ' has the seat' + (accessState.can.control ? ' — press ASK, top left' : '')
+            : 'Take the seat first (TAKE, top left)');
         return false;
     }
     if (wsTransport) wsTransport.sendCommand(obj);
@@ -6648,13 +6875,6 @@ function renderFuncOverlay() {
     // permission no controller can be seen; the window is then reached from
     // the CW bar's PADDLE window (its MIDI... button).
     if (midi.devices.length) grid.appendChild(makeFuncBtn('MIDI', midi.enabled ? 'ON' : 'OFF', midi.enabled, openMidiModal));
-
-    // SHARED: the station's access policy and accounts, for its admins.
-    if (accessState.shared && accessState.can.admin) {
-        var pol = accessState.policy || {};
-        var sharedState = pol.txInhibit ? 'TX INHIBIT' : (pol.anonymous && pol.anonymous !== 'none' ? 'VISITORS ' + pol.anonymous.toUpperCase() : 'LOGIN ONLY');
-        grid.appendChild(makeFuncBtn('SHARED', sharedState, !!pol.txInhibit, openSharedModal));
-    }
 
     // RX audio / TX audio / jitter buffer: the AUDIO / TX overlay, which is
     // otherwise only reachable while audio is off.

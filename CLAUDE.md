@@ -423,12 +423,23 @@ and key-up (duration) to the audit log and runs the time-out timer; the
 REST caller's name reaches it through `restWho_`. The page
 (`resources/web/index.html` only) shows `#loginOverlay` on `authRequired` /
 close 4401 (setup variant when `setupRequired`; a visitor opens it from the
-LOG IN tag and may put it away), holds the auto-reconnect while it is up,
-a `#userTag` with a LOG OUT menu, `#txInhibitTag`, body classes
-`access-listen` / `access-notx` / `access-admin` / `tx-inhibit` that dim
-PTT etc., and FUNC > SHARED (`#sharedOverlay`, `renderSharedOverlay`) for
-admins: visitor policy, TX inhibit / time-out / max connections, the
-connection list with KICK (`/api/v1/shared/connections`), accounts. `--shared` without TLS is refused unless
+LOG IN button and may put it away), holds the auto-reconnect while it is up,
+and has the **station strip** (`#stationStrip`, `body.shared-on`): a 24 px
+row under the top bar, `SEAT <whose> [action]` on the left, `#txInhibitTag`
+in the middle, `YOU <name · role>` (`#userTag`) on the right, whose menu has
+SCHEDULE, STATION SETTINGS (admins) and LOG OUT. The strip shares the grid's
+first row with `#topBar` (`--station-h` added to the first track of every
+`#radio` row template; a new template must carry it), so nothing of Shared
+Station sits in the top bar: the two tiles there overflowed a phone
+(451 px on a 390 px screen, 2026-11-14) and did not say which name was the
+seat's. Body classes `access-listen` / `access-notx` / `access-admin` /
+`tx-inhibit` dim PTT etc. STATION SETTINGS opens `#sharedOverlay`
+(`renderSharedOverlay`, no FUNC tile any more), four tabs
+(`sharedView.tab`): NOW (seat card with TAKE IT / CLEAR, TX inhibit, the
+connection list with KICK, `/api/v1/shared/connections`), ACCOUNTS,
+SCHEDULE (reservations), RULES (the policy: one labelled row per knob with
+a line saying what it does, applied on change). Only NOW is redrawn by the
+seat's one-second countdown; the other tabs hold forms. `--shared` without TLS is refused unless
 `--trust-proxy <cidr>` names the proxy whose `X-Forwarded-For/-Proto` to
 believe; logins are refused on the plain REST port. The client address is
 the rightmost `X-Forwarded-For` entry not in the trusted set
@@ -483,12 +494,15 @@ audio (`sendBinaryToAudioClients`) and spectrum (`sendBinaryToAll`) from
 non-holders when the holder is private or listen-in is off; admins always
 see. State goes out per socket as `seat` (`seatJson`: holder, mine, queue,
 position, request / requested / offer / grace with seconds), `seatLost`,
-`seatNotice`. Page: `seatState`, `#seatTag` (one tap does the right thing:
-take / ask / withdraw / accept), `#seatPrompt` (HAND OVER / DECLINE or TAKE
+`seatNotice`. Page: `seatState`, in the station strip `#seatWho` (whose
+seat, in words) and the `#seatTag` button next to it (the one action that
+applies: TAKE / ASK / WITHDRAW / LEAVE LINE / OPTIONS, hidden when there is
+none), `#seatPrompt` (above the start, power-off and login screens: a
+holder who reloaded sits on CLICK TO START with the seat back) (HAND OVER / DECLINE or TAKE
 IT / PASS), `#seatMenu` (release, private), `body.seat-watch` dimming,
 `send()` refuses `needsSeat` commands locally. Policy knobs `Shared/Seat`,
 `SeatIdleSecs`, `SeatRequestSecs`, `SeatMaxSecs`, `SeatPreemptHigher`,
-`ListenIn`, `AllowPrivate` in the SHARED window's seat section.
+`ListenIn`, `AllowPrivate` in the SHARED window's RULES tab.
 Tests: `tests/access_test.cpp` (unit, the capability table included),
 `tests/test_access.py` (the real server with `--shared`: setup, cookie on
 the WS upgrade, tokens on the plain port, account management, lockout last
@@ -515,9 +529,9 @@ grant and the max-time release skip a holder who owns the running slot.
 `seatJson` carries `reservation` (with `mine`, `holdUntil`) and `next`.
 REST `/api/v1/shared/reservations` (GET any account, POST / DELETE admin,
 409 `{conflict}`); removing an account removes its slots. Page: the
-RESERVATIONS section of the SHARED window (datetime-local in the browser's
+SCHEDULE tab of the SHARED window (datetime-local in the browser's
 zone -> ISO UTC), the SCHEDULE entry of the user menu (`#scheduleOverlay`,
-`renderSchedule`) for everyone, the seat tag's `RESERVED · name` / `TAKE`
+`renderSchedule`) for everyone, the strip's `reserved for name` / `TAKE`
 states and tooltip. Tests: `tests/test_access_reservations.py` (REST
 rules, owner priority with the owner away then arriving, hand-over at the
 start, the holder told when the owner is absent, a weekly slot a week old

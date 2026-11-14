@@ -97,17 +97,23 @@ in the browser's zone. Delete and recreate it if that matters.
 
 ## The seat
 
-The tag in the top bar says where the seat is and is the one control for it:
+A thin strip under the top bar says whose seat it is on the left
+(`SEAT ...`) and who you are on the right (`YOU ...`). Next to the seat is
+the one button that applies:
 
-| Tag | Meaning | A tap |
-|-----|---------|-------|
-| `TAKE SEAT` (green) | nobody has it | takes it |
-| `SEAT` (filled) | you have it | opens the menu: release, go private (if allowed) |
-| `W1ABC · ASK` (amber) | W1ABC has it | asks W1ABC for it |
-| `W1ABC · ASKED 45` | you asked; W1ABC has 45 s to answer | withdraws |
-| `W1ABC · #2` | you are second in line | leaves the line |
-| `TAKE SEAT (28)` (blinking) | the seat is free for you, 28 s to take it | takes it |
-| `W1ABC · back?` | W1ABC dropped off; the seat waits 30 s for them | — |
+| Strip | Meaning | Button |
+|-------|---------|--------|
+| `SEAT free` (green) | nobody has it | **TAKE** |
+| `SEAT yours` (green) | you have it | **OPTIONS**: release, go private (if allowed) |
+| `SEAT W1ABC` (amber) | W1ABC has it | **ASK** W1ABC for it |
+| `SEAT W1ABC · you asked · 45 s` | W1ABC has 45 s to answer | **WITHDRAW** |
+| `SEAT W1ABC · you are #2 in line` | you are second in line | **LEAVE LINE** |
+| `SEAT free for you · 28 s` | the seat is yours to take for 28 s | **TAKE** (blinking) |
+| `SEAT kept for W1ABC · 25 s` | W1ABC dropped off; the seat waits for them | — |
+| `SEAT reserved for W1ABC` | a reserved slot is running, its owner is away | — |
+
+`YOU name · role` opens the account menu: SCHEDULE, STATION SETTINGS
+(admins) and LOG OUT. A visitor sees `visitor · LOG IN` there.
 
 Asked for the seat, the holder gets a bar with **HAND OVER** / **DECLINE**.
 Unanswered, the request is granted when the time runs out (60 s by
@@ -147,18 +153,23 @@ have control)") and, should anything reach the server regardless, refused
 there with the same answer. The PTT key is dimmed for anyone who cannot
 transmit; the frequency display and MODE for a listener.
 
-## The SHARED window (FUNC > SHARED, admins)
+## The Shared station window (YOU > STATION SETTINGS, admins)
 
-- **Visitors without a login**: REFUSED (the login sheet), LISTEN or
-  CONTROL. A visitor's top bar shows a LOG IN tag; the sheet it opens can
-  be put away. Lowering the level applies to visitors already connected;
-  refusing them ends their connections.
-- **Transmit**: TX INHIBIT, the time-out in seconds (0 = none), the
-  maximum number of connections.
-- **Connected now**: name or *visitor*, level, address, who is keying; KICK
-  ends that connection (the account stays — disable it to keep them out).
-- **Accounts**: level, ENABLE / DISABLE, PASSWORD (sets a new one and ends
-  the account's sessions), DELETE (two presses), and a row to add one.
+Four tabs:
+
+- **NOW**: who has the seat (TAKE IT, CLEAR), whether transmitting is
+  allowed (INHIBIT TX / ALLOW TX), and who is connected: name or *visitor*,
+  level, address, SEAT / ON AIR; KICK ends that connection (the account
+  stays — disable it to keep them out).
+- **ACCOUNTS**: level, PASSWORD (sets a new one and ends the account's
+  sessions), ENABLE / DISABLE, DELETE (two presses), and a form to add one.
+- **SCHEDULE**: the reservations, a form to add one, and the next two weeks.
+- **RULES**: every setting with a line saying what it does; a change
+  applies at once. *Visitors without a login*: REFUSED (the login sheet),
+  LISTEN or CONTROL — the strip then shows `visitor · LOG IN`, and the sheet
+  it opens can be put away; lowering the level applies to visitors already
+  connected, refusing them ends their connections. *Connections at once*,
+  *TX time-out* (0 = none), and the seat's rules.
 
 ## Setting it up
 
