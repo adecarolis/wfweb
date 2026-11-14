@@ -36,6 +36,8 @@ QsoRecord QsoRecord::normalized() const
     r.comment   = comment.trimmed().left(256);
     r.name      = name.trimmed().left(128);
     r.stationCall = stationCall.trimmed().left(32).toUpper();
+    r.operatorCall = operatorCall.trimmed().left(32).toUpper();
+    r.userId    = userId.trimmed().left(64);
     r.freq      = freq > 0 ? freq : 0;
     r.df        = df;
     r.exported  = exported.trimmed().left(20);
@@ -58,6 +60,7 @@ QsoRecord QsoRecord::fromJson(const QJsonObject &in, const QString &id)
     r.comment   = in.value("comment").toString();
     r.name      = in.value("name").toString();
     r.stationCall = in.value("stationCall").toString();
+    r.operatorCall = in.value("operator").toString();
     r.freq      = in.value("freq").toVariant().toLongLong();
     r.exported  = in.value("exported").toString();   // round-trips through edits
     if (in.value("df").isDouble())
@@ -85,6 +88,8 @@ QJsonObject QsoRecord::toJson() const
     put("comment", comment);
     put("name", name);
     put("stationCall", stationCall);
+    put("operator", operatorCall);
+    put("userId", userId);
     put("exported", exported);
     if (df >= 0) o["df"] = df;
     return o;
@@ -118,11 +123,13 @@ QByteArray QsoRecord::toAdif(bool appFields) const
     field("GRIDSQUARE", theirGrid);
     field("MY_GRIDSQUARE", grid);
     field("STATION_CALLSIGN", stationCall);
+    field("OPERATOR", operatorCall);
     field("COMMENT", comment);
     field("NAME", name);
     if (appFields) {
         if (df >= 0) field("APP_WFWEB_DF", QString::number(df));
         field("APP_WFWEB_EXPORTED", exported);
+        field("APP_WFWEB_USER", userId);
     }
     out += "<EOR>\n";
     return out;
@@ -170,6 +177,8 @@ QList<QsoRecord> Logbook::parseAdif(const QByteArray &data)
             r.comment   = QString::fromUtf8(fields.value("COMMENT"));
             r.name      = QString::fromUtf8(fields.value("NAME"));
             r.stationCall = QString::fromUtf8(fields.value("STATION_CALLSIGN"));
+            r.operatorCall = QString::fromUtf8(fields.value("OPERATOR"));
+            r.userId    = QString::fromUtf8(fields.value("APP_WFWEB_USER"));
             r.freq      = qRound64(fields.value("FREQ").toDouble() * 1e6);
             r.exported  = QString::fromUtf8(fields.value("APP_WFWEB_EXPORTED"));
             if (fields.contains("APP_WFWEB_DF"))
@@ -210,6 +219,7 @@ bool Logbook::open(const QString &path)
 {
     path_ = path;
     records_.clear();
+    tally_.clear();
     QDir().mkpath(QFileInfo(path_).absolutePath());
 
     QFile file(path_);
@@ -225,6 +235,7 @@ bool Logbook::open(const QString &path)
         const QString ka = a.sortKey(), kb = b.sortKey();
         return ka != kb ? ka < kb : a.id < b.id;
     });
+    rebuildTally();
 
     // Records that came from another program have no APP_WFWEB_ID; fromJson
     // minted one, so persist it now or the ids change on every restart.
@@ -295,7 +306,7 @@ bool Logbook::add(QsoRecord &r)
     if (!r.isValid()) return false;
     if (r.id.isEmpty()) r.id = QUuid::createUuid().toString(QUuid::WithoutBraces);
     const int idx = insertSorted(r);
-    if (append(r)) return true;
+    if (append(r)) { tallyRecord(r, +1); return true; }
     records_.removeAt(idx);
     return false;
 }
@@ -305,10 +316,11 @@ bool Logbook::update(const QString &id, QsoRecord r)
     const int idx = indexOf(id);
     if (idx < 0 || !r.isValid()) return false;
     const QList<QsoRecord> backup = records_;   // implicitly shared, cheap
+    const QsoRecord old = records_[idx];
     records_.removeAt(idx);
     r.id = id;
     insertSorted(r);
-    if (rewrite()) return true;
+    if (rewrite()) { tallyRecord(old, -1); tallyRecord(r, +1); return true; }
     records_ = backup;
     return false;
 }
@@ -318,8 +330,9 @@ bool Logbook::remove(const QString &id)
     const int idx = indexOf(id);
     if (idx < 0) return false;
     const QList<QsoRecord> backup = records_;
+    const QsoRecord old = records_[idx];
     records_.removeAt(idx);
-    if (rewrite()) return true;
+    if (rewrite()) { tallyRecord(old, -1); return true; }
     records_ = backup;
     return false;
 }
@@ -337,7 +350,7 @@ bool Logbook::clear(QString *backupPath)
     }
     const QList<QsoRecord> backup = records_;
     records_.clear();
-    if (rewrite()) return true;
+    if (rewrite()) { tally_.clear(); return true; }
     records_ = backup;
     return false;
 }
@@ -454,10 +467,11 @@ int Logbook::merge(const QList<QsoRecord> &incoming)
         records_ = backup;   // never leave memory and disk disagreeing
         return 0;
     }
+    if (added) rebuildTally();
     return added;
 }
 
-Logbook::Page Logbook::page(int limit, const QString &before, const QString &call) const
+Logbook::Page Logbook::page(int limit, const QString &before, const QString &call, const Filter &filter) const
 {
     Page result;
     if (limit <= 0) limit = 100;
@@ -476,9 +490,18 @@ Logbook::Page Logbook::page(int limit, const QString &before, const QString &cal
     while (i > 0 && result.entries.size() < limit) {
         --i;
         if (!wanted.isEmpty() && records_[i].call != wanted) continue;
+        if (filter && !filter(records_[i])) continue;
         result.entries.append(records_[i]);
     }
-    if (i > 0 && !result.entries.isEmpty())
+    // With a filter the rest of the log may hold nothing for this caller:
+    // say "more" only when it does, or the page would end on an empty fetch.
+    bool more = i > 0;
+    if (more && filter) {
+        more = false;
+        for (int j = i - 1; j >= 0 && !more; --j)
+            more = (wanted.isEmpty() || records_[j].call == wanted) && filter(records_[j]);
+    }
+    if (more && !result.entries.isEmpty())
         result.next = cursorFor(result.entries.last());
     return result;
 }
@@ -495,46 +518,50 @@ int Logbook::unexportedCount() const
     return n;
 }
 
-QByteArray Logbook::toAdif(bool unexportedOnly, bool appFields) const
+QByteArray Logbook::toAdif(bool unexportedOnly, bool appFields, const Filter &filter) const
 {
     QByteArray out = adifHeader();
     for (const QsoRecord &r : records_)
-        if (!unexportedOnly || r.exported.isEmpty())
+        if ((!unexportedOnly || r.exported.isEmpty()) && (!filter || filter(r)))
             out += r.toAdif(appFields);
     return out;
 }
 
-QJsonObject Logbook::workedCalls() const
+QJsonObject Logbook::workedCalls(const Filter &filter, int *considered) const
 {
     QHash<QString, QStringList> bands;
+    int n = 0;
     for (const QsoRecord &r : records_) {
+        if (filter && !filter(r)) continue;
+        ++n;
         if (r.call.isEmpty()) continue;
         QStringList &list = bands[r.call];
         const QString band = r.band.isEmpty() ? QStringLiteral("?") : r.band;
         if (!list.contains(band)) list.append(band);
     }
+    if (considered) *considered = n;
     QJsonObject out;
     for (auto it = bands.cbegin(); it != bands.cend(); ++it)
         out.insert(it.key(), QJsonArray::fromStringList(it.value()));
     return out;
 }
 
-QStringList Logbook::unexportedIds() const
+QStringList Logbook::unexportedIds(const Filter &filter) const
 {
     QStringList ids;
     for (const QsoRecord &r : records_)
-        if (r.exported.isEmpty()) ids.append(r.id);
+        if (r.exported.isEmpty() && (!filter || filter(r))) ids.append(r.id);
     return ids;
 }
 
-int Logbook::markExported(const QStringList &ids)
+int Logbook::markExported(const QStringList &ids, const Filter &filter)
 {
     const QSet<QString> wanted(ids.cbegin(), ids.cend());
     const QString stamp = exportStamp();
     const QList<QsoRecord> backup = records_;
     int changed = 0;
     for (QsoRecord &r : records_) {
-        if (r.exported.isEmpty() && wanted.contains(r.id)) {
+        if (r.exported.isEmpty() && wanted.contains(r.id) && (!filter || filter(r))) {
             r.exported = stamp;
             ++changed;
         }
@@ -543,5 +570,37 @@ int Logbook::markExported(const QStringList &ids)
         records_ = backup;
         return 0;
     }
+    if (changed) rebuildTally();
     return changed;
+}
+
+// ---------------------------------------------------------------------------
+// Counts per (account, station call)
+// ---------------------------------------------------------------------------
+
+void Logbook::tallyRecord(const QsoRecord &r, int sign)
+{
+    const QString key = r.userId + QLatin1Char('\n') + r.stationCall;
+    Tally &t = tally_[key];
+    t.count += sign;
+    if (r.exported.isEmpty()) t.unexported += sign;
+    if (t.count <= 0) tally_.remove(key);
+}
+
+void Logbook::rebuildTally()
+{
+    tally_.clear();
+    for (const QsoRecord &r : records_) tallyRecord(r, +1);
+}
+
+Logbook::Tally Logbook::tally(const std::function<bool(const QString &, const QString &)> &pick) const
+{
+    Tally sum;
+    for (auto it = tally_.cbegin(); it != tally_.cend(); ++it) {
+        const int nl = it.key().indexOf(QLatin1Char('\n'));
+        if (!pick(it.key().left(nl), it.key().mid(nl + 1))) continue;
+        sum.count += it.value().count;
+        sum.unexported += it.value().unexported;
+    }
+    return sum;
 }

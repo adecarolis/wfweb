@@ -1543,6 +1543,14 @@ body.digi-open #bottomBar { grid-row: 5; }
     align-items: center;
 }
 .digi-log-row.header { color: var(--text-dim); font-size: var(--fs-xs); border-bottom: 1px solid #024; padding-top: 0; }
+/* Shared Station: OPERATOR and STATION columns, shown once a loaded record names an operator. */
+.digi-log-op, .digi-log-stn { display: none; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.digi-log-modal.has-ops .digi-log-row { grid-template-columns: 80px 50px 80px 72px 40px 40px 46px 46px 72px 72px 22px 22px; }
+.digi-log-modal.has-ops .digi-log-op, .digi-log-modal.has-ops .digi-log-stn { display: block; }
+.digi-log-modal.has-ops .digi-log-stn.own { color: #ee0; }
+.digi-settings-note { color: #8cf; font-size: 11px; margin: 2px 0 4px; }
+.digi-settings-note:empty { display: none; }
+.shared-panel .sp-field.sp-call { width: 84px; text-transform: uppercase; }
 .digi-log-date { color: var(--text-dim); }
 .digi-log-time { color: var(--text-dim); }
 .digi-log-call { color: var(--text); font-weight: bold; }
@@ -2303,6 +2311,10 @@ body.digi-open #bottomBar { grid-row: 5; }
     .digi-log-row { grid-template-columns: 70px 40px minmax(44px, 1fr) 56px 34px 20px 20px; gap: 3px; font-size: 11px; }
     .digi-log-row .digi-log-call { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .digi-log-band, .digi-log-rstsent, .digi-log-rstrcvd, #dleBand, #dleRstSent, #dleRstRcvd { display: none; }
+    /* Operator in place of the mode column, no station column: who made
+       it is what a phone has room for. */
+    .digi-log-modal.has-ops .digi-log-row { grid-template-columns: 70px 40px minmax(44px, 1fr) 56px 56px 20px 20px; }
+    .digi-log-modal.has-ops .digi-log-stn, .digi-log-modal.has-ops .digi-log-mode, .digi-log-modal.has-ops #dleMode { display: none; }
     /* FreeDV readout is right-anchored and ~470px wide; let it wrap onto
        two rows instead of pushing the mode link off the left edge. */
     /* ...and keep it clear of the tile column (AUDIO/MIC/P.AMP/DUP/TONE/RF
@@ -2896,6 +2908,7 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
                 <span class="digi-field-label">MY CALL:</span>
                 <input type="text" id="digiMyCall" class="digi-callsign-input wf-field" maxlength="11" placeholder="CALL" autocomplete="off">
             </div>
+            <div id="digiCallNote" class="digi-settings-note"></div>
             <div class="digi-settings-field">
                 <span class="digi-field-label">MY GRID:</span>
                 <input type="text" id="digiGrid" class="digi-callsign-input wf-field" maxlength="6" placeholder="AA00" autocomplete="off">
@@ -2967,6 +2980,8 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
                     <span class="digi-log-mode">Mode</span>
                     <span class="digi-log-rstsent">TX Rpt</span>
                     <span class="digi-log-rstrcvd">RX Rpt</span>
+                    <span class="digi-log-op">Operator</span>
+                    <span class="digi-log-stn">Station</span>
                     <span></span>
                     <span></span>
                 </div>
@@ -3225,7 +3240,11 @@ var hasPowerControl = false;
 window.App = window.App || {};
 window.App.callsign = (function() {
     var KEY = 'wfweb.callsign';
-    function normalize(s) { return String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+    // '/' stays: F/K1FM and W1ABC/P are callsigns (an operator abroad, portable).
+    function normalize(s) { return String(s || '').toUpperCase().replace(/[^A-Z0-9\/]/g, ''); }
+    // Shared Station: the page may refuse a panel's edit (guard returns
+    // false); the panels are then put back on the value in force.
+    var guard = null;
     function get() {
         try {
             var v = localStorage.getItem(KEY);
@@ -3238,6 +3257,10 @@ window.App.callsign = (function() {
     var adopting = false;
     function set(s) {
         var v = normalize(s);
+        if (!adopting && guard && v !== get() && guard(v) === false) {
+            try { window.dispatchEvent(new CustomEvent('appCallsignChanged', { detail: get() })); } catch(e) {}
+            return;
+        }
         try { localStorage.setItem(KEY, v); } catch(e) {}
         try { localStorage.setItem('digiMyCall', v); } catch(e) {}
         try { localStorage.setItem('cwCallsign', v); } catch(e) {}
@@ -3253,7 +3276,8 @@ window.App.callsign = (function() {
         try { set(v); } finally { adopting = false; }
     }
     function isAdopting() { return adopting; }
-    return { get: get, set: set, adopt: adopt, isAdopting: isAdopting };
+    function setGuard(fn) { guard = fn; }
+    return { get: get, set: set, adopt: adopt, isAdopting: isAdopting, setGuard: setGuard, normalize: normalize };
 })();
 
 var currentFreq = 0;
@@ -3774,6 +3798,92 @@ function applyAccessMessage(msg) {
     updateAccessUi();
 }
 
+// ---- Callsigns on the air (Shared Station) ----
+// The server says what the station identifies as right now (onAir), what
+// its configured call is (club), and whether the first is a member's own
+// call because they hold the seat.  App.callsign always holds the on-air
+// call, so every panel transmits under it.
+var stationInfo = { onAir: '', club: '', own: false, operator: '' };
+
+function applyStationInfo(msg, onAir) {
+    stationInfo.onAir = onAir || '';
+    if (msg.clubCallsign !== undefined) {
+        stationInfo.club = msg.clubCallsign || '';
+        stationInfo.own = !!msg.onAirOwn;
+        stationInfo.operator = msg.onAirOperator || '';
+    } else {
+        stationInfo.club = stationInfo.onAir;
+        stationInfo.own = false;
+        stationInfo.operator = '';
+    }
+    updateCallsignUi();
+    updateSeatUi();
+}
+
+// A panel's callsign field was edited.  Open mode: as ever.  Shared mode:
+// the callsign is the station's, an admin's to set -- and not while a
+// member is on the air under their own call (the gear dialog's field edits
+// the station call then; see stationCallEdited).
+function callsignGuard(v) {
+    if (!accessState.shared) return true;
+    if (!accessState.can.admin) {
+        accessToast('The callsign is set by the station\u2019s admin' + (stationInfo.onAir ? ' (on the air as ' + stationInfo.onAir + ')' : ''));
+        return false;
+    }
+    if (stationInfo.own) {
+        accessToast('On the air as ' + stationInfo.onAir + ' (' + stationInfo.operator + '): change the station call in Station Settings');
+        return false;
+    }
+    return true;
+}
+window.App.callsign.setGuard(callsignGuard);
+
+// What the gear dialog's MY CALL shows: the on-air call, except for an
+// admin in shared mode, who edits the station call there.
+function gearCallValue() {
+    return (accessState.shared && accessState.can.admin) ? stationInfo.club : window.App.callsign.get();
+}
+
+// The gear dialog's field in shared mode, admin: this sets the station
+// call on the server; what is on the air follows unless a member holds the
+// seat under their own call.
+function stationCallEdited(v) {
+    stationInfo.club = window.App.callsign.normalize(v);
+    send({ cmd: 'setStationCallsign', callsign: stationInfo.club, grid: getMyGrid() });
+}
+
+function updateCallsignUi() {
+    var locked = accessState.shared && !accessState.can.admin;
+    var my = document.getElementById('digiMyCall');
+    if (my) {
+        my.readOnly = locked;
+        if (document.activeElement !== my || locked) my.value = gearCallValue();
+    }
+    var cw = document.getElementById('cwCallInput');
+    if (cw) cw.readOnly = accessState.shared && (locked || stationInfo.own);
+    var note = document.getElementById('digiCallNote');
+    if (note) {
+        var t = '';
+        if (accessState.shared) {
+            if (stationInfo.own)
+                t = 'On the air as ' + stationInfo.onAir + ' (' + stationInfo.operator + ', own call)' +
+                    (accessState.can.admin ? ' \u2014 this field sets the station call' : ' \u2014 station call ' + (stationInfo.club || 'not set'));
+            else if (locked) t = 'The station call, set by an admin';
+            else t = 'The station call: every operator transmits under it unless their account is set to OWN';
+        }
+        note.textContent = t;
+    }
+}
+
+// May this browser change that log record?  (The server decides; this
+// only keeps buttons off records it would refuse.)
+function qsoMayChange(q) {
+    if (!accessState.shared || accessState.can.admin) return true;
+    if (!accessState.can.tx) return false;
+    if (!q.id) return true;     // a row being typed, not logged yet
+    return !!(q.userId && accessState.user && q.userId === accessState.user.id);
+}
+
 function updateAccessUi() {
     var b = document.body;
     var inhibit = !!(accessState.shared && accessState.policy && accessState.policy.txInhibit);
@@ -3785,6 +3895,11 @@ function updateAccessUi() {
     if (ti) ti.style.display = inhibit ? '' : 'none';
     updateUserTag();
     updateSeatUi();
+    updateCallsignUi();
+    var imp = document.getElementById('digiAdifImportBtn');
+    if (imp) imp.style.display = (accessState.shared && !accessState.can.admin) ? 'none' : '';
+    var addQ = document.getElementById('digiAddQsoBtn');
+    if (addQ) addQ.style.display = (accessState.shared && !accessState.can.tx) ? 'none' : '';
     if (currentPanel === 'func') renderFuncOverlay();
     var so = document.getElementById('sharedOverlay');
     if (so && so.classList.contains('visible')) renderSharedOverlay();
@@ -3817,8 +3932,10 @@ function updateSeatUi() {
     tag.style.display = '';
     var h = seatState.holder;
     var cls = '', text = '', title = '';
+    // On the air under the holder's own call: the tag says so.
+    var ownCall = (stationInfo.own && h) ? stationInfo.onAir : '';
     if (seatState.mine) {
-        cls = 'mine'; text = h && h.private ? 'SEAT · PRIVATE' : 'SEAT';
+        cls = 'mine'; text = (h && h.private ? 'SEAT · PRIVATE' : 'SEAT') + (ownCall ? ' · ' + ownCall : '');
         title = 'You have the seat — tap for options';
     } else if (seatState.offer) {
         cls = 'offer'; text = 'TAKE SEAT (' + seatState.offer.secs + ')';
@@ -3831,7 +3948,7 @@ function updateSeatUi() {
             cls = 'queued'; text = h.name + ' · #' + seatState.position;
             title = 'In line for the seat — tap to leave the line';
         } else {
-            cls = 'held'; text = h.name + (accessState.can.control ? ' · ASK' : '');
+            cls = 'held'; text = h.name + (ownCall ? ' (' + ownCall + ')' : '') + (accessState.can.control ? ' · ASK' : '');
             title = h.name + ' has the seat' + (accessState.can.control ? ' — tap to ask for it' : '');
         }
     } else if (seatState.grace) {
@@ -3850,6 +3967,7 @@ function updateSeatUi() {
     if (r) title += '\n' + (r.mine ? 'Your' : r.name + '’s') + ' reserved slot until ' + new Date(r.end).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     else if (n) title += '\n' + (n.mine ? 'Your' : n.name + '’s') + ' slot starts at ' + new Date(n.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     if (h && r && !r.mine && seatState.mine === false && accessState.can.control && r.name === (accessState.user && accessState.user.name)) text = h.name + ' · TAKE';
+    if (ownCall) title += '\nOn the air as ' + ownCall + ' (' + h.name + '’s own call)' + (stationInfo.club ? ', not ' + stationInfo.club : '');
     tag.className = cls;
     tag.textContent = text;
     tag.title = title;
@@ -4316,10 +4434,30 @@ function renderSharedOverlay() {
 
     // Accounts
     panel.appendChild(sharedEl('h4', '', 'ACCOUNTS'));
+    if (pol.seat === false && sharedView.users.some(function (u) { return u.onAir === 'own'; }))
+        panel.appendChild(sharedEl('div', 'sp-dim', 'OWN needs the seat: with the seat off there is no single operator and everyone transmits under the station call.'));
     sharedView.users.forEach(function (u) {
         var row = sharedEl('div', 'sp-row sp-user');
         row.appendChild(sharedEl('span', 'sp-name', u.name));
-        row.appendChild(sharedEl('span', 'sp-dim', (u.callsign || '') + (u.disabled ? ' · DISABLED' : '')));
+        // The account's callsign (a statement about a licence: the admin's
+        // to set) and what the station identifies as while it has the seat.
+        var call = sharedEl('input', 'wf-field sp-field sp-call');
+        call.value = u.callsign || ''; call.placeholder = 'callsign'; call.maxLength = 16; call.autocomplete = 'off';
+        call.title = 'The operator\u2019s own callsign: logged as OPERATOR on every QSO they make';
+        call.onchange = function () {
+            sharedApi('PUT', '/api/v1/shared/users/' + u.id, { callsign: call.value.trim() }).then(sharedReload)
+                .catch(function (e) { accessToast(e.message); sharedReload(); });
+        };
+        row.appendChild(call);
+        var own = u.onAir === 'own';
+        var air = sharedBtn(own ? 'OWN' : 'STATION', 'toggle' + (own ? ' on' : ''), function () {
+            sharedApi('PUT', '/api/v1/shared/users/' + u.id, { onAir: own ? 'station' : 'own' }).then(sharedReload)
+                .catch(function (e) { accessToast(e.message); });
+        });
+        air.title = own ? 'Transmits under their own callsign while they have the seat; their QSOs are theirs, not the club\u2019s'
+                        : 'Transmits under the station call; tap to let this operator use their own callsign';
+        row.appendChild(air);
+        if (u.disabled) row.appendChild(sharedEl('span', 'sp-dim', 'DISABLED'));
         var sel = sharedEl('select', 'wf-field');
         ['listen', 'control', 'operate', 'admin'].forEach(function (r) {
             var o = sharedEl('option', '', r); o.value = r; if (r === u.role) o.selected = true; sel.appendChild(o);
@@ -4425,7 +4563,9 @@ function handleMessage(msg) {
                 updateDigiLogWarning();
             }
             if (msg.stationCallsign !== undefined) {
-                if (msg.stationCallsign) {
+                applyStationInfo(msg, msg.stationCallsign);
+                if (msg.stationCallsign || accessState.shared) {
+                    // Shared Station: the server's word, even when it is "none yet".
                     window.App.callsign.adopt(msg.stationCallsign);
                 } else if (window.App.callsign.get()) {
                     // First run after the upgrade: the server has no station
@@ -4701,8 +4841,11 @@ function handleMessage(msg) {
             migrateBrowserLog();
             break;
         case 'stationChanged':
-            // Another browser (or a script) changed the station callsign/grid.
+            // Another browser (or a script) changed the station callsign/grid,
+            // or (Shared Station) the seat went to or from an operator who is
+            // on the air under their own call.
             window.App.callsign.adopt(msg.callsign || '');
+            applyStationInfo(msg, msg.callsign || '');
             if (msg.grid) adoptStationGrid(msg.grid);
             break;
         case 'cwMacrosChanged':
@@ -10940,7 +11083,10 @@ function adoptStationGrid(g) {
 // someone else's callsign on this user's first PTT.
 function pushStationCallsign() {
     if (!ws || ws.readyState !== 1) return;
-    send({ cmd: 'setStationCallsign', callsign: getMyCall(), grid: getMyGrid() });
+    // Shared Station: App.callsign is the on-air call, which is a member's
+    // own while they hold the seat; what is pushed is the station call.
+    var call = (accessState.shared && stationInfo.own) ? stationInfo.club : getMyCall();
+    send({ cmd: 'setStationCallsign', callsign: call, grid: getMyGrid() });
 }
 
 // Push the callsign whenever App.callsign changes. The DIGI panel's input
@@ -13541,6 +13687,9 @@ function loadLogbookPage(reset) {
 // local copy is removed only when the server confirms it is on durable
 // storage (see 'logbookMerged').
 function migrateBrowserLog() {
+    // Shared Station: a browser's old local log has no account behind it
+    // and is not this visitor's to pour into the station's log.
+    if (accessState.shared) return;
     try {
         var legacy = localStorage.getItem('qsoLog') || localStorage.getItem('digiQsoLog');
         if (!legacy) return;
@@ -13695,6 +13844,7 @@ function digiLogRowHtml(q, editing) {
             '<input class="digi-log-input" id="dleMode" value="' + escapeHtml(q.mode || '') + '">' +
             '<input class="digi-log-input" id="dleRstSent" value="' + escapeHtml(q.rstSent || '') + '">' +
             '<input class="digi-log-input" id="dleRstRcvd" value="' + escapeHtml(q.rstRcvd || '') + '">' +
+            '<span class="digi-log-op"></span><span class="digi-log-stn"></span>' +
             '<span class="digi-log-save" title="Save" onclick="saveDigiQso(digiLogRowIdx(this))">&#x2713;</span>' +
             '<span class="digi-log-del" title="Cancel" onclick="cancelEditDigiQso()">&#x2715;</span>' +
             '</div>';
@@ -13709,8 +13859,14 @@ function digiLogRowHtml(q, editing) {
         '<span class="digi-log-mode">' + escapeHtml(q.mode || '') + '</span>' +
         '<span class="digi-log-rstsent">' + escapeHtml(rstSentDisp) + '</span>' +
         '<span class="digi-log-rstrcvd">' + escapeHtml(q.rstRcvd || '') + '</span>' +
-        '<span class="digi-log-edit" title="Edit" onclick="editDigiQso(digiLogRowIdx(this))">&#x270E;</span>' +
-        '<span class="digi-log-del" title="Delete" onclick="deleteDigiQso(digiLogRowIdx(this))">&#x2715;</span>' +
+        // Shared Station: who made it (their call, else the account) and the
+        // call it was made under; marked when that is not the station's.
+        '<span class="digi-log-op" title="' + escapeHtml(q.operatorName || '') + '">' + escapeHtml(q.operator || q.operatorName || '') + '</span>' +
+        '<span class="digi-log-stn' + (q.stationCall && stationInfo.club && q.stationCall !== stationInfo.club ? ' own' : '') + '">' + escapeHtml(q.stationCall || '') + '</span>' +
+        (qsoMayChange(q)
+            ? '<span class="digi-log-edit" title="Edit" onclick="editDigiQso(digiLogRowIdx(this))">&#x270E;</span>' +
+              '<span class="digi-log-del" title="Delete" onclick="deleteDigiQso(digiLogRowIdx(this))">&#x2715;</span>'
+            : '<span></span><span></span>') +
         '</div>';
 }
 
@@ -13726,6 +13882,8 @@ function digiLogRowEl(i) {
 }
 
 function updateDigiLogFooter() {
+    var modal = document.getElementById('digiLogModal');
+    if (modal) modal.classList.toggle('has-ops', accessState.shared && qsoLog.some(function (q) { return q.operator || q.userId; }));
     var countEl = document.getElementById('digiLogCount');
     if (countEl) countEl.textContent = logbookTotal ? '(' + logbookTotal + ')' : '';
     var newCount = document.getElementById('digiAdifNewCount');
@@ -13903,7 +14061,7 @@ function setDigiLogStatus(text) {
 function saveAdifFile(text, suffix) {
     var iso = new Date().toISOString();
     var ts = iso.substr(0, 10).replace(/-/g, '') + '_' + iso.substr(11, 8).replace(/:/g, '');
-    var myCall = ((document.getElementById('digiMyCall') || {}).value || '').toUpperCase().replace(/[^A-Z0-9]/g, '') || 'LOG';
+    var myCall = (window.App.callsign.get() || '').toUpperCase().replace(/[^A-Z0-9]/g, '') || 'LOG';
     var a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([text], { type: 'application/x-adif' }));
     a.download = 'wfweb_' + myCall + '_' + ts + suffix + '.adi';
@@ -14002,6 +14160,13 @@ function initDigiHandlers() {
     if (myCallEl) {
         myCallEl.addEventListener('input', function() {
             this.value = this.value.toUpperCase();
+            if (accessState.shared) {
+                // The station call, an admin's to set; the on-air call
+                // comes back from the server (stationChanged).
+                if (accessState.can.admin) stationCallEdited(this.value);
+                else updateCallsignUi();
+                return;
+            }
             window.App.callsign.set(this.value);
             updateDigiMsgRows();
             sendReporterConfig();
@@ -14011,6 +14176,13 @@ function initDigiHandlers() {
     // Keep this field synchronized when another panel (PKT settings, CW)
     // changes the app callsign.
     window.addEventListener('appCallsignChanged', function(e) {
+        if (accessState.shared) {
+            // The field shows the station call to an admin (updateCallsignUi);
+            // the message rows follow the on-air call.
+            updateCallsignUi();
+            updateDigiMsgRows();
+            return;
+        }
         if (myCallEl && myCallEl.value !== e.detail) {
             myCallEl.value = e.detail;
             updateDigiMsgRows();

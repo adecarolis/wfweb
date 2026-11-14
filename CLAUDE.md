@@ -521,7 +521,63 @@ zone -> ISO UTC), the SCHEDULE entry of the user menu (`#scheduleOverlay`,
 states and tooltip. Tests: `tests/test_access_reservations.py` (REST
 rules, owner priority with the owner away then arriving, hand-over at the
 start, the holder told when the owner is absent, a weekly slot a week old
-running now, account removal, audit). Next: proxy identity (phase 5).
+running now, account removal, audit).
+**Callsigns and the log** (phase 6): ADIF `STATION_CALLSIGN` is the call
+used on the air, `OPERATOR` the person. `QsoRecord` has `operatorCall`
+(`OPERATOR`, kept by `toAdif(false)`) and `userId` (`APP_WFWEB_USER`,
+dropped by it like the other `APP_WFWEB_*`; `fromJson` never reads it).
+`AccessUser.onAirOwn` (JSON `onAir`: `station` | `own`, `setOnAir`, own
+needs a callsign; both are the admin's to set) rides on `AccessPrincipal`.
+**The on-air call follows the seat**: `webServer::onAirCall()` is the
+holder's callsign while an `own` account holds the seat (`onAirHolder()`),
+else the configured station call `reporterCallsign`, which alone is
+persisted; with the seat off it is always the station call.
+`applyOnAirCall()` is the one place a change is applied (RADE
+`setTxCallsign`, the FreeDV / PSK reporters, `stationChanged`, the `onair`
+audit line), called from `seatGive`, `seatFree`, `seatOnDisconnect`,
+`applyStationCallsign`, `refreshUserClients` (an account's callsign /
+`onAir` edited: its sockets get a new `access`, a holder left without a
+callsign loses the seat) and a seat policy change. **Read `onAirCall()`,
+never `reporterCallsign`, for anything that identifies the station on the
+air**; `reporterCallsign` is the station call (what the club log is, the
+settings file, `PUT /api/v1/station`). `stationChanged` / `rigInfo` carry
+the on-air call in the old field plus, in shared mode only, `clubCallsign`,
+`onAirOwn`, `onAirOperator`. `seatEligible` refuses `seatTake` /
+`seatAccept` from an `own` account without a callsign; `onAirDenies` holds
+`aprsTxBeacon`'s `src` and `termConnect` / `termRegister`'s `ownCall` to
+the on-air call, any SSID (`denied`, need `callsign`); audio modes cannot
+be checked, the page follows the on-air call. The log: `logbookAdd` /
+`logbookUpdate` / `logbookRemove` take the principal (`wsInfo` for a
+socket, `restPrincipal_` for REST, nullptr = rigctld / internal / no
+`--shared`); `logbookAdd` stamps `stationCall` = `onAirCall()`,
+`operatorCall`, `userId` over what the client sent, `logbookUpdate` keeps
+the stored three. Three predicates decide everything: `logSees` (admins
+all; an account the club log = `isClubCall(stationCall)`, empty included,
+plus its own records; visitors nothing), `logMayChange` (admins; the
+account that logged it; ownerless = admin), `logMayExport` (admins the
+club log; an account its QSOs under its own call). Every route filters
+with them (`Logbook::Filter` on `page` / `toAdif` / `workedCalls` /
+`unexportedIds` / `markExported`; `/worked` answers for the call the
+viewer transmits as) and `logbookSend` sends `qsoAdded` / `qsoUpdated` /
+`qsoDeleted` / the summary per socket, only to those who may see the
+record, with that viewer's own counts (`logCounts`, from `Logbook::tally`:
+counts per (account, station call) kept as records change, never a scan
+per socket). Clear, ADIF import and `mergeLogbook` are Admin in the
+capability tables; `updateQso` / `deleteQso` are seat-exempt and the REST
+gate skips the seat for `/api/v1/logbook/<...>` (not for `POST
+/api/v1/logbook`, which is stamped with the call on the air).
+`wsjtxSendQso` only for station-call QSOs. Audit: `onair`, `qso-edit`,
+`qso-delete`, `log-import`, `log-clear`, `log-merge`. Page:
+`stationInfo` / `applyStationInfo`, `App.callsign.setGuard(callsignGuard)`
+(a panel's edit is refused for non-admins, and for admins while a member
+is on the air under their own call), `updateCallsignUi` (MY CALL
+read-only; for an admin it shows and edits the station call,
+`stationCallEdited`), the seat tag (`SEAT · F/K1FM`), `qsoMayChange`, the
+`has-ops` columns of the log, the callsign field and STATION / OWN button
+on the SHARED window's account rows; no `mergeLogbook` in shared mode.
+Tests: `tests/test_shared_logbook.py` (its own server with a UDP socket as
+the remote logger), the `onAir` and tally parts of `access_test.cpp` /
+`logbook_test.cpp`. Next: proxy identity (phase 5).
 
 ### Shared theme + component kit (`theme.css`)
 `resources/web-shared/theme.css` is the single source of UI styling for both
@@ -1266,6 +1322,13 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 ### Shared station callsign
 - One callsign in the gear dialog feeds CW, FT8/FT4, JS8, FreeDV Reporter, APRS, and
   the AX.25 link. Do not add per-mode callsigns — the shared one is intentional.
+- `App.callsign.normalize()` keeps `/` (both forks): `F/K1FM` and `W1ABC/P`
+  are callsigns. Only the export file name strips it.
+- Shared Station exception: under `--shared` that one callsign is the
+  *on-air* call, which follows the seat (the holder's own callsign when
+  their account is set to `own`, else the station call). The pages adopt
+  it from `stationChanged` / `rigInfo` and only an admin edits the station
+  call. See "Callsigns and the log" in the Shared Station section.
 
 ---
 

@@ -3245,7 +3245,8 @@ window.App.callsign = (function() {
     var KEY        = 'wfweb.callsign'   + keySuffix;
     var KEY_DIGI   = 'digiMyCall'       + keySuffix;
     var KEY_CW     = 'cwCallsign'       + keySuffix;
-    function normalize(s) { return String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+    // '/' stays: F/K1FM and W1ABC/P are callsigns (an operator abroad, portable).
+    function normalize(s) { return String(s || '').toUpperCase().replace(/[^A-Z0-9\/]/g, ''); }
     function get() {
         try {
             var v = localStorage.getItem(KEY);

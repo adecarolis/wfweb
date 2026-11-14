@@ -79,7 +79,7 @@ management routes under `/api/v1/shared/users` and the deployment notes are in
 
 | Route | Does |
 |-------|------|
-| `GET /api/v1/auth/me` | who the caller is: `{shared, authenticated, user:{id,name,callsign,role}, setupRequired, recovery, secure}` |
+| `GET /api/v1/auth/me` | who the caller is: `{shared, authenticated, user:{id,name,callsign,onAir,role}, setupRequired, recovery, secure}` |
 | `POST /api/v1/auth/setup` `{code, username, password, callsign}` | first run: the setup code from the console creates the admin and logs them in |
 | `POST /api/v1/auth/login` `{username, password}` | HTTPS only; sets the `wfweb_session` cookie (`HttpOnly; SameSite=Strict; Secure`) |
 | `POST /api/v1/auth/logout` | ends the session, clears the cookie, closes its WebSockets |
@@ -97,7 +97,10 @@ the logbook (`operate`); `/station`, `/cw/macros`, memory writes and
 `/api/v1/shared/*` are `admin`. Short of it the answer is
 `403 {"error":"needs operate access","need":"operate"}`; with TX inhibit on,
 every `operate` write is `403` too. While another account's browser holds the
-seat, a write to the radio answers `409 {"error":"W1ABC has the seat"}`.
+seat, a write to the radio answers `409 {"error":"W1ABC has the seat"}`
+(logging a QSO included; changing or deleting one's own QSO, and the export
+stamp, are not held to the seat). Clearing the logbook and importing into it
+are `admin`.
 Policy, connections, the seat and the reservations (`/api/v1/shared/policy`,
 `/api/v1/shared/connections`, `/api/v1/shared/seat`,
 `/api/v1/shared/reservations`) are described in `SHARED_STATION.md`.
@@ -114,7 +117,7 @@ QSO). Logged QSOs are stamped with it (`stationCall`, ADIF
 
 | Method | Endpoint | Action |
 |---|---|---|
-| `GET` | `/api/v1/station` | `{"callsign","grid"}` |
+| `GET` | `/api/v1/station` | `{"callsign","grid"}`; with `--shared` also `onAir` (the call in use right now), `clubCallsign`, `onAirOwn`, `onAirOperator` |
 | `PUT` | `/api/v1/station` | Set either or both; an empty `grid` keeps the stored one |
 
 Over the WebSocket the browser sends `setStationCallsign {callsign,grid}` and
@@ -154,6 +157,7 @@ lifetime log stays cheap for the browser and the server alike.
 | `GET` | `/api/v1/logbook?limit=100&before=<cursor>&call=<CALL>` | Page of entries, newest first |
 | `POST` | `/api/v1/logbook` | Add an entry from a JSON QSO object |
 | `DELETE` | `/api/v1/logbook` | Clear the whole log (the previous file is kept as `logbook.adi.<timestamp>.bak`) |
+| `GET` | `/api/v1/logbook/{id}` | One entry |
 | `PUT` | `/api/v1/logbook/{id}` | Replace an entry (the id is kept) |
 | `DELETE` | `/api/v1/logbook/{id}` | Delete an entry |
 | `GET` | `/api/v1/logbook/adif` | Download the complete ADIF file |
@@ -172,9 +176,38 @@ size of the whole log.
 
 A QSO object carries `date` (YYYYMMDD), `time` (HHMMSS), `call`, `freq` (Hz),
 `band`, `mode`, `grid` (own), `theirGrid`, `rstSent`, `rstRcvd`, and
-optionally `comment`, `name`, `df`, `exported`, `stationCall`. Only `call` is
-required; `stationCall` defaults to the station callsign when a QSO is
-logged (imported files keep whatever they carry).
+optionally `comment`, `name`, `df`, `exported`, `stationCall`, `operator`.
+Only `call` is required; `stationCall` (ADIF `STATION_CALLSIGN`) defaults to
+the station callsign when a QSO is logged (imported files keep whatever they
+carry); `operator` is ADIF `OPERATOR`. A record logged by an account also
+carries `userId` (ADIF `APP_WFWEB_USER`, never taken from a client) and, in
+the JSON only, `operatorName`, the account's name or `deleted account`.
+
+**With `--shared`** (see "Callsigns and the log" in `SHARED_STATION.md`):
+
+- *Stamping.* When an account logs a QSO the server sets `stationCall` to
+  the call on the air at that moment (the account's own callsign while an
+  `onAir: own` account holds the seat, else the station call), `operator`
+  to the account's callsign and `userId` to the account, ignoring what the
+  request sent for them. An edit keeps the stored record's three values.
+- *Per-viewer filtering.* Admins get every record. An account gets the
+  club log (records whose `stationCall` is the station callsign, or empty)
+  plus the records it logged itself; a visitor without an account gets
+  none. This holds for the page (`total` and `unexported` are the caller's
+  own numbers), `GET /{id}` (`404` for a record the caller may not see),
+  the full ADIF download (built from the visible records for anyone but an
+  admin), `/worked` (for the call the caller transmits as: its own for an
+  `own` account, else the station's; the reply names it in `callsign`) and
+  the WebSocket deltas, which go only to sockets that may see the record.
+- *Changes.* `PUT` / `DELETE /{id}` answer `403` unless the caller logged
+  the record or is an admin; a record with no `userId` is admin-only.
+- *Whole-log operations* (`DELETE /api/v1/logbook`, `POST
+  /api/v1/logbook/adif`, the WebSocket `mergeLogbook`) are admin-only:
+  `403 {"need":"admin"}` / `denied`.
+- *Export.* `/export` and `/adif?new=1` give an admin the club log's new
+  records and anyone else the new records they made under their own
+  callsign (`?own=1` gives an admin theirs); `/exported` stamps only
+  records the caller may export.
 
 **Export bookkeeping.** Each record carries an export stamp
 (`APP_WFWEB_EXPORTED`, UTC `yyyyMMddTHHmmssZ`) once it has been included in
