@@ -368,6 +368,9 @@ body.shared-on #stationStrip { display: flex; }
 #stationStrip.free #seatTag, #stationStrip.offer #seatTag { color: #000; background: #3c3; border-color: #5e5; }
 #stationStrip.offer #seatTag { background: #ee0; border-color: #ff0; animation: seatBlink 1s step-start infinite; }
 @keyframes seatBlink { 50% { opacity: 0.55; } }
+/* A change refused because nobody has the seat: the button to press says so. */
+#stationStrip #seatTag.nudge { animation: seatNudge 0.4s step-start 4; }
+@keyframes seatNudge { 50% { background: #fff; border-color: #fff; box-shadow: 0 0 8px #5e5; } }
 /* Above the start, power-off and login screens: a holder who reloaded sits
    on the start screen with the seat back (grace) and must still see a request. */
 #seatPrompt {
@@ -4610,6 +4613,16 @@ function renderSharedRules(panel, pol) {
         'The holder may hide audio and scope from the others. Admins always see.');
 }
 
+// The TAKE button blinks when a change was refused for want of the seat.
+function seatTagNudge() {
+    var tag = document.getElementById('seatTag');
+    if (!tag || tag.style.display === 'none' || tag.textContent !== 'TAKE') return;
+    tag.classList.remove('nudge');
+    void tag.offsetWidth;   // restart the animation on a repeat
+    tag.classList.add('nudge');
+    clearTimeout(seatTagNudge.t);
+    seatTagNudge.t = setTimeout(function () { tag.classList.remove('nudge'); }, 1700);
+}
 function send(obj) {
     // Shared Station: what this role may not send is refused here, with the
     // reason on screen; the server refuses it again regardless. false tells a
@@ -4623,6 +4636,7 @@ function send(obj) {
         accessToast(seatState.holder
             ? seatState.holder.name + ' has the seat' + (accessState.can.control ? ' — press ASK, top left' : '')
             : 'Take the seat first (TAKE, top left)');
+        seatTagNudge();
         return false;
     }
     if (wsTransport) wsTransport.sendCommand(obj);
@@ -9533,6 +9547,10 @@ function stepScopeRef(dir) { setScopeRef((scopeRefDb || 0) + dir * 2.5); }
 // Re-command the browser's scope picks when the rig (re)connects: the
 // rig's own values survive a wfweb restart, ours have to be put back.
 function scopeRigAssert() {
+    // Shared Station: this is the page's own housekeeping, not the operator's
+    // doing, so it stays quiet (no toast, no blink) when it would be refused.
+    if (accessState.shared && (accessState.denied.setScopeSpeed ||
+        (seatState.enabled && !seatState.mine && accessState.needsSeat.setScopeSpeed))) return;
     if (scopeRefDb !== null) send({ cmd: 'setScopeRef', value: Math.round(scopeRefDb * 10) });
     send({ cmd: 'setScopeSpeed', value: WF_SPEED_CIV[wfSpeed] });
     // No pick stored yet: adopt whatever the rig is in (it is reported with
