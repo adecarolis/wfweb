@@ -500,7 +500,11 @@ applies: TAKE / ASK / WITHDRAW / LEAVE LINE / OPTIONS, hidden when there is
 none), `#seatPrompt` (above the start, power-off and login screens: a
 holder who reloaded sits on CLICK TO START with the seat back) (HAND OVER / DECLINE or TAKE
 IT / PASS), `#seatMenu` (release, private), `body.seat-watch` dimming,
-`send()` refuses `needsSeat` commands locally. Policy knobs `Shared/Seat`,
+`send()` refuses `needsSeat` commands locally. With the seat free that
+refusal also blinks TAKE (`seatTagNudge`). A command the page sends on its
+own must not go through that path: `scopeRigAssert` (scope settings on
+connect) returns early when it would be refused, else a non-holder got the
+toast before touching anything. Policy knobs `Shared/Seat`,
 `SeatIdleSecs`, `SeatRequestSecs`, `SeatMaxSecs`, `SeatPreemptHigher`,
 `ListenIn`, `AllowPrivate` in the SHARED window's RULES tab.
 Tests: `tests/access_test.cpp` (unit, the capability table included),

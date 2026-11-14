@@ -80,7 +80,7 @@ a slot and all its runs; removing an account removes its slots.
 
 While a slot runs:
 
-- its owner may take the seat whoever holds it (the tag reads `W1ABC · TAKE`);
+- its owner may take the seat whoever holds it (the strip reads `SEAT W1ABC` with a **TAKE** button);
 - at the start, a holder who is not the owner loses the seat to them if
   they are connected, and is told the slot is theirs if not; five minutes
   before, the holder is warned;
@@ -111,6 +111,10 @@ the one button that applies:
 | `SEAT free for you · 28 s` | the seat is yours to take for 28 s | **TAKE** (blinking) |
 | `SEAT kept for W1ABC · 25 s` | W1ABC dropped off; the seat waits for them | — |
 | `SEAT reserved for W1ABC` | a reserved slot is running, its owner is away | — |
+
+Changing something on the radio without the seat does nothing: a note says
+why ("Take the seat first", or who has it), and while the seat is free the
+**TAKE** button blinks.
 
 `YOU name · role` opens the account menu: SCHEDULE, STATION SETTINGS
 (admins) and LOG OUT. A visitor sees `visitor · LOG IN` there.
