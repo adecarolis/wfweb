@@ -583,6 +583,24 @@ keeps plain calls. Tests: `tests/test_ft8_msg.py` (`ft8_msg_sim.mjs` through the
 real codec; `ft8_msg_browser.mjs`, whole FT4 QSOs on two Standalone virtual rigs,
 or on the C++ bench with `WFWEB_FT8_URLS`).
 
+### FT8 / FT4: a click while our own over is on the air
+The decode of a station answering our CQ lands at the top of our next slot,
+as the auto-CQ starts, so the operator's click on it comes a moment late. A
+click on a decode (single or double: `digiRowClick` = `digiRowSelect` +
+`digiTakeOverTx`, both forks) that arms a different message for *this* slot,
+less than `digiLateStartLimit()` into it (FT8 4 s, FT4 1 s), cuts the over
+and sends the new message at once: `executeDigiTx` drops its opening so the
+rest stays on the slot's timeline. **A late-started over decodes** (ft8ts,
+SNR in 2.5 kHz: FT8 with 4 s gone 12/12 at -15 dB, FT4 with 1 s gone 12/12
+at -15 dB); the #74 fix assumed it could not and kept the slot silent, so the
+answer went out a cycle late. The key stays down across the switch;
+`digiTxOnAir` names the over that owns the TX state, so the cut over's late
+`onDone` only closes its row. Past the limit a single click leaves the over
+on the air (it counts as no try at the new message) and a double click cuts
+it and skips the slot (`digiSwitchAbortedSlot`). Test:
+`tests/test_ft8_takeover.py` (`ft8_takeover_browser.mjs`, FT8 on two
+Standalone virtual rigs, or the C++ bench with `WFWEB_FT8_URLS`).
+
 ### Mode panels put the VFO back
 FT8/FT4 and JS8 force USB and retune to their dial frequency on open. Both
 `index.html` snapshot frequency + mode + filter first (`saveVfoSnapshot`) and

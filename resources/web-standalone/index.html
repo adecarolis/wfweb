@@ -3554,6 +3554,7 @@ var digiTxWfSamples = null; // Float32Array @12kHz fed into wfBuf during TX
 var digiMonitorSrc = null; // AudioBufferSourceNode for local TX monitor
 var digiTxUserInitiated = false; // true when TX was armed by a user gesture (dblclick); widens slot window
 var digiSwitchAbortedSlot = -1;  // slotIndex whose TX was aborted for a mid-TX switch — don't restart it
+var digiTxOnAir = null;    // the over being sent, {msg}; a newer one replaces it (digiTakeOverTx)
 var digiTxWfPos = 0;        // read position into digiTxWfSamples
 var digiTxSeq = 0;
 var digiTxAttempts = 0;
@@ -11017,7 +11018,51 @@ function escapeHtml(s) {
     return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+// A click on a decode selects the station and arms the answer, which goes
+// out at once if our own over is in its way (digiTakeOverTx).
 function digiRowClick(el, ev) {
+    digiRowSelect(el, ev);
+    digiTakeOverTx();
+}
+
+// How far into its slot an over can still begin and decode, its opening cut
+// off so the rest stays on the slot's timeline (executeDigiTx). Measured with
+// ft8ts at depth 2, twelve messages a point, SNR in 2.5 kHz: FT8 with 4 s gone
+// decodes 12/12 at -15 dB (1/12 at -17; 3 s gone, 11/12 at -17), FT4 with 1 s
+// gone 12/12 at -15 dB, 1.25 s gone 0/12. A cut that does not decode costs no
+// more than not cutting, the answer then goes out a cycle later all the same.
+function digiLateStartLimit() { return digiMode === 'FT4' ? 1 : 4; }
+
+// The operator armed a new message while our own over is on the air: the
+// typical case is the auto-CQ that went out a moment before they could click
+// the station answering it. When the new message belongs in this slot and
+// there is still time for it to decode, cut the over and send the new one
+// now. Otherwise the CQ ran to its end (single click) or was cut for nothing
+// (double click), and the answer went out a whole cycle later.
+function digiTakeOverTx() {
+    if (!digiTxActive || !digiTxOnAir || !digiTxEnabled || !digiTxArmed || !digiTxQueued) return false;
+    if (digiTxQueued === digiTxOnAir.msg || digiDecodeInProgress) return false;
+    var info = getDigiSlotInfo();
+    if (digiTxSlotParity >= 0 && info.slotIndex % 2 !== digiTxSlotParity) return false; // its slot is the next one
+    if (info.slotPhase >= digiLateStartLimit()) return false;
+    console.log('[DIGI] take over at ' + info.slotPhase.toFixed(2) + 's: "' + digiTxOnAir.msg +
+                '" -> "' + digiTxQueued + '"');
+    // The key stays down: the old over's onDone sees it was replaced and
+    // leaves the TX state alone, and the new over's PTT on is a repeat.
+    haltDigiTx();
+    if (digiMonitorSrc) { try { digiMonitorSrc.stop(); } catch(e) {} digiMonitorSrc = null; }
+    digiTxActive = false;
+    digiTxWfSamples = null;
+    executeDigiTx(info.slotPhase);
+    if (!digiTxActive) {
+        // It could not start: never leave the rig keyed with nothing to send.
+        send({ cmd: 'setPTT', value: false });
+        if (!micEnabled) send({ cmd: 'enableMic', value: false });
+    }
+    return true;
+}
+
+function digiRowSelect(el, ev) {
     if (!checkDigiCallGrid()) return;
     var msg = digiStdMsg(decodeURIComponent(el.getAttribute('data-msg') || ''), getMyCall());
     var slotIndex = parseInt(el.getAttribute('data-slot') || '-1', 10);
@@ -11110,9 +11155,11 @@ function digiRowClick(el, ev) {
 // Double-click on a DECODE row (All Decodes / Directed): run click logic then enable TX + arm.
 function digiRowDblClick(el, ev) {
     if (!checkDigiCallGrid()) return;
-    // If a transmission is already in progress, abort it transparently so the
-    // new selection takes over immediately (same slot if phase allows).
-    if (digiTxActive) {
+    digiRowClick(el, ev); // sets DX, queues the message, takes over our over when it can
+    // Our over is still on the air with another message: the new one belongs
+    // in the other slot, or it is too late in this one for it to decode. Cut
+    // the over so the rig does not go on sending the old message.
+    if (digiTxActive && !(digiTxOnAir && digiTxOnAir.msg === digiTxQueued)) {
         console.log('[DIGI] dblclick: aborting active TX to switch to new target');
         haltDigiTx(); // actually stop the in-flight audio pacer (not just the flags)
         if (digiMonitorSrc) { try { digiMonitorSrc.stop(); } catch(e) {} digiMonitorSrc = null; }
@@ -11120,13 +11167,13 @@ function digiRowDblClick(el, ev) {
         digiTxWfSamples = null;
         send({ cmd: 'setPTT', value: false });
         if (!micEnabled) send({ cmd: 'enableMic', value: false });
-        // FT8 frames are atomic — a partly-sent CQ can't morph into a decodable
-        // reply mid-slot (only the leading Costas sync is message-independent).
-        // So don't restart THIS slot; the reply goes out cleanly on the next
-        // correct-parity slot.
+        // Too late to start over in this slot (digiTakeOverTx did not): the
+        // new message goes out on its next slot of the right parity.
         digiSwitchAbortedSlot = getDigiSlotInfo().slotIndex;
+    } else if (digiTxActive) {
+        updateDigiMsgRows(); // the clicked message is already on the air
+        return;
     }
-    digiRowClick(el, ev); // sets DX, queues message, updates state
     if (!digiTxEnabled) {
         digiTxEnabled = true;
         var etb = document.getElementById('digiEnableTxBtn');
@@ -11938,6 +11985,8 @@ function executeDigiTx(slotPhase) {
     digiTxArmed = false;
     digiTxUserInitiated = false; // consumed — re-arm from onDone uses the narrow window
     digiTxActive = true;
+    var over = { msg: msg };
+    digiTxOnAir = over;
 
     var df = (digiTxFreq >= 200 && digiTxFreq <= 3000) ? digiTxFreq : 1000;
     var txMsg = msg.trim().toUpperCase();
@@ -11985,6 +12034,14 @@ function executeDigiTx(slotPhase) {
         var txRowId = appendDigiTransmittingRow(txMsg, txDf);
 
         streamDigiAudio(samples12k, function(aborted) {
+            if (digiTxOnAir !== over) {
+                // Cut for the over that took its place (digiTakeOverTx): that
+                // one owns the TX state and the key now; close this one's row.
+                var tr = new Date().toISOString().substr(11, 8);
+                replaceDigiTransmittingRow(txRowId, { time: tr, snr: 0, dt: 0, freq: txDf, msg: txMsgCapture });
+                return;
+            }
+            digiTxOnAir = null;
             // onDone: all audio sent to server; release transmitter
             digiTxActive = false;
             digiTxWfSamples = null; // stop waterfall loopback
@@ -12006,7 +12063,9 @@ function executeDigiTx(slotPhase) {
             var timeStr = now.toISOString().substr(11, 8);
             replaceDigiTransmittingRow(txRowId, { time: timeStr, snr: 0, dt: 0, freq: txDf, msg: txMsgCapture });
 
-            digiTxAttempts++;
+            // The operator armed another message while this one was out (too
+            // late in the slot to take over): this over was no try at that one.
+            if (digiTxQueued === over.msg) digiTxAttempts++;
             console.log('[DIGI TX] onDone: attempt ' + digiTxAttempts + '/' + DIGI_MAX_TX_ATTEMPTS +
                         ' state=' + digiQsoState);
 
@@ -12060,6 +12119,7 @@ function executeDigiTx(slotPhase) {
         updateDigiStatus('ERR', '');
         digiTxArmed = false;
         digiTxActive = false;
+        digiTxOnAir = null;
         digiTxWfSamples = null;
     }
 }

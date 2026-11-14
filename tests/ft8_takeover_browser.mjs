@@ -1,0 +1,222 @@
+// The click that lands while our own CQ is going out. A calls CQ, B answers;
+// A's decode of the answer comes in at the top of A's next slot, the auto-CQ
+// starts, and the operator's click on the answer lands a moment later. The
+// answer used to wait for the end of that CQ (single click) or for the next
+// cycle with the slot left silent (double click), so A skipped a whole cycle.
+// Now the click cuts the CQ and A's report goes out in the same slot, its
+// opening cut off so it stays on the slot's timeline, and B has to decode it
+// there. Past digiLateStartLimit() in the slot the CQ runs to its end, the
+// report goes out a cycle later, and that CQ counts as no try at the report.
+// FT8, two Standalone pages on ?virtual=1, never a real radio.
+//
+// With WFWEB_FT8_URLS="https://127.0.0.1:9080 https://127.0.0.1:9090" the same
+// run goes over two wfweb servers on the testrig bench (scripts/testrig.sh up 2).
+//
+// Needs playwright-core and a Chromium (found like comp_browser.mjs); `--probe`
+// only reports whether they were found. Run through tests/test_ft8_takeover.py.
+// WFWEB_SHOT_DIR=<dir> saves both windows.
+
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import http from 'node:http';
+import { execFileSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const ROOT = path.resolve(here, '..');
+
+function findBrowser() {
+  const home = os.homedir();
+  let core = process.env.WFWEB_PLAYWRIGHT_CORE || null;
+  if (!core) {
+    const cands = [];
+    for (const base of [path.join(home, '.npm', '_npx'), path.join(ROOT, 'node_modules')]) {
+      if (!fs.existsSync(base)) continue;
+      const dirs = base.endsWith('node_modules') ? [base] : fs.readdirSync(base).map(d => path.join(base, d, 'node_modules'));
+      for (const d of dirs) {
+        const p = path.join(d, 'playwright-core');
+        if (fs.existsSync(path.join(p, 'package.json'))) cands.push({ p, v: JSON.parse(fs.readFileSync(path.join(p, 'package.json'))).version });
+      }
+    }
+    cands.sort((a, b) => b.v.localeCompare(a.v, undefined, { numeric: true }));
+    if (cands.length) core = cands[0].p;
+  }
+  let chrome = process.env.WFWEB_CHROMIUM || null;
+  if (!chrome) {
+    const base = path.join(home, '.cache', 'ms-playwright');
+    if (fs.existsSync(base)) {
+      const revs = fs.readdirSync(base).filter(d => /^chromium-\d+$/.test(d)).sort((a, b) => parseInt(b.slice(9)) - parseInt(a.slice(9)));
+      for (const r of revs) {
+        for (const sub of ['chrome-linux64/chrome', 'chrome-linux/chrome']) {
+          const p = path.join(base, r, sub);
+          if (fs.existsSync(p)) { chrome = p; break; }
+        }
+        if (chrome) break;
+      }
+    }
+    if (!chrome) for (const p of ['/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser']) if (fs.existsSync(p)) { chrome = p; break; }
+  }
+  return core && chrome ? { core, chrome } : null;
+}
+
+const found = findBrowser();
+if (process.argv.includes('--probe')) { console.log(found ? `playwright-core ${found.core}\nchromium ${found.chrome}` : 'no browser'); process.exit(found ? 0 : 3); }
+if (!found) { console.error('no playwright-core / Chromium found'); process.exit(3); }
+const { chromium } = createRequire(import.meta.url)(found.core);
+
+let fails = 0;
+function check(ok, msg) { console.log((ok ? 'PASS ' : 'FAIL ') + msg); if (!ok) fails++; }
+
+const SERVER_URLS = (process.env.WFWEB_FT8_URLS || '').split(/\s+/).filter(Boolean);
+const onServer = SERVER_URLS.length === 2;
+const dist = onServer ? null : fs.mkdtempSync(path.join(os.tmpdir(), 'wfweb-ft8take-'));
+if (!onServer) execFileSync('bash', [path.join(ROOT, 'tools', 'build-static.sh'), dist], { stdio: 'ignore' });
+const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.wasm': 'application/wasm', '.svg': 'image/svg+xml', '.png': 'image/png', '.json': 'application/json' };
+const server = http.createServer((req, res) => {
+  let p = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+  if (p.endsWith('/')) p += 'index.html';
+  const f = path.join(dist, path.normalize(p));
+  if (!f.startsWith(dist) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { res.writeHead(404); res.end(); return; }
+  res.writeHead(200, { 'Content-Type': TYPES[path.extname(f)] || 'application/octet-stream', 'Cache-Control': 'no-store' });
+  fs.createReadStream(f).pipe(res);
+});
+if (!onServer) await new Promise(r => server.listen(0, '127.0.0.1', r));
+const rigUrl = (id) => onServer ? SERVER_URLS[id - 1] + '/' : `http://127.0.0.1:${server.address().port}/?virtual=1&id=${id}`;
+
+const CQER = 'K1ABC', CALLER = 'VA2BBW';
+const browser = await chromium.launch({
+  executablePath: found.chrome, headless: true,
+  args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--autoplay-policy=no-user-gesture-required',
+         '--disable-background-timer-throttling', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows'],
+});
+const shots = process.env.WFWEB_SHOT_DIR || null;
+try {
+  const ctx = await browser.newContext({ viewport: { width: 1200, height: 820 }, ignoreHTTPSErrors: true });
+  async function rig(id, call, grid) {
+    const page = await ctx.newPage();
+    page.on('pageerror', (e) => { console.log(`pageerror (${call}): ` + e.message); fails++; });
+    page.on('console', (m) => { if (process.env.WFWEB_DEBUG ? /\[DIGI/.test(m.text()) : /\[DIGI\] take over|dblclick: aborting/.test(m.text())) console.log(`  ${call}: ${m.text()}`); });
+    const url = rigUrl(id);
+    await page.goto(url);
+    // One origin on Standalone: the second rig clearing storage would wipe the
+    // first's call.
+    if (id === 1 || onServer) { await page.evaluate(() => { localStorage.clear(); sessionStorage.clear(); }); await page.goto(url); }
+    await page.click('#startBtn');
+    await page.waitForFunction(() => window.currentFreq > 0 && window.audioEnabled === true, null, { timeout: 30000 });
+    await page.evaluate(([call, grid]) => {
+      window.toggleDigiBar();
+      window.App.callsign.set(call);
+      const g = document.getElementById('digiGrid');
+      g.value = grid; g.dispatchEvent(new Event('input', { bubbles: true }));
+      if (window.digiMode !== 'FT8') document.getElementById('digiModeLabel').click();
+      // Every over, as encoded, with the slot and how far into it it began.
+      window.__tx = [];
+      const lib = window.ft8tsLib, enc = lib.encodeFT8;
+      lib.encodeFT8 = function (m, o) {
+        if (window.digiTxActive) { const s = window.getDigiSlotInfo(); window.__tx.push({ m, slot: s.slotIndex, phase: +s.slotPhase.toFixed(2) }); }
+        return enc.call(this, m, o);
+      };
+    }, [call, grid]);
+    await page.waitForFunction(() => window.ft8tsLib && window.digiBarVisible && window.digiMode === 'FT8', null, { timeout: 10000 });
+    return page;
+  }
+  const A = await rig(1, CQER, 'FN42'), B = await rig(2, CALLER, 'FN35');
+  await A.waitForTimeout(1000);
+
+  // Double-click the newest decode that matches, as an operator would.
+  const pick = async (page, who, re) => {
+    await page.waitForFunction((src) => {
+      const r = new RegExp(src);
+      return [...document.querySelectorAll('#digiRxPanel .digi-decode-row')].some(e => r.test(decodeURIComponent(e.getAttribute('data-msg'))));
+    }, re.source, { timeout: 45000 }).catch(() => {});
+    const m = await page.evaluate((src) => {
+      const r = new RegExp(src);
+      const rows = [...document.querySelectorAll('#digiRxPanel .digi-decode-row')].filter(e => r.test(decodeURIComponent(e.getAttribute('data-msg'))));
+      if (!rows.length) return null;
+      const el = rows[rows.length - 1];
+      el.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
+      return decodeURIComponent(el.getAttribute('data-msg'));
+    }, re.source);
+    check(!!m, `${who} double-clicks ${m}`);
+    return m;
+  };
+  // A's operator: once the answer is on screen and the auto-CQ is on the air
+  // between `from` and `to` seconds into its slot, click the answer. Done in
+  // the page so the click lands where it is meant to.
+  const clickDuringCq = (page, re, from, to) => page.evaluate(([src, from, to]) => new Promise((resolve) => {
+    const r = new RegExp(src);
+    const t0 = Date.now();
+    (function poll() {
+      const rows = [...document.querySelectorAll('#digiRxPanel .digi-decode-row')].filter(e => r.test(decodeURIComponent(e.getAttribute('data-msg'))));
+      const s = window.getDigiSlotInfo();
+      if (rows.length && window.digiTxActive && window.digiTxOnAir && /^CQ /.test(window.digiTxOnAir.msg) &&
+          s.slotPhase >= from && s.slotPhase < to) {
+        rows[rows.length - 1].click();
+        resolve({ slot: s.slotIndex, phase: +s.slotPhase.toFixed(2), active: window.digiTxActive,
+                  onAir: window.digiTxOnAir && window.digiTxOnAir.msg, queued: window.digiTxQueued });
+        return;
+      }
+      if (Date.now() - t0 > 75000) { resolve(null); return; }
+      setTimeout(poll, 20);
+    })();
+  }), [re.source, from, to]);
+  const logged = (page, call) => page.waitForFunction((c) => [...document.querySelectorAll('#digiDirectedPanel .digi-logged-row')].some(e => e.textContent.includes('LOGGED ' + c + ' ')), call, { timeout: 90000 }).then(() => true, () => false);
+  const reportRe = new RegExp(`^${CALLER} ${CQER} [-+]\\d{1,2}$`);
+
+  // ---- early in the slot: the answer takes the CQ's place
+  await A.evaluate(() => window.digiCallCq());
+  await pick(B, 'B', new RegExp(`^CQ ${CQER} FN42$`));
+  const c = await clickDuringCq(A, new RegExp(`^${CQER} ${CALLER} FN35$`), 0.3, 2.5);
+  check(!!c, `A clicks B's answer ${c ? c.phase + ' s into its CQ over' : '(never saw it during a CQ)'}`);
+  if (c) {
+    check(c.active && reportRe.test(c.onAir || ''), `the report is on the air at once (${c.onAir})`);
+    const tx = await A.evaluate(() => window.__tx);
+    const cq = tx.filter(t => /^CQ /.test(t.m)).pop(), rep = tx.find(t => reportRe.test(t.m));
+    check(cq && rep && rep.slot === cq.slot, `the report went out in the CQ's slot (${JSON.stringify(cq)} -> ${JSON.stringify(rep)})`);
+    // B decodes the cut report in that slot.
+    const heard = await B.waitForFunction(([re, slot]) => window.digiDecodes.some(d => new RegExp(re).test(d.msg) && d.slotIndex === slot),
+      [reportRe.source, c.slot], { timeout: 25000 }).then(() => true, () => false);
+    check(heard, `B decoded the report from slot ${c.slot}, its opening cut by ${c.phase} s`);
+    if (shots) { await A.screenshot({ path: path.join(shots, 'ft8take-A.png') }); await B.screenshot({ path: path.join(shots, 'ft8take-B.png') }); }
+    const okA = await logged(A, CALLER), okB = await logged(B, CQER);
+    console.log('A sent', JSON.stringify(await A.evaluate(() => window.__tx)));
+    console.log('B sent', JSON.stringify(await B.evaluate(() => window.__tx)));
+    check(okA && okB, `the QSO carries on to the log on both sides (A ${okA}, B ${okB})`);
+  }
+
+  // ---- too late in the slot: the CQ runs out, the report waits a cycle
+  for (const p of [A, B]) {
+    await p.waitForFunction(() => window.digiQsoState === 'IDLE' && !window.digiTxActive, null, { timeout: 30000 }).catch(() => {});
+    await p.evaluate(() => {
+      window.haltDigiTx();
+      window.digiTxEnabled = false; window.digiTxArmed = false; window.digiTxQueued = null;
+      window.digiQsoState = 'IDLE'; window.digiQsoPartner = ''; window.__tx = [];
+      document.getElementById('digiDxCall').value = '';
+      window.digiDecodes.length = 0;
+      window.renderDigiDecodes();
+      window.updateDigiMsgRows();
+    });
+  }
+  await A.evaluate(() => window.digiCallCq());
+  await pick(B, 'B', new RegExp(`^CQ ${CQER} FN42$`));
+  const limit = await A.evaluate(() => window.digiLateStartLimit());
+  const late = await clickDuringCq(A, new RegExp(`^${CQER} ${CALLER} FN35$`), limit + 0.3, limit + 3);
+  check(!!late, `A clicks B's answer ${late ? late.phase + ' s into its CQ over' : '(never saw it during a CQ)'}`);
+  if (late) {
+    check(late.active && /^CQ /.test(late.onAir || '') && reportRe.test(late.queued || ''), `past ${limit} s the CQ stays on the air, the report queued`);
+    await A.waitForFunction(() => !window.digiTxActive, null, { timeout: 20000 });
+    const st = await A.evaluate(() => ({ attempts: window.digiTxAttempts, armed: window.digiTxArmed, queued: window.digiTxQueued }));
+    check(st.attempts === 0 && st.armed && reportRe.test(st.queued || ''), `that CQ was no try at the report (${JSON.stringify(st)})`);
+    await A.waitForFunction((re) => window.__tx.some(t => new RegExp(re).test(t.m)), reportRe.source, { timeout: 40000 }).catch(() => {});
+    const tx = await A.evaluate(() => window.__tx);
+    const cq = tx.filter(t => /^CQ /.test(t.m)).pop(), rep = tx.find(t => reportRe.test(t.m));
+    check(cq && rep && rep.slot === cq.slot + 2, `the report went out on the next cycle (${JSON.stringify(cq)} -> ${JSON.stringify(rep)})`);
+  }
+} finally {
+  await browser.close();
+  if (!onServer) { server.close(); fs.rmSync(dist, { recursive: true, force: true }); }
+}
+console.log(fails ? `${fails} FAILED` : 'all passed');
+process.exit(fails ? 1 : 0);
