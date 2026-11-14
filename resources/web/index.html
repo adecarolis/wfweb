@@ -387,7 +387,7 @@ body.seat-watch #freqDisplay, body.seat-watch #modeBtn { opacity: 0.55; }
     color: #f44; font-family: var(--font-mono); font-size: 11px; font-weight: bold;
     border: 1px solid #a22; border-radius: 3px; padding: 1px 6px; white-space: nowrap;
 }
-#loginCancel a { color: #0aa; cursor: pointer; }
+#loginCancel a, #loginSwitch a { color: #0aa; cursor: pointer; }
 /* What the server would refuse is refused here first, with a word why. */
 #accessToast {
     display: none;
@@ -2530,6 +2530,7 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
         <div class="login-error" id="loginError"></div>
         <button type="submit" id="loginBtn">LOG IN</button>
         <div class="login-note" id="loginNote"></div>
+        <div class="login-note" id="loginSwitch" style="display:none"><a onclick="authSwitchForm()"></a></div>
         <div class="login-note" id="loginCancel" style="display:none"><a onclick="hideLoginSheet()">continue without logging in</a></div>
     </form>
     <div class="login-version"><span id="loginVersion">wfweb</span></div>
@@ -3731,7 +3732,7 @@ function onTransportClose(e) {
     // authRequired message got here first and the sheet is already up; a
     // bare 4401 (a session that expired while we were away) shows it now.
     var closeCode = e && e.detail && e.detail.code;
-    if (closeCode === 4401 && !authSheet.shown) showLoginSheet(false, '');
+    if (closeCode === 4401 && !authSheet.shown) showLoginSheet(authSetup, '');
     dropPttLatch();
     document.getElementById('connDot').classList.remove('connected');
     document.getElementById('connDot').title = 'Disconnected';
@@ -3779,7 +3780,12 @@ function scheduleReconnect() {
 // maps a command to the role it needs; `policy` is the admin's policy.
 var accessState = { shared: false, user: null, role: 'admin', anonymous: false,
                     can: { control: true, tx: true, admin: true }, denied: {}, needsSeat: {}, policy: null };
-var authSheet = { shown: false, mode: 'login', cancelable: false };
+var authSheet = { shown: false, mode: 'login', cancelable: false, reason: '' };
+// What the server last said about its setup code: 'first' (no admin yet),
+// 'recovery' (--shared-reset-admin: the code resets or adds an admin while
+// everyone else still logs in), '' (plain login).
+var authSetup = '';
+function authSetupOf(msg) { return msg.setupRequired ? 'first' : (msg.recovery ? 'recovery' : ''); }
 
 function applyAccessMessage(msg) {
     accessState.shared = !!msg.shared;
@@ -3790,6 +3796,7 @@ function applyAccessMessage(msg) {
         accessState.user = msg.user || null;
         accessState.role = msg.role || 'listen';
         accessState.anonymous = !!msg.anonymous;
+        authSetup = authSetupOf(msg);
         accessState.can = msg.can || { control: false, tx: false, admin: false };
         accessState.denied = msg.denied || {};
         accessState.needsSeat = msg.needsSeat || {};
@@ -4076,10 +4083,13 @@ function accessToast(text) {
     accessToastTimer = setTimeout(function () { el.classList.remove('visible'); accessToastTimer = null; }, 2500);
 }
 
-function showLoginSheet(setupRequired, reason, cancelable) {
+// setup: '' = log in, 'first' = create the first admin, 'recovery' = the
+// setup code form with a way back to the plain login.
+function showLoginSheet(setup, reason, cancelable) {
     authSheet.shown = true;
-    authSheet.mode = setupRequired ? 'setup' : 'login';
     authSheet.cancelable = !!cancelable;
+    authSheet.reason = reason || '';
+    authSetup = setup || '';
     if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
     hideUserMenu();
     // Whoever we were, we are nobody until the next login -- unless we are
@@ -4089,21 +4099,38 @@ function showLoginSheet(setupRequired, reason, cancelable) {
         updateUserTag();
     }
     document.getElementById('loginCancel').style.display = cancelable ? '' : 'none';
-    var station = rigTagName || rigModelName || 'Shared station';
-    document.getElementById('loginTitle').textContent = setupRequired
-        ? 'First run: create the admin account' : station + ' — log in';
-    document.getElementById('loginCode').style.display = setupRequired ? '' : 'none';
-    document.getElementById('loginCall').style.display = setupRequired ? '' : 'none';
-    document.getElementById('loginPass').setAttribute('autocomplete', setupRequired ? 'new-password' : 'current-password');
-    document.getElementById('loginBtn').textContent = setupRequired ? 'CREATE ADMIN' : 'LOG IN';
-    document.getElementById('loginNote').textContent = setupRequired
-        ? 'The setup code is on the server’s console and in its log.' : (reason || '');
     document.getElementById('loginError').textContent = '';
     document.getElementById('loginBtn').disabled = false;
     var lv = document.getElementById('loginVersion');
     if (lv && serverVersion) lv.textContent = 'wfweb v. ' + serverVersion;
     document.getElementById('loginOverlay').classList.add('visible');
-    document.getElementById(setupRequired ? 'loginCode' : 'loginUser').focus();
+    renderLoginForm(authSetup ? 'setup' : 'login');
+}
+
+function renderLoginForm(mode) {
+    authSheet.mode = mode;
+    var setup = mode === 'setup';
+    var recovery = authSetup === 'recovery';
+    var station = rigTagName || rigModelName || 'Shared station';
+    document.getElementById('loginTitle').textContent = !setup ? station + ' — log in'
+        : (recovery ? 'Admin recovery' : 'First run: create the admin account');
+    document.getElementById('loginCode').style.display = setup ? '' : 'none';
+    document.getElementById('loginCall').style.display = (setup && !recovery) ? '' : 'none';
+    document.getElementById('loginPass').setAttribute('autocomplete', setup ? 'new-password' : 'current-password');
+    document.getElementById('loginPass').placeholder = (setup && recovery) ? 'New password' : 'Password';
+    document.getElementById('loginBtn').textContent = !setup ? 'LOG IN' : (recovery ? 'SET ADMIN' : 'CREATE ADMIN');
+    document.getElementById('loginNote').textContent = !setup ? authSheet.reason
+        : 'The setup code is on the server’s console and in its log.'
+          + (recovery ? ' An existing user name gets this password and becomes an admin; a new name is added as an admin.' : '');
+    var sw = document.getElementById('loginSwitch');
+    sw.style.display = recovery ? '' : 'none';
+    sw.firstChild.textContent = setup ? 'log in instead' : 'reset an admin with the setup code';
+    document.getElementById(setup ? 'loginCode' : 'loginUser').focus();
+}
+
+function authSwitchForm() {
+    document.getElementById('loginError').textContent = '';
+    renderLoginForm(authSheet.mode === 'setup' ? 'login' : 'setup');
 }
 
 function hideLoginSheet() {
@@ -4192,7 +4219,7 @@ function toggleUserMenu(ev) {
     var u = accessState.user;
     if (!u && accessState.shared && accessState.anonymous) {
         // A visitor: the tag opens the login sheet, which can be put away.
-        showLoginSheet(false, 'Visitors have ' + accessState.role + ' access here.', true);
+        showLoginSheet(authSetup, 'Visitors have ' + accessState.role + ' access here.', true);
         return;
     }
     if (!u || menu.classList.contains('visible')) { hideUserMenu(); return; }
@@ -4916,10 +4943,10 @@ function handleMessage(msg) {
             applyAccessMessage(msg);
             break;
         case 'authRequired':
-            showLoginSheet(!!msg.setupRequired, msg.reason || '', false);
+            showLoginSheet(authSetupOf(msg), msg.reason || '', false);
             break;
         case 'stationFull':
-            showLoginSheet(false, 'The station is full (' + msg.max + ' connections). Reload to try again.', false);
+            showLoginSheet('', 'The station is full (' + msg.max + ' connections). Reload to try again.', false);
             break;
         case 'sharedPolicy':
             accessState.policy = msg.policy || null;

@@ -2221,7 +2221,8 @@ void webServer::onWsNewConnection()
             if (sharedAnonymous_ == Access::Role::None) {
                 connect(pSocket, &QWebSocket::disconnected, pSocket, &QObject::deleteLater);
                 pSocket->sendTextMessage(QString::fromUtf8(QJsonDocument(QJsonObject{
-                    {"type", "authRequired"}, {"setupRequired", access_->setupRequired()}}).toJson(QJsonDocument::Compact)));
+                    {"type", "authRequired"}, {"setupRequired", access_->setupRequired()},
+                    {"recovery", access_->recoveryMode()}}).toJson(QJsonDocument::Compact)));
                 pSocket->close(static_cast<QWebSocketProtocol::CloseCode>(4401), "authentication required");
                 qInfo() << "Web client refused (no session):" << ip;
                 return;
@@ -9730,6 +9731,12 @@ QJsonObject webServer::accessJson(const AccessPrincipal &who) const
     o["user"] = who.authenticated ? QJsonValue(userJson(who)) : QJsonValue(QJsonValue::Null);
     o["anonymous"] = !who.authenticated;
     o["role"] = Access::roleName(who.role);
+    // A visitor's LOG IN opens the setup form while there is no admin yet,
+    // or while --shared-reset-admin is on: the page must know which.
+    if (!who.authenticated && access_) {
+        if (access_->setupRequired()) o["setupRequired"] = true;
+        if (access_->recoveryMode()) o["recovery"] = true;
+    }
     o["can"] = QJsonObject{{"control", Access::roleAllows(who.role, Access::Cap::Control)},
                            {"tx", Access::roleAllows(who.role, Access::Cap::Tx)},
                            {"admin", Access::roleAllows(who.role, Access::Cap::Admin)}};
