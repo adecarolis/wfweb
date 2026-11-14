@@ -348,6 +348,8 @@
             // Antenna tuner caps — true only for rigs whose .rig declares the
             // ATU command (CI-V 0x1C 0x01). Set in _finalizeDetection.
             this._hasTuner = false;
+            // Frequency at the last tuner read (the 1 % rule on the poll tick).
+            this._tunerFreq = 0;
             // Comp/Vd/Id when the SPA's switchable meter bar asks for one.
             this._txMeterKind = null;
 
@@ -2818,9 +2820,21 @@
                     if (this._hasBreakIn) this._enqueue('readBreakIn', civ.cmdReadBreakIn());
                     // So is AGC (the FUNC AGC tile).
                     if (this._hasAgc) this._enqueue('readAgc', civ.cmdReadAgc());
+                    // And the tuner's TUNER key.
+                    if (this._hasTuner) this._enqueue('readTuner', civ.cmdReadTuner());
                     // So is COMP; skipped while transmitting, when wfweb may hold it.
                     if (this._hasCompressor && !this.state.transmitting)
                         this._enqueue('read_setCompressor', civ.cmdReadBoolFunc(0x44));
+                }
+                // A tune ends on its own, and the IC-7300 keeps the tuner ON or
+                // OFF per band ([TUNER] Switch = Auto, #156): read it every
+                // second while it tunes and after a move of more than 1 %.
+                if (this._hasTuner) {
+                    var tf = this.state.frequency || 0;
+                    if (this.state.tuner === 2 || Math.abs(tf - this._tunerFreq) > tf * 0.01) {
+                        this._tunerFreq = tf;
+                        this._enqueue('readTuner', civ.cmdReadTuner());
+                    }
                 }
             }, 1000);
             // Slow refresh of the unselected/Sub VFO so dial motion on the

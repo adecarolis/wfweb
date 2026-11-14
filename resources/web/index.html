@@ -66,13 +66,18 @@ html, body {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.3; }
 }
+/* The tuner's tag and button: grey OFF, red ON, blinking while it tunes.
+   Shown on every rig with a tuner (updateHasTuner), never hidden by its
+   state: it is the one-touch way back to the tuner (#156). */
 #tuneLabel {
     font-size: 11px; font-weight: bold;
     color: #888;
-    display: none;
+    display: inline-block;
+    cursor: pointer;
+    user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
+    touch-action: none;
 }
 #tuneLabel.active {
-    display: inline-block;
     color: #c00;
 }
 #tuneLabel.tuning {
@@ -2294,8 +2299,9 @@ body.digi-open #bottomBar { grid-row: 5; }
     .mem-action-btn { min-height: 28px; padding: 5px 12px; }
     #fullscreenBtn { min-width: 26px; padding: 0 4px; }
     /* Top bar at 360px: with FreeDV on the mode badge reads "USB | RADE";
-       tighter gap + padding keep the whole bar inside the viewport. */
-    #topBar { gap: 4px; }
+       tighter gap + padding keep the whole bar inside the viewport, the
+       TUNE tag included (shown on every rig with a tuner, #156). */
+    #topBar { gap: 4px; padding: 0 4px; }
     #rigTag { display: none; }   /* no room at 360px; the tab title still carries it */
     #modeBtn { padding: 3px 5px; font-size: 11px; letter-spacing: 0; white-space: nowrap; }
     /* QSO log: the 10-column grid is ~500px wide. On a phone drop Band
@@ -2552,7 +2558,7 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
     <!-- Row 1: Top bar -->
     <div id="topBar">
         <span id="txIndicator">RX</span>
-        <span id="tuneLabel">TUNE</span>
+        <span id="tuneLabel" style="display:none">TUNE</span>
         <button id="modeBtn" onclick="setPanel('mode')">---</button>
         <span id="pbBars"><i></i><i></i></span>
         <span id="filterText" onclick="openFilterModal()">FIL1</span>
@@ -5391,9 +5397,9 @@ function updateHasPowerControl(on) {
 }
 
 // Tuner capability gate. Rigs with no ATU (IC-9700/905, the receivers, the
-// older HF rigs) never declare the CI-V tuner command, so hide the top-bar
-// TUNE tile for them. The inline style outranks the .active class that
-// updateTunerState toggles, and clearing it hands control back to the CSS.
+// older HF rigs) never declare the CI-V tuner command, so the top-bar TUNE
+// tag stays hidden for them (inline style, set in the markup until rigInfo
+// arrives). On the others it is always there; updateTunerState colours it.
 function updateHasTuner(on) {
     hasTuner = !!on;
     var lbl = document.getElementById('tuneLabel');
@@ -6557,7 +6563,9 @@ function renderFuncOverlay() {
     // Tuner button — only on rigs whose caps declare the ATU command.
     if (hasTuner) {
         var tunerStateStr = tunerState === 0 ? 'OFF' : (tunerState === 2 ? 'TUNING' : 'ON');
-        grid.appendChild(makeFuncBtn('TUNER', tunerStateStr, tunerState > 0, handleTunerPress));
+        var tunerBtn = makeFuncBtn('TUNER', tunerStateStr, tunerState > 0, null);
+        bindTunerPress(tunerBtn);
+        grid.appendChild(tunerBtn);
     }
 
     // Antenna selector + RX antenna — only on rigs that declare more than
@@ -7801,6 +7809,40 @@ function handleTunerPress() {
     send({ cmd: 'setTuner', value: tunerState > 0 ? 0 : 1 });
 }
 
+// The TUNER controls, the top-bar TUNE tag and the FUNC > TUNER tile: a tap
+// turns the tuner on or off, a hold starts a tune on the current frequency,
+// from OFF too, like holding TUNER on the radio (#156). The pending hold is
+// kept here, not on the element: the FUNC grid is rebuilt whenever a state
+// it shows changes, maybe mid-press, and the release then lands on the new
+// tile.
+var TUNER_HOLD_MS = 500;
+var tunerHoldTimer = null;
+function tunerPressDown(e) {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    clearTimeout(tunerHoldTimer);
+    tunerHoldTimer = setTimeout(function() {
+        tunerHoldTimer = null;
+        send({ cmd: 'setTuner', value: 2 });
+    }, TUNER_HOLD_MS);
+}
+function tunerPressUp(e) {
+    if (!tunerHoldTimer) return;          // the hold has tuned, or no press began here
+    clearTimeout(tunerHoldTimer);
+    tunerHoldTimer = null;
+    if (e.type === 'pointerup') handleTunerPress();   // leave / cancel: nothing
+}
+function bindTunerPress(el) {
+    el.title = 'Click: tuner on / off. Hold: tune.';
+    el.addEventListener('pointerdown', tunerPressDown);
+    el.addEventListener('pointerup', tunerPressUp);
+    el.addEventListener('pointercancel', tunerPressUp);
+    el.addEventListener('pointerleave', tunerPressUp);
+    // Enter / Space on the FUNC tile: a click with no pointer behind it.
+    el.addEventListener('click', function(e) { if (e.detail === 0) handleTunerPress(); });
+    el.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+}
+
 // Audio/Mic menu functions
 function showAudioMicMenu() {
     setPanel('audiomiс');
@@ -7857,18 +7899,8 @@ function handlePTTPress() {
     return true;
 }
 
-// Long-press TUNE in top bar for tuning
-(function() {
-    var tuneBtn = document.getElementById('tuneLabel');
-    var timer = null, longP = false;
-    function down(e) { e.preventDefault(); longP = false; timer = setTimeout(function() { longP = true; send({ cmd: 'setTuner', value: 2 }); }, 500); }
-    function up(e) { e.preventDefault(); if (timer) { clearTimeout(timer); timer = null; } if (!longP) send({ cmd: 'setTuner', value: tunerState > 0 ? 0 : 1 }); }
-    function cancel() { if (timer) { clearTimeout(timer); timer = null; } }
-    tuneBtn.addEventListener('mousedown', down); tuneBtn.addEventListener('mouseup', up);
-    tuneBtn.addEventListener('mouseleave', cancel); tuneBtn.addEventListener('touchstart', down);
-    tuneBtn.addEventListener('touchend', up); tuneBtn.addEventListener('touchcancel', cancel);
-    tuneBtn.style.cursor = 'pointer';
-})();
+// Top-bar TUNE: tap = tuner on / off, hold = tune.
+bindTunerPress(document.getElementById('tuneLabel'));
 
 // PTT button (hold to transmit)
 // PTT with TX audio drain delay

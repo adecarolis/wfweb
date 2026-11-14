@@ -58,7 +58,6 @@
         setToneMode:      'toneMode',
         setToneFreq:      'toneFreq',
         setTsqlFreq:      'tsqlFreq',
-        setTuner:         'tuner',
         setSpan:          'spanIndex',
     };
 
@@ -232,6 +231,20 @@
             switch (obj.cmd) {
                 case 'getStatus':
                     this._emitFullStatus();
+                    return;
+                case 'setTuner':
+                    // Like the IC-7300: 2 starts a tune, which ends with the
+                    // tuner ON a couple of seconds later.
+                    clearTimeout(this._tuneTimer);
+                    this.state.tuner = obj.value | 0;
+                    this._emit('update', { tuner: this.state.tuner });
+                    if (this.state.tuner === 2) {
+                        this._tuneTimer = setTimeout(() => {
+                            if (!this._open) return;
+                            this.state.tuner = 1;
+                            this._emit('update', { tuner: 1 });
+                        }, 2000);
+                    }
                     return;
                 case 'setFrequency':
                     if (typeof obj.value !== 'number' || obj.value <= 0) return;

@@ -661,6 +661,22 @@ locally, so the tile only shows a setting that went out. Tests:
 `tests/test_agc.py` (IC-7300 mock, rigctld) and `tests/agc_browser.mjs`
 (virtual rig, and the Web Serial transport against a fake IC-7300).
 
+### TUNE tag and the TUNER tile (#156)
+The top-bar `#tuneLabel` is both the tuner's indicator and its button. It
+shows on every rig with `hasTuner` and is **never hidden by its state**:
+grey OFF, red ON (`.active`), blinking while it tunes (`.tuning`). Hiding it
+when OFF left nothing to tap. A tap toggles the tuner; a 500 ms hold sends
+`setTuner 2` (a tune, from OFF too, like the radio's TUNER key). FUNC >
+TUNER behaves the same through `bindTunerPress`, which keeps the pending
+hold outside the element because the FUNC grid is rebuilt mid-press.
+Identical in both forks. The IC-7300 keeps the tuner ON / OFF per band
+(SET > Function > Tuner > [TUNER] Switch = Auto, the default), so the tag
+changes with the band. The server reads it on the rig file's periodic poll
+(the 5 s slow tick on rigs without one). Standalone reads it every second
+while tuning, after a move of more than 1 %, and on the 5 s slow tick; the
+virtual rig ends a tune with the tuner ON after 2 s. Tests:
+`tests/tuner_browser.mjs` via `tests/test_tuner.py`.
+
 ### MODE grid: reverse modes fold into their base button
 `renderModeOverlay` (identical in both forks) shows the rig's mode list
 minus the `-R` variants whose base is also listed: CW-R and RTTY-R live
