@@ -356,9 +356,11 @@ html, body {
 #seatTag.queued { background: #221; }
 #seatTag.offer { color: #000; background: #ee0; border-color: #ff0; animation: seatBlink 1s step-start infinite; }
 @keyframes seatBlink { 50% { opacity: 0.55; } }
+/* Above the start, power-off and login screens: a holder who reloaded sits
+   on the start screen with the seat back (grace) and must still see a request. */
 #seatPrompt {
     display: none;
-    position: fixed; top: 36px; left: 50%; transform: translateX(-50%); z-index: 9400;
+    position: fixed; top: 36px; left: 50%; transform: translateX(-50%); z-index: 10003;
     background: #1a1a2e; border: 1px solid #556; border-radius: 8px; padding: 8px 12px;
     font-family: var(--font-ui); font-size: 13px; color: #eee;
     box-shadow: 0 8px 24px rgba(0,0,0,0.5); gap: 10px; align-items: center;
@@ -8103,7 +8105,7 @@ function pulseUiLock(hint) {
     var btn = document.getElementById('uiLockBtn');
     var holdPid = null, holdStart = 0, holdRaf = null;
     function allowed(t) {
-        return !!(t && t.closest && t.closest('.ptt-btn, #uiLockBtn, #audioMicOverlay, #startupOverlay, #powerOffOverlay'));
+        return !!(t && t.closest && t.closest('.ptt-btn, #uiLockBtn, #audioMicOverlay, #startupOverlay, #powerOffOverlay, #seatPrompt'));
     }
     function guard(e) {
         if (!uiLocked || allowed(e.target)) return;
