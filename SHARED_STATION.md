@@ -33,7 +33,9 @@ the browser it runs in and has nothing to share.
 - **First run** prints a setup code on the console and in the log; the first
   browser to enter it creates the admin account. No default password.
 - **Account management** in the page (the ACCOUNTS tab of the Shared
-  station window) and over REST (`/api/v1/shared/users`), admins only.
+  station window) and over REST (`/api/v1/shared/users`), admins only. The
+  list can be saved to a file and added to from one (EXPORT / IMPORT): a
+  backup, or the accounts of another station, passwords included.
 - **An audit log** (`audit.log`): every setup, login, failed login, lockout,
   logout, connection, token and account change, one line each.
 - **Brute-force lockout**: five failed logins for a user name or from an
@@ -48,6 +50,10 @@ the browser it runs in and has nothing to share.
   login.
 - **TX inhibit**: one switch, and nobody keys the rig — browsers, REST and
   rigctld alike; a key held at that moment is released.
+- **Bands nobody transmits on**: the same refusal for one band or several,
+  for everyone at once (admins included). The strip shows `TX INHIBIT · 20m`
+  while the VFO is on one; tuning and listening there are not affected, and
+  a key held while tuning onto one is released.
 - **TX time-out**: a key held longer than the limit (10 minutes by default)
   is released by the server, whoever holds it.
 - **Who is here**: the admin's window lists every connection and can drop
@@ -221,8 +227,9 @@ Changing something on the radio without the seat does nothing: a note says
 why ("Take the seat first", or who has it), and while the seat is free the
 **TAKE** button blinks.
 
-`YOU name · role` opens the account menu: SCHEDULE, STATION SETTINGS
-(admins) and LOG OUT. A visitor sees `visitor · LOG IN` there.
+`YOU name · role` opens the account menu: SCHEDULE, CHANGE PASSWORD (your
+own: the current one, then the new one twice; your sessions stay), STATION
+SETTINGS (admins) and LOG OUT. A visitor sees `visitor · LOG IN` there.
 
 Asked for the seat, the holder gets a bar with **HAND OVER** / **DECLINE**.
 Unanswered, the request is granted when the time runs out (60 s by
@@ -245,6 +252,9 @@ take the seat over (then a request from one is granted after 30 s),
 **LISTEN-IN** (others hear and see while someone has the seat; off, they
 get status only) and **PRIVATE ALLOWED** (the holder may switch the others'
 audio and scope off from the seat menu). Admins always hear and see.
+Whoever is kept out sees why for as long as it lasts: the scope is covered
+by "W1ABC has started a private session" (or, with listen-in off, "W1ABC
+has the seat"), and the strip reads `SEAT W1ABC · private`.
 TAKE IT / CLEAR in the **NOW** tab act on a seat someone else holds.
 
 ## Access levels
@@ -272,14 +282,24 @@ Four tabs:
   stays — disable it to keep them out).
 - **ACCOUNTS**: the callsign, STATION / OWN (what the station identifies
   as while the account has the seat, see "Callsigns and the log"), level, PASSWORD (sets a new one and ends the account's
-  sessions), ENABLE / DISABLE, DELETE (two presses), and a form to add one.
+  sessions), NOTES (a line about the account for the admins only: a name, a
+  membership number; the account never sees it), ENABLE / DISABLE, DELETE
+  (two presses), and a form to add one. USER LIST at the bottom: EXPORT
+  saves every account to `wfweb-users-<date>.json` (name, callsign, level,
+  STATION / OWN, notes, disabled, and the password hash — keep the file as
+  private as `users.json`); IMPORT adds the accounts of such a file and
+  lists what it added and what it skipped. An import never changes an
+  account: a name that exists is skipped. A list written by hand may carry
+  a plain `password` per entry instead of the hash.
 - **SCHEDULE**: the reservations, a form to add one, and the next two weeks.
 - **RULES**: every setting with a line saying what it does; a change
   applies at once. *Visitors without a login*: REFUSED (the login sheet),
   LISTEN or CONTROL — the strip then shows `visitor · LOG IN`, and the sheet
   it opens can be put away; lowering the level applies to visitors already
   connected, refusing them ends their connections. *Connections at once*,
-  *TX time-out* (0 = none), and the seat's rules.
+  *TX time-out* (0 = none), *TX inhibit* (the same switch as in NOW),
+  *Bands nobody transmits on* (one button per band of the rig; red = closed
+  to transmitting for everyone), and the seat's rules.
 
 ## Setting it up
 
@@ -334,6 +354,7 @@ The code is valid for that run only, until it is used.
 | `--trust-proxy <cidr>[,<cidr>]`, `Shared/TrustProxy=` | reverse proxy address(es) whose `X-Forwarded-For` / `X-Forwarded-Proto` are believed (see *Deployment*). The client is the rightmost `X-Forwarded-For` entry that is not itself a trusted proxy: Cloudflare and nginx append to a list the client may have started, so the first entry is never believed |
 | `Shared/Anonymous=none\|listen\|control` | what a visitor without a login gets (default `none`); the RULES tab |
 | `Shared/TxInhibit=true` | nobody keys the rig (default off); INHIBIT TX in the NOW tab |
+| `Shared/TxInhibitBands=20m, 60m` | bands nobody transmits on (default none), by the rig file's band names; the RULES tab |
 | `Shared/TxTimeoutSecs=` | a key held this long is released (default 600, 0 = never) |
 | `Shared/MaxClients=` | connections at once, admins excepted (default 20) |
 | `Shared/Seat=false` | no seat: everyone with the level controls the radio at once (default on) |
@@ -396,17 +417,19 @@ Account management, admins only, under `/api/v1/shared/users`:
 
 | Route | Does |
 |-------|------|
-| `GET` | `{users:[{id, name, callsign, onAir, role, disabled, created, lastLogin, tokens}]}` |
-| `POST` `{username, password, role, callsign}` | adds an account (`201`) |
-| `PUT /<id>` `{role?, callsign?, onAir?, disabled?, password?, kick?}` | changes it; `disabled`, a new `password` and `kick` end the account's sessions. `onAir` is `station` or `own` (`400` without a callsign on the account); a callsign is letters, digits and `/`. The account's open pages follow at once, and so does the on-air call when it holds the seat |
+| `GET` | `{users:[{id, name, callsign, onAir, role, notes, disabled, created, lastLogin, tokens}]}` |
+| `POST` `{username, password, role, callsign, notes?}` | adds an account (`201`) |
+| `PUT /<id>` `{role?, callsign?, onAir?, notes?, disabled?, password?, kick?}` | changes it; `notes` is free text for the admins (500 characters, never shown to the account, and the audit log records that it changed, not what it says); `disabled`, a new `password` and `kick` end the account's sessions. `onAir` is `station` or `own` (`400` without a callsign on the account); a callsign is letters, digits and `/`. The account's open pages follow at once, and so does the on-air call when it holds the seat |
 | `DELETE /<id>` | removes it; not yourself, not the last admin |
+| `GET /export` | `{wfwebUsers: 1, exported, users:[{username, callsign, role, onAir, notes, disabled, passwordHash}]}`: every account, with the hash its password is stored as. No ids, sessions or API tokens |
+| `POST /import` `{users:[...]}` | adds each entry (those of an export, or `{username, role, password, callsign?, onAir?, notes?, disabled?}` with a plain password, which is hashed here); at most 500. Answers `{added:[names], skipped:[{username, reason}], users}`. Never replaces an account: an existing name, a bad role or callsign, a missing or too short password are skipped with the reason |
 
 Policy and connections, admins only:
 
 | Route | Does |
 |-------|------|
-| `GET /api/v1/shared/policy` | `{policy:{anonymous, txInhibit, txTimeoutSecs, maxClients}}` |
-| `PUT /api/v1/shared/policy` `{anonymous?, txInhibit?, txTimeoutSecs?, maxClients?}` | changes what is given; applied at once, saved to the settings file, pushed to every page as `{type:"sharedPolicy", policy}` |
+| `GET /api/v1/shared/policy` | `{policy:{anonymous, txInhibit, txInhibitBands, txTimeoutSecs, maxClients, ...}}` |
+| `PUT /api/v1/shared/policy` `{anonymous?, txInhibit?, txInhibitBands?, txTimeoutSecs?, maxClients?}` | `txInhibitBands` is the whole list of band names (`["20m","60m"]`, `[]` for none). Changes what is given; applied at once, saved to the settings file, pushed to every page as `{type:"sharedPolicy", policy}` |
 | `GET /api/v1/shared/connections` | `{connections:[{id, name, anonymous, role, callsign, ip, since, keying, seat}], max}` |
 | `DELETE /api/v1/shared/connections/<id>` | ends that connection (not your own) |
 | `GET /api/v1/shared/seat` | `{seat:{enabled, holder:{name, id, role, since, private, keying}|null, queue, grace, privateNow, listenIn, allowPrivate, reservation?, next?}}` (any account) |

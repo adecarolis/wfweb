@@ -197,6 +197,7 @@ QJsonObject AccessUser::toJson(bool withSecrets) const
         {"onAir", onAirOwn ? QStringLiteral("own") : QStringLiteral("station")},
         {"role", Access::roleName(role)}, {"disabled", disabled},
         {"created", isoUtc(created)}, {"lastLogin", isoUtc(lastLogin)},
+        {"notes", notes},
     };
     if (withSecrets) o["passwordHash"] = passwordHash;
     QJsonArray toks;
@@ -219,6 +220,7 @@ AccessUser AccessUser::fromJson(const QJsonObject &o)
     u.onAirOwn = o["onAir"].toString() == QLatin1String("own");
     u.role = Access::roleFromName(o["role"].toString());
     if (u.role == Access::Role::None) u.role = Access::Role::Listen;
+    u.notes = o["notes"].toString();
     u.passwordHash = o["passwordHash"].toString();
     u.disabled = o["disabled"].toBool();
     u.created = fromIso(o["created"]);
@@ -670,6 +672,59 @@ QString AccessControl::addUser(const QString &name, const QString &passwordHash,
     return u.id;
 }
 
+bool AccessControl::validPasswordHash(const QString &hash)
+{
+    const QStringList parts = hash.split('$');
+    if (parts.size() != 4 || parts[0] != QLatin1String(kHashPrefix)) return false;
+    bool ok = false;
+    const int iterations = parts[1].toInt(&ok);
+    if (!ok || iterations < 1 || iterations > 100 * 1000 * 1000) return false;
+    return !QByteArray::fromBase64(parts[2].toLatin1()).isEmpty()
+        && !QByteArray::fromBase64(parts[3].toLatin1()).isEmpty();
+}
+
+QJsonObject AccessControl::exportUsers() const
+{
+    QJsonArray arr;
+    for (const AccessUser &u : users_) {
+        arr.append(QJsonObject{
+            {"username", u.name}, {"callsign", u.callsign},
+            {"role", Access::roleName(u.role)},
+            {"onAir", u.onAirOwn ? QStringLiteral("own") : QStringLiteral("station")},
+            {"notes", u.notes}, {"disabled", u.disabled},
+            {"passwordHash", u.passwordHash},
+        });
+    }
+    return QJsonObject{{"wfwebUsers", 1}, {"exported", isoUtc(now())}, {"users", arr}};
+}
+
+QString AccessControl::importUser(const QJsonObject &entry, const QString &passwordHash, QString *error)
+{
+    const QString name = entry.value("username").toString(entry.value("name").toString()).trimmed();
+    const Access::Role role = Access::roleFromName(entry.value("role").toString());
+    const QString callsign = entry.value("callsign").toString();
+    if (role == Access::Role::None) {
+        if (error) *error = QStringLiteral("role: listen, control, operate or admin");
+        return QString();
+    }
+    if (!validCallsign(callsign)) {
+        if (error) *error = QStringLiteral("callsign: letters, digits and '/' only");
+        return QString();
+    }
+    if (!validPasswordHash(passwordHash)) {
+        if (error) *error = QStringLiteral("no password");
+        return QString();
+    }
+    const QString id = addUser(name, passwordHash, role, callsign, error);
+    if (id.isEmpty()) return QString();
+    const int i = findUser(id);
+    users_[i].notes = normalizeNotes(entry.value("notes").toString());
+    users_[i].onAirOwn = entry.value("onAir").toString() == QLatin1String("own") && !users_[i].callsign.isEmpty();
+    users_[i].disabled = entry.value("disabled").toBool();
+    saveUsers();
+    return id;
+}
+
 bool AccessControl::setPasswordHash(const QString &id, const QString &passwordHash)
 {
     const int i = findUser(id);
@@ -691,6 +746,22 @@ bool AccessControl::setCallsign(const QString &id, const QString &callsign)
     const int i = findUser(id);
     if (i < 0) return false;
     users_[i].callsign = normalizeCallsign(callsign);
+    return saveUsers();
+}
+
+QString AccessControl::normalizeNotes(const QString &notes)
+{
+    QString out;
+    for (const QChar ch : notes)
+        out += (ch.category() == QChar::Other_Control) ? QLatin1Char(' ') : ch;
+    return out.simplified().left(kMaxNotes);
+}
+
+bool AccessControl::setNotes(const QString &id, const QString &notes)
+{
+    const int i = findUser(id);
+    if (i < 0) return false;
+    users_[i].notes = normalizeNotes(notes);
     return saveUsers();
 }
 

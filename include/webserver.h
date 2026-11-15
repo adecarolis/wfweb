@@ -338,6 +338,9 @@ private:
     // --- policy: admin-settable, kept in the settings file ---------------
     Access::Role sharedAnonymous_ = Access::Role::None;   // what a visitor without a session may do
     bool txInhibit_ = false;                              // nobody keys the rig
+    QStringList txInhibitBands_;                          // ... or nobody on these bands (rig-file names)
+    QString inhibitedBand();                              // the inhibited band the VFO is on, or empty
+    QString txBlockedReason();                            // why nobody may transmit now, or empty
     int txTimeoutSecs_ = 600;                             // a key held this long is released
     int maxClients_ = 20;                                 // non-admin connections at once
     QJsonObject policyJson() const;

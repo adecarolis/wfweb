@@ -71,6 +71,10 @@ struct AccessUser {
     // callsign (a licensed guest).  Needs a callsign.  JSON "onAir":
     // "station" | "own".
     bool onAirOwn = false;
+    // The admins' own words about the account (a name, a membership number).
+    // Admin-only: it is in toJson(), which only the account routes for admins
+    // send; the principal, which is what an account sees of itself, has no notes.
+    QString notes;
     Access::Role role = Access::Role::Listen;
     QString passwordHash;   // "pbkdf2-sha256$<iterations>$<salt b64>$<key b64>"
     bool disabled = false;
@@ -138,9 +142,26 @@ public:
     // Returns the new id, or empty with *error set (name taken, invalid, ...).
     QString addUser(const QString &name, const QString &passwordHash, Access::Role role,
                     const QString &callsign, QString *error = nullptr);
+    // The user list as a file an admin keeps or carries to another station:
+    // name, callsign, role, onAir, notes, disabled and the password hash, so
+    // the accounts log in there with the passwords they have here.  No ids,
+    // no sessions, no API tokens: those belong to this server.
+    QJsonObject exportUsers() const;
+    // One entry of such a file (or of a hand-written list).  The caller has
+    // the hash: the entry's own "passwordHash", or its plain "password"
+    // hashed off the server thread.  Never replaces an account: a name
+    // already here is refused, like every invalid field.  Returns the new id.
+    QString importUser(const QJsonObject &entry, const QString &passwordHash, QString *error = nullptr);
+    // Is it a hash verifyPassword() can read?
+    static bool validPasswordHash(const QString &hash);
+    static constexpr int kMaxImport = 500;
     bool setPasswordHash(const QString &id, const QString &passwordHash);
     bool setRole(const QString &id, Access::Role role);
     bool setCallsign(const QString &id, const QString &callsign);
+    // Free text, trimmed, control characters dropped, kMaxNotes at most.
+    bool setNotes(const QString &id, const QString &notes);
+    static QString normalizeNotes(const QString &notes);
+    static constexpr int kMaxNotes = 500;
     // "station" or "own"; own is refused on an account without a callsign.
     bool setOnAir(const QString &id, const QString &onAir, QString *error = nullptr);
     // Does the callsign look like one (letters, digits, '/', a digit and a

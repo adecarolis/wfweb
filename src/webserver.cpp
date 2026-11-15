@@ -1056,6 +1056,14 @@ void webServer::onHttpReadyRead()
                 sendRestResponse(socket, 403, QJsonObject{{"error", "transmitting is inhibited by the admin"}});
                 return;
             }
+            // A band nobody transmits on stops the key and the keyer, not the log.
+            if (cap == Access::Cap::Tx && path.startsWith("/api/v1/radio/")) {
+                const QString band = inhibitedBand();
+                if (!band.isEmpty()) {
+                    sendRestResponse(socket, 403, QJsonObject{{"error", txBlockedReason()}, {"band", band}});
+                    return;
+                }
+            }
             // A script acts on the radio only while nobody else has the seat:
             // a free seat, or one held by a browser of the same account.
             // Correcting the log (an edit, a delete, the export stamp) does not
@@ -2623,6 +2631,17 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             deny(client, type, cap, QStringLiteral("transmitting is inhibited by the admin"));
             return;
         }
+        // A band nobody transmits on: what puts a signal on the air is
+        // refused there, the rest of an operator's commands (the log, the
+        // mic, STOP, the tuner's ON / OFF) is not.
+        static const QSet<QString> onAir{"sendCW", "packetTx", "aprsTxBeacon", "termConnect", "termSend",
+                                         "termFileSend", "termXferAccept"};
+        if (onAir.contains(type) || (type == "setTuner" && cmd["value"].toInt() == 2)) {
+            if (!inhibitedBand().isEmpty()) {
+                deny(client, type, cap, txBlockedReason());
+                return;
+            }
+        }
         // The seat: asked for, given up, handed over here; needed for
         // everything that acts on the radio.
         if (type.startsWith("seat")) {
@@ -2838,9 +2857,10 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
     else if (type == "setPTT") {
         bool on = cmd["value"].toBool();
         // TX inhibit holds for every path, rigctld and REST included.
-        if (on && txInhibit_) {
-            qInfo() << "Web: PTT refused, transmitting is inhibited";
-            if (client) deny(client, type, Access::Cap::Tx, QStringLiteral("transmitting is inhibited by the admin"));
+        const QString blocked = on ? txBlockedReason() : QString();
+        if (!blocked.isEmpty()) {
+            qInfo().noquote() << "Web: PTT refused," << blocked;
+            if (client) deny(client, type, Access::Cap::Tx, blocked);
             return;
         }
         // Who keyed, when, for how long: the audit log and the time-out.
@@ -6948,6 +6968,13 @@ void webServer::releaseCompressorHold()
 void webServer::onAprsBeaconRequested(QString src, QString dst,
                                       QStringList path, QString info)
 {
+    // A scheduled beacon has no operator to refuse: TX inhibit, or a band
+    // nobody transmits on, drops it here.
+    const QString blocked = txBlockedReason();
+    if (!blocked.isEmpty()) {
+        qInfo().noquote() << "Web: APRS beacon dropped," << blocked;
+        return;
+    }
     if (!packetEnabled || !dwProc) {
         qWarning() << "Web: APRS beacon dropped — packet modem not enabled";
         return;
@@ -9661,6 +9688,7 @@ void webServer::configureShared(bool enableOverride, const QString &dirOverride,
     sharedAnonymous_ = Access::roleFromName(settings->value("Shared/Anonymous", "none").toString());
     if (sharedAnonymous_ > Access::Role::Control) sharedAnonymous_ = Access::Role::Control;
     txInhibit_ = settings->value("Shared/TxInhibit", false).toBool();
+    txInhibitBands_ = settings->value("Shared/TxInhibitBands").toStringList();
     txTimeoutSecs_ = qBound(0, settings->value("Shared/TxTimeoutSecs", 600).toInt(), 3600);
     maxClients_ = qBound(1, settings->value("Shared/MaxClients", 20).toInt(), 500);
     seatEnabled_ = settings->value("Shared/Seat", true).toBool();
@@ -9673,6 +9701,7 @@ void webServer::configureShared(bool enableOverride, const QString &dirOverride,
     qInfo().noquote() << "Shared: visitors without a login:"
                       << (sharedAnonymous_ == Access::Role::None ? "refused" : Access::roleName(sharedAnonymous_))
                       << "| TX inhibit" << (txInhibit_ ? "ON" : "off")
+                      << (txInhibitBands_.isEmpty() ? QString() : "(never on " + txInhibitBands_.join(' ') + ")")
                       << "| TX time-out" << txTimeoutSecs_ << "s | at most" << maxClients_ << "connections";
 
     qInfo().noquote() << "Shared: access control on," << access_->userCount() << "accounts in" << dir
@@ -9760,6 +9789,7 @@ QJsonObject webServer::policyJson() const
     return QJsonObject{
         {"anonymous", sharedAnonymous_ == Access::Role::None ? QStringLiteral("none") : Access::roleName(sharedAnonymous_)},
         {"txInhibit", txInhibit_},
+        {"txInhibitBands", QJsonArray::fromStringList(txInhibitBands_)},
         {"txTimeoutSecs", txTimeoutSecs_},
         {"maxClients", maxClients_},
         {"seat", seatEnabled_},
@@ -9798,6 +9828,23 @@ void webServer::applyPolicy(const QJsonObject &in, const QString &by)
             txInhibit_ = v;
             changes << (v ? "tx-inhibit=on" : "tx-inhibit=off");
             if (v && pttSinceMs) forceUnkey(QStringLiteral("transmitting inhibited by the admin"));
+        }
+    }
+    if (in.contains("txInhibitBands")) {
+        // Band names as the rig file has them ("20m"); "Gen" is every
+        // frequency, which is what TX inhibit itself is for.
+        QStringList v;
+        const QJsonArray arr = in.value("txInhibitBands").toArray();
+        for (const QJsonValue &b : arr) {
+            const QString name = b.toString().trimmed().left(16);
+            if (name.isEmpty() || name.contains(' ') || name.startsWith("gen", Qt::CaseInsensitive)) continue;
+            if (!v.contains(name, Qt::CaseInsensitive) && v.size() < 64) v << name;
+        }
+        if (v != txInhibitBands_) {
+            txInhibitBands_ = v;
+            changes << "tx-inhibit-bands=" + (v.isEmpty() ? QStringLiteral("none") : v.join(','));
+            const QString band = inhibitedBand();
+            if (!band.isEmpty() && pttSinceMs) forceUnkey(txBlockedReason());
         }
     }
     if (in.contains("txTimeoutSecs")) {
@@ -9861,6 +9908,7 @@ void webServer::applyPolicy(const QJsonObject &in, const QString &by)
     auto settings = openSettings();
     settings->setValue("Shared/Anonymous", sharedAnonymous_ == Access::Role::None ? "none" : Access::roleName(sharedAnonymous_));
     settings->setValue("Shared/TxInhibit", txInhibit_);
+    settings->setValue("Shared/TxInhibitBands", txInhibitBands_);
     settings->setValue("Shared/TxTimeoutSecs", txTimeoutSecs_);
     settings->setValue("Shared/MaxClients", maxClients_);
     settings->setValue("Shared/Seat", seatEnabled_);
@@ -9990,6 +10038,32 @@ void webServer::deny(QWebSocket *client, const QString &cmd, Access::Cap cap, co
     const QString need = Access::roleName(Access::capRole(cap));
     sendJsonTo(client, QJsonObject{{"type", "denied"}, {"cmd", cmd}, {"need", need},
                                    {"reason", reason.isEmpty() ? QString("needs %1 access").arg(need) : reason}});
+}
+
+// The band the admin closed to transmitting that the VFO is on now.  Names
+// are the rig file's; a band listed there in several pieces (40m per region)
+// matches on any of them.
+QString webServer::inhibitedBand()
+{
+    if (txInhibitBands_.isEmpty() || !rigCaps || !queue) return QString();
+    const vfoCommandType t = queue->getVfoCommand(vfoA, 0, false);
+    const cacheItem f = operatingFreqCache(t);
+    if (!f.value.isValid()) return QString();
+    const quint64 hz = f.value.value<freqt>().Hz;
+    for (const bandType &b : rigCaps->bands) {
+        if (b.band == bandUnknown || hz < b.lowFreq || hz > b.highFreq) continue;
+        if (txInhibitBands_.contains(b.name, Qt::CaseInsensitive)) return b.name;
+    }
+    return QString();
+}
+
+QString webServer::txBlockedReason()
+{
+    if (!sharedMode_) return QString();
+    if (txInhibit_) return QStringLiteral("transmitting is inhibited by the admin");
+    const QString band = inhibitedBand();
+    if (!band.isEmpty()) return QString("transmitting on %1 is inhibited by the admin").arg(band);
+    return QString();
 }
 
 QString webServer::operatingText()
@@ -10330,6 +10404,9 @@ void webServer::seatCommand(QWebSocket *client, const QString &type, const QJson
 // Once a second.
 void webServer::seatTick()
 {
+    // A key held while the VFO moves onto a band nobody transmits on.
+    if (sharedMode_ && pttSinceMs && !txInhibit_ && !inhibitedBand().isEmpty())
+        forceUnkey(txBlockedReason());
     if (!sharedMode_ || !seatEnabled_) return;
     const qint64 now = QDateTime::currentMSecsSinceEpoch();
     bool changed = false;
@@ -10994,11 +11071,82 @@ void webServer::handleSharedUsersRequest(QTcpSocket *socket, const QString &meth
         return;
     }
 
+    // The list as a file: every account with its password hash, so they log
+    // in on the station that imports it.  Sessions and API tokens stay here.
+    if (targetId == "export" && method == "GET") {
+        access_->audit("users-export", AccessControl::who(admin.name, ip), QString("%1 accounts").arg(access_->userCount()));
+        sendRestResponse(socket, 200, access_->exportUsers());
+        return;
+    }
+    // {users: [...]}: an export, or a list written by hand with a plain
+    // "password" per entry.  Accounts are only ever added: a name that
+    // exists is skipped and reported, never replaced.
+    if (targetId == "import" && method == "POST") {
+        const QJsonArray list = in.value("users").toArray();
+        if (list.isEmpty()) {
+            sendRestResponse(socket, 400, QJsonObject{{"error", "no users in the file"}});
+            return;
+        }
+        if (list.size() > AccessControl::kMaxImport) {
+            sendRestResponse(socket, 400, QJsonObject{{"error", QString("at most %1 accounts at a time").arg(AccessControl::kMaxImport)}});
+            return;
+        }
+        struct ImportRun { QJsonArray list; int next = 0; QJsonArray added; QJsonArray skipped; };
+        auto run = std::make_shared<ImportRun>();
+        run->list = list;
+        auto step = std::make_shared<std::function<void()>>();
+        *step = [this, sock, admin, ip, run, step]() {
+            while (sock && access_ && run->next < run->list.size()) {
+                const QJsonObject e = run->list.at(run->next++).toObject();
+                const QString name = e.value("username").toString(e.value("name").toString()).trimmed();
+                auto skip = [&](const QString &why) { run->skipped.append(QJsonObject{{"username", name}, {"reason", why}}); };
+                auto add = [this, run, e, name](const QString &hash) {
+                    QString err;
+                    if (access_->importUser(e, hash, &err).isEmpty())
+                        run->skipped.append(QJsonObject{{"username", name}, {"reason", err}});
+                    else
+                        run->added.append(name);
+                };
+                QString err;
+                bool taken = false;
+                access_->userByName(name, &taken);
+                if (!AccessControl::validName(name, &err)) { skip(err); continue; }
+                if (taken) { skip(QStringLiteral("that user name is taken")); continue; }
+                const QString hash = e.value("passwordHash").toString();
+                if (AccessControl::validPasswordHash(hash)) { add(hash); continue; }
+                const QString password = e.value("password").toString();
+                if (password.isEmpty()) { skip(QStringLiteral("no password")); continue; }
+                if (!AccessControl::validPassword(password, &err)) { skip(err); continue; }
+                // A plain password is hashed off this thread, one at a time.
+                hashPasswordAsync(password, [this, add, step](const QString &h) {
+                    if (access_) add(h);
+                    const std::function<void()> next = *step;   // a copy: the run clears *step at its end
+                    if (next) next();
+                });
+                return;
+            }
+            *step = nullptr;   // breaks the step -> lambda -> step cycle; we run from a copy
+            if (!access_) return;
+            access_->audit("users-import", AccessControl::who(admin.name, ip),
+                           QString("%1 added, %2 skipped").arg(run->added.size()).arg(run->skipped.size()));
+            updateSharedStats();
+            if (!sock) return;
+            QJsonArray arr;
+            const QList<AccessUser> all = access_->users();
+            for (const AccessUser &u : all) arr.append(u.toJson(false));
+            sendRestResponse(sock, 200, QJsonObject{{"added", run->added}, {"skipped", run->skipped}, {"users", arr}});
+        };
+        const std::function<void()> first = *step;
+        first();
+        return;
+    }
+
     if (targetId.isEmpty() && method == "POST") {
         const QString name = in.value("username").toString().trimmed();
         const QString password = in.value("password").toString();
         const Access::Role role = Access::roleFromName(in.value("role").toString());
         const QString callsign = in.value("callsign").toString();
+        const QString notes = in.value("notes").toString();
         QString err;
         if (!AccessControl::validName(name, &err) || !AccessControl::validPassword(password, &err)) {
             sendRestResponse(socket, 400, QJsonObject{{"error", err}});
@@ -11014,7 +11162,7 @@ void webServer::handleSharedUsersRequest(QTcpSocket *socket, const QString &meth
             sendRestResponse(socket, 409, QJsonObject{{"error", "that user name is taken"}});
             return;
         }
-        hashPasswordAsync(password, [this, sock, admin, ip, name, role, callsign](const QString &hash) {
+        hashPasswordAsync(password, [this, sock, admin, ip, name, role, callsign, notes](const QString &hash) {
             if (!sock || !access_) return;
             QString err;
             const QString id = access_->addUser(name, hash, role, callsign, &err);
@@ -11022,6 +11170,7 @@ void webServer::handleSharedUsersRequest(QTcpSocket *socket, const QString &meth
                 sendRestResponse(sock, 400, QJsonObject{{"error", err}});
                 return;
             }
+            if (!notes.trimmed().isEmpty()) access_->setNotes(id, notes);
             access_->audit("user-created", AccessControl::who(admin.name, ip), name + " " + Access::roleName(role));
             updateSharedStats();
             sendRestResponse(sock, 201, QJsonObject{{"user", access_->user(id).toJson(false)}});
@@ -11068,6 +11217,11 @@ void webServer::handleSharedUsersRequest(QTcpSocket *socket, const QString &meth
             changes << "onair=" + in.value("onAir").toString();
         }
         if (in.contains("callsign") || in.contains("onAir")) refreshUserClients(targetId);
+        if (in.contains("notes")) {
+            // What the note says stays out of the audit log: it is about a person.
+            access_->setNotes(targetId, in.value("notes").toString());
+            changes << "notes";
+        }
         if (in.contains("disabled")) {
             const bool disabled = in.value("disabled").toBool();
             if (disabled && lastAdmin(targetId)) {

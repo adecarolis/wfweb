@@ -397,6 +397,8 @@ names so the timing does not say which names exist.
 `wfweb_session` cookie or `Authorization: Bearer` on every `/api/v1/`
 request, `handleAuthRequest` (`/api/v1/auth/*`) and
 `handleSharedUsersRequest` (`/api/v1/shared/users`, admins) are the routes,
+(an account's `notes`, the admins' free text, is in `AccessUser::toJson`, which
+only those admin routes send: never put it in the principal or `userJson`),
 and `onWsNewConnection` reads the cookie off `QWebSocket::request()`: no
 session -> `{type:'authRequired'}` then close 4401 before any state is sent;
 with one -> `{type:'access', user}` first, then `sendCurrentState`.
@@ -417,7 +419,22 @@ with a toast, `accessToast`) and `policy`. Policy lives in the settings file
 Visitors (no session) get the anonymous role as an unauthenticated
 principal (`via: "anonymous"`), re-roled in place or cut (4401) when the
 policy changes; one past `maxClients` gets `stationFull` + 4503 (admins
-always get in). TX inhibit holds in `setPTT` for every caller and releases
+always get in). `Shared/TxInhibitBands` (policy `txInhibitBands`, rig-file
+band names) closes bands to transmitting for everyone, admins included:
+`inhibitedBand()` matches the operating frequency against `rigCaps->bands`,
+`txBlockedReason()` is the one text for both inhibits; refused in `setPTT`,
+for the on-air commands in the gate (`sendCW`, `packetTx`, `aprsTxBeacon`,
+`termConnect` / `termSend` / `termFileSend` / `termXferAccept`, `setTuner 2`:
+**a new command that transmits goes in that set**; the log and the mic are
+not refused) and for REST `/api/v1/radio/` writes of Tx level; `seatTick`
+releases a key held while tuning onto one. Page: `rigBandTable`,
+`txInhibitBand()`, `updateTxInhibitUi()` (the strip's `TX INHIBIT · 20m`,
+re-run as the VFO moves), band buttons in the RULES tab. The user list
+travels as a file: `AccessControl::exportUsers()` / `importUser()` (hash
+included, no ids / sessions / tokens; an import only adds, never replaces),
+`GET /api/v1/shared/users/export`, `POST .../import` (a plain `password` is
+hashed off the web thread, one entry at a time), EXPORT / IMPORT at the
+bottom of the ACCOUNTS tab. TX inhibit holds in `setPTT` for every caller and releases
 a held key (`forceUnkey`); `pttAccounting` writes key-down (freq + mode)
 and key-up (duration) to the audit log and runs the time-out timer; the
 REST caller's name reaches it through `restWho_`. The page
@@ -427,7 +444,8 @@ LOG IN button and may put it away), holds the auto-reconnect while it is up,
 and has the **station strip** (`#stationStrip`, `body.shared-on`): a 24 px
 row under the top bar, `SEAT <whose> [action]` on the left, `#txInhibitTag`
 in the middle, `YOU <name · role>` (`#userTag`) on the right, whose menu has
-SCHEDULE, STATION SETTINGS (admins) and LOG OUT. The strip shares the grid's
+SCHEDULE, CHANGE PASSWORD (`#passwordOverlay`, `POST /api/v1/auth/password`),
+STATION SETTINGS (admins) and LOG OUT. The strip shares the grid's
 first row with `#topBar` (`--station-h` added to the first track of every
 `#radio` row template; a new template must carry it), so nothing of Shared
 Station sits in the top bar: the two tiles there overflowed a phone
@@ -499,7 +517,9 @@ seat, in words) and the `#seatTag` button next to it (the one action that
 applies: TAKE / ASK / WITHDRAW / LEAVE LINE / OPTIONS, hidden when there is
 none), `#seatPrompt` (above the start, power-off and login screens: a
 holder who reloaded sits on CLICK TO START with the seat back) (HAND OVER / DECLINE or TAKE
-IT / PASS), `#seatMenu` (release, private), `body.seat-watch` dimming,
+IT / PASS), `#seatMenu` (release, private), `body.seat-watch` dimming, `body.seat-hidden` + `#seatHiddenBanner` over
+`#scopeArea` while `seatHides` keeps audio and scope from us (private
+session or listen-in off; set in `updateSeatUi` from `privateNow`),
 `send()` refuses `needsSeat` commands locally. With the seat free that
 refusal also blinks TAKE (`seatTagNudge`). A command the page sends on its
 own must not go through that path: `scopeRigAssert` (scope settings on

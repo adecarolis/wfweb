@@ -9,6 +9,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QPasswordDigestor>
 #include <QTemporaryDir>
@@ -219,6 +220,60 @@ int main()
         require(!AccessControl::validCallsign("K1 FM") && !AccessControl::validCallsign("K1FM-7") && !AccessControl::validCallsign("/K1FM")
                 && !AccessControl::validCallsign("ABC") && !AccessControl::validCallsign("123"), "callsigns: junk refused");
         require(AccessControl::normalizeCallsign(" f/k1fm ") == "F/K1FM", "the callsign keeps its slash");
+
+        // Notes: the admins' free text about an account, kept in users.json.
+        require(ac.user(opId).notes.isEmpty() && ac.user(opId).toJson(false)["notes"].toString().isEmpty(), "no notes to begin with");
+        require(ac.setNotes(opId, "  Discord 1234567890\n member #42\t "), "notes are set");
+        require(ac.user(opId).notes == "Discord 1234567890 member #42", "notes: trimmed, control characters out");
+        require(ac.setNotes(opId, QString(2000, 'x')) && ac.user(opId).notes.size() == AccessControl::kMaxNotes, "notes are capped");
+        require(!ac.setNotes("nobody", "x"), "notes: unknown account");
+        require(ac.setNotes(opId, "member #42"), "notes back");
+        {
+            AccessControl again(dir);
+            again.load();
+            require(again.user(opId).notes == "member #42", "notes survive a reload");
+        }
+
+        // Export / import: the list travels with its hashes, without ids,
+        // sessions or tokens; an import adds and never replaces.
+        {
+            const QJsonObject file = ac.exportUsers();
+            const QJsonArray list = file["users"].toArray();
+            require(file["wfwebUsers"].toInt() == 1 && list.size() == ac.userCount(), "export lists every account");
+            QJsonObject opEntry;
+            for (const QJsonValue &v : list)
+                if (v.toObject()["username"].toString() == ac.user(opId).name) opEntry = v.toObject();
+            require(opEntry["passwordHash"].toString() == ac.user(opId).passwordHash && opEntry["notes"].toString() == "member #42",
+                    "export carries the hash and the notes");
+            require(!opEntry.contains("id") && !opEntry.contains("tokens"), "export has no ids and no tokens");
+
+            const QString dir2 = dir + "-import";
+            AccessControl other(dir2);
+            other.load();
+            QString err;
+            for (const QJsonValue &v : list)
+                require(!other.importUser(v.toObject(), v.toObject()["passwordHash"].toString(), &err).isEmpty(), "import: every exported account");
+            require(other.userCount() == ac.userCount(), "import: same number of accounts");
+            bool f = false;
+            const AccessUser moved = other.userByName(ac.user(opId).name, &f);
+            require(f && moved.id != opId && moved.role == ac.user(opId).role && moved.notes == "member #42"
+                    && moved.callsign == ac.user(opId).callsign && moved.onAirOwn == ac.user(opId).onAirOwn, "import keeps the account's fields");
+            require(moved.passwordHash == ac.user(opId).passwordHash, "import keeps the password");
+            require(other.importUser(opEntry, opEntry["passwordHash"].toString(), &err).isEmpty() && err.contains("taken"), "import never replaces an account");
+            QJsonObject bad = opEntry;
+            bad["username"] = "someone";
+            require(other.importUser(bad, "not-a-hash", &err).isEmpty() && err == "no password", "import: a hash it cannot read");
+            require(!AccessControl::validPasswordHash("") && !AccessControl::validPasswordHash("pbkdf2-sha256$0$YQ==$YQ==")
+                    && AccessControl::validPasswordHash("pbkdf2-sha256$1000$YQ==$YQ=="), "hash shapes");
+            bad["role"] = "owner";
+            require(other.importUser(bad, opEntry["passwordHash"].toString(), &err).isEmpty() && err.startsWith("role"), "import: unknown role");
+            bad["role"] = "listen"; bad["callsign"] = "K1 FM";
+            require(other.importUser(bad, opEntry["passwordHash"].toString(), &err).isEmpty() && err.startsWith("callsign"), "import: bad callsign");
+            bad["callsign"] = ""; bad["onAir"] = "own"; bad["disabled"] = true;
+            const QString sid = other.importUser(bad, opEntry["passwordHash"].toString(), &err);
+            require(!sid.isEmpty() && !other.user(sid).onAirOwn && other.user(sid).disabled, "import: own needs a callsign, disabled is kept");
+            QDir(dir2).removeRecursively();
+        }
 
         // Files: owner-only, no password or token in the API shape.
         const QFile::Permissions perms = QFileInfo(dir + "/users.json").permissions();

@@ -353,7 +353,23 @@ body.shared-on #stationStrip { display: flex; }
     width: 100%; padding: 8px; font-size: 13px; font-weight: bold; border: none;
     border-radius: 5px; cursor: pointer; background: #333; color: #ddd; margin-top: 6px;
 }
-#scheduleOverlay { z-index: 9100; }
+#scheduleOverlay, #passwordOverlay { z-index: 9100; }
+#passwordOverlay { width: min(95vw, 360px); }
+#passwordOverlay .pw-form { display: flex; flex-direction: column; gap: 8px; }
+#passwordOverlay .pw-error { color: #f66; font-size: 12px; min-height: 16px; }
+.shared-panel .sp-notes { grid-column: 1 / -1; color: #9ab; font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; }
+/* Someone has the seat and the others get neither audio nor scope (a
+   private session, or listen-in off): say so over the scope, for as long
+   as it lasts, instead of leaving the last frame there. */
+#seatHiddenBanner {
+    display: none; position: absolute; inset: 0; z-index: 500;
+    background: #05050c; color: #ccd;
+    flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    text-align: center; padding: 16px; font-family: var(--font-ui);
+}
+body.seat-hidden #seatHiddenBanner { display: flex; }
+#seatHiddenBanner .shb-title { font-size: clamp(16px, 3.4vw, 24px); font-weight: bold; color: #fd4; }
+#seatHiddenBanner .shb-sub { font-size: 13px; color: #89a; }
 .shared-panel .sp-slot { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; padding: 4px 0; border-bottom: 1px solid #023; }
 .shared-panel .sp-slot.now { background: #002; }
 .shared-panel .sp-when { color: #8cf; font-size: 12px; }
@@ -427,7 +443,7 @@ body.access-listen .ptt-btn, body.access-notx .ptt-btn, body.tx-inhibit .ptt-btn
 body.access-listen #freqDisplay, body.access-listen #modeBtn { opacity: 0.55; }
 /* SHARED window: tabs on top, one scrolling body.  A fixed height, so the
    window does not jump as the tabs change. */
-#sharedOverlay { width: min(96vw, 680px); height: min(86vh, 620px); max-height: none; z-index: 400; }
+#sharedOverlay { width: min(96vw, 800px); height: min(86vh, 620px); max-height: none; z-index: 400; }
 .sp-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--mode-accent-dim); margin: 2px 0 10px; }
 .sp-tabs .wf-tab { flex: 1; justify-content: center; padding: 6px 4px; }
 .shared-panel { overflow-y: auto; flex: 1; min-height: 0; font-family: var(--font-ui); font-size: 13px; color: #cde; padding-right: 4px; }
@@ -451,12 +467,12 @@ body.access-listen #freqDisplay, body.access-listen #modeBtn { opacity: 0.55; }
 .shared-panel .sp-card-sub { color: #89a; font-size: 12px; }
 .shared-panel .sp-card-acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 /* Lists (connections, accounts, reservations): who, a line about them, actions. */
-.shared-panel .sp-item { display: grid; grid-template-columns: minmax(110px, 1fr) minmax(0, 1.4fr) auto; gap: 4px 12px;
+.shared-panel .sp-item { display: grid; grid-template-columns: minmax(90px, 1fr) minmax(90px, 1.4fr) auto; gap: 4px 12px;
     align-items: center; padding: 7px 4px; border-bottom: 1px solid #0a2240; }
 .shared-panel .sp-item.off .sp-name { color: #789; }
 .shared-panel .sp-item-id { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-width: 0; }
 .shared-panel .sp-item-info { color: #89a; font-size: 12px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.shared-panel .sp-item-acts { display: flex; gap: 6px; align-items: center; justify-content: flex-end; }
+.shared-panel .sp-item-acts { display: flex; gap: 6px; align-items: center; justify-content: flex-end; flex-wrap: wrap; }
 .shared-panel .sp-item-extra { grid-column: 1 / -1; display: flex; gap: 6px; }
 .shared-panel .sp-item-extra .wf-field { flex: 1; }
 .shared-panel .sp-badge { font-size: 9px; font-weight: bold; letter-spacing: 1px; padding: 1px 5px; border-radius: 3px;
@@ -474,6 +490,12 @@ body.access-listen #freqDisplay, body.access-listen #modeBtn { opacity: 0.55; }
 .shared-panel .sp-rule-label { font-weight: bold; color: #dff; }
 .shared-panel .sp-rule-ctl { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
 .shared-panel .sp-rule-hint { grid-column: 1 / -1; color: #789; font-size: 12px; }
+.shared-panel .sp-rule.wide { grid-template-columns: 1fr; }
+.shared-panel .sp-rule.wide .sp-rule-ctl { justify-content: flex-start; flex-wrap: wrap; padding: 4px 0; }
+.shared-panel .sp-band { min-width: 52px; }
+.shared-panel .sp-band.active { background: #5a1414; border-color: #a22; color: #fbb; }
+.shared-panel .sp-import { margin-top: 8px; font-size: 12px; color: #9ab; }
+.shared-panel .sp-import div { padding: 1px 0; }
 .shared-panel .sp-num { width: 76px; text-align: right; }
 .shared-panel .sp-unit { color: #89a; font-size: 12px; min-width: 24px; }
 .shared-panel .sp-seg { display: flex; }
@@ -2602,6 +2624,7 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
     <div class="um-name" id="userMenuName"></div>
     <div class="um-role" id="userMenuRole"></div>
     <button id="userMenuSchedule" onclick="openScheduleModal()">SCHEDULE</button>
+    <button id="userMenuPassword" onclick="openPasswordModal()">CHANGE PASSWORD</button>
     <button id="userMenuSettings" onclick="hideUserMenu(); openSharedModal()">STATION SETTINGS</button>
     <button onclick="authLogout()">LOG OUT</button>
 </div>
@@ -2612,6 +2635,20 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
         <button class="digi-settings-close" style="width:auto;margin:0;padding:2px 12px" onclick="closeScheduleModal()">&#x2715; Close</button>
     </div>
     <div id="schedulePanel" class="shared-panel"></div>
+</div>
+<!-- An account changes its own password. -->
+<div id="passwordOverlay" class="mem-modal mode-digi">
+    <div class="mem-modal-title">
+        <span>Change password</span>
+        <button class="digi-settings-close" style="width:auto;margin:0;padding:2px 12px" onclick="closePasswordModal()">&#x2715; Close</button>
+    </div>
+    <form class="pw-form" onsubmit="return passwordSubmit(event)">
+        <input type="password" class="wf-field" id="pwCurrent" placeholder="Current password" autocomplete="current-password" required>
+        <input type="password" class="wf-field" id="pwNew" placeholder="New password (8 characters or more)" autocomplete="new-password" required>
+        <input type="password" class="wf-field" id="pwRepeat" placeholder="New password again" autocomplete="new-password" required>
+        <div class="pw-error" id="pwError"></div>
+        <button type="submit" class="wf-btn active" id="pwSave">CHANGE PASSWORD</button>
+    </form>
 </div>
 <!-- The seat: a request to the holder, or an offer to the next in line. -->
 <div id="seatPrompt">
@@ -2686,6 +2723,7 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
     <div id="scopeArea">
         <canvas id="spectrumCanvas" width="800" height="150"></canvas>
         <canvas id="waterfallCanvas" width="800" height="200"></canvas>
+        <div id="seatHiddenBanner"><div class="shb-title" id="seatHiddenTitle"></div><div class="shb-sub" id="seatHiddenSub"></div></div>
         <span id="spanEdgeLeft"></span>
         <span id="spanEdgeRight"></span>
         <button id="uiLockBtn" title="Lock controls" aria-label="Lock controls"><svg class="lock-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.6-1.7"/></svg><svg class="lock-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></button>
@@ -3439,6 +3477,7 @@ var DEFAULT_BANDS = [
     { num: 11, start: 28000000, end: 29700000 },
     { num: 10, start: 50000000, end: 54000000 }
 ];
+var rigBandTable = [];  // the rig's bands as the server sent them: [{num, name, start, end}], Hz
 var rigBands = [];      // [{label, freq}] — the picker's buttons, see populateBands()
 var BAND_RANGES = {};   // label -> [start, end) — which band a frequency belongs to
 var rigBandNums = {};   // num -> true for every band in the rig's table, keyed or not
@@ -3985,16 +4024,40 @@ function qsoMayChange(q) {
     return !!(q.userId && accessState.user && q.userId === accessState.user.id);
 }
 
+// The band the admin closed to transmitting that the VFO is on, or ''.
+// Names are the rig file's, as in rigInfo.bands.
+function txInhibitBand() {
+    var pol = accessState && accessState.shared && accessState.policy;
+    var closed = pol && pol.txInhibitBands;
+    if (!closed || !closed.length || !currentFreq) return '';
+    var low = closed.map(function (n) { return String(n).toLowerCase(); });
+    for (var i = 0; i < rigBandTable.length; i++) {
+        var b = rigBandTable[i];
+        if (currentFreq >= b.start && currentFreq <= b.end && low.indexOf(String(b.name).toLowerCase()) >= 0) return b.name;
+    }
+    return '';
+}
+// TX INHIBIT in the strip and the dimmed PTT: the whole station, or the
+// band we are on. Runs on a policy change and as the VFO moves.
+function updateTxInhibitUi() {
+    if (!accessState) return;   // the band list is built once before the access state exists
+    var all = !!(accessState.shared && accessState.policy && accessState.policy.txInhibit);
+    var band = all ? '' : txInhibitBand();
+    document.body.classList.toggle('tx-inhibit', all || !!band);
+    var ti = document.getElementById('txInhibitTag');
+    if (!ti) return;
+    ti.style.display = (all || band) ? '' : 'none';
+    ti.textContent = band ? 'TX INHIBIT · ' + band : 'TX INHIBIT';
+    ti.title = band ? 'Transmitting on ' + band + ' is inhibited by the admin' : 'Transmitting is inhibited by the admin';
+}
+
 function updateAccessUi() {
     var b = document.body;
-    var inhibit = !!(accessState.shared && accessState.policy && accessState.policy.txInhibit);
     b.classList.toggle('access-listen', accessState.shared && !accessState.can.control);
     b.classList.toggle('access-notx', accessState.shared && !accessState.can.tx);
     b.classList.toggle('access-admin', accessState.shared && accessState.can.admin);
-    b.classList.toggle('tx-inhibit', inhibit);
     b.classList.toggle('shared-on', !!accessState.shared);
-    var ti = document.getElementById('txInhibitTag');
-    if (ti) ti.style.display = inhibit ? '' : 'none';
+    updateTxInhibitUi();
     updateUserTag();
     updateSeatUi();
     updateCallsignUi();
@@ -4027,6 +4090,19 @@ function updateSeatUi() {
     document.body.classList.toggle('seat-watch', on && !seatState.mine && accessState.can.control);
     document.body.classList.toggle('seat-mine', on && seatState.mine);
     group.style.display = on ? '' : 'none';
+    // Audio and scope withheld from us (webServer::seatHides): a banner
+    // over the scope for as long as it lasts.
+    var hid = on && seatState.privateNow && !seatState.mine && !accessState.can.admin && seatState.holder;
+    document.body.classList.toggle('seat-hidden', !!hid);
+    if (hid) {
+        var priv = seatState.holder.private;
+        document.getElementById('seatHiddenTitle').textContent = priv
+            ? seatState.holder.name + ' has started a private session'
+            : seatState.holder.name + ' has the seat';
+        document.getElementById('seatHiddenSub').textContent = priv
+            ? 'Audio and scope are back when it ends.'
+            : 'This station shares audio and scope only with whoever has the seat.';
+    }
     if (!on) {
         strip.className = '';
         prompt.classList.remove('visible');
@@ -4055,7 +4131,7 @@ function updateSeatUi() {
             cls = 'queued'; text = h.name + ' · you are #' + seatState.position + ' in line'; act = 'LEAVE LINE';
             title = 'In line for the seat';
         } else {
-            cls = 'held'; text = h.name + (ownCall ? ' (' + ownCall + ')' : ''); act = canAsk ? 'ASK' : '';
+            cls = 'held'; text = h.name + (ownCall ? ' (' + ownCall + ')' : '') + (h.private ? ' · private' : ''); act = canAsk ? 'ASK' : '';
             title = h.name + ' has the seat';
         }
     } else if (seatState.grace) {
@@ -4388,6 +4464,32 @@ function openScheduleModal() {
         .catch(function (e) { panel.innerHTML = ''; panel.appendChild(sharedEl('div', 'sp-empty', e.message)); });
 }
 
+// An account changes its own password (POST /api/v1/auth/password).
+function openPasswordModal() {
+    hideUserMenu();
+    ['pwCurrent', 'pwNew', 'pwRepeat'].forEach(function (id) { document.getElementById(id).value = ''; });
+    document.getElementById('pwError').textContent = '';
+    document.getElementById('passwordOverlay').classList.add('visible');
+    setTimeout(function () { document.getElementById('pwCurrent').focus(); }, 0);
+}
+
+function closePasswordModal() {
+    document.getElementById('passwordOverlay').classList.remove('visible');
+}
+
+function passwordSubmit(ev) {
+    if (ev) ev.preventDefault();
+    var err = document.getElementById('pwError'), btn = document.getElementById('pwSave');
+    var cur = document.getElementById('pwCurrent').value, next = document.getElementById('pwNew').value;
+    if (next !== document.getElementById('pwRepeat').value) { err.textContent = 'The two new passwords differ'; return false; }
+    err.textContent = '';
+    btn.disabled = true;
+    sharedApi('POST', '/api/v1/auth/password', { current: cur, password: next })
+        .then(function () { btn.disabled = false; closePasswordModal(); accessToast('Password changed'); })
+        .catch(function (e) { btn.disabled = false; err.textContent = e.message; });
+    return false;
+}
+
 function closeScheduleModal() {
     document.getElementById('scheduleOverlay').classList.remove('visible');
 }
@@ -4457,6 +4559,8 @@ var SHARED_TABS = [['now', 'NOW'], ['accounts', 'ACCOUNTS'], ['schedule', 'SCHED
 function sharedSetTab(tab) {
     sharedView.tab = tab;
     sharedView.pwFor = null;
+    sharedView.notesFor = null;
+    sharedView.importResult = null;
     sharedView.confirmDel = null;
     renderSharedOverlay();
 }
@@ -4569,7 +4673,9 @@ function renderSharedNow(panel, pol) {
     body = sharedEl('div', 'sp-card-body');
     body.appendChild(sharedEl('div', 'sp-card-label', 'TRANSMIT'));
     body.appendChild(sharedEl('div', 'sp-card-main' + (pol.txInhibit ? ' stop' : ''), pol.txInhibit ? 'Inhibited' : 'Allowed'));
-    body.appendChild(sharedEl('div', 'sp-card-sub', pol.txInhibit ? 'Nobody can key the radio, and a held key was released.' : 'Whoever has the role' + (seatOn ? ' and the seat' : '') + ' can key the radio.'));
+    var closedBands = (pol.txInhibitBands || []).join(', ');
+    body.appendChild(sharedEl('div', 'sp-card-sub', pol.txInhibit ? 'Nobody can key the radio, and a held key was released.' : 'Whoever has the role' + (seatOn ? ' and the seat' : '') + ' can key the radio'
+        + (closedBands ? ', except on ' + closedBands + ' (RULES).' : '.')));
     card.appendChild(body);
     acts = sharedEl('div', 'sp-card-acts');
     acts.appendChild(sharedBtn(pol.txInhibit ? 'ALLOW TX' : 'INHIBIT TX', pol.txInhibit ? '' : 'danger', function () { sharedSetPolicy({ txInhibit: !pol.txInhibit }); }));
@@ -4642,6 +4748,9 @@ function renderSharedAccounts(panel, pol) {
         a.appendChild(sharedBtn('PASSWORD', sharedView.pwFor === u.id ? 'active' : '', function () {
             sharedView.pwFor = sharedView.pwFor === u.id ? null : u.id; renderSharedOverlay();
         }));
+        a.appendChild(sharedBtn('NOTES', sharedView.notesFor === u.id ? 'active' : '', function () {
+            sharedView.notesFor = sharedView.notesFor === u.id ? null : u.id; renderSharedOverlay();
+        }));
         a.appendChild(sharedBtn(u.disabled ? 'ENABLE' : 'DISABLE', u.disabled ? '' : 'warn', function () {
             sharedApi('PUT', '/api/v1/shared/users/' + u.id, { disabled: !u.disabled }).then(sharedReload).catch(function (e) { accessToast(e.message); });
         }));
@@ -4660,6 +4769,24 @@ function renderSharedAccounts(panel, pol) {
             row.appendChild(pwRow);
             setTimeout(function () { pw.focus(); }, 0);
         }
+        // The admins' notes about the account: shown under the row, edited
+        // from NOTES.  Admins only; the account never sees them.
+        if (sharedView.notesFor === u.id) {
+            var ntRow = sharedEl('div', 'sp-item-extra');
+            var nt = sharedEl('input', 'wf-field'); nt.value = u.notes || ''; nt.maxLength = 500; nt.autocomplete = 'off';
+            nt.placeholder = 'notes about ' + u.name + ' (admins only): a name, a membership number…';
+            var saveNotes = function () {
+                sharedApi('PUT', '/api/v1/shared/users/' + u.id, { notes: nt.value }).then(function () { sharedView.notesFor = null; sharedReload(); })
+                    .catch(function (e) { accessToast(e.message); });
+            };
+            nt.onkeydown = function (e) { if (e.key === 'Enter') saveNotes(); };
+            ntRow.appendChild(nt);
+            ntRow.appendChild(sharedBtn('SAVE NOTES', '', saveNotes));
+            row.appendChild(ntRow);
+            setTimeout(function () { nt.focus(); }, 0);
+        } else if (u.notes) {
+            row.appendChild(sharedEl('div', 'sp-notes', u.notes));
+        }
         list.appendChild(row);
     });
     panel.appendChild(list);
@@ -4676,14 +4803,68 @@ function renderSharedAccounts(panel, pol) {
     sharedField(form, 'Password', nPass);
     sharedField(form, 'Callsign', nCall);
     sharedField(form, 'Role', nRole);
+    var nNotes = sharedEl('input', 'wf-field'); nNotes.placeholder = 'optional, admins only'; nNotes.maxLength = 500; nNotes.autocomplete = 'off';
+    sharedField(form, 'Notes', nNotes);
     panel.appendChild(form);
     var foot = sharedEl('div', 'sp-form-foot');
     foot.appendChild(sharedEl('span', 'sp-dim', 'listen: hear and watch · control: tune the radio · operate: transmit · admin: this window'));
     foot.appendChild(sharedBtn('ADD ACCOUNT', 'active', function () {
-        sharedApi('POST', '/api/v1/shared/users', { username: nName.value.trim(), password: nPass.value, callsign: nCall.value.trim(), role: nRole.value })
+        sharedApi('POST', '/api/v1/shared/users', { username: nName.value.trim(), password: nPass.value, callsign: nCall.value.trim(), role: nRole.value, notes: nNotes.value })
             .then(sharedReload).catch(function (e) { accessToast(e.message); });
     }));
     panel.appendChild(foot);
+
+    // The list as a file: a backup, or the accounts of another station.
+    panel.appendChild(sharedEl('h4', '', 'USER LIST'));
+    foot = sharedEl('div', 'sp-form-foot');
+    foot.appendChild(sharedEl('span', 'sp-dim', 'EXPORT saves every account with its password hash: keep the file private. IMPORT adds the accounts of such a file; a name already here is left as it is.'));
+    var io = sharedEl('div', 'sp-item-acts');
+    io.appendChild(sharedBtn('EXPORT', '', sharedExportUsers));
+    var pick = sharedEl('input', ''); pick.type = 'file'; pick.accept = '.json,application/json'; pick.style.display = 'none';
+    pick.onchange = function () { if (pick.files && pick.files[0]) sharedImportUsers(pick.files[0]); pick.value = ''; };
+    io.appendChild(pick);
+    io.appendChild(sharedBtn('IMPORT', '', function () { pick.click(); }));
+    foot.appendChild(io);
+    panel.appendChild(foot);
+    var res = sharedView.importResult;
+    if (res) {
+        var box = sharedEl('div', 'sp-import');
+        box.appendChild(sharedEl('div', '', res.added.length + ' added' + (res.added.length ? ': ' + res.added.join(', ') : '')
+            + ' \u00b7 ' + res.skipped.length + ' skipped'));
+        res.skipped.forEach(function (k) { box.appendChild(sharedEl('div', '', (k.username || '(no name)') + ': ' + k.reason)); });
+        panel.appendChild(box);
+    }
+}
+
+function sharedExportUsers() {
+    sharedApi('GET', '/api/v1/shared/users/export').then(function (data) {
+        var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'wfweb-users-' + new Date().toISOString().slice(0, 10) + '.json';
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    }).catch(function (e) { accessToast(e.message); });
+}
+// An export, or a list written by hand: {users: [{username, role, callsign,
+// onAir, notes, disabled, passwordHash | password}]} or the array alone.
+function sharedImportUsers(file) {
+    var reader = new FileReader();
+    reader.onerror = function () { accessToast('could not read the file'); };
+    reader.onload = function () {
+        var data;
+        try { data = JSON.parse(reader.result); } catch (e) { accessToast('not a user list: the file is not JSON'); return; }
+        var users = Array.isArray(data) ? data : (data && data.users);
+        if (!Array.isArray(users) || !users.length) { accessToast('not a user list: no users in the file'); return; }
+        accessToast('Importing ' + users.length + ' accounts\u2026');
+        sharedApi('POST', '/api/v1/shared/users/import', { users: users }).then(function (r) {
+            sharedView.importResult = { added: r.added || [], skipped: r.skipped || [] };
+            accessToast(sharedView.importResult.added.length + ' added, ' + sharedView.importResult.skipped.length + ' skipped');
+            sharedReload();
+        }).catch(function (e) { accessToast(e.message); });
+    };
+    reader.readAsText(file);
 }
 
 // ---- SCHEDULE: who has the seat when.  Times are entered and shown in
@@ -4763,6 +4944,36 @@ function renderSharedRules(panel, pol) {
         'One more than this is turned away. Admins always get in.');
     sharedRule(panel, 'TX time-out', sharedNumber('txTimeoutSecs', pol.txTimeoutSecs, 0, 3600, 's'),
         'A key held longer than this is released. 0: no limit.');
+
+    panel.appendChild(sharedEl('h4', '', 'TRANSMITTING'));
+    sharedRule(panel, 'TX inhibit', sharedSwitch(!!pol.txInhibit, function () { sharedSetPolicy({ txInhibit: !pol.txInhibit }); }),
+        pol.txInhibit ? 'Nobody can key the radio, on any band.' : 'Off: whoever has the role can key the radio. On: nobody can, on any band.');
+    // One button per band of this rig (and any band named in the policy the
+    // rig does not have, so it can be taken out again).
+    var closed = pol.txInhibitBands || [];
+    var closedLow = closed.map(function (n) { return String(n).toLowerCase(); });
+    var names = [];
+    rigBandTable.slice().sort(function (a, b) { return a.start - b.start; }).forEach(function (b) {
+        if (!/^gen/i.test(b.name) && names.indexOf(b.name) < 0) names.push(b.name);
+    });
+    closed.forEach(function (n) {
+        if (!names.some(function (x) { return x.toLowerCase() === String(n).toLowerCase(); })) names.push(n);
+    });
+    var bandBtns = names.map(function (n) {
+        var on = closedLow.indexOf(n.toLowerCase()) >= 0;
+        var btn = sharedBtn(n, 'toggle sp-band' + (on ? ' active' : ''), function () {
+            var next = closed.filter(function (c) { return String(c).toLowerCase() !== n.toLowerCase(); });
+            if (!on) next.push(n);
+            sharedSetPolicy({ txInhibitBands: next });
+        });
+        btn.title = on ? 'Nobody transmits on ' + n + ': press to allow it again' : 'Press to stop everyone transmitting on ' + n;
+        return btn;
+    });
+    if (!bandBtns.length) bandBtns = [sharedEl('span', 'sp-dim', 'the rig\u2019s band list is not in yet')];
+    sharedRule(panel, 'Bands nobody transmits on', bandBtns,
+        closed.length ? 'Red: the key is refused there for everyone, admins included, and a key held while tuning onto one is released. Listening and tuning are not affected.'
+                      : 'Press a band to stop everyone, admins included, transmitting on it. Listening and tuning are not affected.');
+    panel.lastChild.classList.add('wide');
 
     panel.appendChild(sharedEl('h4', '', 'THE SEAT'));
     var seatOn = pol.seat !== false;
@@ -5259,6 +5470,7 @@ function updateFrequency(hz) {
     }
     currentFreq = hz;
     scopeRenderOnTune();
+    if (accessState.shared) updateTxInhibitUi();
 
     // Crossing a front-end boundary (IC-705: 74.8 MHz) changes which P.AMP and
     // ATT steps the rig has, and changing band changes the repeater shifts on
@@ -6848,6 +7060,7 @@ function renderModeOverlay() {
 // the HF ones.
 function populateBands(bands) {
     var byNum = {};
+    rigBandTable = (bands && bands.length) ? bands : [];
     (bands && bands.length ? bands : DEFAULT_BANDS).forEach(function(b) { byNum[b.num] = b; });
     rigBandNums = {};
     for (var n in byNum) if (byNum[n].end > byNum[n].start) rigBandNums[n] = true;
@@ -6862,6 +7075,7 @@ function populateBands(bands) {
     populateDigiBandSel();
     if (window.js8PopulateBands) window.js8PopulateBands();
     if (currentPanel === 'band') renderBandOverlay();
+    updateTxInhibitUi();
 }
 
 // Go to a band (an entry of rigBands), as its BAND-overlay key does.

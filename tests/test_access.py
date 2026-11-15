@@ -235,6 +235,56 @@ def test_user_management(shared):
     assert shared.get("/api/v1/shared/users", cookie=op_cookie).status_code == 403, "not an admin"
     assert shared.get("/api/v1/radio/info", cookie=op_cookie).status_code == 200
 
+    # Notes: the admins' words about an account.  The account never sees them.
+    assert op["notes"] == ""
+    r = shared.req("PUT", f"/api/v1/shared/users/{op['id']}", json={"notes": "  Discord 1234567890, member #42 "}, cookie=admin)
+    assert r.status_code == 200 and r.json()["user"]["notes"] == "Discord 1234567890, member #42"
+    listed = [u for u in shared.get("/api/v1/shared/users", cookie=admin).json()["users"] if u["id"] == op["id"]][0]
+    assert listed["notes"] == "Discord 1234567890, member #42"
+    assert "Discord" not in shared.get("/api/v1/auth/me", cookie=op_cookie).text
+    r = shared.post("/api/v1/shared/users", {"username": "noted", "password": "operator-pw", "role": "listen", "notes": "guest of W1AW"}, cookie=admin)
+    assert r.status_code == 201 and r.json()["user"]["notes"] == "guest of W1AW"
+    assert shared.req("DELETE", f"/api/v1/shared/users/{r.json()['user']['id']}", cookie=admin).status_code == 200
+    audit = (shared.shared_dir / "audit.log").read_text()
+    assert "user-updated clubadmin@" in audit and "Discord" not in audit, "the audit log says notes changed, not what they say"
+
+    # The user list as a file: every account with its hash, nothing of the
+    # server's own (ids, sessions, tokens).  Admins only.
+    assert shared.get("/api/v1/shared/users/export", cookie=op_cookie).status_code == 403
+    exp = shared.get("/api/v1/shared/users/export", cookie=admin).json()
+    assert exp["wfwebUsers"] == 1
+    mine = [u for u in exp["users"] if u["username"] == "op"][0]
+    assert set(mine) == {"username", "callsign", "role", "onAir", "notes", "disabled", "passwordHash"}
+    assert mine["passwordHash"].startswith("pbkdf2-sha256$") and mine["notes"] == "Discord 1234567890, member #42"
+    # Imported: an entry with the hash logs in with the old password, one with
+    # a plain password is hashed here; names that exist are left alone.
+    carried = dict(mine, username="carried", notes="from the other station", callsign="k2def", onAir="own")
+    r = shared.post("/api/v1/shared/users/import", {"users": [
+        carried,
+        {"username": "fresh", "password": "fresh-password", "role": "listen"},
+        dict(mine, role="admin", notes="overwritten?"),
+        {"username": "nopass", "role": "listen"},
+        {"username": "badrole", "password": "fresh-password", "role": "owner"},
+        {"username": "short", "password": "x", "role": "listen"},
+        {"username": "forged", "passwordHash": "plain-text", "role": "listen"},
+    ]}, cookie=admin)
+    assert r.status_code == 200, r.text
+    assert r.json()["added"] == ["carried", "fresh"]
+    assert [k["username"] for k in r.json()["skipped"]] == ["op", "nopass", "badrole", "short", "forged"]
+    assert "taken" in r.json()["skipped"][0]["reason"]
+    byname = {u["name"]: u for u in shared.get("/api/v1/shared/users", cookie=admin).json()["users"]}
+    assert byname["op"]["role"] == "operate" and byname["op"]["notes"] == "Discord 1234567890, member #42"
+    assert byname["carried"]["callsign"] == "K2DEF" and byname["carried"]["onAir"] == "own"
+    assert byname["carried"]["notes"] == "from the other station" and byname["carried"]["id"] != op["id"]
+    assert shared.post("/api/v1/auth/login", {"username": "carried", "password": "operator-pw"}).status_code == 200
+    assert shared.post("/api/v1/auth/login", {"username": "fresh", "password": "fresh-password"}).status_code == 200
+    assert shared.post("/api/v1/shared/users/import", {"users": []}, cookie=admin).status_code == 400
+    assert shared.post("/api/v1/shared/users/import", {"users": [carried]}, cookie=op_cookie).status_code == 403
+    for name in ("carried", "fresh"):
+        assert shared.req("DELETE", f"/api/v1/shared/users/{byname[name]['id']}", cookie=admin).status_code == 200
+    audit = (shared.shared_dir / "audit.log").read_text()
+    assert "users-export clubadmin@" in audit and "users-import clubadmin@" in audit and "2 added, 5 skipped" in audit
+
     # Disabling ends the sessions and refuses the login.
     r = shared.req("PUT", f"/api/v1/shared/users/{op['id']}", json={"disabled": True}, cookie=admin)
     assert r.status_code == 200 and r.json()["user"]["disabled"] is True

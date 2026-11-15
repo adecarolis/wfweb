@@ -317,6 +317,73 @@ def test_tx_inhibit(srv):
         assert denied_for(ws, {"cmd": "setPTT", "value": False}) is None
 
 
+def _tune(srv, ws, hz):
+    assert denied_for(ws, {"cmd": "setFrequency", "value": hz}) is None
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        if srv.get("/api/v1/radio/frequency", cookie=srv.admin_cookie).json().get("hz") == hz:
+            return
+        time.sleep(0.1)
+    raise AssertionError(f"the rig did not go to {hz}")
+
+
+def test_tx_inhibit_per_band(srv):
+    """A band closed to transmitting: for everyone, admins included, on that
+    band only; tuning and the rest of the station are untouched."""
+    ws, _ = open_ws(srv, "op")
+    adm, _ = open_ws(srv, "clubadmin")
+    with ws, adm:
+        _tune(srv, ws, 14074000)
+        pol = set_policy(srv, txInhibitBands=["20m", "20M", "Gen", "", "60m"])
+        assert pol["txInhibitBands"] == ["20m", "60m"], "duplicates, blanks and Gen dropped"
+        assert pol["txInhibit"] is False
+        for sock in (ws, adm):
+            d = denied_for(sock, {"cmd": "setPTT", "value": True})
+            assert d is not None and "on 20m" in d["reason"]
+        d = denied_for(ws, {"cmd": "sendCW", "text": "TEST"})
+        assert d is not None and "on 20m" in d["reason"]
+        r = srv.req("PUT", "/api/v1/radio/ptt", json={"transmitting": True}, token=srv.tokens["op"], plain=True)
+        assert r.status_code == 403 and r.json()["band"] == "20m"
+        assert ptt_state(srv) is False
+
+        # Another band: the key works; tuned onto the closed one, it is released.
+        _tune(srv, ws, 7074000)
+        assert denied_for(ws, {"cmd": "setPTT", "value": True}) is None
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline and not ptt_state(srv):
+            time.sleep(0.1)
+        assert ptt_state(srv) is True
+        # (The 'denied' that says why may arrive while _tune reads the
+        # socket: the audit log is checked for it below.)
+        _tune(srv, ws, 14074000)
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline and ptt_state(srv):
+            time.sleep(0.1)
+        assert ptt_state(srv) is False
+
+        # Closing the band under a held key releases it too.
+        _tune(srv, ws, 7074000)
+        assert denied_for(ws, {"cmd": "setPTT", "value": True}) is None
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline and not ptt_state(srv):
+            time.sleep(0.1)
+        set_policy(srv, txInhibitBands=["40m"])
+        d = recv_until(ws, lambda m: m.get("type") == "denied" and m.get("cmd") == "setPTT", 5.0)
+        assert d is not None and "on 40m" in d["reason"]
+        deadline = time.monotonic() + 5
+        while time.monotonic() < deadline and ptt_state(srv):
+            time.sleep(0.1)
+        assert ptt_state(srv) is False
+
+        assert set_policy(srv, txInhibitBands=[])["txInhibitBands"] == []
+        assert denied_for(ws, {"cmd": "setPTT", "value": True}) is None
+        assert denied_for(ws, {"cmd": "setPTT", "value": False}) is None
+    audit = (srv.shared_dir / "audit.log").read_text()
+    assert "tx-inhibit-bands=20m,60m" in audit and "tx-inhibit-bands=none" in audit
+    assert "unkey op@127.0.0.1 transmitting on 20m is inhibited" in audit
+    assert "unkey op@127.0.0.1 transmitting on 40m is inhibited" in audit
+
+
 def test_tx_timeout(srv):
     # The socket first: without the websockets package this test is skipped
     # there, and must not leave the 2 s time-out behind for the next one.
@@ -388,7 +455,7 @@ def test_connection_cap_and_kick(srv):
 
 def test_policy_is_read_back(srv):
     pol = srv.get("/api/v1/shared/policy", cookie=srv.admin_cookie).json()["policy"]
-    assert pol == {"anonymous": "none", "txInhibit": False, "txTimeoutSecs": 600, "maxClients": 20,
+    assert pol == {"anonymous": "none", "txInhibit": False, "txInhibitBands": [], "txTimeoutSecs": 600, "maxClients": 20,
                    "seat": False, "seatIdleSecs": 600, "seatRequestSecs": 60, "seatMaxSecs": 0,
                    "seatPreemptHigher": False, "listenIn": True, "allowPrivate": False}
     assert srv.get("/api/v1/shared/policy", cookie=srv.cookies["op"]).status_code == 403
