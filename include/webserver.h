@@ -470,11 +470,59 @@ private:
     std::unique_ptr<QSettings> openSettings() const;
     // Station logbook (see logbook.h).  These wrap the Logbook mutations
     // with the WebSocket delta events and the WSJT-X emission.
-    bool logbookAdd(QsoRecord &r);
-    bool logbookUpdate(const QString &id, const QsoRecord &r);
-    bool logbookRemove(const QString &id);
+    // `who` is the account behind the change (a socket's principal, the
+    // REST caller); nullptr is rigctld / an internal caller, and everyone
+    // without --shared.
+    bool logbookAdd(QsoRecord &r, const AccessPrincipal *who = nullptr);
+    bool logbookUpdate(const QString &id, QsoRecord r, const AccessPrincipal *who = nullptr);
+    bool logbookRemove(const QString &id, const AccessPrincipal *who = nullptr);
     void logbookReset();
-    QJsonObject logbookSummary() const;
+    QJsonObject logbookSummary(const AccessPrincipal *who = nullptr) const;
+    // Shared Station, callsigns and the log (phase 6).  One predicate each
+    // for "may see", "may change" and "may export" a record; every route
+    // and every broadcast asks them.  Without --shared, or for a nullptr
+    // principal, all three say yes.
+    //   see:    admins everything; an account the club log (records on the
+    //           configured station call) and what it logged itself; a
+    //           visitor nothing.
+    //   change: admins everything; an account what it logged itself.
+    //   export: admins the club log; an account (admins with own=true) the
+    //           QSOs it made on its own call.
+    bool isClubCall(const QString &stationCall) const;
+    bool logSees(const AccessPrincipal *who, const QsoRecord &r) const;
+    bool logMayChange(const AccessPrincipal *who, const QsoRecord &r) const;
+    bool logMayExport(const AccessPrincipal *who, const QsoRecord &r, bool own) const;
+    Logbook::Filter logFilter(const AccessPrincipal *who) const;
+    Logbook::Filter logExportFilter(const AccessPrincipal *who, bool own) const;
+    void logCounts(const AccessPrincipal *who, int *count, int *unexported) const;
+    QJsonObject qsoJson(const QsoRecord &r) const;   // + operatorName in shared mode
+    // A log message to every socket that may see `about` (all of them when
+    // nullptr), built per viewer: the counts in it are the viewer's own.
+    void logbookSend(const QsoRecord *about, const std::function<QJsonObject(const AccessPrincipal *)> &make);
+    QString logWho(const AccessPrincipal *who) const;
+    const AccessPrincipal *restPrincipal_ = nullptr;   // the REST caller while handleRestRequest runs (shared mode)
+    QString restIp_;
+    // The on-air call: the configured station call (reporterCallsign),
+    // except while an account set to transmit under its own callsign holds
+    // the seat.  Never persisted.  applyOnAirCall() pushes a change to
+    // everything that identifies the station: RADE's EOO callsign, the
+    // FreeDV and PSK reporters, every page (stationChanged) and the audit
+    // log; the logbook stamp and the remote log read onAirCall() directly.
+    QString onAirCall() const;
+    QWebSocket *onAirHolder() const;          // the holder transmitting under its own call, or nullptr
+    void applyOnAirCall(bool stationChanged = false);
+    QJsonObject stationJson() const;          // the stationChanged message
+    void addOnAirInfo(QJsonObject &o) const;  // clubCallsign / onAirOwn / onAirOperator, shared mode only
+    // A browser's source call for packet (APRS beacon, AX.25 terminal)
+    // must be the on-air call, any SSID.  True = refused and answered.
+    bool onAirDenies(QWebSocket *client, const QString &cmd, const QString &call);
+    // An account set to its own call but without one cannot be on the air.
+    bool seatEligible(QWebSocket *client, const QString &cmd);
+    // An admin edited an account: its open sockets follow, and so does
+    // the on-air call when it holds the seat.
+    void refreshUserClients(const QString &userId);
+    QString onAirApplied_;
+    QString onAirAppliedBy_;
     bool logbookClear(const char *who);
     void wsjtxSendHeartbeat();
     void wsjtxSendStatus();

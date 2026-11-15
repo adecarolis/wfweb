@@ -299,6 +299,56 @@ def test_files_are_private(shared):
 
 
 # ---------------------------------------------------------------------------
+# A lost admin password: --shared-reset-admin
+# ---------------------------------------------------------------------------
+
+
+def test_reset_admin_reaches_the_page(event_loop, tmp_path):
+    """The flag brings the setup code back; the page must be told, or its
+    sheet has no field for the code (2026-11-14: with visitors let in, and
+    with them refused, it only ever offered the plain login)."""
+    pytest.importorskip("websockets")
+    mock = MockIcomRadio(radio_addr=0x98)
+    _run_on_loop(event_loop, mock.start())
+    try:
+        srv = launch_shared_wfweb(mock, event_loop, tmp_path)
+        r = srv.post("/api/v1/auth/setup", {"code": srv.setup_code(), "username": "clubadmin",
+                                            "password": "the-forgotten-one"})
+        assert r.status_code == 200, r.text
+        _stop_wfweb(srv.proc)
+
+        srv = launch_shared_wfweb(mock, event_loop, tmp_path, extra_args=("--shared-reset-admin",))
+        try:
+            with srv.ws() as ws:
+                first = json.loads(ws.recv(timeout=10))
+                assert first["type"] == "authRequired"
+                assert first["setupRequired"] is False and first["recovery"] is True
+            # A visitor who is let in learns it from the access message.
+            old = set_cookie(srv.post("/api/v1/auth/login", {"username": "clubadmin", "password": "the-forgotten-one"}))[0]
+            assert srv.req("PUT", "/api/v1/shared/policy", json={"anonymous": "listen"}, cookie=old).status_code == 200
+            with srv.ws() as ws:
+                first = json.loads(ws.recv(timeout=10))
+                assert first["type"] == "access" and first["anonymous"] is True
+                assert first.get("recovery") is True and "setupRequired" not in first
+            with srv.ws(cookie=old) as ws:
+                first = json.loads(ws.recv(timeout=10))
+                assert first["type"] == "access" and "recovery" not in first, "only a visitor is told"
+
+            r = srv.post("/api/v1/auth/setup", {"code": srv.setup_code(), "username": "clubadmin",
+                                                "password": "a-new-password-2026"})
+            assert r.status_code == 200, r.text
+            assert srv.post("/api/v1/auth/login", {"username": "clubadmin", "password": "the-forgotten-one"}).status_code == 401
+            assert srv.post("/api/v1/auth/login", {"username": "clubadmin", "password": "a-new-password-2026"}).status_code == 200
+            with srv.ws() as ws:
+                first = json.loads(ws.recv(timeout=10))
+                assert first["type"] == "access" and "recovery" not in first, "the code is spent"
+        finally:
+            _stop_wfweb(srv.proc)
+    finally:
+        _run_on_loop(event_loop, mock.stop())
+
+
+# ---------------------------------------------------------------------------
 # An open server is unchanged
 # ---------------------------------------------------------------------------
 

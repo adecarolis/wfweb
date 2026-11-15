@@ -198,6 +198,79 @@ int main()
         require(!Logbook::isPersistentLocation("/anything", QString(), true), "persistent: empty mountinfo inside a container => not persistent");
     }
 
+    // --- Shared Station: OPERATOR, the account, filters and tallies ---
+    {
+        QsoRecord r = qso("K9OPS", "20261113", "101500");
+        r.stationCall = "F/K1FM";
+        r.operatorCall = " f/k1fm ";
+        r.userId = "u-guest";
+        r = r.normalized();
+        require(r.operatorCall == "F/K1FM" && r.userId == "u-guest", "operator: normalised");
+        const QByteArray full = r.toAdif(), clean = r.toAdif(false);
+        require(full.contains("<OPERATOR:6>F/K1FM") && full.contains("<APP_WFWEB_USER:7>u-guest"), "operator: both written");
+        require(clean.contains("<OPERATOR:6>F/K1FM") && !clean.contains("APP_WFWEB_"),
+                "operator: OPERATOR is standard and stays in clean exports, APP_WFWEB_* goes");
+        const QList<QsoRecord> back = Logbook::parseAdif(Logbook::adifHeader() + full);
+        require(back.size() == 1 && back[0].operatorCall == "F/K1FM" && back[0].userId == "u-guest"
+                && back[0].stationCall == "F/K1FM", "operator: round trip");
+        const QJsonObject j = r.toJson();
+        require(j["operator"].toString() == "F/K1FM" && j["userId"].toString() == "u-guest", "operator: in the JSON");
+        QJsonObject in = j;
+        in["userId"] = "u-somebody-else";
+        const QsoRecord fromClient = QsoRecord::fromJson(in);
+        require(fromClient.operatorCall == "F/K1FM" && fromClient.userId.isEmpty(), "operator: a client never names the account");
+        const QsoRecord plain = qso("K9PLAIN", "20261113", "101600");
+        require(!plain.toAdif().contains("OPERATOR") && !plain.toAdif().contains("APP_WFWEB_USER")
+                && !plain.toJson().contains("operator") && !plain.toJson().contains("userId"),
+                "operator: a record without one is written as before");
+
+        QTemporaryDir tmp2;
+        Logbook lb;
+        require(lb.open(tmp2.filePath("shared.adi")), "tally: open");
+        const auto mk = [](const char *call, const char *time, const char *station, const char *user) {
+            QsoRecord q = qso(call, "20261113", time);
+            q.stationCall = station; q.userId = user;
+            return q.normalized();
+        };
+        QsoRecord c1 = mk("DX1AA", "110000", "W1CLUB", "u-mem"), c2 = mk("DX2BB", "110100", "W1CLUB", "u-guest"),
+                  g1 = mk("DX3CC", "110200", "F/K1FM", "u-guest"), g2 = mk("DX1AA", "110300", "F/K1FM", "u-guest"),
+                  old = mk("DX4DD", "090000", "", "");
+        require(lb.add(c1) && lb.add(c2) && lb.add(g1) && lb.add(g2) && lb.add(old), "tally: five records");
+        const auto club = [](const QString &, const QString &call) { return call.isEmpty() || call == "W1CLUB"; };
+        const auto guestOwn = [](const QString &user, const QString &call) { return user == "u-guest" && call == "F/K1FM"; };
+        require(lb.tally(club).count == 3 && lb.tally(club).unexported == 3, "tally: the club log");
+        require(lb.tally(guestOwn).count == 2, "tally: the guest's own-call QSOs");
+        const Logbook::Filter memberSees = [](const QsoRecord &q) { return q.stationCall.isEmpty() || q.stationCall == "W1CLUB" || q.userId == "u-mem"; };
+        const Logbook::Filter guestExports = [](const QsoRecord &q) { return q.userId == "u-guest" && q.stationCall == "F/K1FM"; };
+        const Logbook::Page p1 = lb.page(2, QString(), QString(), memberSees);
+        require(p1.entries.size() == 2 && p1.entries[0].call == "DX2BB" && p1.entries[1].call == "DX1AA" && !p1.next.isEmpty(),
+                "filter: a page of what the viewer sees, with a cursor while more remains");
+        const Logbook::Page p2 = lb.page(2, p1.next, QString(), memberSees);
+        require(p2.entries.size() == 1 && p2.entries[0].call == "DX4DD" && p2.next.isEmpty(), "filter: last page");
+        const Logbook::Page pg = lb.page(1, QString(), QString(), guestExports);
+        const Logbook::Page pg2 = lb.page(1, pg.next, QString(), guestExports);
+        require(pg.entries.size() == 1 && pg2.entries.size() == 1 && pg2.next.isEmpty(),
+                "filter: no cursor when the rest of the log holds nothing for the viewer");
+        require(lb.unexportedIds(guestExports).size() == 2 && lb.toAdif(true, false, guestExports).count("<EOR>") == 2,
+                "filter: export set");
+        int considered = 0;
+        const QJsonObject worked = lb.workedCalls(guestExports, &considered);
+        require(considered == 2 && worked.contains("DX1AA") && worked.contains("DX3CC") && !worked.contains("DX2BB"),
+                "filter: worked calls per station call");
+        // Marking: only what the filter lets through, whatever ids are named.
+        require(lb.markExported(QStringList{c1.id, g1.id, g2.id}, guestExports) == 2, "filter: marks only the caller's records");
+        require(lb.tally(guestOwn).unexported == 0 && lb.tally(club).unexported == 3, "tally: follows the export stamps");
+        QsoRecord edit = *lb.find(c1.id);
+        edit.stationCall = "F/K1FM"; edit.userId = "u-guest";
+        require(lb.update(c1.id, edit) && lb.tally(club).count == 2 && lb.tally(guestOwn).count == 3
+                && lb.tally(guestOwn).unexported == 1, "tally: follows an update");
+        require(lb.remove(g2.id) && lb.tally(guestOwn).count == 2, "tally: follows a remove");
+        Logbook reopened;
+        require(reopened.open(tmp2.filePath("shared.adi")) && reopened.tally(club).count == 2
+                && reopened.tally(guestOwn).count == 2 && reopened.tally(guestOwn).unexported == 1, "tally: rebuilt on open");
+        require(lb.clear() && lb.tally([](const QString &, const QString &) { return true; }).count == 0, "tally: cleared");
+    }
+
     qInfo() << "logbook_test: all checks passed";
     return 0;
 }

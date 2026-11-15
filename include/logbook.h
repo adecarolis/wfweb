@@ -2,9 +2,12 @@
 #define LOGBOOK_H
 
 #include <QByteArray>
+#include <QHash>
 #include <QJsonObject>
 #include <QList>
 #include <QString>
+#include <QStringList>
+#include <functional>
 
 // One QSO as the server stores it.  JSON only at the edges (REST/WebSocket);
 // ADIF on disk.  Kept as a plain struct rather than a QJsonObject so a
@@ -24,6 +27,12 @@ struct QsoRecord {
     QString comment;
     QString name;
     QString stationCall;  // STATION_CALLSIGN: the call this station used for the QSO
+    // Shared Station (--shared): who made the QSO.  operatorCall is ADIF's
+    // OPERATOR, the person's own call; userId is the account that logged it,
+    // persisted as APP_WFWEB_USER, and is what decides who may change the
+    // record.  Both empty on a record logged without accounts or imported.
+    QString operatorCall;
+    QString userId;
     int     df = -1;    // digi audio offset in Hz, <0 = not set
     // UTC stamp (yyyyMMddTHHmmssZ) of the export that included this record,
     // persisted as APP_WFWEB_EXPORTED.  Empty = not exported yet ("new").
@@ -36,10 +45,11 @@ struct QsoRecord {
     QString sortKey() const { return date + time; }
     QJsonObject toJson() const;
     // One <...> record terminated by <EOR>\n.  appFields=false leaves out the
-    // APP_WFWEB_* bookkeeping (id, export stamp, digi offset) for files meant
-    // for other logging services.
+    // APP_WFWEB_* bookkeeping (id, export stamp, digi offset, account) for
+    // files meant for other logging services; OPERATOR is standard and stays.
     QByteArray toAdif(bool appFields = true) const;
     // Whitelists and length-caps untrusted input; empty call => invalid record.
+    // Never reads userId: the account behind a record is the server's to say.
     static QsoRecord fromJson(const QJsonObject &in, const QString &id = QString());
     // Trim / upper-case / cap every field and mint an id; the single
     // normalisation path for JSON input and ADIF parsing alike.
@@ -51,6 +61,19 @@ struct QsoRecord {
 // file atomically.  Never hands out the whole log — callers page through it.
 class Logbook {
 public:
+    // Which records a caller is shown or may export (Shared Station); an
+    // empty filter is every record.
+    using Filter = std::function<bool(const QsoRecord &)>;
+    // Record counts per (account, station call), kept as records change so
+    // "how many does this viewer see" is a walk over a handful of pairs and
+    // never a scan of the log per socket per QSO.
+    struct Tally {
+        int count = 0;
+        int unexported = 0;
+    };
+    // The sum over the pairs `pick(userId, stationCall)` accepts.
+    Tally tally(const std::function<bool(const QString &, const QString &)> &pick) const;
+
     struct Page {
         QList<QsoRecord> entries;   // newest first
         QString next;               // cursor for the following page, empty at the end
@@ -103,19 +126,19 @@ public:
     // markExported() stamps the given ids (one rewrite) and returns how many
     // records changed.
     int unexportedCount() const;
-    QByteArray toAdif(bool unexportedOnly, bool appFields = true) const;
-    QStringList unexportedIds() const;
-    int markExported(const QStringList &ids);
+    QByteArray toAdif(bool unexportedOnly, bool appFields = true, const Filter &filter = Filter()) const;
+    QStringList unexportedIds(const Filter &filter = Filter()) const;
+    int markExported(const QStringList &ids, const Filter &filter = Filter());
 
     // Up to `limit` entries older than `before` (a cursor from a previous
     // page, empty = start from the newest), optionally only those with the
     // given callsign.
-    Page page(int limit, const QString &before, const QString &call) const;
+    Page page(int limit, const QString &before, const QString &call, const Filter &filter = Filter()) const;
     // Every distinct callsign with the bands it was worked on, as
     // {"K1ABC": ["20M", "40M"], ...}.  One pass over the log; the browser
     // derives its "new one" / "new on this band" hints from this rather than
     // paging through 100k records.
-    QJsonObject workedCalls() const;
+    QJsonObject workedCalls(const Filter &filter = Filter(), int *considered = nullptr) const;
 
 private:
     int insertSorted(const QsoRecord &r);
@@ -123,9 +146,12 @@ private:
     int lowerBound(const QString &sortKey, const QString &id) const;
     bool rewrite() const;
     bool append(const QsoRecord &r) const;
+    void tallyRecord(const QsoRecord &r, int sign);
+    void rebuildTally();
 
     QString path_;
     QList<QsoRecord> records_;   // ascending by (sortKey, id)
+    QHash<QString, Tally> tally_;   // by userId + '\n' + stationCall
 };
 
 #endif // LOGBOOK_H

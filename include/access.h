@@ -66,6 +66,11 @@ struct AccessUser {
     QString id;             // random, stable: sessions and tokens point at it
     QString name;           // login name, unique ignoring case
     QString callsign;
+    // What the station identifies as while this account has the seat:
+    // false = the station's call (a club member), true = the account's own
+    // callsign (a licensed guest).  Needs a callsign.  JSON "onAir":
+    // "station" | "own".
+    bool onAirOwn = false;
     Access::Role role = Access::Role::Listen;
     QString passwordHash;   // "pbkdf2-sha256$<iterations>$<salt b64>$<key b64>"
     bool disabled = false;
@@ -92,6 +97,7 @@ struct AccessPrincipal {
     QString userId;
     QString name;
     QString callsign;
+    bool onAirOwn = false;  // AccessUser::onAirOwn
     Access::Role role = Access::Role::None;
     QString via;            // "session" | "token" | "local"
     QByteArray sessionHash; // set when via == "session"
@@ -135,6 +141,11 @@ public:
     bool setPasswordHash(const QString &id, const QString &passwordHash);
     bool setRole(const QString &id, Access::Role role);
     bool setCallsign(const QString &id, const QString &callsign);
+    // "station" or "own"; own is refused on an account without a callsign.
+    bool setOnAir(const QString &id, const QString &onAir, QString *error = nullptr);
+    // Does the callsign look like one (letters, digits, '/', a digit and a
+    // letter in it)?  Empty is valid: an account need not have one.
+    static bool validCallsign(const QString &callsign);
     bool setDisabled(const QString &id, bool disabled);  // disabling ends the user's sessions
     bool removeUser(const QString &id);                   // and the user's sessions
     static bool validName(const QString &name, QString *error = nullptr);

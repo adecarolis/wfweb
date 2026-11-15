@@ -1058,7 +1058,11 @@ void webServer::onHttpReadyRead()
             }
             // A script acts on the radio only while nobody else has the seat:
             // a free seat, or one held by a browser of the same account.
-            if (seatEnabled_ && seat_.holder && (cap == Access::Cap::Control || cap == Access::Cap::Tx)
+            // Correcting the log (an edit, a delete, the export stamp) does not
+            // act on the radio; logging a new QSO does, it is stamped with
+            // the call on the air.
+            const bool logEdit = path.startsWith("/api/v1/logbook/");
+            if (seatEnabled_ && seat_.holder && (cap == Access::Cap::Control || cap == Access::Cap::Tx) && !logEdit
                 && !seatHolderIs(ctx.who.authenticated ? ctx.who.userId : QString())) {
                 sendRestResponse(socket, 409, QJsonObject{{"error", seatLabel(seat_.holder) + " has the seat"}, {"need", "seat"}});
                 return;
@@ -1084,9 +1088,13 @@ void webServer::onHttpReadyRead()
                 return;
             }
             restWho_ = AccessControl::who(ctx.who.authenticated ? ctx.who.name : QStringLiteral("anonymous"), ctx.ip);
+            restPrincipal_ = &ctx.who;
+            restIp_ = ctx.ip;
         }
         handleRestRequest(socket, method, path, query, body);
         restWho_.clear();
+        restPrincipal_ = nullptr;
+        restIp_.clear();
         return;
     }
 
@@ -1351,12 +1359,22 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
 
     // --- Station identity: one callsign + grid for the whole server ---
     if (p == "/api/v1/station") {
+        // callsign is the configured station call; with --shared, onAir is
+        // the call in use right now (a guest holding the seat under their own).
+        const auto stationOut = [this]() {
+            QJsonObject o{{"callsign", reporterCallsign}, {"grid", reporterGrid}};
+            if (sharedMode_) {
+                o["onAir"] = onAirCall();
+                addOnAirInfo(o);
+            }
+            return o;
+        };
         if (method == "GET") {
-            sendRestResponse(socket, 200, QJsonObject{{"callsign", reporterCallsign}, {"grid", reporterGrid}});
+            sendRestResponse(socket, 200, stationOut());
         } else if (method == "PUT" || method == "POST") {
             const QJsonObject in = parseBody();
             applyStationCallsign(in.value("callsign").toString(), in.value("grid").toString(), true);
-            sendRestResponse(socket, 200, QJsonObject{{"callsign", reporterCallsign}, {"grid", reporterGrid}});
+            sendRestResponse(socket, 200, stationOut());
         } else {
             sendRestResponse(socket, 405, QJsonObject{{"error", "Method not allowed"}});
         }
@@ -1380,6 +1398,13 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
     // --- Station logbook (see logbook.h) ---
     // The log is never returned whole: GET pages newest-first with a cursor
     // so a lifetime log stays cheap for the browser and the Pi alike.
+    // Shared Station: who is asking decides what of the log they get (see
+    // logSees / logMayChange / logMayExport); `who` is nullptr without
+    // --shared and every filter is then empty.
+    const AccessPrincipal *who = restPrincipal_;
+    const auto forbidden = [&](const QString &why) {
+        sendRestResponse(socket, 403, QJsonObject{{"error", why}});
+    };
     if (p == "/api/v1/logbook/adif") {
         if (method == "GET") {
             // ?new=1: only records without an export stamp, as plain ADIF
@@ -1387,7 +1412,14 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
             // client that wants to confirm the export uses /export instead,
             // which also returns the ids.
             if (query.queryItemValue("new") == "1") {
-                sendHttpResponse(socket, 200, "OK", "application/x-adif; charset=utf-8", logbook_.toAdif(true, false));
+                sendHttpResponse(socket, 200, "OK", "application/x-adif; charset=utf-8",
+                                 logbook_.toAdif(true, false, logExportFilter(who, query.queryItemValue("own") == "1")));
+                return;
+            }
+            // Anyone but an admin gets the records they may see, not the file.
+            if (who && who->role != Access::Role::Admin) {
+                sendHttpResponse(socket, 200, "OK", "application/x-adif; charset=utf-8",
+                                 logbook_.toAdif(false, true, logFilter(who)));
                 return;
             }
             QFile file(logbook_.path());
@@ -1401,7 +1433,7 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
             // Import: merge every record of the posted ADIF document.  An
             // imported file normally comes from a log that already handled
             // its own uploads, so its records count as exported unless the
-            // caller says ?new=1.
+            // caller says ?new=1.  (Admins only with --shared: restCapability.)
             QList<QsoRecord> incoming = Logbook::parseAdif(body);
             if (query.queryItemValue("new") != "1") {
                 const QString stamp = Logbook::exportStamp();
@@ -1411,8 +1443,11 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
             const int added = logbook_.merge(incoming);
             qInfo() << "Logbook: imported" << added << "of" << incoming.size() << "QSOs over REST";
             if (added) logbookReset();
+            if (who && access_) access_->audit("log-import", logWho(who), QString("%1 added of %2").arg(added).arg(incoming.size()));
+            int count = 0, unexported = 0;
+            logCounts(who, &count, &unexported);
             sendRestResponse(socket, 202, QJsonObject{{"added", added}, {"skipped", incoming.size() - added},
-                                                     {"total", logbook_.count()}, {"unexported", logbook_.unexportedCount()}});
+                                                     {"total", count}, {"unexported", unexported}});
         } else {
             sendRestResponse(socket, 405, QJsonObject{{"error", "Method not allowed"}});
         }
@@ -1420,7 +1455,21 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
     }
     if (p == "/api/v1/logbook/worked") {
         if (method != "GET") { sendRestResponse(socket, 405, QJsonObject{{"error", "Method not allowed"}}); return; }
-        sendRestResponse(socket, 200, QJsonObject{{"calls", logbook_.workedCalls()}, {"total", logbook_.count()}});
+        if (!who) {
+            sendRestResponse(socket, 200, QJsonObject{{"calls", logbook_.workedCalls()}, {"total", logbook_.count()}});
+            return;
+        }
+        // Worked-before is per callsign: the answer is for the call this
+        // viewer would transmit as -- their own if the account is set to
+        // it (and the seat is in use), else the station's.
+        const bool own = who->authenticated && who->onAirOwn && !who->callsign.isEmpty() && seatEnabled_;
+        const QString myCall = own ? who->callsign : reporterCallsign;
+        const bool club = isClubCall(myCall);
+        int considered = 0;
+        const QJsonObject calls = logbook_.workedCalls([&](const QsoRecord &r) {
+            return logSees(who, r) && (club ? isClubCall(r.stationCall) : r.stationCall == myCall);
+        }, &considered);
+        sendRestResponse(socket, 200, QJsonObject{{"calls", calls}, {"total", considered}, {"callsign", myCall}});
         return;
     }
     if (p == "/api/v1/logbook/export") {
@@ -1430,14 +1479,16 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
             sendRestResponse(socket, 405, QJsonObject{{"error", "Method not allowed"}});
             return;
         }
-        const QStringList ids = logbook_.unexportedIds();
+        const Logbook::Filter filter = logExportFilter(who, query.queryItemValue("own") == "1");
+        const QStringList ids = logbook_.unexportedIds(filter);
         sendRestResponse(socket, 200, QJsonObject{{"count", ids.size()},
                                                  {"ids", QJsonArray::fromStringList(ids)},
-                                                 {"adif", QString::fromUtf8(logbook_.toAdif(true, false))}});
+                                                 {"adif", QString::fromUtf8(logbook_.toAdif(true, false, filter))}});
         return;
     }
     if (p == "/api/v1/logbook/exported") {
         // The client that saved a "new" download reports the ids it got.
+        // Only records the caller may export are stamped.
         if (method != "POST") {
             sendRestResponse(socket, 405, QJsonObject{{"error", "Method not allowed"}});
             return;
@@ -1445,36 +1496,45 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
         QStringList ids;
         const QJsonArray arr = parseBody().value("ids").toArray();
         for (const QJsonValue &v : arr) ids.append(v.toString());
-        const int marked = logbook_.markExported(ids);
+        Logbook::Filter filter;
+        if (who) filter = [this, who](const QsoRecord &r) { return logMayExport(who, r, false) || logMayExport(who, r, true); };
+        const int marked = logbook_.markExported(ids, filter);
         if (marked) {
             qInfo() << "Logbook:" << marked << "QSOs marked as exported";
             logbookReset();
         }
-        sendRestResponse(socket, 200, QJsonObject{{"marked", marked}, {"unexported", logbook_.unexportedCount()}});
+        int count = 0, unexported = 0;
+        logCounts(who, &count, &unexported);
+        sendRestResponse(socket, 200, QJsonObject{{"marked", marked}, {"unexported", unexported}});
         return;
     }
     if (p == "/api/v1/logbook") {
         if (method == "GET") {
             const Logbook::Page pg = logbook_.page(query.queryItemValue("limit").toInt(),
                                                    query.queryItemValue("before"),
-                                                   query.queryItemValue("call"));
+                                                   query.queryItemValue("call"), logFilter(who));
             QJsonArray entries;
-            for (const QsoRecord &r : pg.entries) entries.append(r.toJson());
-            QJsonObject out{{"entries", entries}, {"total", logbook_.count()},
-                            {"unexported", logbook_.unexportedCount()}};
+            for (const QsoRecord &r : pg.entries) entries.append(qsoJson(r));
+            int count = 0, unexported = 0;
+            logCounts(who, &count, &unexported);
+            QJsonObject out{{"entries", entries}, {"total", count}, {"unexported", unexported}};
             if (!pg.next.isEmpty()) out["next"] = pg.next;
             sendRestResponse(socket, 200, out);
         } else if (method == "POST") {
             QsoRecord r = QsoRecord::fromJson(parseBody());
             if (!r.isValid()) {
                 sendRestResponse(socket, 400, QJsonObject{{"error", "A valid call is required"}});
-            } else if (!logbookAdd(r)) {
+            } else if (!logbookAdd(r, who)) {
                 sendRestResponse(socket, 500, QJsonObject{{"error", "Logbook is not writable"}});
             } else {
-                sendRestResponse(socket, 202, r.toJson());
+                sendRestResponse(socket, 202, qsoJson(r));
             }
         } else if (method == "DELETE") {
-            if (logbookClear("REST")) sendRestResponse(socket, 202, QJsonObject{{"status", "cleared"}});
+            // Admins only with --shared (restCapability).
+            if (logbookClear("REST")) {
+                if (who && access_) access_->audit("log-clear", logWho(who));
+                sendRestResponse(socket, 202, QJsonObject{{"status", "cleared"}});
+            }
             else sendRestResponse(socket, 500, QJsonObject{{"error", "Logbook is not writable"}});
         } else {
             sendRestResponse(socket, 405, QJsonObject{{"error", "Method not allowed"}});
@@ -1483,19 +1543,26 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
     }
     if (p.startsWith("/api/v1/logbook/")) {
         const QString id = p.mid(QStringLiteral("/api/v1/logbook/").size());
-        if (!logbook_.find(id)) {
+        const QsoRecord *stored = logbook_.find(id);
+        // A record the caller may not see does not exist for them.
+        if (!stored || !logSees(who, *stored)) {
             sendRestResponse(socket, 404, QJsonObject{{"error", "QSO not found"}});
+        } else if (method == "GET") {
+            sendRestResponse(socket, 200, qsoJson(*stored));
+        } else if ((method == "PUT" || method == "DELETE") && !logMayChange(who, *stored)) {
+            forbidden(stored->userId.isEmpty() ? QStringLiteral("only an admin changes a QSO nobody is recorded as having logged")
+                                               : QStringLiteral("only the operator who logged this QSO, or an admin, changes it"));
         } else if (method == "PUT") {
             const QsoRecord r = QsoRecord::fromJson(parseBody(), id);
             if (!r.isValid()) {
                 sendRestResponse(socket, 400, QJsonObject{{"error", "A valid call is required"}});
-            } else if (!logbookUpdate(id, r)) {
+            } else if (!logbookUpdate(id, r, who)) {
                 sendRestResponse(socket, 500, QJsonObject{{"error", "Logbook is not writable"}});
             } else {
-                sendRestResponse(socket, 200, logbook_.find(id)->toJson());
+                sendRestResponse(socket, 200, qsoJson(*logbook_.find(id)));
             }
         } else if (method == "DELETE") {
-            logbookRemove(id);
+            logbookRemove(id, who);
             sendRestResponse(socket, 202, QJsonObject{{"status", "deleted"}});
         } else {
             sendRestResponse(socket, 405, QJsonObject{{"error", "Method not allowed"}});
@@ -2154,7 +2221,8 @@ void webServer::onWsNewConnection()
             if (sharedAnonymous_ == Access::Role::None) {
                 connect(pSocket, &QWebSocket::disconnected, pSocket, &QObject::deleteLater);
                 pSocket->sendTextMessage(QString::fromUtf8(QJsonDocument(QJsonObject{
-                    {"type", "authRequired"}, {"setupRequired", access_->setupRequired()}}).toJson(QJsonDocument::Compact)));
+                    {"type", "authRequired"}, {"setupRequired", access_->setupRequired()},
+                    {"recovery", access_->recoveryMode()}}).toJson(QJsonDocument::Compact)));
                 pSocket->close(static_cast<QWebSocketProtocol::CloseCode>(4401), "authentication required");
                 qInfo() << "Web client refused (no session):" << ip;
                 return;
@@ -2569,22 +2637,34 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             seat_.lastActivityMs = QDateTime::currentMSecsSinceEpoch();
     }
 
+    // The account behind a browser's log command (shared mode only).
+    const AccessPrincipal *logWhoPtr = nullptr;
+    if (client && sharedMode_) {
+        const auto it = wsInfo.constFind(client);
+        if (it != wsInfo.constEnd()) logWhoPtr = &it->who;
+    }
     if (type == "qsoLogged") {
         QsoRecord r = QsoRecord::fromJson(cmd["qso"].toObject());
-        if (!logbookAdd(r))
+        if (!logbookAdd(r, logWhoPtr))
             qWarning() << "Web: qsoLogged ignored (invalid record or logbook not writable)";
     }
-    else if (type == "updateQso") {
+    else if (type == "updateQso" || type == "deleteQso") {
         const QString id = cmd["id"].toString();
-        logbookUpdate(id, QsoRecord::fromJson(cmd["qso"].toObject(), id));
-    }
-    else if (type == "deleteQso") {
-        logbookRemove(cmd["id"].toString());
+        const QsoRecord *stored = logbook_.find(id);
+        if (stored && logWhoPtr && (!logSees(logWhoPtr, *stored) || !logMayChange(logWhoPtr, *stored))) {
+            sendJsonTo(client, QJsonObject{{"type", "denied"}, {"cmd", type}, {"need", "owner"},
+                {"reason", "only the operator who logged this QSO, or an admin, changes it"}});
+            return;
+        }
+        if (type == "updateQso") logbookUpdate(id, QsoRecord::fromJson(cmd["qso"].toObject(), id), logWhoPtr);
+        else logbookRemove(id, logWhoPtr);
     }
     else if (type == "mergeLogbook") {
         // Migration of a browser-local (localStorage) log.  The browser drops
         // its copy only when this reply says the merge is on persistent
         // storage; otherwise it keeps it and re-sends on every connect.
+        // (Admins only with --shared, by the capability table: the records
+        // have no account behind them.)
         QList<QsoRecord> incoming;
         const QJsonArray entries = cmd["entries"].toArray();
         for (const QJsonValue &v : entries) {
@@ -2597,9 +2677,12 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             qInfo() << "Logbook: merged" << added << "of" << incoming.size() << "browser-local QSOs";
             logbookReset();
         }
+        if (logWhoPtr && access_) access_->audit("log-merge", logWho(logWhoPtr), QString("%1 added of %2").arg(added).arg(incoming.size()));
+        int count = 0, unexported = 0;
+        logCounts(logWhoPtr, &count, &unexported);
         sendJsonTo(client, QJsonObject{{"type", "logbookMerged"}, {"added", added},
-                                       {"total", logbook_.count()}, {"persistent", logbookPersistent_},
-                                       {"unexported", logbook_.unexportedCount()}});
+                                       {"total", count}, {"persistent", logbookPersistent_},
+                                       {"unexported", unexported}});
     }
     else if (type == "setFrequency") {
         quint64 hz = jsonHz(cmd["value"]);
@@ -3581,10 +3664,10 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
                     QMetaObject::invokeMethod(freedvProcessor, "cleanup", Qt::QueuedConnection);
                 emit setupRade(rigSampleRate);
                 // Send cached callsign to RADE processor for EOO encoding
-                if (!reporterCallsign.isEmpty()) {
+                if (!onAirCall().isEmpty()) {
                     QMetaObject::invokeMethod(radeProcessor, "setTxCallsign",
                                               Qt::QueuedConnection,
-                                              Q_ARG(QString, reporterCallsign));
+                                              Q_ARG(QString, onAirCall()));
                 }
                 qInfo() << "Web: RADE enabled";
             } else if (freedvProcessor) {
@@ -3765,8 +3848,9 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
     }
     else if (type == "aprsTxBeacon") {
         // {src, lat, lon, symTable, symCode, comment, path?: ["WIDE1-1",...]}
-        if (!aprsProc) return;
         QString src      = cmd["src"].toString().trimmed().toUpper();
+        if (!src.isEmpty() && onAirDenies(client, type, src)) return;
+        if (!aprsProc) return;
         double  lat      = cmd["lat"].toDouble();
         double  lon      = cmd["lon"].toDouble();
         QString symTable = cmd.value("symTable").toString();
@@ -3868,6 +3952,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
                 if (!d.isEmpty()) digis.append(d);
             }
         }
+        if (!own.isEmpty() && onAirDenies(client, type, own)) return;
         QString failReason;
         TerminalSession *existing = termFindByEndpoints(chan, own, peer);
         if (!packetEnabled || !dwProc || !axProc) failReason = "packet modem not enabled";
@@ -3986,6 +4071,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         // connections without the operator first making an outbound call.
         QString own = cmd["ownCall"].toString().trimmed().toUpper();
         int chan = cmd.value("chan").toInt(0);
+        if (!own.isEmpty() && onAirDenies(client, type, own)) return;
         if (!own.isEmpty()) termEnsureRegistered(chan, own);
     }
     else if (type == "termUnregister") {
@@ -4062,7 +4148,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
                 connect(freedvReporter, &FreeDVReporter::stateChanged,
                         this, &webServer::onReporterStateChanged);
             }
-            freedvReporter->setStation(reporterCallsign, reporterGrid);
+            freedvReporter->setStation(onAirCall(), reporterGrid);
 
             // Seed reporter with current frequency from cache
             if (queue) {
@@ -4092,7 +4178,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
                 connect(pskReporter, &PskReporter::stateChanged,
                         this, &webServer::onPskReporterStateChanged);
             }
-            pskReporter->setStation(reporterCallsign, reporterGrid);
+            pskReporter->setStation(onAirCall(), reporterGrid);
 
             if (queue) {
                 vfoCommandType t = queue->getVfoCommand(vfoA, 0, false);
@@ -4114,10 +4200,10 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         }
 
         // Pass callsign to RADE processor for EOO encoding
-        if (radeProcessor && !reporterCallsign.isEmpty()) {
+        if (radeProcessor && !onAirCall().isEmpty()) {
             QMetaObject::invokeMethod(radeProcessor, "setTxCallsign",
                                       Qt::QueuedConnection,
-                                      Q_ARG(QString, reporterCallsign));
+                                      Q_ARG(QString, onAirCall()));
         }
 
         notifyFreedvReporterStatus();
@@ -4187,8 +4273,9 @@ QJsonObject webServer::buildInfoJson() const
     // platform) can find the file without guessing the data directory.
     info["logbookPath"] = logbook_.path();
     info["logbookPersistent"] = logbookPersistent_;
-    info["stationCallsign"] = reporterCallsign;
+    info["stationCallsign"] = onAirCall();
     info["stationGrid"] = reporterGrid;
+    addOnAirInfo(info);
     info["cwMacros"] = cwMacrosJson();
     info["version"] = QString(WFWEB_VERSION);
     // Instance tag from --name; empty means "show the rig model".
@@ -4357,14 +4444,21 @@ void webServer::sendCurrentState(QWebSocket *client)
     info["remoteLogTarget"] = wsjtxTarget_;
     info["remoteLogDecodes"] = wsjtxDecodes_;
     info["logbookPath"] = logbook_.path();
-    info["logbookCount"] = logbook_.count();
+    const AccessPrincipal *viewer = nullptr;
+    if (sharedMode_) {
+        const auto wi = wsInfo.constFind(client);
+        if (wi != wsInfo.constEnd()) viewer = &wi->who;
+    }
+    const QJsonObject summary = logbookSummary(viewer);
+    info["logbookCount"] = summary.value("count");
     info["logbookPersistent"] = logbookPersistent_;
     // The browser adopts these on connect instead of pushing its own copy.
-    info["stationCallsign"] = reporterCallsign;
+    info["stationCallsign"] = onAirCall();
     info["stationGrid"] = reporterGrid;
+    addOnAirInfo(info);
     sendJsonTo(client, info);
     // The log itself is paged over REST; this only tells the browser to fetch page 1.
-    sendJsonTo(client, logbookSummary());
+    sendJsonTo(client, summary);
 
     // Send current status
     if (rigCaps) {
@@ -7333,13 +7427,121 @@ void webServer::applyStationCallsign(const QString &callIn, const QString &gridI
     }
     qInfo().noquote() << "Station:" << (reporterCallsign.isEmpty() ? QStringLiteral("<no callsign>") : reporterCallsign)
                       << reporterGrid << (persist ? "(saved)" : "(from settings)");
+    applyOnAirCall(changed);
+    // What counts as the club log follows the station call: every viewer's
+    // counts may have moved.
+    if (changed && sharedMode_) logbookReset();
+}
+
+// ---------------------------------------------------------------------------
+// The on-air call (Shared Station, phase 6)
+// ---------------------------------------------------------------------------
+
+QWebSocket *webServer::onAirHolder() const
+{
+    if (!sharedMode_ || !seatEnabled_ || !seat_.holder) return nullptr;
+    const auto it = wsInfo.constFind(seat_.holder);
+    if (it == wsInfo.constEnd()) return nullptr;
+    const AccessPrincipal &who = it->who;
+    return (who.authenticated && who.onAirOwn && !who.callsign.isEmpty()) ? seat_.holder : nullptr;
+}
+
+QString webServer::onAirCall() const
+{
+    const QWebSocket *own = onAirHolder();
+    return own ? wsInfo.value(const_cast<QWebSocket *>(own)).who.callsign : reporterCallsign;
+}
+
+void webServer::addOnAirInfo(QJsonObject &o) const
+{
+    if (!sharedMode_) return;   // without --shared the messages keep their old shape
+    QWebSocket *own = onAirHolder();
+    o["clubCallsign"] = reporterCallsign;
+    o["onAirOwn"] = own != nullptr;
+    o["onAirOperator"] = own ? seatLabel(own) : QString();
+}
+
+QJsonObject webServer::stationJson() const
+{
+    QJsonObject o{{"type", "stationChanged"}, {"callsign", onAirCall()}, {"grid", reporterGrid}};
+    addOnAirInfo(o);
+    return o;
+}
+
+// The one place a change of the on-air call is applied.  Called when the
+// station call is set, when the seat changes hands or frees, when the
+// holder's account is edited and when the seat policy changes.
+void webServer::applyOnAirCall(bool stationChanged)
+{
+    const QString call = onAirCall();
+    QWebSocket *own = onAirHolder();
+    const QString by = own ? seatLabel(own) : QString();
+    const bool moved = call != onAirApplied_ || by != onAirAppliedBy_;
+    onAirApplied_ = call;
+    onAirAppliedBy_ = by;
     if (radeProcessor)
         QMetaObject::invokeMethod(radeProcessor, "setTxCallsign", Qt::QueuedConnection,
-                                  Q_ARG(QString, reporterCallsign));
-    if (freedvReporter) freedvReporter->setStation(reporterCallsign, reporterGrid);
-    if (pskReporter)    pskReporter->setStation(reporterCallsign, reporterGrid);
-    if (changed)
-        sendJsonToAll(QJsonObject{{"type", "stationChanged"}, {"callsign", reporterCallsign}, {"grid", reporterGrid}});
+                                  Q_ARG(QString, call));
+    if (freedvReporter) freedvReporter->setStation(call, reporterGrid);
+    if (pskReporter)    pskReporter->setStation(call, reporterGrid);
+    if (stationChanged || moved)
+        sendJsonToAll(stationJson());
+    if (moved && sharedMode_ && access_) {
+        access_->audit("onair", own ? AccessControl::who(by, wsInfo.value(own).ip) : QStringLiteral("-"),
+                       (call.isEmpty() ? QStringLiteral("<no callsign>") : call)
+                       + (own ? QStringLiteral(" (own call)") : QStringLiteral(" (station call)")));
+        qInfo().noquote() << "Station: on the air as" << (call.isEmpty() ? QStringLiteral("<no callsign>") : call)
+                          << (own ? "(" + by + ", own call)" : QStringLiteral("(station call)"));
+    }
+}
+
+bool webServer::onAirDenies(QWebSocket *client, const QString &cmd, const QString &call)
+{
+    if (!client || !sharedMode_) return false;
+    const QString onAir = onAirCall();
+    if (onAir.isEmpty()) return false;      // a station without a callsign has nothing to hold anyone to
+    // An AX.25 SSID (-0 to -15) is the operator's to choose.
+    QString base = call;
+    static const QRegularExpression ssid(QStringLiteral("-(\\d{1,2})$"));
+    const QRegularExpressionMatch m = ssid.match(base);
+    if (m.hasMatch() && m.captured(1).toInt() <= 15) base.chop(m.capturedLength());
+    if (base == onAir) return false;
+    sendJsonTo(client, QJsonObject{{"type", "denied"}, {"cmd", cmd}, {"need", "callsign"},
+        {"reason", QString("the station is on the air as %1, not %2").arg(onAir, call)}});
+    return true;
+}
+
+bool webServer::seatEligible(QWebSocket *client, const QString &cmd)
+{
+    const AccessPrincipal who = wsInfo.value(client).who;
+    if (!who.authenticated || !who.onAirOwn || !who.callsign.isEmpty()) return true;
+    sendJsonTo(client, QJsonObject{{"type", "denied"}, {"cmd", cmd}, {"need", "callsign"},
+        {"reason", "your account transmits under its own callsign but has none: ask an admin to set it"}});
+    return false;
+}
+
+void webServer::refreshUserClients(const QString &userId)
+{
+    if (!access_) return;
+    bool found = false;
+    const AccessUser u = access_->user(userId, &found);
+    if (!found) return;
+    const QList<QWebSocket *> clients = wsClients;
+    for (QWebSocket *c : clients) {
+        auto it = wsInfo.find(c);
+        if (it == wsInfo.end() || !it->who.authenticated || it->who.userId != userId) continue;
+        if (it->who.callsign == u.callsign && it->who.onAirOwn == u.onAirOwn) continue;
+        it->who.callsign = u.callsign;
+        it->who.onAirOwn = u.onAirOwn;
+        sendJsonTo(c, accessJson(it->who));
+        // Own call, no callsign: off the seat and out of the line.
+        if (u.onAirOwn && u.callsign.isEmpty()) {
+            if (c == seat_.holder) seatFree(QStringLiteral("the account has no callsign to transmit under"));
+            else { seatLeaveQueue(c); broadcastSeat(); }
+        }
+    }
+    applyOnAirCall();
+    logbookReset();     // /worked and the export set follow the account's call
 }
 
 // The CW bar has ten macro keys (slot 5 is the EDIT key, so it never holds
@@ -7628,41 +7830,192 @@ void webServer::handleSstvRequest(QTcpSocket *socket, const QString &method, con
 // Every browser applies the delta to whatever page it has loaded; nobody
 // ever receives the whole log.
 
-QJsonObject webServer::logbookSummary() const
+// --- who sees, changes and exports what (declared with the rules) ---
+
+bool webServer::isClubCall(const QString &stationCall) const
 {
-    return QJsonObject{{"type", "logbook"}, {"count", logbook_.count()},
-                       {"unexported", logbook_.unexportedCount()}, {"persistent", logbookPersistent_}};
+    // A record without STATION_CALLSIGN was made at this station before the
+    // field was filled in: it is the station's.
+    return stationCall.isEmpty() || stationCall == reporterCallsign;
 }
 
-bool webServer::logbookAdd(QsoRecord &r)
+bool webServer::logSees(const AccessPrincipal *who, const QsoRecord &r) const
 {
-    if (r.isValid() && r.stationCall.isEmpty()) r.stationCall = reporterCallsign;
+    if (!sharedMode_ || !who) return true;
+    if (who->role == Access::Role::Admin) return true;
+    if (!who->authenticated) return false;                  // visitors see no log
+    if (!r.userId.isEmpty() && r.userId == who->userId) return true;
+    return isClubCall(r.stationCall);
+}
+
+bool webServer::logMayChange(const AccessPrincipal *who, const QsoRecord &r) const
+{
+    if (!sharedMode_ || !who) return true;
+    if (who->role == Access::Role::Admin) return true;
+    return who->authenticated && Access::roleAllows(who->role, Access::Cap::Tx)
+           && !r.userId.isEmpty() && r.userId == who->userId;
+}
+
+bool webServer::logMayExport(const AccessPrincipal *who, const QsoRecord &r, bool own) const
+{
+    if (!sharedMode_ || !who) return true;
+    if (who->role == Access::Role::Admin && !own) return isClubCall(r.stationCall);
+    // An upload to LoTW and the like is per callsign: a member's export is
+    // the QSOs they made on their own call.
+    return who->authenticated && !who->callsign.isEmpty() && !r.userId.isEmpty() && r.userId == who->userId
+           && r.stationCall == who->callsign && !isClubCall(r.stationCall);
+}
+
+Logbook::Filter webServer::logFilter(const AccessPrincipal *who) const
+{
+    if (!sharedMode_ || !who || who->role == Access::Role::Admin) return Logbook::Filter();
+    return [this, who](const QsoRecord &r) { return logSees(who, r); };
+}
+
+Logbook::Filter webServer::logExportFilter(const AccessPrincipal *who, bool own) const
+{
+    if (!sharedMode_ || !who) return Logbook::Filter();
+    return [this, who, own](const QsoRecord &r) { return logMayExport(who, r, own); };
+}
+
+// The viewer's own numbers: how many records they see, how many of what
+// they may export are not exported yet.  From the per-(account, call)
+// tallies, so a broadcast costs a handful of additions per socket.
+void webServer::logCounts(const AccessPrincipal *who, int *count, int *unexported) const
+{
+    const bool admin = who && who->role == Access::Role::Admin;
+    if (!sharedMode_ || !who) {
+        const Logbook::Tally all = logbook_.tally([](const QString &, const QString &) { return true; });
+        *count = logbook_.count();
+        *unexported = all.unexported;
+    } else if (admin) {
+        *count = logbook_.count();
+        *unexported = logbook_.tally([this](const QString &, const QString &call) { return isClubCall(call); }).unexported;
+    } else if (who->authenticated) {
+        const QString me = who->userId, mine = who->callsign;
+        *count = logbook_.tally([&](const QString &user, const QString &call) {
+            return isClubCall(call) || (!user.isEmpty() && user == me); }).count;
+        *unexported = mine.isEmpty() ? 0 : logbook_.tally([&](const QString &user, const QString &call) {
+            return !user.isEmpty() && user == me && call == mine && !isClubCall(call); }).unexported;
+    } else {
+        *count = 0;
+        *unexported = 0;
+    }
+}
+
+QJsonObject webServer::qsoJson(const QsoRecord &r) const
+{
+    QJsonObject o = r.toJson();
+    if (sharedMode_ && access_ && !r.userId.isEmpty()) {
+        bool found = false;
+        const AccessUser u = access_->user(r.userId, &found);
+        o["operatorName"] = found ? u.name : QStringLiteral("deleted account");
+    }
+    return o;
+}
+
+QString webServer::logWho(const AccessPrincipal *who) const
+{
+    if (!who) return QStringLiteral("-");
+    QString ip = restIp_;
+    if (restPrincipal_ != who) {
+        for (auto it = wsInfo.constBegin(); it != wsInfo.constEnd(); ++it)
+            if (&it.value().who == who) { ip = it.value().ip; break; }
+    }
+    return AccessControl::who(who->authenticated ? who->name : QStringLiteral("anonymous"), ip);
+}
+
+void webServer::logbookSend(const QsoRecord *about, const std::function<QJsonObject(const AccessPrincipal *)> &make)
+{
+    if (!sharedMode_) {
+        sendJsonToAll(make(nullptr));
+        return;
+    }
+    for (QWebSocket *c : wsClients) {
+        const auto it = wsInfo.constFind(c);
+        if (it == wsInfo.constEnd()) continue;
+        if (about && !logSees(&it->who, *about)) continue;
+        sendJsonTo(c, make(&it->who));
+    }
+}
+
+QJsonObject webServer::logbookSummary(const AccessPrincipal *who) const
+{
+    int count = 0, unexported = 0;
+    logCounts(who, &count, &unexported);
+    return QJsonObject{{"type", "logbook"}, {"count", count},
+                       {"unexported", unexported}, {"persistent", logbookPersistent_}};
+}
+
+bool webServer::logbookAdd(QsoRecord &r, const AccessPrincipal *who)
+{
+    if (sharedMode_ && who) {
+        // The server says who and under which call, whatever the client sent:
+        // the call on the air right now, the account's own callsign, the account.
+        if (r.isValid()) {
+            r.stationCall = onAirCall();
+            r.operatorCall = who->authenticated ? who->callsign : QString();
+            r.userId = who->authenticated ? who->userId : QString();
+        }
+    } else if (r.isValid() && r.stationCall.isEmpty()) {
+        r.stationCall = onAirCall();
+    }
     if (!r.isValid() || !logbook_.add(r)) return false;
-    sendJsonToAll(QJsonObject{{"type", "qsoAdded"}, {"qso", r.toJson()}, {"count", logbook_.count()},
-                              {"unexported", logbook_.unexportedCount()}});
-    wsjtxSendQso(r);
+    const QJsonObject qso = qsoJson(r);
+    logbookSend(&r, [&](const AccessPrincipal *viewer) {
+        int count = 0, unexported = 0;
+        logCounts(viewer, &count, &unexported);
+        return QJsonObject{{"type", "qsoAdded"}, {"qso", qso}, {"count", count}, {"unexported", unexported}};
+    });
+    // The remote logger is the station's: a guest's QSOs under their own
+    // call are not forwarded to it.
+    if (!sharedMode_ || isClubCall(r.stationCall)) wsjtxSendQso(r);
     return true;
 }
 
-bool webServer::logbookUpdate(const QString &id, const QsoRecord &r)
+bool webServer::logbookUpdate(const QString &id, QsoRecord r, const AccessPrincipal *who)
 {
+    const QsoRecord *stored = logbook_.find(id);
+    if (!stored) return false;
+    // An edit never moves a record to another account; with --shared it
+    // does not change the call it was made under or its operator either.
+    r.userId = stored->userId;
+    if (sharedMode_) {
+        r.stationCall = stored->stationCall;
+        r.operatorCall = stored->operatorCall;
+    }
     if (!logbook_.update(id, r)) return false;
-    sendJsonToAll(QJsonObject{{"type", "qsoUpdated"}, {"qso", logbook_.find(id)->toJson()}});
+    const QsoRecord now = *logbook_.find(id);
+    const QJsonObject qso = qsoJson(now);
+    logbookSend(&now, [&](const AccessPrincipal *) {
+        return QJsonObject{{"type", "qsoUpdated"}, {"qso", qso}};
+    });
+    if (sharedMode_ && who && access_)
+        access_->audit("qso-edit", logWho(who), id + " " + now.call);
     return true;
 }
 
-bool webServer::logbookRemove(const QString &id)
+bool webServer::logbookRemove(const QString &id, const AccessPrincipal *who)
 {
+    const QsoRecord *stored = logbook_.find(id);
+    if (!stored) return false;
+    const QsoRecord gone = *stored;
     if (!logbook_.remove(id)) return false;
-    sendJsonToAll(QJsonObject{{"type", "qsoDeleted"}, {"id", id}, {"count", logbook_.count()},
-                              {"unexported", logbook_.unexportedCount()}});
+    logbookSend(&gone, [&](const AccessPrincipal *viewer) {
+        int count = 0, unexported = 0;
+        logCounts(viewer, &count, &unexported);
+        return QJsonObject{{"type", "qsoDeleted"}, {"id", id}, {"count", count}, {"unexported", unexported}};
+    });
+    if (sharedMode_ && who && access_)
+        access_->audit("qso-delete", logWho(who), id + " " + gone.call);
     return true;
 }
 
-// Whole-log change (clear, merge, import): browsers reload their first page.
+// Tell every client the log changed wholesale (import, merge, clear): they
+// drop what they have and re-fetch page 1.
 void webServer::logbookReset()
 {
-    sendJsonToAll(logbookSummary());
+    logbookSend(nullptr, [this](const AccessPrincipal *viewer) { return logbookSummary(viewer); });
 }
 
 bool webServer::logbookClear(const char *who)
@@ -7740,7 +8093,7 @@ void webServer::wsjtxSendStatus()
     if (digiActive && (digiMode == QLatin1String("FT8") || digiMode == QLatin1String("FT4")))
         status.mode = digiMode;
     status.txMode = status.mode;
-    status.deCall = reporterCallsign;
+    status.deCall = onAirCall();
     status.deGrid = reporterGrid;
     wsjtxSendDatagram(WsjtxMessage::status(wsjtxId_, status));
 }
@@ -7768,7 +8121,7 @@ void webServer::wsjtxSendQso(const QsoRecord &q)
     f.reportReceived = q.rstRcvd;
     f.comments = q.comment;
     f.name = q.name;
-    f.myCall = q.stationCall.isEmpty() ? reporterCallsign : q.stationCall;
+    f.myCall = q.stationCall.isEmpty() ? onAirCall() : q.stationCall;
     f.myGrid = q.grid.isEmpty() ? reporterGrid : q.grid;
     // Both messages, exactly as WSJT-X does: loggers pick whichever they parse.
     wsjtxSendDatagram(WsjtxMessage::qsoLogged(wsjtxId_, f));
@@ -9365,6 +9718,7 @@ webServer::RequestContext webServer::requestContext(QTcpSocket *socket, const QB
 QJsonObject webServer::userJson(const AccessPrincipal &who)
 {
     return QJsonObject{{"id", who.userId}, {"name", who.name}, {"callsign", who.callsign},
+                       {"onAir", who.onAirOwn ? QStringLiteral("own") : QStringLiteral("station")},
                        {"role", Access::roleName(who.role)}};
 }
 
@@ -9377,6 +9731,12 @@ QJsonObject webServer::accessJson(const AccessPrincipal &who) const
     o["user"] = who.authenticated ? QJsonValue(userJson(who)) : QJsonValue(QJsonValue::Null);
     o["anonymous"] = !who.authenticated;
     o["role"] = Access::roleName(who.role);
+    // A visitor's LOG IN opens the setup form while there is no admin yet,
+    // or while --shared-reset-admin is on: the page must know which.
+    if (!who.authenticated && access_) {
+        if (access_->setupRequired()) o["setupRequired"] = true;
+        if (access_->recoveryMode()) o["recovery"] = true;
+    }
     o["can"] = QJsonObject{{"control", Access::roleAllows(who.role, Access::Cap::Control)},
                            {"tx", Access::roleAllows(who.role, Access::Cap::Tx)},
                            {"admin", Access::roleAllows(who.role, Access::Cap::Admin)}};
@@ -9514,6 +9874,7 @@ void webServer::applyPolicy(const QJsonObject &in, const QString &by)
     qInfo().noquote() << "Shared: policy changed by" << by << ":" << changes.join(' ');
     broadcastPolicy();
     if (seatChanged) broadcastSeat();
+    if (seatChanged) applyOnAirCall();   // the seat off: everyone is on the station call
 }
 
 // Visitors follow the anonymous policy as it changes: a lower level is
@@ -9764,6 +10125,7 @@ void webServer::seatGive(QWebSocket *client, const QString &how)
     if (access_) access_->audit("seat-take", AccessControl::who(seatLabel(client), wsInfo.value(client).ip), how);
     qInfo().noquote() << "Seat:" << seatLabel(client) << how;
     broadcastSeat();
+    applyOnAirCall();
 }
 
 void webServer::seatFree(const QString &why, bool tellHolder)
@@ -9788,6 +10150,7 @@ void webServer::seatFree(const QString &why, bool tellHolder)
     seat_.warnedIdle = seat_.warnedMax = false;
     seatOfferNext();
     broadcastSeat();
+    applyOnAirCall();
 }
 
 // The seat is free and somebody is waiting: the first in line has
@@ -9828,6 +10191,7 @@ void webServer::seatOnDisconnect(QWebSocket *client, const AccessPrincipal &who)
     seatLeaveQueue(client);
     if (hadOffer || (!seat_.holder && !seat_.graceUntilMs)) seatOfferNext();
     broadcastSeat();
+    applyOnAirCall();   // a holder on their own call left: back to the station call
 }
 
 void webServer::seatOnConnect(QWebSocket *client)
@@ -9851,6 +10215,7 @@ void webServer::seatCommand(QWebSocket *client, const QString &type, const QJson
     const QString label = seatLabel(client);
     const bool admin = me.who.role == Access::Role::Admin;
 
+    if ((type == "seatTake" || type == "seatAccept") && !seatEligible(client, type)) return;
     if (type == "seatTake") {
         if (seat_.holder == client) { sendJsonTo(client, seatJson(client)); return; }
         if (seat_.offerTo == client) { seatGive(client, QStringLiteral("took the seat offered")); return; }
@@ -10687,9 +11052,22 @@ void webServer::handleSharedUsersRequest(QTcpSocket *socket, const QString &meth
             changes << "role=" + Access::roleName(role);
         }
         if (in.contains("callsign")) {
+            if (!AccessControl::validCallsign(in.value("callsign").toString())) {
+                sendRestResponse(socket, 400, QJsonObject{{"error", "callsign: letters, digits and '/' only"}});
+                return;
+            }
             access_->setCallsign(targetId, in.value("callsign").toString());
             changes << "callsign=" + AccessControl::normalizeCallsign(in.value("callsign").toString());
         }
+        if (in.contains("onAir")) {
+            QString err;
+            if (!access_->setOnAir(targetId, in.value("onAir").toString(), &err)) {
+                sendRestResponse(socket, 400, QJsonObject{{"error", err}});
+                return;
+            }
+            changes << "onair=" + in.value("onAir").toString();
+        }
+        if (in.contains("callsign") || in.contains("onAir")) refreshUserClients(targetId);
         if (in.contains("disabled")) {
             const bool disabled = in.value("disabled").toBool();
             if (disabled && lastAdmin(targetId)) {

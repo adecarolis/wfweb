@@ -79,6 +79,13 @@ int main()
     require(Access::restCapability("POST", "/api/v1/radio/memories/3/recall") == Cap::Control, "memory recall is control");
     require(Access::restCapability("POST", "/api/v1/radio/memories") == Cap::Admin, "memory write is admin");
     require(Access::restCapability("POST", "/api/v1/logbook") == Cap::Tx, "logbook write is operate");
+    require(Access::restCapability("PUT", "/api/v1/logbook/abc") == Cap::Tx && Access::restCapability("DELETE", "/api/v1/logbook/abc") == Cap::Tx
+            && Access::restCapability("POST", "/api/v1/logbook/exported") == Cap::Tx, "one's own QSOs are operate");
+    require(Access::restCapability("DELETE", "/api/v1/logbook") == Cap::Admin && Access::restCapability("POST", "/api/v1/logbook/adif") == Cap::Admin
+            && Access::restCapability("GET", "/api/v1/logbook/adif") == Cap::View, "clearing and importing the whole log is admin");
+    require(Access::commandCapability("mergeLogbook") == Cap::Admin, "the browser-log migration is admin");
+    require(Access::commandCapability("updateQso") == Cap::Tx && Access::seatExempt("updateQso") && Access::seatExempt("deleteQso")
+            && !Access::seatExempt("qsoLogged"), "correcting the log needs no seat, logging does");
     require(Access::restCapability("PUT", "/api/v1/station") == Cap::Admin, "station identity is admin");
     require(Access::restCapability("POST", "/api/v1/new/thing") == Cap::Admin, "unknown write fails closed");
     {
@@ -197,6 +204,22 @@ int main()
         require(!opId.isEmpty(), "operator added");
         require(ac.userCount() == 2, "two users");
 
+        // Phase 6: what the station identifies as while the account has the seat.
+        require(!ac.user(opId).onAirOwn && ac.user(opId).toJson(false)["onAir"].toString() == "station",
+                "onAir defaults to the station call");
+        require(ac.setCallsign(opId, "") && !ac.setOnAir(opId, "own", &err) && err.contains("callsign"),
+                "own is refused without a callsign");
+        require(ac.setCallsign(opId, "w1aw"), "callsign back");
+        require(!ac.setOnAir(opId, "mine", &err) && err.contains("station or own"), "onAir: only station or own");
+        require(!ac.setOnAir("nobody", "own", &err), "onAir: unknown account");
+        require(ac.setOnAir(opId, "own", &err) && ac.user(opId).onAirOwn, "own is accepted with a callsign");
+        require(ac.user(opId).toJson(false)["onAir"].toString() == "own", "onAir in the API shape");
+        require(AccessControl::validCallsign("F/K1FM") && AccessControl::validCallsign("w1abc/p") && AccessControl::validCallsign(""),
+                "callsigns: prefix, suffix, none");
+        require(!AccessControl::validCallsign("K1 FM") && !AccessControl::validCallsign("K1FM-7") && !AccessControl::validCallsign("/K1FM")
+                && !AccessControl::validCallsign("ABC") && !AccessControl::validCallsign("123"), "callsigns: junk refused");
+        require(AccessControl::normalizeCallsign(" f/k1fm ") == "F/K1FM", "the callsign keeps its slash");
+
         // Files: owner-only, no password or token in the API shape.
         const QFile::Permissions perms = QFileInfo(dir + "/users.json").permissions();
         require(QFile::exists(dir + "/users.json"), "users.json written");
@@ -214,6 +237,9 @@ int main()
         bool found = false;
         const AccessUser op = ac.userByName("OP", &found);
         require(found && op.role == Access::Role::Operate && op.callsign == "W1AW", "user found by name, any case");
+        require(op.onAirOwn, "onAir survives a reload");
+        require(ac.setOnAir(op.id, "station") && !ac.user(op.id).onAirOwn, "onAir back to the station call");
+        require(ac.setOnAir(op.id, "own"), "and own again");
 
         // --- login ---
         QByteArray token;

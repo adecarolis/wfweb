@@ -71,16 +71,20 @@ const char *const kTxCommands[] = {
     "termConnect", "termDisconnect", "termSend", "termClose", "termRegister", "termUnregister",
     "termFileSend", "termFileAbort", "termXferAccept", "termXferReject",
     // The log is what an operator writes after a QSO.
-    "qsoLogged", "updateQso", "deleteQso", "mergeLogbook",
+    "qsoLogged", "updateQso", "deleteQso",
 };
 const char *const kAdminCommands[] = {
     "setPower", "disconnectLan", "reconnectLan", "writeMemory", "renameMemory", "clearMemory",
     "setReporter", "setStationCallsign", "setCWMacros", "aprsBeaconConfig",
     "seatClear",
+    // Whole-log operations: the migration of a browser's old local log.
+    "mergeLogbook",
 };
 // Control / Tx commands that do not need the seat.
 const char *const kSeatExempt[] = {
     "setDigiActive", "reportDigiSpot", "setTxMeter",
+    // Correcting or removing a QSO one logged does not act on the radio.
+    "updateQso", "deleteQso",
     "seatTake", "seatRelease", "seatHandover", "seatCancel", "seatAccept", "seatPrivate", "seatClear",
 };
 
@@ -130,8 +134,13 @@ Access::Cap Access::restCapability(const QString &method, const QString &path)
         return path.endsWith(QLatin1String("/recall")) ? Cap::Control : Cap::Admin;
     if (path.startsWith(QLatin1String("/api/v1/radio")))
         return Cap::Control;
-    if (path.startsWith(QLatin1String("/api/v1/logbook")))
+    if (path.startsWith(QLatin1String("/api/v1/logbook"))) {
+        // Whole-log operations: clear, and the ADIF import.
+        if ((m == QLatin1String("DELETE") && path == QLatin1String("/api/v1/logbook"))
+            || path == QLatin1String("/api/v1/logbook/adif"))
+            return Cap::Admin;
         return Cap::Tx;
+    }
     if (path.startsWith(QLatin1String("/api/v1/sstv/images")))
         return Cap::Control;
     // /api/v1/station, /api/v1/cw/macros, /api/v1/shared/*, anything new
@@ -185,6 +194,7 @@ QJsonObject AccessUser::toJson(bool withSecrets) const
 {
     QJsonObject o{
         {"id", id}, {"name", name}, {"callsign", callsign},
+        {"onAir", onAirOwn ? QStringLiteral("own") : QStringLiteral("station")},
         {"role", Access::roleName(role)}, {"disabled", disabled},
         {"created", isoUtc(created)}, {"lastLogin", isoUtc(lastLogin)},
     };
@@ -206,6 +216,7 @@ AccessUser AccessUser::fromJson(const QJsonObject &o)
     u.id = o["id"].toString();
     u.name = o["name"].toString();
     u.callsign = o["callsign"].toString();
+    u.onAirOwn = o["onAir"].toString() == QLatin1String("own");
     u.role = Access::roleFromName(o["role"].toString());
     if (u.role == Access::Role::None) u.role = Access::Role::Listen;
     u.passwordHash = o["passwordHash"].toString();
@@ -230,7 +241,8 @@ QJsonObject AccessPrincipal::toJson() const
 {
     if (!authenticated) return QJsonObject{{"authenticated", false}};
     return QJsonObject{{"authenticated", true}, {"id", userId}, {"name", name},
-                       {"callsign", callsign}, {"role", Access::roleName(role)}, {"via", via}};
+                       {"callsign", callsign}, {"onAir", onAirOwn ? QStringLiteral("own") : QStringLiteral("station")},
+                       {"role", Access::roleName(role)}, {"via", via}};
 }
 
 // ---------------------------------------------------------------------------
@@ -682,6 +694,39 @@ bool AccessControl::setCallsign(const QString &id, const QString &callsign)
     return saveUsers();
 }
 
+bool AccessControl::validCallsign(const QString &callsign)
+{
+    const QString c = normalizeCallsign(callsign);
+    if (c.isEmpty()) return true;
+    bool digit = false, letter = false;
+    for (const QChar ch : c) {
+        if (ch >= QLatin1Char('0') && ch <= QLatin1Char('9')) digit = true;
+        else if (ch >= QLatin1Char('A') && ch <= QLatin1Char('Z')) letter = true;
+        else if (ch != QLatin1Char('/')) return false;
+    }
+    return digit && letter && c.size() >= 3 && !c.startsWith('/') && !c.endsWith('/');
+}
+
+bool AccessControl::setOnAir(const QString &id, const QString &onAir, QString *error)
+{
+    const int i = findUser(id);
+    if (i < 0) {
+        if (error) *error = QStringLiteral("no such user");
+        return false;
+    }
+    const bool own = onAir == QLatin1String("own");
+    if (!own && onAir != QLatin1String("station")) {
+        if (error) *error = QStringLiteral("onAir: station or own");
+        return false;
+    }
+    if (own && users_[i].callsign.isEmpty()) {
+        if (error) *error = QStringLiteral("onAir own needs a callsign on the account");
+        return false;
+    }
+    users_[i].onAirOwn = own;
+    return saveUsers();
+}
+
 bool AccessControl::setDisabled(const QString &id, bool disabled)
 {
     const int i = findUser(id);
@@ -905,6 +950,7 @@ AccessPrincipal AccessControl::principalFor(const AccessUser &u) const
     p.userId = u.id;
     p.name = u.name;
     p.callsign = u.callsign;
+    p.onAirOwn = u.onAirOwn;
     p.role = u.role;
     return p;
 }

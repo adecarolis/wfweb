@@ -70,6 +70,13 @@ the browser it runs in and has nothing to share.
   the first 15 minutes, and their seat is never handed on unasked. Everyone
   with an account sees the schedule (the SCHEDULE entry in the user menu).
 
+- **Callsigns and the log**: every QSO records who made it (`OPERATOR`)
+  next to the call it was made under (`STATION_CALLSIGN`). An account can
+  be set to transmit under its own callsign: while it holds the seat the
+  station identifies as that call and its QSOs are its own, not the
+  club's. Members see the club log and what they logged; they change only
+  their own QSOs.
+
 ## Reservations
 
 In the Shared station window, the **SCHEDULE** tab: an account (not a listener), a
@@ -95,6 +102,103 @@ While a slot runs:
 Weekly and daily slots are anchored to their first start in UTC: a slot
 "every Tuesday at 20:00" shifts by an hour across a daylight-saving change
 in the browser's zone. Delete and recreate it if that matters.
+
+## Callsigns and the log
+
+Two cases a shared station has to tell apart:
+
+- **A club call shared by many operators.** Every QSO goes out under the
+  club call; the log has to say which member made it.
+- **A licensed guest on their own call** (a remote station lent to
+  members). The guest must identify with their own call, and their QSOs
+  are theirs: they do not belong in the club log.
+
+ADIF has the two fields for it, and the server fills them in:
+
+| Case | `STATION_CALLSIGN` | `OPERATOR` | Sent on the air |
+|---|---|---|---|
+| Club call, many operators | club call | member's own call | club call |
+| Guest on their own call | guest's call | guest's call | guest's call |
+
+**The account says which.** Each account has a callsign and an `onAir`
+setting, `station` (the default) or `own`, both set by an admin in the
+Shared station window's ACCOUNTS tab (the callsign field and the STATION /
+OWN button on the account's row). The callsign is a statement about a licence, so it is not
+the user's to type. `own` needs a callsign on the account.
+
+**The on-air call follows the seat.** While an `own` account holds the
+seat the station is on the air as that account's callsign; at any other
+time it is on the station call (the one in Station Settings, an admin's
+to change). Every page follows: the CW macros' `[CALL]`, FT8 / FT4, JS8,
+RTTY, SSTV and packet all use the on-air call, the callsign fields are
+read-only for everyone but an admin, and the strip names the call
+(`SEAT yours · F/K1FM`, `SEAT op2 (F/K1FM)`). The server's own users of the
+callsign move with it: the RADE end-of-over callsign, the FreeDV and PSK
+reporters. A change of the on-air call is one `onair` line in the audit
+log. The station call in the settings file never changes because of it:
+an admin editing MY CALL while a guest has the seat edits the station
+call, and the guest stays on theirs.
+
+With the seat switched off there is no single operator, so everyone
+transmits under the station call and `own` has no effect (the SHARED
+window says so). An `own` account whose callsign was removed is refused
+the seat, with the reason.
+
+**What goes in the log.** When an account logs a QSO the server stamps
+three fields and ignores whatever the client sent for them:
+`STATION_CALLSIGN` = the call on the air at that moment, `OPERATOR` = the
+account's callsign, and the account itself (`APP_WFWEB_USER`, wfweb's own
+field, left out of files exported for other services). An edit never
+changes the three. A script logging with an API token is stamped the same
+way; with the seat free that is the station call, for an `own` account
+too, since nobody is on the air under their own call without the seat.
+
+**Who sees what.**
+
+- Admins see every QSO.
+- Any account, `listen` included, sees the club log (the QSOs made under
+  the station call, and old records with no `STATION_CALLSIGN`) and every
+  QSO it logged itself.
+- A member's QSOs under their own call are private to that member and the
+  admins: they are not sent to the other pages, not listed, not exported.
+- Visitors without an account see no log.
+
+The QSO count on each page is the count of what that page may see. The
+log view grows OPERATOR and STATION columns once a record names an
+operator, and shows Edit / Delete only on records the viewer may change.
+The FT8 worked-before hints answer for the call the viewer transmits as:
+an `own` account is told what it worked under its own call, everyone
+else what the station call worked.
+
+**Who changes what.** A member edits and deletes only the QSOs they
+logged (no seat needed for that); admins change any. Records nobody is
+recorded as having logged (made before `--shared`, or imported) are the
+admins'. Clearing the log, importing an ADIF file and the migration of a
+browser's old local log are admin-only. If the station call is changed,
+QSOs under the old one stop counting as the club log and are then seen
+by the admins and by whoever logged them.
+
+**Export.** "Download new QSOs" is per callsign, as an upload to LoTW is:
+an admin gets the club log's new QSOs, a member the new QSOs they made
+under their own call (a member who only ever used the club call has
+none). The export stamp is put only on records the caller may export.
+
+**The remote logger** (`--remote-log`, the WSJT-X UDP protocol) is the
+station's: it receives the QSOs made under the station call, not a
+guest's own.
+
+**What the server can and cannot enforce.** Where the callsign passes
+through the server it is checked: an APRS beacon's source call and the
+AX.25 terminal's own call must be the on-air call (any SSID, `-0` to
+`-15`), or the command is refused with the reason. The unattended APRS
+beacon keeps the source an admin configured. AX.25 addresses have no
+room for a `/`, so a guest on a call like `F/K1FM` has no packet. In the
+audio modes (FT8, JS8, CW, RTTY, SSTV, voice) the callsign is in audio
+the browser makes, which the server cannot read: the page follows the
+on-air call and does not let a member type another, but a modified page
+could send anything. Accountability there is the `OPERATOR` field on
+what gets logged and the audit log's key-down lines, which name the
+account behind every transmission.
 
 ## The seat
 
@@ -149,8 +253,8 @@ TAKE IT / CLEAR in the **NOW** tab act on a seat someone else holds.
 |-------|-----|
 | `listen` | hear the receiver, see the scope and meters, decode locally (CW, FT8, RTTY, SSTV) |
 | `control` | tune, change mode, filters, gains, scope, recall memories, run the digital decoders' settings |
-| `operate` | key the rig: PTT, mic, CW, FT8/JS8/RTTY/SSTV/packet transmit, the tuner; write the logbook |
-| `admin` | everything, plus accounts, the policy, the connection list, the station callsign, CW macros, memories, rig power, LAN connect |
+| `operate` | key the rig: PTT, mic, CW, FT8/JS8/RTTY/SSTV/packet transmit, the tuner; log QSOs, change the ones they logged |
+| `admin` | everything, plus accounts, the policy, the connection list, the station callsign, CW macros, memories, rig power, LAN connect; any QSO in the log, clearing it, importing into it |
 
 A command the page sends that the level lacks is refused on the page with a
 short toast ("Needs control access — log in", "Needs operate access (you
@@ -166,7 +270,8 @@ Four tabs:
   allowed (INHIBIT TX / ALLOW TX), and who is connected: name or *visitor*,
   level, address, SEAT / ON AIR; KICK ends that connection (the account
   stays — disable it to keep them out).
-- **ACCOUNTS**: level, PASSWORD (sets a new one and ends the account's
+- **ACCOUNTS**: the callsign, STATION / OWN (what the station identifies
+  as while the account has the seat, see "Callsigns and the log"), level, PASSWORD (sets a new one and ends the account's
   sessions), ENABLE / DISABLE, DELETE (two presses), and a form to add one.
 - **SCHEDULE**: the reservations, a form to add one, and the next two weeks.
 - **RULES**: every setting with a line saying what it does; a change
@@ -291,9 +396,9 @@ Account management, admins only, under `/api/v1/shared/users`:
 
 | Route | Does |
 |-------|------|
-| `GET` | `{users:[{id, name, callsign, role, disabled, created, lastLogin, tokens}]}` |
+| `GET` | `{users:[{id, name, callsign, onAir, role, disabled, created, lastLogin, tokens}]}` |
 | `POST` `{username, password, role, callsign}` | adds an account (`201`) |
-| `PUT /<id>` `{role?, callsign?, disabled?, password?, kick?}` | changes it; `disabled`, a new `password` and `kick` end the account's sessions |
+| `PUT /<id>` `{role?, callsign?, onAir?, disabled?, password?, kick?}` | changes it; `disabled`, a new `password` and `kick` end the account's sessions. `onAir` is `station` or `own` (`400` without a callsign on the account); a callsign is letters, digits and `/`. The account's open pages follow at once, and so does the on-air call when it holds the seat |
 | `DELETE /<id>` | removes it; not yourself, not the last admin |
 
 Policy and connections, admins only:
