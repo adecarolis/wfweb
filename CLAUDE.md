@@ -705,6 +705,20 @@ active button names the variant you are in when the grid is reopened.
 The bars follow either variant (the CW decoder and the RTTY bar flip
 their dial direction on `-R`).
 
+### Spectrum tags (`#scopeTags`)
+The warnings and rig-state readouts over the spectrum (AUDIO OFF, MIC OFF,
+P.AMP / ATT, DUP, TONE, RFG, VOL, SQL, COMP) are one flex column in its
+top-left corner, identical in both forks. They flow: a hidden tag takes no
+room and the stack is capped at the spectrum's height (`--spect-h`, set by
+`resizeCanvases`). What does not fit is moved by `layoutScopeTags()` to
+`#scopeTagsRight`, flush right in the top-right corner (a further column
+grows leftwards); it runs on a resize and when a tag is shown or hidden, and
+leaves the overflow as a second column on the left while `#freedvIndicator`
+holds that corner. **A new tag goes inside `#scopeTags` with no `top` of its
+own**: each used to have a fixed slot down the left edge, and on a phone's
+short spectrum (or a laptop's with the CW bar open) TONE, SQL and COMP sat in
+the middle of the waterfall (2026-11-15).
+
 ### Scope click-to-tune step
 A click, tap or drag on the scope lands on `scopeTuneStep()` (identical in
 both `index.html` forks, used by `scopeFreqFromClientX`, the drag path and

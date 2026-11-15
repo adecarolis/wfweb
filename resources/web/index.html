@@ -2169,6 +2169,33 @@ body.digi-open #bottomBar { grid-row: 5; }
 }
 
 /* ============ SPECTRUM WARNINGS ============ */
+/* The warnings and rig-state readouts are one stack in the spectrum's top-left
+   corner (#scopeTags). They flow: a hidden one takes no room, and the stack
+   is never taller than the spectrum (--spect-h, from resizeCanvases). The
+   ones that do not fit go to the top-right corner (#scopeTagsRight, filled
+   by layoutScopeTags), right-aligned. Each used to have a fixed slot down
+   the left edge, which on a phone's short spectrum put TONE, SQL and COMP in
+   the middle of the waterfall (2026-11-15). */
+.scope-tags {
+    position: absolute;
+    top: 4px;
+    z-index: 50;
+    display: flex;
+    flex-flow: column wrap;
+    align-items: flex-start;
+    align-content: flex-start;
+    gap: 5px 6px;
+    max-height: calc(var(--spect-h, 35%) - 8px);
+    pointer-events: none;   /* the gaps between the tags still tune */
+}
+#scopeTags { left: 6px; }
+/* wrap-reverse: flush right, and a further column grows leftwards. */
+#scopeTagsRight { right: 6px; flex-wrap: wrap-reverse; }
+.scope-tags > .spectrum-warning {
+    position: static;
+    pointer-events: auto;
+    white-space: nowrap;
+}
 .spectrum-warning {
     position: absolute;
     top: 4px;
@@ -2188,60 +2215,21 @@ body.digi-open #bottomBar { grid-row: 5; }
     color: #fa0;
     background: rgba(0, 0, 0, 0.7);
 }
-#micOffWarning {
-    top: 22px; /* Position below audio warning if both shown */
-}
-#preampAttIndicator {
-    top: 40px;
+/* Rig-state readouts (P.AMP / ATT, repeater shift, access tone, squelch,
+   COMP with its level): what the rig is doing, in grey. One tap opens the
+   panel that changes it. COMP is hidden while off, so it also blinks out
+   while wfweb holds COMP off for a digital over (#147). */
+#preampAttIndicator, #dupIndicator, #toneIndicator,
+#squelchIndicator, #compIndicator {
     font-size: 14px;
     color: #888;
 }
-/* Repeater shift is live on the main display, directly under the P.AMP/ATT
-   readout and styled identically to it — same colour, font and size — so the
-   two read as one stack of rig-state lines. */
-#dupIndicator {
-    top: 66px;   /* clears the 14px-tall P.AMP readout above (40 + 23) */
+/* RF Gain left backed off, or the browser's playback volume turned down, is
+   a silent band-killer: you hear nothing and blame the antenna. Same size as
+   the readouts but orange (the .spectrum-warning default), because these are
+   warnings; the GAIN panel is one tap away. Hidden at 100 %. */
+#rfGainIndicator, #rxVolIndicator {
     font-size: 14px;
-    color: #888;
-}
-/* Repeater access tone joins the same stack, directly under the shift it goes
-   with: a readout of what the rig is doing, so it takes the P.AMP/DUP grey
-   rather than the orange .spectrum-warning default. */
-#toneIndicator {
-    top: 92px;   /* clears the 14px-tall DUP readout above (66 + 26) */
-    font-size: 14px;
-    color: #888;
-}
-/* RF Gain left backed off is a silent band-killer — you hear nothing and blame
-   the antenna. Same size and font as the rig-state lines above, but orange
-   (the .spectrum-warning default) because this one is a warning, not a readout. */
-#rfGainIndicator {
-    top: 118px;  /* clears the 14px-tall TONE readout above (92 + 26) */
-    font-size: 14px;
-}
-/* Browser playback volume turned down is the same silent killer as RFG, with
-   the same cure one tap away (the GAIN panel), so it joins the stack in the
-   same orange. Hidden at 100 %. */
-#rxVolIndicator {
-    top: 144px;  /* clears the 14px-tall RFG readout above (118 + 26) */
-    font-size: 14px;
-}
-/* Squelch set above 0 mutes the rig whenever the signal is under it. Usually
-   on purpose (FM), so it is a grey readout like P.AMP/DUP/TONE rather than an
-   orange warning; one tap opens the GAIN panel. Hidden at 0. */
-#squelchIndicator {
-    top: 170px;  /* clears the 14px-tall VOL readout above (144 + 26) */
-    font-size: 14px;
-    color: #888;
-}
-/* Speech compressor on, with its level (0-10 like the radio). A setting the
-   operator chose, so a grey readout like SQL; one tap opens the GAIN panel,
-   where the level is. Hidden while COMP is off, so it also blinks out while
-   wfweb holds COMP off for a digital over (#147). */
-#compIndicator {
-    top: 196px;  /* clears the 14px-tall SQL readout above (170 + 26) */
-    font-size: 14px;
-    color: #888;
 }
 
 /* ============ RESPONSIVE ============ */
@@ -3245,15 +3233,18 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
         </div>
 
         <!-- Warning overlays on spectrum -->
-        <div id="audioOffWarning" class="spectrum-warning" onclick="onAudioWarningClick()" style="display: none;">AUDIO OFF</div>
-        <div id="micOffWarning" class="spectrum-warning" onclick="toggleMic()" style="display: none;">MIC OFF</div>
-        <div id="preampAttIndicator" class="spectrum-warning" style="display: none;"></div>
-        <div id="dupIndicator" class="spectrum-warning" style="display: none;" onclick="openDupModal()"></div>
-        <div id="toneIndicator" class="spectrum-warning" style="display: none;" onclick="openToneModal()"></div>
-        <div id="rfGainIndicator" class="spectrum-warning" style="display: none;" onclick="setPanel('gain')"></div>
-        <div id="rxVolIndicator" class="spectrum-warning" style="display: none;" onclick="setPanel('gain')"></div>
-        <div id="squelchIndicator" class="spectrum-warning" style="display: none;" onclick="setPanel('gain')"></div>
-        <div id="compIndicator" class="spectrum-warning" style="display: none;" onclick="setPanel('gain')"></div>
+        <div id="scopeTags" class="scope-tags">
+            <div id="audioOffWarning" class="spectrum-warning" onclick="onAudioWarningClick()" style="display: none;">AUDIO OFF</div>
+            <div id="micOffWarning" class="spectrum-warning" onclick="toggleMic()" style="display: none;">MIC OFF</div>
+            <div id="preampAttIndicator" class="spectrum-warning" style="display: none;"></div>
+            <div id="dupIndicator" class="spectrum-warning" style="display: none;" onclick="openDupModal()"></div>
+            <div id="toneIndicator" class="spectrum-warning" style="display: none;" onclick="openToneModal()"></div>
+            <div id="rfGainIndicator" class="spectrum-warning" style="display: none;" onclick="setPanel('gain')"></div>
+            <div id="rxVolIndicator" class="spectrum-warning" style="display: none;" onclick="setPanel('gain')"></div>
+            <div id="squelchIndicator" class="spectrum-warning" style="display: none;" onclick="setPanel('gain')"></div>
+            <div id="compIndicator" class="spectrum-warning" style="display: none;" onclick="setPanel('gain')"></div>
+        </div>
+        <div id="scopeTagsRight" class="scope-tags"></div>
     </div>
 
     <!-- Row 5: Bottom bar -->
@@ -8729,6 +8720,7 @@ function updateFreeDVStatus(msg) {
             + rptDot
             + '<span id="freedvMonBtn" style="cursor:pointer; padding:1px 5px; border:1px solid var(--text-faint); border-radius:3px; font-size:10px;">MON</span>';
         indicator.style.display = 'flex';
+        layoutScopeTags();
         // Mode cycle on click
         var modeLink = document.getElementById('freedvModeLink');
         if (modeLink) modeLink.onclick = function(e) { e.stopPropagation(); cycleFreeDVMode(); };
@@ -8763,6 +8755,7 @@ function updateFreeDVStatus(msg) {
         }
     } else {
         indicator.style.display = 'none';
+        layoutScopeTags();
     }
 
     // Update mode button and mode overlay to reflect FreeDV state
@@ -9594,6 +9587,9 @@ function resizeCanvases() {
     document.getElementById('uiLockBtn').style.bottom = (8 + lockLift) + 'px';
     document.getElementById('uiLockHint').style.bottom = (17 + lockLift) + 'px';
     spectCanvas.style.height = spectH + 'px';
+    // The tag stack in the spectrum's corner wraps at this height (#scopeTags).
+    area.style.setProperty('--spect-h', spectH + 'px');
+    layoutScopeTags();
     wfCanvas.style.top = spectH + 'px';
     wfCanvas.style.height = wfH + 'px';
     // Span edge labels hug the spectrum/waterfall boundary (CSS puts them at
@@ -9612,6 +9608,39 @@ function resizeCanvases() {
     if (spectDataLen > 0) initWaterfallBuffer(spectDataLen);
     // Redraw meter for new DPI
     drawMeter();
+}
+
+// The tag stack in the spectrum's corner: #scopeTags runs down the left edge
+// and CSS wraps what does not fit the spectrum's height into further columns.
+// Those wrapped tags are moved to #scopeTagsRight, the top-right corner, so
+// they do not sit on the trace next to the first column. The FreeDV status
+// line owns that corner while it shows; the wrapped columns then stay left.
+// Runs on a resize and whenever a tag is shown or hidden.
+var scopeTagEls = null, scopeTagsKey = '';
+function layoutScopeTags() {
+    var left = document.getElementById('scopeTags'), right = document.getElementById('scopeTagsRight');
+    if (!left || !right) return;
+    if (!scopeTagEls) {
+        scopeTagEls = Array.prototype.slice.call(left.children);
+        if (window.MutationObserver) {
+            var mo = new MutationObserver(layoutScopeTags);
+            scopeTagEls.forEach(function (e) { mo.observe(e, { attributes: true, attributeFilter: ['style'] }); });
+        }
+    }
+    if (!left.offsetParent) return;   // scope not laid out: nothing to measure
+    var fdv = document.getElementById('freedvIndicator');
+    var cornerTaken = !!fdv && fdv.style.display !== 'none';
+    var key = scopeTagEls.map(function (e) { return e.style.display === 'none' ? '0' : '1'; }).join('')
+        + '|' + document.getElementById('spectrumCanvas').style.height + '|' + cornerTaken;
+    if (key === scopeTagsKey) return;
+    scopeTagsKey = key;
+    scopeTagEls.forEach(function (e) { left.appendChild(e); });
+    if (cornerTaken) return;
+    var shown = scopeTagEls.filter(function (e) { return e.style.display !== 'none'; });
+    if (!shown.length) return;
+    var x0 = shown[0].offsetLeft;
+    shown.filter(function (e) { return e.offsetLeft > x0; })
+         .forEach(function (e) { right.appendChild(e); });
 }
 
 // The CW bar's height changes when it opens/closes or its header wraps;
