@@ -409,3 +409,134 @@
     font-family: var(--font-mono);
     font-size: var(--fs-sm);
 }
+
+/* ============================================================================
+   START SCREEN (#startupOverlay) -- one card for both builds.
+   Server build: a translucent sheet over the live page, which is already
+   connected and drawing underneath; the whole sheet is the button and it
+   fades out over the page when pressed (.gone). No backdrop blur: blurring
+   the animating scope every frame is too much for a Pi-class browser. The
+   scrim is darkest behind the card and lets more of the page through toward
+   the edges; the card is solid so its text does not sit on the waterfall.
+   Standalone (.opaque): the connect page, same card, wider for its intro.
+   ========================================================================== */
+#startupOverlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: radial-gradient(ellipse at center,
+        rgba(6, 8, 16, 0.80) 0%, rgba(6, 8, 16, 0.64) 45%, rgba(6, 8, 16, 0.46) 100%);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 16px;
+    box-sizing: border-box;
+    font-family: var(--font-ui);
+    cursor: pointer;
+    transition: opacity 0.22s ease;
+}
+#startupOverlay.gone { opacity: 0; pointer-events: none; }
+/* Standalone: the connect page. Nothing is live under it, so it is opaque,
+   and only the button acts. */
+#startupOverlay.opaque {
+    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%);
+    cursor: default;
+}
+#startupOverlay .start-card {
+    position: relative;
+    background: linear-gradient(180deg, #181829 0%, #101019 100%);
+    border: 1px solid #2c2c40;
+    border-radius: 14px;
+    padding: 30px 32px 14px;
+    width: min(560px, 100%);
+    max-height: 100%;
+    overflow-y: auto;
+    box-sizing: border-box;
+    box-shadow: 0 14px 50px rgba(0,0,0,0.75);
+    text-align: center;
+    animation: startCardIn 0.28s ease-out both;
+}
+#startupOverlay .start-card.wide { width: min(700px, 100%); }
+/* The accent: a hairline of the brand colour along the top edge. */
+#startupOverlay .start-card::before {
+    content: ''; position: absolute; top: 0; left: 12%; right: 12%; height: 2px;
+    background: linear-gradient(90deg, transparent, #0cc, transparent);
+}
+@keyframes startCardIn { from { opacity: 0; transform: translateY(10px) scale(0.985); } }
+#startupOverlay .start-brand {
+    display: flex; align-items: center; justify-content: center; gap: 14px;
+    font-size: 48px; font-weight: bold; letter-spacing: -0.5px; color: #0bb; line-height: 1;
+    text-shadow: 0 0 22px rgba(0, 190, 190, 0.45);
+}
+#startupOverlay .start-brand img { border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.6); }
+#startupOverlay .start-tagline { font-size: 16px; color: #999; margin-top: 10px; }
+#startupOverlay .start-rig {
+    display: inline-flex; align-items: center; gap: 8px; visibility: hidden;
+    margin-top: 16px; padding: 4px 12px; min-height: 18px;
+    border: 1px solid #2a2a3c; border-radius: 999px; background: rgba(0,0,0,0.25);
+    font-size: 13px; font-weight: bold; letter-spacing: 0.5px; color: #bbc;
+}
+#startupOverlay .start-rig.on { visibility: visible; }
+#startupOverlay .start-rig-dot { width: 8px; height: 8px; border-radius: 50%; background: #555; }
+#startupOverlay .start-rig.live .start-rig-dot { background: #1d1; box-shadow: 0 0 8px rgba(40,230,40,0.8); }
+#startBtn {
+    display: block; margin: 22px auto 0;
+    padding: 19px 58px; font-size: 22px; font-weight: bold; letter-spacing: 1.5px; color: #021;
+    background: linear-gradient(180deg, #17c9c9 0%, #089898 100%);
+    border: none; border-radius: 10px; cursor: pointer;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 4px 16px rgba(0, 170, 170, 0.35);
+    transition: transform 0.2s ease, filter 0.2s ease;
+    animation: startPulse 2.8s ease-in-out infinite;
+    max-width: 100%;
+}
+@keyframes startPulse {
+    50% { box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 4px 30px rgba(0, 210, 210, 0.7); }
+}
+#startupOverlay:not(.opaque):hover #startBtn, #startBtn:hover { transform: scale(1.03); filter: brightness(1.08); }
+#startBtn:active { transform: scale(0.98); }
+#startBtn:disabled { opacity: 0.6; cursor: default; transform: none; filter: none; animation: none; }
+#startupOverlay .start-hint { margin-top: 18px; font-size: 14px; color: #888; }
+#startupOverlay .start-error { margin-top: 10px; font-size: 14px; color: #f88; }
+#startupOverlay .start-error:empty { display: none; }
+#startupOverlay .start-touch { display: none; }
+@media (pointer: coarse) {
+    #startupOverlay .start-mouse { display: none; }
+    #startupOverlay .start-touch { display: inline; }
+}
+#startupOverlay .start-about {
+    margin-top: 26px; padding-top: 20px; border-top: 1px solid #262636;
+    font-size: 14px; line-height: 1.5; color: #999; text-wrap: balance;
+}
+#startupOverlay .start-links {
+    display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 12px;
+}
+#startupOverlay .start-links a, #startShare {
+    display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px;
+    max-width: 100%; box-sizing: border-box;
+    color: #0cc; background: rgba(0, 170, 170, 0.05); text-decoration: none;
+    font-family: inherit; font-size: 14px; cursor: pointer;
+    border: 1px solid #075f5f; border-radius: 999px;
+    transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+#startupOverlay .start-links svg { flex-shrink: 0; }
+#startupOverlay .start-links .start-star { color: #fc3; }
+#startupOverlay .start-links a:hover, #startShare:hover { color: #5ff; border-color: #0cc; background: rgba(0,170,170,0.12); }
+/* Footer: the version, and the plain links as text so they do not compete. */
+#startupOverlay .start-foot {
+    display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 18px;
+    margin-top: 24px; font-size: 13px; color: #666;
+}
+#startupOverlay .start-foot-links { display: inline-flex; flex-wrap: wrap; gap: 4px 18px; }
+#startupOverlay .start-foot a { color: #999; text-decoration: none; transition: color 0.2s ease; }
+#startupOverlay .start-foot a:hover { color: #0cf; text-decoration: underline; }
+@media (max-width: 480px) {
+    #startupOverlay .start-card { padding: 24px 18px 12px; }
+    #startupOverlay .start-brand { font-size: 40px; }
+    #startupOverlay .start-brand img { width: 38px; height: 38px; }
+    #startBtn { padding: 18px 28px; font-size: 20px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    #startupOverlay, #startBtn { transition: none; }
+    #startupOverlay .start-card, #startBtn { animation: none; }
+}

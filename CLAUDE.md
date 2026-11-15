@@ -729,6 +729,50 @@ is the no-drag branch of `scopePointerEnd`; `scopeClick` is not wired. The
 scope message carries its edges as float32 MHz, about 1 Hz at 14 MHz but
 15 Hz at 144 MHz and 30 Hz at 432 MHz, which bounds a 1 Hz click up there.
 
+### Start screen
+One card for both builds, styled in `theme.css` ("START SCREEN":
+`#startupOverlay`, `.start-card`, `#startBtn`, `.start-links`, `.start-foot`):
+logo and wordmark, the button, the ask ("by K1FM", Star on GitHub, Tell a
+friend) and a footer line with the version and the plain links as text. The
+two pages differ in what the screen is for.
+**Server** (`resources/web/index.html`): a translucent sheet over the live
+page, not a splash. The page connects at load and draws underneath, and the
+sheet is there for the one user gesture a browser needs before it plays
+audio (`dismissStartScreen`: `startAudio()`, or only the AudioContext with
+`audioStartPending` while the first status is not in yet). A click anywhere
+on it starts (links and `#startShare` excepted), and so does a key: a
+capture-phase `keydown` on `document` keeps keys from the page's shortcuts
+while it is up, because under the old opaque splash Space keyed the rig and
+the arrows tuned (2026-11-15). Escape gets through (the stop key); Tab,
+modifiers and function keys do nothing; the handler stands aside while
+`#loginOverlay` / `#powerOffOverlay` are visible and for a target in
+`#seatPrompt` or a field. Shared Station's login sheet (z 10002), seat
+prompt and toast (10003) sit above it (9999). `.gone` fades it out and drops
+pointer events at once, `display: none` follows 260 ms later: **ask
+`startScreenUp()`, not `style.display`** (`focusCwInput` does). No backdrop
+blur (it would re-blur the animating scope every frame on a Pi); the scrim
+is a radial gradient, the card is solid. `#startRig` names the station
+(`updateStartRig`, from `updateRigTag` and the transport open / close).
+**Standalone** (`.opaque`, `.start-card.wide`): the connect page. The Web
+Serial picker needs a click, it is the wfweb.k1fm.us landing page and the
+unsupported-browser notice, and nothing is live under it before a rig is
+connected, so it stays opaque, only the button acts, and it goes with a
+plain `display: none`. Its intro (`.splash-hero`, `.splash-feats`,
+`.splash-req`, `.splash-unsupported`, `.splash-server-pitch`) is styled in
+that page; `initStandaloneSplash()` sets the button's text and shows or
+hides the parts by id (the pitch and the ask are hidden on a virtual rig).
+A returning user gets the button, not the brochure: with a port already
+paired, and after a disconnect (`showStartupSplash`), the card is `.compact`
+(no intro, no server pitch, narrower; the ask stays). The card is hidden
+until that is known (`.ready`, set when `initStandaloneSplash()` settles),
+so the intro does not flash at a returning user. The intro's tiles are one
+per mode this build has: add one with a new mode.
+In both, "Tell a friend" hands out the project's GitHub address, **never
+the station's own URL** (`navigator.share`, else the clipboard, else a
+mail); the handler is the same few lines in each page. Every browser test
+presses `#startBtn`. Test: `tests/test_start_screen.py`
+(`start_screen_browser.mjs`, the server page on the IC-7300 mock).
+
 ### Touch operating controls (#144)
 Phones and touch tablets only, gated on `(pointer: coarse)` in CSS and
 `touchUi` in JS; the desktop keeps five equal soft keys and hold-to-talk.

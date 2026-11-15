@@ -2184,32 +2184,35 @@ body.digi-open #bottomBar { grid-row: 5; }
     #freedvIndicator { flex-wrap: wrap; justify-content: flex-end; row-gap: 2px; max-width: calc(100% - 150px); }
 }
 
-/* ============ SPLASH (standalone) ============ */
+/* ============ START SCREEN: the Standalone intro ============
+   The card itself is theme.css ("START SCREEN"); these are the pieces only
+   this build's connect page has. */
 .splash-hero {
     color: #d8d8d8;
-    font-size: 14px;
+    font-size: 15px;
     line-height: 1.55;
-    max-width: 540px;
-    margin: 0 auto 22px;
+    max-width: 560px;
+    margin: 22px auto 20px;
+    text-wrap: balance;
 }
 .splash-feats {
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(8, 1fr);
     gap: 8px;
-    max-width: 620px;
     margin: 0 auto 18px;
 }
 .splash-feat {
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     gap: 7px;
-    padding: 12px 4px;
+    padding: 12px 2px;
     border: 1px solid #1c2e2e;
     background: rgba(0, 170, 170, 0.05);
     border-radius: 8px;
     color: #cfd8d8;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
     letter-spacing: 0.3px;
     text-align: center;
@@ -2228,37 +2231,51 @@ body.digi-open #bottomBar { grid-row: 5; }
     font-size: 12px;
     font-weight: 600;
     letter-spacing: 0.3px;
-    margin: 0 auto 4px;
 }
 .splash-req svg { color: #0cc; flex-shrink: 0; }
-.splash-server-pitch {
-    margin: 28px auto 12px;
-    color: #888;
-    font-size: 12px;
+.splash-unsupported {
+    text-align: left;
+    margin: 22px auto 0;
+    max-width: 540px;
+    padding: 14px 18px;
+    border: 1px solid #f44;
+    border-radius: 8px;
+    background: rgba(255, 68, 68, 0.06);
+    color: #fbb;
+    font-size: 14px;
     line-height: 1.5;
-    max-width: 480px;
 }
-.splash-server-pitch b { color: #0cc; font-weight: 600; }
-.splash-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 14px;
-    color: #888;
-    text-decoration: none;
-    font-size: 12px;
-    border: 1px solid #333;
-    border-radius: 6px;
-    transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+.splash-unsupported p { margin: 0 0 8px; }
+.splash-unsupported p:last-child { margin: 0; color: #fdd; }
+.splash-unsupported b { color: #0cf; }
+.splash-server-pitch {
+    margin: 26px 0 0;
+    padding-top: 20px;
+    border-top: 1px solid #262636;
+    color: #999;
+    font-size: 14px;
+    line-height: 1.5;
+    text-wrap: balance;
 }
-.splash-pill:hover {
-    color: #0cf;
-    border-color: #0cf;
-    background: rgba(0, 170, 170, 0.06);
+.splash-server-pitch a { color: #0cc; font-weight: 600; text-decoration: none; }
+.splash-server-pitch a:hover { color: #5ff; text-decoration: underline; }
+/* The ask follows the pitch without a second rule. */
+#splashStandaloneLinks .start-about { margin-top: 14px; padding-top: 0; border-top: none; }
+/* Hidden until initStandaloneSplash() knows which card this is, so the intro
+   does not flash at a returning user; .ready also starts the entry animation. */
+#startupOverlay.opaque .start-card:not(.ready) { visibility: hidden; animation: none; }
+/* A returning user (a port is already paired, or we just disconnected) gets
+   the button, not the brochure: no intro, no server pitch, a narrower card.
+   The ask stays. !important: the intro's display is set inline by the script. */
+#startupOverlay .start-card.compact.wide { width: min(560px, 100%); }
+.start-card.compact #splashStandaloneIntro,
+.start-card.compact .splash-server-pitch { display: none !important; }
+.start-card.compact #splashStandaloneLinks .start-about {
+    margin-top: 26px; padding-top: 20px; border-top: 1px solid #262636;
 }
 @media (max-width: 540px) {
-    .splash-feats { grid-template-columns: repeat(3, 1fr); }
-    .splash-hero { font-size: 13px; }
+    .splash-feats { grid-template-columns: repeat(4, 1fr); }
+    .splash-hero { font-size: 14px; }
 }
 /* ============ TOUCH OPERATING CONTROLS (#144) ============
    Phones and tablets only ((pointer: coarse)); the desktop keeps its five
@@ -2398,44 +2415,33 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
 <link rel="stylesheet" href="sstv-panel.css">
 </head>
 <body>
-<!-- Startup Overlay -->
-<div id="startupOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%); z-index: 9999; display: flex; flex-direction: column; align-items: center; overflow-y: auto; font-family: system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; padding: 24px 24px 56px;">
-    <div style="text-align: center; max-width: 640px; margin: auto 0;">
-        <div style="font-size: 48px; font-weight: bold; color: #0aa; margin-bottom: 6px; text-shadow: 0 0 20px rgba(0, 170, 170, 0.5);">wfweb</div>
-        <div id="splashTagline" style="font-size: 14px; color: #888; margin-bottom: 26px; letter-spacing: 0.3px;">A radio shack in your browser</div>
+<!-- Start screen (CSS: theme.css, "START SCREEN"; the .splash-* intro pieces
+     are styled in this page). In this build it is the connect page: the Web
+     Serial picker needs a click, and nothing is live underneath before a rig
+     is connected, so the sheet is opaque and only the button acts.
+     initStandaloneSplash() fills it in. -->
+<div id="startupOverlay" class="opaque">
+    <div class="start-card wide" id="startCard">
+        <div class="start-brand"><img src="favicon.svg" alt="" width="44" height="44"><span>wfweb</span></div>
+        <div id="splashTagline" class="start-tagline">A radio shack in your browser</div>
 
         <!-- Splash intro — shown by initStandaloneSplash(). -->
         <div id="splashStandaloneIntro" style="display:none;">
             <p class="splash-hero">
-                Drive your Icom HF transceiver right from this page.
-                Voice, FT8/FT4, JS8, CW, AX.25 packet, and digital voice
-                all run client-side — nothing to install.
+                Plug in your Icom over USB and operate it from this page:
+                scope and waterfall, eight modes with their decoders,
+                a logbook and a recorder. It all runs in the browser,
+                with nothing to install.
             </p>
 
+            <!-- One tile per mode this build has; keep it in step with the MODE grid. -->
             <div class="splash-feats">
                 <div class="splash-feat">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                         <rect x="9" y="2" width="6" height="12" rx="3"/>
                         <path d="M5 11a7 7 0 0014 0M12 18v3M8 22h8"/>
                     </svg>
-                    <span>SSB &amp;<br>Voice</span>
-                </div>
-                <div class="splash-feat">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <line x1="4" y1="20" x2="4" y2="14"/>
-                        <line x1="9" y1="20" x2="9" y2="9"/>
-                        <line x1="14" y1="20" x2="14" y2="11"/>
-                        <line x1="19" y1="20" x2="19" y2="6"/>
-                    </svg>
-                    <span>FT8 / FT4</span>
-                </div>
-                <div class="splash-feat">
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M4 5h16a1 1 0 011 1v9a1 1 0 01-1 1H9l-4 4v-4H4a1 1 0 01-1-1V6a1 1 0 011-1z"/>
-                        <line x1="7" y1="9" x2="17" y2="9"/>
-                        <line x1="7" y1="12" x2="13" y2="12"/>
-                    </svg>
-                    <span>JS8<br>Messaging</span>
+                    <span>SSB<br>Voice</span>
                 </div>
                 <div class="splash-feat">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
@@ -2444,7 +2450,38 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
                         <circle cx="16.5" cy="12" r="1.4" fill="currentColor"/>
                         <line x1="19" y1="12" x2="22" y2="12"/>
                     </svg>
-                    <span>CW<br>Decoder</span>
+                    <span>CW</span>
+                </div>
+                <div class="splash-feat">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M2 16h4V8h4v8h4V8h4v8h4"/>
+                    </svg>
+                    <span>RTTY</span>
+                </div>
+                <div class="splash-feat">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <line x1="4" y1="20" x2="4" y2="14"/>
+                        <line x1="9" y1="20" x2="9" y2="9"/>
+                        <line x1="14" y1="20" x2="14" y2="11"/>
+                        <line x1="19" y1="20" x2="19" y2="6"/>
+                    </svg>
+                    <span>FT8<br>FT4</span>
+                </div>
+                <div class="splash-feat">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M4 5h16a1 1 0 011 1v9a1 1 0 01-1 1H9l-4 4v-4H4a1 1 0 01-1-1V6a1 1 0 011-1z"/>
+                        <line x1="7" y1="9" x2="17" y2="9"/>
+                        <line x1="7" y1="12" x2="13" y2="12"/>
+                    </svg>
+                    <span>JS8</span>
+                </div>
+                <div class="splash-feat">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <rect x="3" y="5" width="18" height="14" rx="2"/>
+                        <circle cx="8.5" cy="10" r="1.6"/>
+                        <path d="M3.5 17l5-4.5 3.5 3 3-2.5 5.5 4.5"/>
+                    </svg>
+                    <span>SSTV</span>
                 </div>
                 <div class="splash-feat">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -2455,7 +2492,7 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
                         <line x1="6.5" y1="7.5" x2="10.7" y2="16.5"/>
                         <line x1="17.5" y1="7.5" x2="13.3" y2="16.5"/>
                     </svg>
-                    <span>Packet /<br>APRS</span>
+                    <span>Packet<br>APRS</span>
                 </div>
                 <div class="splash-feat">
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -2477,53 +2514,50 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
         </div>
 
         <!-- Browser-not-supported message (Firefox, Safari, mobile). Hidden by default. -->
-        <div id="splashUnsupported" style="display:none; text-align:left; padding:14px 18px; border:1px solid #f44; border-radius:6px; background:rgba(255,68,68,0.06); color:#fbb; font-size:13px; line-height:1.5; max-width:520px; margin: 0 auto 24px;">
-            <p style="margin: 0 0 8px;">
+        <div id="splashUnsupported" class="splash-unsupported" style="display:none;">
+            <p>
                 This browser doesn't support the Web Serial API.
                 wfweb's standalone build needs Chrome, Edge, Opera, Brave, or
                 another Chromium-family browser on a desktop OS. Mobile
                 browsers, Firefox, and Safari aren't supported.
             </p>
-            <p style="margin: 0; color:#fdd;">
-                The full <b style="color:#0cf;">wfweb server</b> (linked below)
+            <p>
+                The full <b>wfweb server</b> (linked below)
                 works on any modern browser &mdash; phones and tablets included.
             </p>
         </div>
 
-        <div style="margin-top: 22px;">
-            <button id="startBtn" style="padding: 20px 60px; font-size: 24px; font-weight: bold; color: #000; background: linear-gradient(135deg, #0aa 0%, #088 100%); border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 15px rgba(0, 170, 170, 0.4); transition: all 0.3s ease;" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0, 170, 170, 0.6)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 15px rgba(0, 170, 170, 0.4)';">
-                CLICK TO START
-            </button>
-        </div>
-        <div id="splashHint" style="margin-top: 18px; font-size: 12px; color: #666;">Enable RX Audio</div>
-        <div id="splashError"  style="margin-top: 14px; min-height: 18px; font-size: 12px; color: #f88;"></div>
+        <button id="startBtn">CLICK TO START</button>
+        <div id="splashHint" class="start-hint">Enable RX Audio</div>
+        <div id="splashError" class="start-error"></div>
 
-        <!-- Source link + server-version link. Hidden by initStandaloneSplash() in virtual-rig mode. -->
-        <div id="splashStandaloneLinks" style="display:none; flex-direction: column; align-items: center; gap: 4px; margin-top: 8px;">
+        <!-- The server pitch and the ask. Hidden by initStandaloneSplash() in virtual-rig mode. -->
+        <div id="splashStandaloneLinks" style="display:none; flex-direction: column;">
             <p class="splash-server-pitch">
                 LAN-attached rig, Kenwood / Yaesu, or 24/7 deployment?
-                The full <b>wfweb server</b> runs natively or in Docker.
+                The full <a href="https://github.com/adecarolis/wfweb/releases" target="_blank" rel="noopener"
+                   title="Native Linux / macOS / Windows builds. Also published as k1fm/wfweb on Docker Hub. Adds: LAN-attached rigs, Kenwood/Yaesu CI-V, FreeDV 700D/700E/1600, FreeDV Reporter, unattended deployments.">wfweb server</a> runs natively or in Docker.
             </p>
-            <div style="display: inline-flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
-                <a href="https://github.com/adecarolis/wfweb" target="_blank" rel="noopener" class="splash-pill">
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-                    Source &amp; documentation
+            <div class="start-about">Free and open source, by K1FM. If you like it, spread the word.</div>
+            <div class="start-links">
+                <a href="https://github.com/adecarolis/wfweb" target="_blank" rel="noopener">
+                    <svg class="start-star" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5l2.95 6.2 6.8.83-5 4.68 1.3 6.72L12 17.6l-6.05 3.33 1.3-6.72-5-4.68 6.8-.83z"/></svg>
+                    Star on GitHub
                 </a>
-                <a href="https://github.com/adecarolis/wfweb/releases" target="_blank" rel="noopener" class="splash-pill"
-                   title="Native Linux / macOS / Windows builds. Also published as k1fm/wfweb on Docker Hub. Adds: LAN-attached rigs, Kenwood/Yaesu CI-V, FreeDV 700D/700E/1600, FreeDV Reporter, unattended deployments.">
-                    <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M2 3a1 1 0 011-1h10a1 1 0 011 1v3a1 1 0 01-1 1H3a1 1 0 01-1-1V3zm2 1.5a.5.5 0 100 1 .5.5 0 000-1zm2 0a.5.5 0 100 1 .5.5 0 000-1zM2 10a1 1 0 011-1h10a1 1 0 011 1v3a1 1 0 01-1 1H3a1 1 0 01-1-1v-3zm2 1.5a.5.5 0 100 1 .5.5 0 000-1zm2 0a.5.5 0 100 1 .5.5 0 000-1z"/></svg>
-                    Get the server &mdash; native or Docker
-                </a>
-                <a href="mailto:wfweb@k1fm.us" class="splash-pill"
-                   title="Report a bug or request a feature by email. No account needed; logs and screenshots welcome.">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 6l-10 7L2 6"/></svg>
-                    Bugs &amp; feature requests &mdash; wfweb@k1fm.us
-                </a>
+                <button type="button" id="startShare">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+                    <span id="startShareText">Tell a friend</span>
+                </button>
             </div>
         </div>
-    </div>
-    <div style="position: absolute; bottom: 20px; left: 20px; font-size: 11px; color: #555;">
-        <span id="splashVersion">wfweb</span>
+        <div class="start-foot">
+            <span id="splashVersion">wfweb</span>
+            <span class="start-foot-links">
+                <a href="https://github.com/adecarolis/wfweb" target="_blank" rel="noopener">Source &amp; docs</a>
+                <a href="https://github.com/adecarolis/wfweb/releases" target="_blank" rel="noopener">Get the server</a>
+                <a href="mailto:wfweb@k1fm.us" title="Report a bug or request a feature by email. No account needed; logs and screenshots welcome.">Bugs: wfweb@k1fm.us</a>
+            </span>
+        </div>
     </div>
 </div>
 <div id="audioErrorBanner"><span id="audioErrorText"></span><button onclick="document.getElementById('audioErrorBanner').style.display='none'">&#x2715;</button></div>
@@ -5595,7 +5629,9 @@ function showStartupSplash() {
     var startBtn = document.getElementById('startBtn');
     var hintEl = document.getElementById('splashHint');
     var errEl = document.getElementById('splashError');
-    if (overlay) overlay.style.display = 'flex'; // matches the inline default; '' would fall back to block and break centering
+    if (overlay) overlay.style.display = 'flex'; // as in theme.css
+    // Whoever gets here has used the page: the button, not the brochure.
+    document.getElementById('startCard').classList.add('compact');
     if (startBtn) {
         startBtn.disabled = false;
         startBtn.textContent = 'CLICK TO START';
@@ -13528,10 +13564,33 @@ window.addEventListener('resize', function() {
 });
 requestAnimationFrame(resizeCanvases);
 
+// "Tell a friend": the project's address, never this station's. The system
+// share sheet where there is one (phones), else the clipboard, else a mail.
+var WFWEB_HOME_URL = 'https://github.com/adecarolis/wfweb';
+document.getElementById('startShare').addEventListener('click', function() {
+    var label = document.getElementById('startShareText');
+    var text = 'wfweb: run your radio from a web browser';
+    function said(t) {
+        label.textContent = t;
+        setTimeout(function() { label.textContent = 'Tell a friend'; }, 2500);
+    }
+    function mail() {
+        location.href = 'mailto:?subject=' + encodeURIComponent('wfweb')
+            + '&body=' + encodeURIComponent(text + '\n' + WFWEB_HOME_URL);
+    }
+    if (navigator.share) {
+        navigator.share({ title: 'wfweb', text: text, url: WFWEB_HOME_URL }).catch(function() {});
+    } else if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(WFWEB_HOME_URL).then(function() { said('Link copied'); }, mail);
+    } else {
+        mail();
+    }
+});
 // The splash takes over the connect flow: render the "pair USB" or
 // "click to start" state up-front and gate the actual port open behind
 // the click. requestPort() must run inside a user gesture.
-initStandaloneSplash();
+initStandaloneSplash().catch(function (e) { console.error('start screen:', e); })
+    .then(function () { document.getElementById('startCard').classList.add('ready'); });
 
 // ── Splash ──────────────────────────────────────────────────────────
 //
@@ -13640,6 +13699,7 @@ async function initStandaloneSplash() {
     if (paired) {
         startBtn.textContent = 'CLICK TO START';
         if (hintEl) hintEl.textContent = 'Connect rig and start audio';
+        document.getElementById('startCard').classList.add('compact');
     } else {
         startBtn.textContent = 'PAIR USB RIG';
         if (hintEl) hintEl.textContent = 'Choose your rig\'s USB serial port';

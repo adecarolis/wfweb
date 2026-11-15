@@ -159,6 +159,7 @@ html, body {
 #powerBtn.on { border-color: #0a0; color: #0a0; }
 #powerBtn.off { border-color: #a00; color: #a00; }
 #powerBtn:active { opacity: 0.7; }
+/* The start screen (#startupOverlay) is styled in theme.css, "START SCREEN". */
 #powerOffOverlay {
     display: none;
     position: fixed;
@@ -2509,37 +2510,37 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
 <link rel="stylesheet" href="sstv-panel.css">
 </head>
 <body>
-<!-- Startup Overlay -->
-<div id="startupOverlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0a0a0a 100%); z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; font-family: system-ui, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; padding: 24px;">
-    <div style="text-align: center; max-width: 640px;">
-        <div style="font-size: 48px; font-weight: bold; color: #0aa; margin-bottom: 8px; text-shadow: 0 0 20px rgba(0, 170, 170, 0.5);">wfweb</div>
-        <div id="splashTagline" style="font-size: 14px; color: #888; margin-bottom: 28px;">Remote Control &amp; Web Interface</div>
+<!-- Start screen: a translucent sheet over the live page (CSS: #startupOverlay).
+     The page is already connected underneath; a click anywhere on the sheet,
+     or a key, is the user gesture the browser needs to start RX audio. -->
+<div id="startupOverlay">
+    <div class="start-card">
+        <div class="start-brand"><img src="favicon.svg" alt="" width="44" height="44"><span>wfweb</span></div>
+        <div id="splashTagline" class="start-tagline">Remote Control &amp; Web Interface</div>
+        <!-- Which station this is (updateStartRig): the top bar is dimmed, and hides its rig tag on a phone. -->
+        <div id="startRig" class="start-rig"><span class="start-rig-dot"></span><span id="startRigName"></span></div>
 
-        <button id="startBtn" style="padding: 20px 60px; font-size: 24px; font-weight: bold; color: #000; background: linear-gradient(135deg, #0aa 0%, #088 100%); border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 15px rgba(0, 170, 170, 0.4); transition: all 0.3s ease;" onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 6px 20px rgba(0, 170, 170, 0.6)';" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 15px rgba(0, 170, 170, 0.4)';">
-            CLICK TO START
-        </button>
-        <div id="splashHint" style="margin-top: 20px; font-size: 12px; color: #666;">Enable RX Audio</div>
-        <div id="splashError"  style="margin-top: 16px; min-height: 18px; font-size: 12px; color: #f88;"></div>
+        <button id="startBtn"><span class="start-mouse">CLICK TO START</span><span class="start-touch">TAP TO START</span></button>
+        <div id="splashHint" class="start-hint"><span class="start-mouse">Click anywhere or press a key</span><span class="start-touch">Tap anywhere</span> &middot; starts RX audio</div>
 
-        <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 32px;">
-            <a href="https://github.com/adecarolis/wfweb" target="_blank" rel="noopener"
-               style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; color: #888; text-decoration: none; font-size: 12px; border: 1px solid #333; border-radius: 6px; transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;"
-               onmouseover="this.style.color='#0cf'; this.style.borderColor='#0cf'; this.style.background='rgba(0,170,170,0.06)';"
-               onmouseout="this.style.color='#888'; this.style.borderColor='#333'; this.style.background='transparent';">
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
-                Source &amp; documentation
+        <div class="start-about">Free and open source, by K1FM. If you like it, spread the word.</div>
+        <div class="start-links">
+            <a href="https://github.com/adecarolis/wfweb" target="_blank" rel="noopener">
+                <svg class="start-star" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2.5l2.95 6.2 6.8.83-5 4.68 1.3 6.72L12 17.6l-6.05 3.33 1.3-6.72-5-4.68 6.8-.83z"/></svg>
+                Star on GitHub
             </a>
-            <a href="mailto:wfweb@k1fm.us"
-               style="display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; color: #888; text-decoration: none; font-size: 12px; border: 1px solid #333; border-radius: 6px; transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;"
-               onmouseover="this.style.color='#0cf'; this.style.borderColor='#0cf'; this.style.background='rgba(0,170,170,0.06)';"
-               onmouseout="this.style.color='#888'; this.style.borderColor='#333'; this.style.background='transparent';">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M22 6l-10 7L2 6"/></svg>
-                Bugs &amp; feature requests &mdash; wfweb@k1fm.us
-            </a>
+            <button type="button" id="startShare">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+                <span id="startShareText">Tell a friend</span>
+            </button>
         </div>
-    </div>
-    <div style="position: absolute; bottom: 20px; left: 20px; font-size: 11px; color: #555;">
-        <span id="splashVersion">wfweb</span>
+        <div class="start-foot">
+            <span id="splashVersion">wfweb</span>
+            <span class="start-foot-links">
+                <a href="https://github.com/adecarolis/wfweb" target="_blank" rel="noopener">Source &amp; docs</a>
+                <a href="mailto:wfweb@k1fm.us">Bugs: wfweb@k1fm.us</a>
+            </span>
+        </div>
     </div>
 </div>
 <div id="audioErrorBanner"><span id="audioErrorText"></span><button onclick="document.getElementById('audioErrorBanner').style.display='none'">&#x2715;</button></div>
@@ -3288,6 +3289,17 @@ function updateRigTag() {
         el.title = (rigTagName && rigModelName) ? rigModelName : 'Rig';
     }
     document.title = label ? label + ' \u2013 wfweb' : 'wfweb';
+    updateStartRig();
+}
+// The start card names the station it is about to start: the rig (or its
+// --name tag) with a dot that is green while we are connected to the server.
+function updateStartRig() {
+    var el = document.getElementById('startRig');
+    if (!el) return;
+    var label = rigTagName || rigModelName;
+    document.getElementById('startRigName').textContent = label;
+    el.classList.toggle('on', !!label);
+    el.classList.toggle('live', document.getElementById('connDot').classList.contains('connected'));
 }
 // Rigs that only accept the CI-V power-on command on a connector wfweb may not
 // be using (the IC-7600's [REMOTE] jack — its USB dies in standby).  Server
@@ -3773,6 +3785,7 @@ function populateDigiBandSel() {
 function onTransportOpen() {
     document.getElementById('connDot').classList.add('connected');
     document.getElementById('connDot').title = 'Connected';
+    updateStartRig();
     if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
     send({ cmd: 'getStatus' });
     // The station callsign is server state: rigInfo brings it and we adopt
@@ -3791,6 +3804,7 @@ function onTransportClose(e) {
     dropPttLatch();
     document.getElementById('connDot').classList.remove('connected');
     document.getElementById('connDot').title = 'Disconnected';
+    updateStartRig();
     if (micEnabled || micStarting) stopMic();
     if (audioEnabled) stopAudio();
     audioAvailable = false;
@@ -10912,7 +10926,7 @@ function toggleCWBar() {
 // A page opened with the rig already in CW gets here before the splash is
 // clicked; the splash handler focuses the input once audio is under way.
 function focusCwInput() {
-    if (document.getElementById('startupOverlay').style.display !== 'none') return;
+    if (startScreenUp()) return;
     if (document.getElementById('cwBar').classList.contains('hidden')) return;
     document.getElementById('cwInput').focus();
 }
@@ -14751,16 +14765,71 @@ requestAnimationFrame(resizeCanvases);
 
 connect();
 
-// Splash: simple "click to start audio" gesture. AudioContext can only be
-// resumed inside a user gesture, so the actual startAudio() call must run
-// from the click handler.
-document.getElementById('startBtn').addEventListener('click', function() {
-    document.getElementById('startupOverlay').style.display = 'none';
+// Start screen: the page is live under a translucent sheet. AudioContext can
+// only be started inside a user gesture, so startAudio() must run from the
+// click (anywhere on the sheet) or the key that puts the sheet away.
+function startScreenUp() {
+    var o = document.getElementById('startupOverlay');
+    return o.style.display !== 'none' && !o.classList.contains('gone');
+}
+function dismissStartScreen() {
+    if (!startScreenUp()) return;
+    // .gone fades the sheet out over the page and lets clicks through at
+    // once; it leaves the layout when the fade is over.
+    var o = document.getElementById('startupOverlay');
+    o.classList.add('gone');
+    setTimeout(function() { o.style.display = 'none'; }, 260);
     setTimeout(focusCwInput, 100);
     if (audioEnabled) return;
     if (audioAvailable) startAudio();
     else if (!audioCtx) { audioCtx = createRxAudioCtx(); audioStartPending = true; }
+}
+document.getElementById('startupOverlay').addEventListener('click', function(e) {
+    if (e.target.closest && e.target.closest('a, #startShare')) return;   // a link opens, the sheet stays
+    dismissStartScreen();
 });
+// "Tell a friend": the project's address, never this station's. The system
+// share sheet where there is one (phones), else the clipboard, else a mail.
+var WFWEB_HOME_URL = 'https://github.com/adecarolis/wfweb';
+document.getElementById('startShare').addEventListener('click', function() {
+    var label = document.getElementById('startShareText');
+    var text = 'wfweb: run your radio from a web browser';
+    function said(t) {
+        label.textContent = t;
+        setTimeout(function() { label.textContent = 'Tell a friend'; }, 2500);
+    }
+    function mail() {
+        location.href = 'mailto:?subject=' + encodeURIComponent('wfweb')
+            + '&body=' + encodeURIComponent(text + '\n' + WFWEB_HOME_URL);
+    }
+    if (navigator.share) {
+        navigator.share({ title: 'wfweb', text: text, url: WFWEB_HOME_URL }).catch(function() {});
+    } else if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(WFWEB_HOME_URL).then(function() { said('Link copied'); }, mail);
+    } else {
+        mail();
+    }
+});
+// While the sheet is up a key starts the page instead of reaching the radio
+// under it (Space is PTT, the arrows tune). Capture phase on document, so it
+// runs ahead of the page's shortcut handler. Escape still gets through: it is
+// the stop key. The login and power-off screens sit above the sheet and keep
+// their own keys, as does the seat prompt.
+document.addEventListener('keydown', function(e) {
+    if (!startScreenUp() || e.key === 'Escape') return;
+    var t = e.target;
+    if (document.querySelector('#loginOverlay.visible, #powerOffOverlay.visible')) return;
+    if (t && t.closest && t.closest('#seatPrompt, input, textarea, select')) return;
+    e.stopPropagation();
+    // Keys that are no gesture or belong to the browser: Tab, modifiers,
+    // function keys, shortcuts.
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === 'Tab' || e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt'
+        || e.key === 'Meta' || e.key === 'CapsLock' || /^F\d+$/.test(e.key)) return;
+    if (t && t.closest && t.closest('#startupOverlay a, #startShare')) return;   // Enter on a focused link
+    e.preventDefault();
+    dismissStartScreen();
+}, true);
 
 // Initialize CW Decoder
 if (typeof CWDecoder !== 'undefined') {
