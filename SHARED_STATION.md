@@ -32,7 +32,8 @@ the browser it runs in and has nothing to share.
   the decoder models) stays public so the login sheet can load.
 - **First run** prints a setup code on the console and in the log; the first
   browser to enter it creates the admin account. No default password.
-- **Account management** over REST (`/api/v1/shared/users`, admins only).
+- **Account management** in the page (the ACCOUNTS tab of the Shared
+  station window) and over REST (`/api/v1/shared/users`), admins only.
 - **An audit log** (`audit.log`): every setup, login, failed login, lockout,
   logout, connection, token and account change, one line each.
 - **Brute-force lockout**: five failed logins for a user name or from an
@@ -71,7 +72,7 @@ the browser it runs in and has nothing to share.
 
 ## Reservations
 
-In the SHARED window, **RESERVATIONS**: an account (not a listener), a
+In the Shared station window, the **SCHEDULE** tab: an account (not a listener), a
 start — entered and shown in the browser's own time zone; the server keeps
 UTC — a length in minutes, once / every day / every week, an optional last
 day, a title. A slot that would overlap another, on any of its runs within
@@ -84,8 +85,8 @@ While a slot runs:
 - at the start, a holder who is not the owner loses the seat to them if
   they are connected, and is told the slot is theirs if not; five minutes
   before, the holder is warned;
-- a free seat is kept for the owner for the first 15 minutes (`RESERVED ·
-  W1ABC` on the tag); after that anyone may take it, and the owner may
+- a free seat is kept for the owner for the first 15 minutes (`SEAT
+  reserved for W1ABC` on the strip); after that anyone may take it, and the owner may
   take it back;
 - a request from someone else is never granted unasked, and the
   max-time-while-others-wait rule does not apply to the owner; idleness
@@ -132,15 +133,15 @@ holder keys. Scripts with an API token act on the radio only while the
 seat is free or held by their own account (`409` otherwise). `rigctld`,
 being the station's own software, is not held to the seat.
 
-The SHARED window's seat section: the seat on or off (off: everyone with
-the level controls the radio at once, as before phase 3), idle minutes,
+The seat's rules are in the Shared station window's **RULES** tab: the seat on or off (off: everyone with
+the level controls the radio at once, with no seat at all), idle minutes,
 seconds before an unanswered request is granted, the most minutes a seat
 may be kept while others wait (0 = no limit), whether a higher level may
 take the seat over (then a request from one is granted after 30 s),
 **LISTEN-IN** (others hear and see while someone has the seat; off, they
 get status only) and **PRIVATE ALLOWED** (the holder may switch the others'
 audio and scope off from the seat menu). Admins always hear and see.
-TAKE / CLEAR on the section act on a seat someone else holds.
+TAKE IT / CLEAR in the **NOW** tab act on a seat someone else holds.
 
 ## Access levels
 
@@ -189,8 +190,8 @@ Shared: no admin account yet - open the web page and enter setup code K7QX-4MZP
 ```
 
 Open the page, enter the code with a user name and a password of at least
-eight characters, and you are the admin. Add accounts over REST (below) —
-an admin page in the browser follows in the next phase.
+eight characters, and you are the admin. Add the other accounts from
+`YOU` > STATION SETTINGS > ACCOUNTS, or over REST (below).
 
 ### Files
 
@@ -202,6 +203,7 @@ Everything lives in one directory, `<data dir>/shared` by default
 |------|-------|
 | `users.json` | accounts: name, callsign, role, password hash (PBKDF2-HMAC-SHA256, per-user salt, iteration count in the hash), API token hashes |
 | `sessions.json` | browser sessions by the SHA-256 of their cookie token (the token itself is never stored) |
+| `reservations.json` | the reserved slots |
 | `audit.log` | one line per event: `2026-11-07T10:11:12Z login clubadmin@192.168.1.20 admin` |
 
 Back up the directory with the rest of the station's data. It holds no
@@ -225,8 +227,8 @@ The code is valid for that run only, until it is used.
 | `--shared-dir <dir>`, `Shared/Dir=` | where accounts, sessions and the audit log live |
 | `--shared-reset-admin` | setup code to reset or create an admin (this run only) |
 | `--trust-proxy <cidr>[,<cidr>]`, `Shared/TrustProxy=` | reverse proxy address(es) whose `X-Forwarded-For` / `X-Forwarded-Proto` are believed (see *Deployment*). The client is the rightmost `X-Forwarded-For` entry that is not itself a trusted proxy: Cloudflare and nginx append to a list the client may have started, so the first entry is never believed |
-| `Shared/Anonymous=none\|listen\|control` | what a visitor without a login gets (default `none`); set from the SHARED window |
-| `Shared/TxInhibit=true` | nobody keys the rig (default off); the SHARED window's switch |
+| `Shared/Anonymous=none\|listen\|control` | what a visitor without a login gets (default `none`); the RULES tab |
+| `Shared/TxInhibit=true` | nobody keys the rig (default off); INHIBIT TX in the NOW tab |
 | `Shared/TxTimeoutSecs=` | a key held this long is released (default 600, 0 = never) |
 | `Shared/MaxClients=` | connections at once, admins excepted (default 20) |
 | `Shared/Seat=false` | no seat: everyone with the level controls the radio at once (default on) |
@@ -369,7 +371,7 @@ The amateur radio rules of every country make the station licensee
 responsible for what the station transmits, and require a licensed control
 operator at the control point — with wfweb, the browser of the person
 operating. Shared Station lets you know who that was (the audit log names
-every login and connection, the next phase every key-down), lets you take
+every login, connection, seat change and key-down), lets you take
 access away in a second, and keeps the public out. It cannot make an
 unlicensed operator legal, and it does not change who answers for the
 station. Give `operate` access to licensed people you know; give `listen`
