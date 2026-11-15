@@ -503,8 +503,14 @@ class SharedServer:
         ctx.check_hostname = False
         ctx.verify_mode = ssl.CERT_NONE
         headers = {"Cookie": f"{SESSION_COOKIE}={cookie}"} if cookie else None
-        return connect(f"wss://127.0.0.1:{self.web_port}", ssl=ctx, open_timeout=timeout,
-                       additional_headers=headers)
+        try:
+            return connect(f"wss://127.0.0.1:{self.web_port}", ssl=ctx, open_timeout=timeout,
+                           additional_headers=headers)
+        except TimeoutError as e:
+            # Seen on the macOS runner only and not explained: the server's
+            # log says what it was doing while the upgrade went unanswered.
+            pytest.fail(f"WSS upgrade on port {self.web_port} unanswered for {timeout} s: {e}\n"
+                        f"--- wfweb output (tail) ---\n{wfweb_output_tail(self.proc)}")
 
 
 def set_cookie(resp):

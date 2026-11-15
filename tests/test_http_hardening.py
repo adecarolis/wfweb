@@ -23,6 +23,7 @@ sweep past 10 s (the sweep runs once a second), so that test takes ~11 s.
 import selectors
 import socket
 import ssl
+import sys
 import time
 import warnings
 
@@ -353,6 +354,13 @@ def test_pending_response_bytes_are_capped(wfweb_instance):
     (kHttpMaxPendingWriteBytes is 128 MB); the next request is turned away
     with 503 instead of adding to it, and once they are gone the file is
     served again.  Before the cap, 128 such connections were 1.9 GB."""
+    if sys.platform == "darwin":
+        # Skipped on the owner's word, 2026-11-14, not fixed.  TLS is a proxy
+        # thread in front of a plain socket there (tlsproxy.cpp): the
+        # responses never pile up in the server's own buffer, so the 503
+        # never comes.  Unmeasured guess: the kernel buffers of the two hops
+        # absorb them.  The cap may be weaker on a Mac-hosted server.
+        pytest.skip("macOS TLS proxy path: the cap is not reached this way (open issue)")
     _, web_port = wfweb_instance
     model = f"GET /models/deepcw.onnx HTTP/1.1\r\nHost: 127.0.0.1:{web_port}\r\n\r\n".encode()
     held = []
