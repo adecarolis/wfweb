@@ -10,7 +10,11 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <poll.h>
+#include <fcntl.h>
+#include <cerrno>
+#include <chrono>
 #include <thread>
+#include <vector>
 
 TlsProxyWorker::TlsProxyWorker(quint16 listenPort, quint16 backendPort,
                                const QString &certPath, const QString &keyPath,
@@ -128,96 +132,206 @@ void TlsProxyWorker::acceptLoop()
     }
 }
 
+// One connection, relayed until either side ends it.
+//
+// Both sockets are non-blocking and every wait is one poll() over the two
+// of them.  The first version read the client with a blocking SSL_read()
+// whenever poll() said its socket was readable: a TLS record that carried no
+// application data, or half of one, parked the thread inside SSL_read() while
+// the backend's answer sat unread, and decrypted bytes OpenSSL already held
+// were only looked for through SSL_pending().  A WSS upgrade went unanswered
+// for 10 s on the macOS CI runner now and then (2026-10-27, 2026-11-15) and
+// was never reproduced elsewhere, so the cause is not proven; what is certain
+// is that nothing here can block on one direction any more, and that the
+// log now says which side was silent.
+namespace {
+
+bool setNonBlocking(int fd)
+{
+    const int fl = fcntl(fd, F_GETFL, 0);
+    return fl >= 0 && fcntl(fd, F_SETFL, fl | O_NONBLOCK) == 0;
+}
+
+// A peer that went away must end the relay, not the process.
+void noSigPipe(int fd)
+{
+#ifdef SO_NOSIGPIPE
+    int on = 1;
+    setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &on, sizeof(on));
+#else
+    Q_UNUSED(fd);
+#endif
+}
+
+#ifdef MSG_NOSIGNAL
+const int kSendFlags = MSG_NOSIGNAL;
+#else
+const int kSendFlags = 0;
+#endif
+
+qint64 nowMs()
+{
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+               std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+
+const int kHandshakeTimeoutMs = 10000;   // a client that never finishes TLS
+const int kBackendSilentMs = 3000;       // a request the web server has not answered: say so
+
+} // namespace
+
 void TlsProxyWorker::proxyConnection(int clientFd, SSL_CTX *ctx, quint16 backendPort)
 {
+    noSigPipe(clientFd);
     SSL *ssl = SSL_new(ctx);
-    if (!ssl) {
+    if (!ssl || !setNonBlocking(clientFd)) {
+        if (ssl) SSL_free(ssl);
         close(clientFd);
         return;
     }
     SSL_set_fd(ssl, clientFd);
+    // A write may be retried from a buffer position that moved on.
+    SSL_set_mode(ssl, SSL_MODE_ENABLE_PARTIAL_WRITE | SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
 
-    if (SSL_accept(ssl) != 1) {
-        SSL_free(ssl);
-        close(clientFd);
-        return;
+    // TLS handshake, bounded.
+    const qint64 t0 = nowMs();
+    for (;;) {
+        const int r = SSL_accept(ssl);
+        if (r == 1) break;
+        const int err = SSL_get_error(ssl, r);
+        const qint64 left = kHandshakeTimeoutMs - (nowMs() - t0);
+        if ((err != SSL_ERROR_WANT_READ && err != SSL_ERROR_WANT_WRITE) || left <= 0) {
+            if (left <= 0)
+                qWarning() << "Web: TLS proxy: handshake not finished in" << kHandshakeTimeoutMs << "ms, dropped";
+            SSL_free(ssl);
+            close(clientFd);
+            return;
+        }
+        struct pollfd pfd{};
+        pfd.fd = clientFd;
+        pfd.events = (err == SSL_ERROR_WANT_READ) ? POLLIN : POLLOUT;
+        if (poll(&pfd, 1, int(left)) < 0 && errno != EINTR) {
+            SSL_free(ssl);
+            close(clientFd);
+            return;
+        }
     }
+    const qint64 tlsMs = nowMs() - t0;
 
-    // Connect to the internal plain HTTP server
+    // Connect to the internal plain HTTP server (loopback: immediate).
     int backendFd = socket(AF_INET, SOCK_STREAM, 0);
-    if (backendFd < 0) {
-        SSL_shutdown(ssl);
-        SSL_free(ssl);
-        close(clientFd);
-        return;
-    }
-
     struct sockaddr_in backendAddr{};
     backendAddr.sin_family = AF_INET;
     backendAddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
     backendAddr.sin_port = htons(backendPort);
-
-    if (::connect(backendFd, reinterpret_cast<struct sockaddr*>(&backendAddr), sizeof(backendAddr)) < 0) {
-        close(backendFd);
+    if (backendFd < 0
+        || ::connect(backendFd, reinterpret_cast<struct sockaddr*>(&backendAddr), sizeof(backendAddr)) < 0
+        || !setNonBlocking(backendFd)) {
+        qWarning() << "Web: TLS proxy: no connection to the internal server on port" << backendPort;
+        if (backendFd >= 0) close(backendFd);
         SSL_shutdown(ssl);
         SSL_free(ssl);
         close(clientFd);
         return;
     }
+    noSigPipe(backendFd);
 
-    // Bidirectional forwarding
-    char buf[16384];
-    struct pollfd fds[2];
-    fds[0].fd = clientFd;   // TLS side
-    fds[0].events = POLLIN;
-    fds[1].fd = backendFd;  // plain TCP side
-    fds[1].events = POLLIN;
+    // One buffer per direction; a side is read only while its buffer is empty.
+    static const int kBuf = 16384;
+    std::vector<char> c2b(kBuf), b2c(kBuf);
+    int c2bLen = 0, c2bOff = 0;      // decrypted, waiting for the backend
+    int b2cLen = 0, b2cOff = 0;      // from the backend, waiting for SSL_write
+    bool readWantsWrite = false;     // SSL_read needs the socket writable
+    bool writeWantsRead = false;     // SSL_write needs the socket readable
+    qint64 toBackend = 0, fromBackend = 0;
+    qint64 firstRequestMs = 0;       // when the first bytes went to the backend
+    bool silentLogged = false;
 
-    // SSL may have buffered data after handshake — check before first poll
-    bool running = true;
-    while (running) {
-        // If OpenSSL has buffered decrypted data, don't wait in poll
-        int timeout = SSL_pending(ssl) > 0 ? 0 : 30000;
-        int ret = poll(fds, 2, timeout);
-        if (ret < 0) break;
+    for (;;) {
+        bool progress = false;
 
-        // TLS client -> backend
-        if ((fds[0].revents & POLLIN) || SSL_pending(ssl) > 0) {
-            int n = SSL_read(ssl, buf, sizeof(buf));
-            if (n <= 0) { running = false; break; }
-            int sent = 0;
-            while (sent < n) {
-                int w = send(backendFd, buf + sent, n - sent, 0);
-                if (w <= 0) { running = false; break; }
-                sent += w;
+        // TLS client -> buffer.  Tried on every pass: OpenSSL may hold bytes
+        // the socket no longer shows as readable.
+        if (c2bLen == 0) {
+            const int n = SSL_read(ssl, c2b.data(), kBuf);
+            if (n > 0) {
+                c2bLen = n; c2bOff = 0; progress = true;
+                readWantsWrite = false;
+            } else {
+                const int err = SSL_get_error(ssl, n);
+                if (err == SSL_ERROR_WANT_READ) readWantsWrite = false;
+                else if (err == SSL_ERROR_WANT_WRITE) readWantsWrite = true;
+                else break;                                  // closed or failed
             }
         }
-        if (fds[0].revents & POLLERR) { running = false; break; }
-        if (fds[0].revents & POLLHUP) { running = false; break; }
 
-        // Backend -> TLS client: drain all available data.
-        // poll() can set POLLIN|POLLHUP together when the peer closes
-        // after writing, so we must drain buffered data before exiting.
-        // Use MSG_DONTWAIT to avoid blocking (which would stall the
-        // bidirectional forwarding needed for WebSocket).
-        if (fds[1].revents & (POLLIN | POLLHUP)) {
-            for (;;) {
-                int n = recv(backendFd, buf, sizeof(buf), MSG_DONTWAIT);
-                if (n == 0) { running = false; break; }    // peer closed
-                if (n < 0) break;                           // EAGAIN: no more data right now
-                int sent = 0;
-                while (sent < n) {
-                    int w = SSL_write(ssl, buf + sent, n - sent);
-                    if (w <= 0) { running = false; break; }
-                    sent += w;
-                }
-                if (sent < n) { running = false; break; }
+        // buffer -> backend
+        if (c2bLen > 0) {
+            const ssize_t w = send(backendFd, c2b.data() + c2bOff, size_t(c2bLen), kSendFlags);
+            if (w > 0) {
+                if (toBackend == 0) firstRequestMs = nowMs();
+                toBackend += w; c2bOff += int(w); c2bLen -= int(w); progress = true;
+            } else if (w < 0 && errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) {
+                break;
             }
         }
-        if (fds[1].revents & POLLERR) { running = false; break; }
+
+        // backend -> buffer
+        if (b2cLen == 0) {
+            const ssize_t n = recv(backendFd, b2c.data(), size_t(kBuf), 0);
+            if (n > 0) {
+                b2cLen = int(n); b2cOff = 0; fromBackend += n; progress = true;
+            } else if (n == 0) {
+                break;                                       // closed, and nothing left to pass on
+            } else if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) {
+                break;
+            }
+        }
+
+        // buffer -> TLS client
+        if (b2cLen > 0) {
+            const int w = SSL_write(ssl, b2c.data() + b2cOff, b2cLen);
+            if (w > 0) {
+                b2cOff += w; b2cLen -= w; progress = true;
+                writeWantsRead = false;
+            } else {
+                const int err = SSL_get_error(ssl, w);
+                if (err == SSL_ERROR_WANT_WRITE) writeWantsRead = false;
+                else if (err == SSL_ERROR_WANT_READ) writeWantsRead = true;
+                else break;
+            }
+        }
+
+        if (progress) continue;
+
+        struct pollfd fds[2];
+        fds[0].fd = clientFd;
+        fds[0].events = 0;
+        fds[0].revents = 0;
+        if ((c2bLen == 0 && !readWantsWrite) || (b2cLen > 0 && writeWantsRead)) fds[0].events |= POLLIN;
+        if ((b2cLen > 0 && !writeWantsRead) || (c2bLen == 0 && readWantsWrite)) fds[0].events |= POLLOUT;
+        fds[1].fd = backendFd;
+        fds[1].events = 0;
+        fds[1].revents = 0;
+        if (b2cLen == 0) fds[1].events |= POLLIN;
+        if (c2bLen > 0) fds[1].events |= POLLOUT;
+
+        // While a request is unanswered, wake up to say so once.
+        const bool waiting = toBackend > 0 && fromBackend == 0 && !silentLogged;
+        const int ret = poll(fds, 2, waiting ? 500 : 30000);
+        if (ret < 0 && errno != EINTR) break;
+        if (waiting && nowMs() - firstRequestMs > kBackendSilentMs) {
+            silentLogged = true;
+            qWarning() << "Web: TLS proxy: the internal server has not answered" << toBackend
+                       << "request bytes for" << (nowMs() - firstRequestMs) << "ms (TLS handshake took"
+                       << tlsMs << "ms)";
+        }
     }
 
-    // Cleanup
+    if (silentLogged)
+        qWarning() << "Web: TLS proxy: that connection ended after" << (nowMs() - firstRequestMs)
+                   << "ms with" << fromBackend << "bytes from the internal server";
+
     close(backendFd);
     SSL_shutdown(ssl);
     SSL_free(ssl);
