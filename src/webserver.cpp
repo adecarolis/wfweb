@@ -9840,7 +9840,9 @@ void webServer::applyPolicy(const QJsonObject &in, const QString &by)
             if (name.isEmpty() || name.contains(' ') || name.startsWith("gen", Qt::CaseInsensitive)) continue;
             if (!v.contains(name, Qt::CaseInsensitive) && v.size() < 64) v << name;
         }
-        if (v != txInhibitBands_) {
+        // Not QStringList's operator!=: Qt 5.15.2's QList compares through
+        // stdext::make_checked_array_iterator, which MSVC 14.51 no longer has.
+        if (v.join(',') != txInhibitBands_.join(',')) {
             txInhibitBands_ = v;
             changes << "tx-inhibit-bands=" + (v.isEmpty() ? QStringLiteral("none") : v.join(','));
             const QString band = inhibitedBand();

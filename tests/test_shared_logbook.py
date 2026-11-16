@@ -42,6 +42,11 @@ import time
 
 import pytest
 
+# The QSOs the later tests read are logged over WebSockets by the earlier
+# ones: without the package those were skipped one by one and the rest failed
+# on an empty log (the Linux CI jobs, 2026-11-15). All of it or none.
+pytest.importorskip("websockets.sync.client")
+
 from conftest import launch_shared_wfweb, set_cookie, _run_on_loop, _stop_wfweb
 from mock_radio import MockIcomRadio
 
