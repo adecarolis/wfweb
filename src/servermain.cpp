@@ -582,9 +582,14 @@ void servermain::receiveRigCaps(rigCapabilities* rigCaps)
         bool guidMatch = (sender != Q_NULLPTR && radio->rig != Q_NULLPTR && !memcmp(sender->getGUID(), radio->guid, GUIDLEN));
         bool fromQueue = (sender == Q_NULLPTR); // Signal came from cachingQueue
 
-        if ((guidMatch || fromQueue) && radio->rig != Q_NULLPTR && !radio->rigAvailable)
+        // Once per connection, on a flag of our own.  This used to test
+        // rigAvailable, which rigServer::receiveRigCaps also sets from the
+        // same signal: when the rig server's slot ran first, polling never
+        // started and the server sat silent on a connected rig (--no-web on
+        // the CI runners, twice in some thirty job runs, 2026-11-16).
+        if ((guidMatch || fromQueue) && radio->rig != Q_NULLPTR && !radio->pollingStarted)
         {
-            // Set rigAvailable immediately to prevent re-entry from rigServer race
+            radio->pollingStarted = true;
             radio->rigAvailable = true;
 
             qDebug(logSystem()) << "Rig name: " << rigCaps->modelName;
@@ -1342,6 +1347,7 @@ void servermain::disconnectLan()
             QMetaObject::invokeMethod(radio->rig, "closeComm", Qt::BlockingQueuedConnection);
         }
         radio->rigAvailable = false;
+        radio->pollingStarted = false;
     }
     if (web != Q_NULLPTR) {
         QMetaObject::invokeMethod(web, "setLanInfo", Qt::QueuedConnection,

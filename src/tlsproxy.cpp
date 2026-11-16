@@ -139,11 +139,16 @@ void TlsProxyWorker::acceptLoop()
 // whenever poll() said its socket was readable: a TLS record that carried no
 // application data, or half of one, parked the thread inside SSL_read() while
 // the backend's answer sat unread, and decrypted bytes OpenSSL already held
-// were only looked for through SSL_pending().  A WSS upgrade went unanswered
-// for 10 s on the macOS CI runner now and then (2026-10-27, 2026-11-15) and
-// was never reproduced elsewhere, so the cause is not proven; what is certain
-// is that nothing here can block on one direction any more, and that the
-// log now says which side was silent.
+// were only looked for through SSL_pending().  Its handshake had no time
+// limit (a client that connected and said nothing kept a thread for good)
+// and a write to a peer that had gone could raise SIGPIPE.
+//
+// This rewrite was prompted by a WSS upgrade going unanswered for 10 s on
+// the macOS CI runner (2026-10-27, 2026-11-15).  That turned out not to be
+// the proxy at all: the test's WebSocket client lost its own request (see
+// ws_tls_context in tests/conftest.py).  The log line below for a request
+// the internal server has not answered stays: it is what showed the proxy
+// had never been handed one.
 namespace {
 
 bool setNonBlocking(int fd)

@@ -1508,6 +1508,26 @@ child. The contract it relies on, all verified against the server source:
   tested on Linux CI through `tests/test_cpp_units.py`. Dialog-showing paths
   must run inside the event loop (`--start` is deferred with a 0 ms timer).
 
+## Tests: WebSocket clients are capped at TLS 1.2
+
+Every test that opens a WebSocket with the `websockets` sync client takes its
+TLS context from `ws_tls_context()` in `tests/conftest.py` (`_WS_TLS` in the
+standalone `fuzz_webserver.py`). That client reads on its own thread while
+the caller writes; under TLS 1.3 the server's session tickets put the reader
+inside the SSL object as the upgrade request is written, and the request is
+lost: "WSS upgrade unanswered for 10 s" or "did not receive a valid HTTP
+response" with a server that never saw it (36 of 2000 connects on Linux, 0
+capped; about one test per run on the macOS runner, 2026-11-16, first chased
+in `tlsproxy.cpp`). **A context of your own brings the flake back.** The REST
+tests (`requests`) still cover TLS 1.3. `wfweb_diagnosis()` in conftest adds
+the server's state to a stall that is the server's (thread stacks on macOS).
+
+`servermain::receiveRigCaps` starts polling once per connection on
+`RIGCONFIG::pollingStarted`, **not** `rigAvailable`: the rig server's
+`receiveRigCaps` sets that one from the same signal on its own thread, and
+when it ran first a `--no-web` server never polled its rig
+(`test_rig_server_meters.py`, twice in some thirty CI job runs).
+
 ## Workflow Rules
 
 ### 1. Plan First

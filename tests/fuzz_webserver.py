@@ -52,6 +52,15 @@ _TLS = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
 _TLS.check_hostname = False
 _TLS.verify_mode = ssl.CERT_NONE
 
+# For the websockets sync client only, capped at TLS 1.2: that client reads on
+# a thread of its own, and under TLS 1.3 the server's session tickets put its
+# reader inside the SSL object while the caller writes the upgrade request,
+# which loses it (ws_tls_context in conftest.py has the measurements).
+_WS_TLS = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+_WS_TLS.check_hostname = False
+_WS_TLS.verify_mode = ssl.CERT_NONE
+_WS_TLS.maximum_version = ssl.TLSVersion.TLSv1_2
+
 
 def tls_connect(port, timeout=5.0):
     raw = socket.create_connection(("127.0.0.1", port), timeout=timeout)
@@ -580,7 +589,7 @@ def ws_binary_cases(rng):
 def ws_session(port, cookie=None, timeout=5.0):
     from websockets.sync.client import connect
     headers = {"Cookie": f"wfweb_session={cookie}"} if cookie else None
-    return connect(f"wss://127.0.0.1:{port}", ssl=_TLS, open_timeout=timeout, close_timeout=2,
+    return connect(f"wss://127.0.0.1:{port}", ssl=_WS_TLS, open_timeout=timeout, close_timeout=2,
                    max_size=None, additional_headers=headers)
 
 

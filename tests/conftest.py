@@ -116,20 +116,50 @@ def wfweb_diagnosis(proc, port=None) -> str:
     return "\n".join(out)
 
 
+def ws_tls_context():
+    """TLS settings for every WebSocket a test opens with the `websockets`
+    sync client: no certificate check (the server's is self-signed) and
+    **TLS 1.2 at most**.
+
+    That client reads on a thread of its own while the caller writes. Under
+    TLS 1.3 the server's session tickets arrive right after the handshake and
+    OpenSSL handles them inside the reader's SSL_read(), at the moment the
+    caller's SSL_write() sends the upgrade request: two threads inside one SSL
+    object, which OpenSSL does not allow. The request is lost, or the
+    connection dies, and the test fails with "WSS upgrade unanswered for
+    10 s" or "did not receive a valid HTTP response" while the server never
+    saw a request. It took down about one test per run on the macOS runner
+    (the only one with the package) and was chased in the server's TLS proxy
+    first. Measured 2026-11-16 on Linux: 36 of 2000 connects to a local wfweb
+    failed with TLS 1.3 and 0 of 2000 capped at 1.2; a bare Python TLS client
+    with a reader thread against a bare Python server lost 1.3 % of 12 000
+    requests, and none with TLS 1.2 or with the server's tickets switched off.
+
+    TLS 1.2 has no messages after the handshake, so there is nothing for the
+    reader to trip over. Browsers do not work this way, and the REST tests
+    (`requests`, one thread) still go through TLS 1.3. **Use this for any new
+    WebSocket in a test**; a context of your own brings the flake back."""
+    import ssl
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    ctx.maximum_version = ssl.TLSVersion.TLSv1_2
+    return ctx
+
+
 def ws_connect(web_port, proc=None, timeout=10.0):
     """A browser-style WebSocket to a test server: WSS on the web port (TLS
     is on by default), plain WS on the next port only where the server runs
     without TLS. An upgrade the server leaves unanswered fails here with the
     server's log tail: it used to fall through to the plain port, whose HTTP
     200 signpost page said nothing about what the WSS path did (macOS CI,
-    2026-10-27). Needs the websockets package; skips without it."""
+    2026-10-27; that stall was the client's own, see ws_tls_context). Needs
+    the websockets package; skips without it."""
     import ssl
     pytest.importorskip("websockets")
     from websockets.sync.client import connect
 
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
+    ctx = ws_tls_context()
     try:
         return connect(f"wss://127.0.0.1:{web_port}", ssl=ctx, open_timeout=timeout)
     except TimeoutError as e:
@@ -533,16 +563,15 @@ class SharedServer:
         pytest.importorskip("websockets")
         import ssl
         from websockets.sync.client import connect
-        ctx = ssl.create_default_context()
-        ctx.check_hostname = False
-        ctx.verify_mode = ssl.CERT_NONE
+        ctx = ws_tls_context()
         headers = {"Cookie": f"{SESSION_COOKIE}={cookie}"} if cookie else None
         try:
             return connect(f"wss://127.0.0.1:{self.web_port}", ssl=ctx, open_timeout=timeout,
                            additional_headers=headers)
         except TimeoutError as e:
-            # Seen on the macOS runner only and not explained: the server's
-            # log says what it was doing while the upgrade went unanswered.
+            # The stall that used to land here was the client's own (see
+            # ws_tls_context). One that still does is the server's: say what
+            # it was doing.
             pytest.fail(f"WSS upgrade on port {self.web_port} unanswered for {timeout} s: {e}\n"
                         f"--- wfweb output (tail) ---\n{wfweb_output_tail(self.proc)}\n"
                         f"{wfweb_diagnosis(self.proc, self.web_port)}")

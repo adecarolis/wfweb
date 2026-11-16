@@ -14,11 +14,11 @@ X-Forwarded-For is believed.
 """
 
 import json
-import ssl
 
 import pytest
 
-from conftest import SESSION_COOKIE, launch_shared_wfweb, set_cookie, _run_on_loop, _stop_wfweb
+from conftest import (SESSION_COOKIE, launch_shared_wfweb, set_cookie, ws_tls_context,
+                      _run_on_loop, _stop_wfweb)
 from mock_radio import MockIcomRadio
 
 ADMIN_PW = "club-admin-pw-2026"
@@ -89,9 +89,7 @@ def test_lockout_counts_the_real_address_not_the_first_entry(srv):
 def test_websocket_connection_lists_the_forwarded_address(srv):
     pytest.importorskip("websockets")
     from websockets.sync.client import connect
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
+    ctx = ws_tls_context()
     headers = {"Cookie": f"{SESSION_COOKIE}={srv.admin_cookie}", "X-Forwarded-For": "1.2.3.4, 203.0.113.9"}
     with connect(f"wss://127.0.0.1:{srv.web_port}", ssl=ctx, open_timeout=10, additional_headers=headers) as ws:
         first = json.loads(ws.recv(timeout=10))
