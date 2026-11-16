@@ -20,8 +20,8 @@ are skipped, so the script is idempotent.
 Usage: tools/fingerprint-static.py <dist-dir> <version> [<semver>]
 
 <version> is the cache-bust string (typically <semver>-<sha>[-<ts>]).
-<semver> is the user-facing release number (e.g. "0.6.2"); defaults to
-<version>. Both are exposed as window globals (__WFWEB_V__ / __WFWEB_SEMVER__)
+<semver> is the version the page shows (e.g. "0.6.2", or
+"0.6.2+dev.<commit>" for a development build); defaults to <version>. Both are exposed as window globals (__WFWEB_V__ / __WFWEB_SEMVER__)
 in HTML files containing <!--WFWEB_VERSION_SLOT-->.
 """
 

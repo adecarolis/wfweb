@@ -15,7 +15,9 @@ jobs:
   # cut from and below the next one, so apt installs each dev build over the
   # previous and the next release still replaces it. Computed once so the
   # .deb Version, every file name and the release page agree even when the
-  # run straddles midnight UTC.
+  # run straddles midnight UTC. The build jobs hand it to the build as
+  # WFWEB_BUILD_ID, so the binary reports the same string (wfweb --version,
+  # the page footer).
   meta:
     name: Build id
     runs-on: ubuntu-24.04
@@ -51,6 +53,10 @@ jobs:
 
   build-linux-ubuntu2404:
     needs: meta
+    env:
+      # What the binary calls itself (tools/build-id.sh, buildid.pri): the
+      # same id as the package it ships in.
+      WFWEB_BUILD_ID: ${{ needs.meta.outputs.dev_id || 'release' }}
     strategy:
       fail-fast: false
       matrix:
@@ -170,6 +176,10 @@ jobs:
 
   build-linux-debian12:
     needs: meta
+    env:
+      # What the binary calls itself (tools/build-id.sh, buildid.pri): the
+      # same id as the package it ships in.
+      WFWEB_BUILD_ID: ${{ needs.meta.outputs.dev_id || 'release' }}
     strategy:
       fail-fast: false
       matrix:
@@ -293,6 +303,10 @@ jobs:
 
   build-linux-debian13:
     needs: meta
+    env:
+      # What the binary calls itself (tools/build-id.sh, buildid.pri): the
+      # same id as the package it ships in.
+      WFWEB_BUILD_ID: ${{ needs.meta.outputs.dev_id || 'release' }}
     strategy:
       fail-fast: false
       matrix:
@@ -416,6 +430,10 @@ jobs:
 
   build-linux-appimage:
     needs: meta
+    env:
+      # What the binary calls itself (tools/build-id.sh, buildid.pri): the
+      # same id as the package it ships in.
+      WFWEB_BUILD_ID: ${{ needs.meta.outputs.dev_id || 'release' }}
     strategy:
       fail-fast: false
       matrix:
@@ -583,6 +601,10 @@ jobs:
 
   build-macos:
     needs: meta
+    env:
+      # What the binary calls itself (tools/build-id.sh, buildid.pri): the
+      # same id as the package it ships in.
+      WFWEB_BUILD_ID: ${{ needs.meta.outputs.dev_id || 'release' }}
     name: macOS (Apple Silicon)
     runs-on: macos-15
 
@@ -637,6 +659,10 @@ jobs:
 
   build-windows:
     needs: meta
+    env:
+      # What the binary calls itself (tools/build-id.sh, buildid.pri): the
+      # same id as the package it ships in.
+      WFWEB_BUILD_ID: ${{ needs.meta.outputs.dev_id || 'release' }}
     name: Windows x86_64
     runs-on: windows-latest
 

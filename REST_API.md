@@ -328,7 +328,7 @@ curl -s http://localhost:8081/api/v1/radio | jq .
     "connected": true,
     "model": "IC-7300",
     "name": "",
-    "version": "0.2.4",
+    "version": "0.9.5",
     "logbookPath": "/home/alain/.local/share/wfweb/wfweb/logbook.adi",
     "logbookPersistent": true,
     "hasTransmit": true,
@@ -386,6 +386,11 @@ curl -s http://localhost:8081/api/v1/radio/info | jq .
 ```
 
 **Response:** same as `info` object above.
+
+`version` is the release number (`0.9.5`) for a release build. A development
+build appends its commit: `0.9.5+dev.e49e8c76` when built from a local tree,
+`0.9.5+dev.20261115.e49e8c76` when built by GitHub (the id in the package's
+file name).
 
 ---
 

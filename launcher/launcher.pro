@@ -25,6 +25,9 @@ VERSION_LINE  = $$find(VERSION_LINES, "define WFWEB_VERSION ")
 VERSION       = $$replace(VERSION_LINE, "[^0-9.]", "")
 isEmpty(VERSION): error("could not read WFWEB_VERSION from include/wfweb_version.h")
 
+# The window title says whether this is a development build (src/buildinfo.cpp).
+include($$PWD/../buildid.pri)
+
 QMAKE_TARGET_PRODUCT     = "wfweb launcher"
 QMAKE_TARGET_DESCRIPTION = "Starts and supervises the wfweb server"
 QMAKE_TARGET_COMPANY     = "wfweb"

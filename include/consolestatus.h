@@ -9,9 +9,9 @@
 #include <QTimer>
 #include <functional>
 
-// Everything the terminal status page shows. servermain fills the rig and
-// web-server fields; ConsoleStatus adds version, uptime, log file and the last
-// warning before rendering.
+// Everything the terminal status page shows. servermain fills the
+// version, rig and web-server fields; ConsoleStatus adds uptime, log file and
+// the last warning before rendering.
 struct ConsoleSnapshot {
     enum WebState { WebStarting, WebListening, WebFailed, WebDisabled };
 

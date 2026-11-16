@@ -1,5 +1,4 @@
 #include "consolestatus.h"
-#include "wfweb_version.h"
 
 #include <QDateTime>
 #include <QMutexLocker>
@@ -336,7 +335,6 @@ void ConsoleStatus::paint()
     // The provider may log, which takes mutex_ through logLine(): call it
     // before locking.
     ConsoleSnapshot snap = provider_ ? provider_() : ConsoleSnapshot();
-    snap.version = QString(WFWEB_VERSION);
     snap.uptimeSecs = uptime_.elapsed() / 1000;
     snap.logFile = logFile_;
     {

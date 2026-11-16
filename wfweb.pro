@@ -17,6 +17,8 @@ win32:CONFIG += c++17
 
 # WFWEB_VERSION lives in include/wfweb_version.h so header-dep tracking
 # forces a rebuild of every consumer on bump. Do NOT add a -D for it here.
+# What a build shows is wfwebVersion(): that number, plus +dev.<commit> when
+# the build is not the tagged release (buildid.pri, tools/build-id.sh).
 
 DEFINES += BUILD_WFSERVER
 
@@ -153,8 +155,8 @@ INSTALLS += rigs
 
 !win32:DEFINES += HOST=\\\"`hostname`\\\" UNAME=\\\"`whoami`\\\"
 
-!win32:DEFINES += GITSHORT="\\\"$(shell git -C $$PWD rev-parse --short HEAD)\\\""
-win32:DEFINES += GITSHORT=\\\"$$system(git -C $$PWD rev-parse --short HEAD)\\\"
+# The commit and the +dev build id come from a generated header, not a -D.
+include($$PWD/buildid.pri)
 
 win32:DEFINES += HOST=\\\"wfweb.org\\\"
 win32:DEFINES += UNAME=\\\"build\\\"

@@ -4,6 +4,7 @@
 #include "rigidentities.h"
 #include "logcategories.h"
 #include "rigctld.h"
+#include "buildinfo.h"
 #include <QNetworkInterface>
 #include <QHostInfo>
 
@@ -402,6 +403,7 @@ static QStringList reachableHosts()
 ConsoleSnapshot servermain::consoleSnapshot()
 {
     ConsoleSnapshot snap;
+    snap.version = QString(wfwebVersion());
     snap.name = cliOverrides.name;
     const QStringList hosts = reachableHosts();
 

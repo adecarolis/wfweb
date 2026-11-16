@@ -4,6 +4,7 @@
 #include <codec2/freedv_api.h>
 #include "logcategories.h"
 #include "wfweb_version.h"
+#include "buildinfo.h"
 #include "wsjtxmessage.h"
 #include <cmath>
 
@@ -4297,7 +4298,7 @@ QJsonObject webServer::buildInfoJson() const
     info["stationGrid"] = reporterGrid;
     addOnAirInfo(info);
     info["cwMacros"] = cwMacrosJson();
-    info["version"] = QString(WFWEB_VERSION);
+    info["version"] = QString(wfwebVersion());
     // Instance tag from --name; empty means "show the rig model".
     info["name"] = instanceName_;
 
@@ -8103,7 +8104,8 @@ void webServer::wsjtxSendDatagram(const QByteArray &packet)
 void webServer::wsjtxSendHeartbeat()
 {
     wsjtxSendDatagram(WsjtxMessage::heartbeat(wsjtxId_, WsjtxMessage::Schema,
-                                              QString(WFWEB_VERSION), QString()));
+                                              QString(WFWEB_VERSION),
+                                              QString(wfwebGitShort())));
     wsjtxSendStatus();
 }
 

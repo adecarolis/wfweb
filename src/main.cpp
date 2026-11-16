@@ -9,7 +9,7 @@
 #include <QTranslator>
 #endif
 
-#include "wfweb_version.h"
+#include "buildinfo.h"
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -266,14 +266,14 @@ int main(int argc, char *argv[])
         "  -? --help               Show this help\n");
 #ifdef BUILD_WFSERVER
     const QString version = QString("wfweb version: %1 (Git:%2 on %3 at %4 by %5@%6)\nOperating System: %7 (%8)\nBuild Qt Version %9. Current Qt Version: %10\n")
-        .arg(QString(WFWEB_VERSION))
-        .arg(GITSHORT).arg(__DATE__).arg(__TIME__).arg(UNAME).arg(HOST)
+        .arg(QString(wfwebVersion()))
+        .arg(wfwebGitShort()).arg(__DATE__).arg(__TIME__).arg(UNAME).arg(HOST)
         .arg(QSysInfo::prettyProductName()).arg(QSysInfo::buildCpuArchitecture())
         .arg(QT_VERSION_STR).arg(qVersion());
 #else
     const QString version = QString("wfweb version: %1 (Git:%2 on %3 at %4 by %5@%6)\nOperating System: %7 (%8)\nBuild Qt Version %9. Current Qt Version: %10\n")
-        .arg(QString(WFWEB_VERSION))
-        .arg(GITSHORT).arg(__DATE__).arg(__TIME__).arg(UNAME).arg(HOST)
+        .arg(QString(wfwebVersion()))
+        .arg(wfwebGitShort()).arg(__DATE__).arg(__TIME__).arg(UNAME).arg(HOST)
         .arg(QSysInfo::prettyProductName()).arg(QSysInfo::buildCpuArchitecture())
         .arg(QT_VERSION_STR).arg(qVersion());
 

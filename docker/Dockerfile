@@ -29,6 +29,10 @@ RUN if [ -f resources/radae_nopy/src/rade_api.h ]; then \
       && make -j$(nproc); \
     fi
 
+# "release" or dev.<date>.<commit> from the Docker workflow (tools/build-id.sh
+# reads it from the environment). The context carries no .git, so without it
+# the build reports the bare version.
+ARG WFWEB_BUILD_ID=
 RUN qmake wfweb.pro && make -j$(nproc)
 RUN make install INSTALL_ROOT=/install
 

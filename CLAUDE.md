@@ -1006,6 +1006,8 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 |------|---------|
 | `wfweb.pro` | Qt project file |
 | `src/main.cpp` | Process entry / CLI parser |
+| `include/wfweb_version.h` | The release number (`WFWEB_VERSION`), single source of truth |
+| `tools/build-id.sh` / `buildid.pri` / `src/buildinfo.cpp` | Build id: `wfwebVersion()` = the release number, plus `+dev.<commit>` when the build is not the tagged release (see "Release Process") |
 | `src/servermain.cpp` | Main app, web server + rigctld init |
 | `include/servermain.h` | Main app header (contains `preferences` struct) |
 | `src/webserver.cpp` | Web server backend |
@@ -1573,3 +1575,25 @@ when it ran first a `--no-web` server never polled its rig
 - The version is set in `include/wfweb_version.h` (look for `#define WFWEB_VERSION "X.Y.Z"`).
   It moved out of `wfweb.pro` so Make's header-dependency tracking rebuilds every
   object that bakes in the version string (see the v0.7.1 reporter-version bug).
+- **A build that is not the tagged release says so.** `wfwebVersion()`
+  (`include/buildinfo.h`) is `0.9.5` only when HEAD is the commit tagged
+  `v0.9.5` (or CI runs on a `v*` tag); any other build is
+  `0.9.5+dev.<short sha>` locally and `0.9.5+dev.<date>.<sha>` from GitHub,
+  the string the package file is named with. It is what `--version`, the
+  console page, the page footer (`rigInfo.version`), the reporters and the
+  launcher title show. `WFWEB_VERSION` stays the bare number for the `/models`
+  ETag (else every dev commit re-downloads the CW model) and the WSJT-X
+  heartbeat (the commit goes in its `revision` field). The rules are in
+  `tools/build-id.sh`: `WFWEB_BUILD_ID` in the environment (`release`, or an
+  id) overrides the detection, which is how `build.yml`, `docker.yml` (the
+  context has no `.git`) and `pages.yml` (master = release: Pages publishes
+  before the tag exists) name their builds; no git at all = the bare version.
+  `buildid.pri` (included by `wfweb.pro` and `launcher.pro`) writes
+  `wfweb_build.h` into the build directory at qmake time and refreshes it on
+  every `make`, touching it only when the id changed; `src/buildinfo.cpp`
+  alone includes it, so a commit recompiles one file. Windows has no shell
+  under nmake: the same rules in qmake, at qmake time only.
+  `tools/build-static.sh` puts the same string in the Standalone footer.
+  **Do not bring back a `-D` for the commit or the id** (the old `GITSHORT`
+  went stale until `main.cpp` happened to recompile). Test:
+  `tests/test_build_id.py`.

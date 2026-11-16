@@ -1,7 +1,7 @@
 #include "mainwindow.h"
 
 #include "portowner.h"
-#include "wfweb_version.h"
+#include "buildinfo.h"
 
 #include <QApplication>
 #include <QAudioDeviceInfo>
@@ -80,7 +80,7 @@ void RefreshingComboBox::showPopup()
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
-    setWindowTitle(QStringLiteral("wfweb ") + WFWEB_VERSION);
+    setWindowTitle(QStringLiteral("wfweb ") + wfwebVersion());
     setWindowIcon(QIcon(":/wfweb.png"));
 
     m_exePath = QDir(QCoreApplication::applicationDirPath()).filePath(kServerExe);
