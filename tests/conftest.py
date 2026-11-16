@@ -83,6 +83,39 @@ def wfweb_output_tail(proc, lines: int = 60) -> str:
         return "".join(f.readlines()[-lines:])
 
 
+def wfweb_diagnosis(proc, port=None) -> str:
+    """What a server that is not answering is doing, for a failure message:
+    whether it is still running, how it set up TLS, who listens on its port
+    and, on macOS, the stack of every thread (`sample`). The stalls seen on
+    the macOS runner only (a WSS upgrade unanswered for 10 s, a start-up that
+    never polls) were not reproducible anywhere else, and a log tail does not
+    say where a thread is stuck."""
+    out = []
+    rc = proc.poll()
+    out.append(f"wfweb pid {proc.pid}: " + ("running" if rc is None else f"EXITED, return code {rc}"))
+    path = getattr(proc, "output_path", None)
+    if path and os.path.exists(path):
+        with open(path, errors="replace") as f:
+            setup = [l.rstrip() for l in f if re.search(r"TLS proxy|SSL|HTTPS|listening on|Internal HTTP", l)]
+        out.append("--- TLS / listen lines of the log ---")
+        out += setup[:12] + setup[-8:] if len(setup) > 20 else setup
+
+    def run(cmd, limit):
+        try:
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=40)
+            lines = (r.stdout + r.stderr).splitlines()
+        except Exception as e:  # a missing tool must not hide the failure itself
+            lines = [f"{cmd[0]}: {e}"]
+        out.append("--- " + " ".join(cmd) + " ---")
+        out.extend(lines[:limit])
+
+    if rc is None and sys.platform == "darwin":
+        if port:
+            run(["lsof", "-nP", f"-iTCP:{port}"], 20)
+        run(["sample", str(proc.pid), "2", "-mayDie"], 450)
+    return "\n".join(out)
+
+
 def ws_connect(web_port, proc=None, timeout=10.0):
     """A browser-style WebSocket to a test server: WSS on the web port (TLS
     is on by default), plain WS on the next port only where the server runs
@@ -101,8 +134,9 @@ def ws_connect(web_port, proc=None, timeout=10.0):
         return connect(f"wss://127.0.0.1:{web_port}", ssl=ctx, open_timeout=timeout)
     except TimeoutError as e:
         tail = wfweb_output_tail(proc) if proc is not None else "(no server handle)"
+        diag = wfweb_diagnosis(proc, web_port) if proc is not None else ""
         pytest.fail(f"WSS upgrade on port {web_port} unanswered for {timeout} s: {e}\n"
-                    f"--- wfweb output (tail) ---\n{tail}")
+                    f"--- wfweb output (tail) ---\n{tail}\n{diag}")
     except (ssl.SSLError, OSError):
         return connect(f"ws://127.0.0.1:{web_port + 1}", open_timeout=timeout)
 
@@ -510,7 +544,8 @@ class SharedServer:
             # Seen on the macOS runner only and not explained: the server's
             # log says what it was doing while the upgrade went unanswered.
             pytest.fail(f"WSS upgrade on port {self.web_port} unanswered for {timeout} s: {e}\n"
-                        f"--- wfweb output (tail) ---\n{wfweb_output_tail(self.proc)}")
+                        f"--- wfweb output (tail) ---\n{wfweb_output_tail(self.proc)}\n"
+                        f"{wfweb_diagnosis(self.proc, self.web_port)}")
 
 
 def set_cookie(resp):

@@ -18,7 +18,7 @@ import time
 
 import pytest
 
-from conftest import WFWEB_BIN, _find_free_port, wfweb_output_tail
+from conftest import WFWEB_BIN, _find_free_port, wfweb_diagnosis, wfweb_output_tail
 from mock_civ import (CMD_METER, SUB_ALC_METER, SUB_POWER_METER, SUB_S_METER,
                       SUB_SWR_METER)
 from mock_serial_radio import SerialMockRadio
@@ -92,8 +92,13 @@ def _poll_meters(tmp_path, mode_args: list[str]) -> dict[int, int]:
         deadline = time.monotonic() + 30
         while _meter_reads(mock, SUB_S_METER) < 5:
             if proc.poll() is not None or time.monotonic() > deadline:
-                pytest.fail("wfweb did not start polling the mock radio:\n"
-                            + wfweb_output_tail(proc))
+                # Either the server is gone or it is stuck: say which, and on
+                # macOS where (seen there once, 2026-11-16, the log ending
+                # right after the rig file was loaded).
+                pytest.fail(f"wfweb did not start polling the mock radio "
+                            f"({_meter_reads(mock, SUB_S_METER)} S-meter reads, "
+                            f"{len(mock.civ_log)} CI-V frames in all):\n"
+                            + wfweb_output_tail(proc) + "\n" + wfweb_diagnosis(proc))
             time.sleep(0.2)
         time.sleep(5)  # the periodic poll keeps running
         return {sub: _meter_reads(mock, sub) for sub in (SUB_S_METER, *TX_METERS)}
