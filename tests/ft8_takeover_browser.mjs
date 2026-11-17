@@ -7,6 +7,12 @@
 // opening cut off so it stays on the slot's timeline, and B has to decode it
 // there. Past digiLateStartLimit() in the slot the CQ runs to its end, the
 // report goes out a cycle later, and that CQ counts as no try at the report.
+//
+// That second QSO then runs on to A's RR73, and A's operator clicks the next
+// caller of the pile-up while it is on the air. The QSO with B is complete and
+// has to be in A's log, once, with the reports of that QSO: it used to be
+// logged only when B's 73 came in with B still the partner, so a run lost
+// every QSO (2026-11-16).
 // FT8, two Standalone pages on ?virtual=1, never a real radio.
 //
 // With WFWEB_FT8_URLS="https://127.0.0.1:9080 https://127.0.0.1:9090" the same
@@ -85,7 +91,7 @@ const server = http.createServer((req, res) => {
 if (!onServer) await new Promise(r => server.listen(0, '127.0.0.1', r));
 const rigUrl = (id) => onServer ? SERVER_URLS[id - 1] + '/' : `http://127.0.0.1:${server.address().port}/?virtual=1&id=${id}`;
 
-const CQER = 'K1ABC', CALLER = 'VA2BBW';
+const CQER = 'K1ABC', CALLER = 'VA2BBW', THIRD = 'W9XYZ';
 const browser = await chromium.launch({
   executablePath: found.chrome, headless: true,
   args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--autoplay-policy=no-user-gesture-required',
@@ -184,6 +190,10 @@ try {
     console.log('A sent', JSON.stringify(await A.evaluate(() => window.__tx)));
     console.log('B sent', JSON.stringify(await B.evaluate(() => window.__tx)));
     check(okA && okB, `the QSO carries on to the log on both sides (A ${okA}, B ${okB})`);
+    // A logged it as its RR73 went out; B's 73 after that is the same QSO.
+    await A.waitForFunction(() => window.digiQsoState === 'IDLE', null, { timeout: 45000 }).catch(() => {});
+    const rows = await A.evaluate((c) => [...document.querySelectorAll('#digiDirectedPanel .digi-logged-row')].filter(e => e.textContent.includes('LOGGED ' + c + ' ')).length, CALLER);
+    check(rows === 1, `A logged it once, B's 73 added no second entry (${rows})`);
   }
 
   // ---- too late in the slot: the CQ runs out, the report waits a cycle
@@ -193,6 +203,7 @@ try {
       window.haltDigiTx();
       window.digiTxEnabled = false; window.digiTxArmed = false; window.digiTxQueued = null;
       window.digiQsoState = 'IDLE'; window.digiQsoPartner = ''; window.__tx = [];
+      window.digiLastAutoLog = null;   // the same two stations work each other again below
       document.getElementById('digiDxCall').value = '';
       window.digiDecodes.length = 0;
       window.renderDigiDecodes();
@@ -213,6 +224,56 @@ try {
     const tx = await A.evaluate(() => window.__tx);
     const cq = tx.filter(t => /^CQ /.test(t.m)).pop(), rep = tx.find(t => reportRe.test(t.m));
     check(cq && rep && rep.slot === cq.slot + 2, `the report went out on the next cycle (${JSON.stringify(cq)} -> ${JSON.stringify(rep)})`);
+
+    // ---- the next caller clicked while our RR73 is on the air
+    // The QSO runs on by itself: B rogers the report, A sends RR73. A third
+    // station has been calling all along; A's operator clicks it too late in
+    // the RR73 for a take-over, so the RR73 runs out and the QSO with B is done.
+    const entries = (page, call) => page.evaluate((c) => window.qsoLog.filter(q => q.call === c).map(q => [q.rstSent, q.rstRcvd, q.df]), call);
+    const a0 = (await entries(A, CALLER)).length, b0 = (await entries(B, CQER)).length;
+    const next = await A.evaluate(([cqer, third, from, to]) => new Promise((resolve) => {
+      const t0 = Date.now();
+      (function poll() {
+        const s = window.getDigiSlotInfo();
+        if (window.digiTxActive && window.digiTxOnAir && /\sRR73$/.test(window.digiTxOnAir.msg) && s.slotPhase >= from && s.slotPhase < to) {
+          window.digiDecodes.push({ time: new Date().toISOString().substr(11, 8), snr: -11, dt: 0.1, freq: 1900,
+                                    msg: cqer + ' ' + third + ' EN61', slotIndex: s.slotIndex - 1 });
+          window.renderDigiDecodes();
+          const rows = [...document.querySelectorAll('#digiRxPanel .digi-decode-row')].filter(e => decodeURIComponent(e.getAttribute('data-msg')).includes(' ' + third + ' '));
+          rows[rows.length - 1].click();
+          resolve({ phase: +s.slotPhase.toFixed(2), onAir: window.digiTxOnAir && window.digiTxOnAir.msg, queued: window.digiTxQueued,
+                    partner: window.digiQsoPartner, state: window.digiQsoState });
+          return;
+        }
+        if (Date.now() - t0 > 90000) { resolve(null); return; }
+        setTimeout(poll, 20);
+      })();
+    }), [CQER, THIRD, limit + 0.3, limit + 3]);
+    check(!!next, `A clicks the next caller ${next ? next.phase + ' s into its RR73 over' : '(never saw its RR73 on the air)'}`);
+    if (next) {
+      check(/\sRR73$/.test(next.onAir || '') && next.partner === THIRD && next.state === 'ANSWERED' && next.queued === `${THIRD} ${CQER} -11`,
+        `the RR73 stays on the air, the report to ${THIRD} queued (${JSON.stringify(next)})`);
+      await A.waitForFunction((n) => window.qsoLog.filter(q => q.call === n[0]).length > n[1], [CALLER, a0], { timeout: 30000 }).catch(() => {});
+      const mine = await entries(A, CALLER);
+      check(mine.length === a0 + 1, `A logged ${CALLER} as the RR73 ended, the partner already ${THIRD} (${a0} -> ${mine.length})`);
+      // The reports are those of the QSO with B, not of the station just clicked
+      // (-11, and no report received); the decode prints R+03 for the R+3 B sent.
+      const sentA = (await A.evaluate(() => window.__tx)).map(t => t.m), sentB = (await B.evaluate(() => window.__tx)).map(t => t.m);
+      const rptA = (sentA.filter(m => reportRe.test(m)).pop() || '').split(' ').pop();
+      const rptB = (sentB.filter(m => new RegExp(`^${CQER} ${CALLER} R[-+]\\d{1,2}$`).test(m)).pop() || '').split(' ').pop().replace(/^R/, '');
+      const e = mine.length === a0 + 1 ? mine[0] : null;   // newest first
+      check(!!rptA && !!rptB && !!e && parseInt(e[0], 10) === parseInt(rptA, 10) && parseInt(e[1], 10) === parseInt(rptB, 10) && e[2] !== 1900,
+        `with the reports and the audio offset of that QSO (sent ${rptA}, received ${rptB}: ${JSON.stringify(mine)})`);
+      // B's 73 comes in for a partner A has left: still one entry.
+      const got73 = await A.waitForFunction((re) => window.digiDecodes.some(d => new RegExp(re).test(d.msg)), `^${CQER} ${CALLER} 73$`, { timeout: 45000 }).then(() => true, () => false);
+      await A.waitForTimeout(1500);
+      const after = (await entries(A, CALLER)).length;
+      check(got73 && after === a0 + 1, `B's 73 adds no second entry (73 decoded ${got73}, entries ${after})`);
+      const b1 = (await entries(B, CQER)).length;
+      check(b1 === b0 + 1, `B logged it too (${b0} -> ${b1})`);
+      if (shots) await A.screenshot({ path: path.join(shots, 'ft8take-A-rr73.png') });
+    }
+    await A.evaluate(() => { window.haltDigiTx(); window.digiTxEnabled = false; window.digiTxArmed = false; window.digiTxQueued = null; });
   }
 } finally {
   await browser.close();

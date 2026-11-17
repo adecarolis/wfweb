@@ -695,6 +695,24 @@ it and skips the slot (`digiSwitchAbortedSlot`). Test:
 `tests/test_ft8_takeover.py` (`ft8_takeover_browser.mjs`, FT8 on two
 Standalone virtual rigs, or the C++ bench with `WFWEB_FT8_URLS`).
 
+### FT8 / FT4: when a QSO is logged
+Search and pounce: when their RR73 / RRR is decoded (`EXCHANGE` / `REPORT`
+-> `LOGGED`), before our 73 goes out. **CQ side: when our RR73 has gone out**,
+as WSJT-X does, not when their 73 comes in. `executeDigiTx` notes the QSO on
+the over as it starts (`over.qso`: call, both reports, audio offset, taken in
+state `RREPORT` for a text ending in RR73 / RRR) and its `onDone` logs it when
+the over ran to its end; a cut over (Halt, take-over, double click) logs
+nothing. The note is taken at the start because a click on the next caller
+while the RR73 is on the air changes `digiQsoPartner` and the reports before
+it ends. Waiting for the 73 with that station still the partner lost every
+QSO of a pile-up run: no LOGGED row, nothing sent to the server (2026-11-16);
+many stations send no 73 after an RR73 at all. `logDigiQsoOnce` keeps it to
+one entry: the RR73 repeated for a station that did not copy it and the 73
+that answers it are the same QSO (same call, band and mode within
+`DIGI_SAME_QSO_MS`, 5 min). The LOG QSO button calls `logDigiQso` directly
+and always logs. Field Day has its own rule (`logDigiFdQso`, on the exchange).
+Identical in both forks. Test: the third part of `tests/test_ft8_takeover.py`.
+
 ### Mode panels put the VFO back
 FT8/FT4 and JS8 force USB and retune to their dial frequency on open. Both
 `index.html` snapshot frequency + mode + filter first (`saveVfoSnapshot`) and

@@ -155,6 +155,8 @@ try {
   check(await B.evaluate(() => [...document.querySelectorAll('#digiMsgRows .digi-msg-row.armed')].length) === 1, 'B: the armed message is one of the rows');
   await pick(A, 'A', new RegExp(`^<${NONSTD}> ${STD} FN35$`));
   const okA = await logged(A, STD), okB = await logged(B, NONSTD);
+  // A logs as its RR73 goes out and B on hearing it: B's 73 is still to come.
+  await A.waitForFunction((m) => window.digiDecodes.some(d => d.msg === m), `${NONSTD} <${STD}> 73`, { timeout: 30000 }).catch(() => {});
   const da = await dump(A), db = await dump(B);
   console.log('A sent', JSON.stringify(da.tx)); console.log('B sent', JSON.stringify(db.tx));
   check(okA, `A logged ${STD}`); check(okB, `B logged ${NONSTD}`);

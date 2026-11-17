@@ -3752,6 +3752,7 @@ var remoteLogStatus = null;     // server-side remote logging state, shown read-
 var digiLogEditIdx = -1; // index of row currently being edited, -1 = none
 var digiHashBook = null;
 var digiQsoState = 'IDLE';
+var digiLastAutoLog = null;  // the QSO the sequencer logged last, {call, band, mode, ms} (logDigiQsoOnce)
 var digiQsoPartner = '';
 var digiQsoPartnerBusyWith = ''; // third station the partner was working when we clicked (tail-end); their traffic to it must not trip the auto-desist
 var digiTheirReport = '';  // report they sent us
@@ -13134,7 +13135,7 @@ function handleDigiAutoQso(decodes, decodedSlotIndex) {
             if (parts[0] === myCall && parts[1] === digiQsoPartner && parts[2] === '73') {
                 console.log('[DIGI QSO] RREPORT→IDLE: received 73 from ' + digiQsoPartner);
                 var logReport2 = parseInt(digiOurReport, 10) || 0;
-                logDigiQso(digiQsoPartner, logReport2);
+                logDigiQsoOnce(digiQsoPartner, logReport2);   // logged as our RR73 went out, unless that over was cut
                 digiQsoState = 'IDLE'; digiQsoPartner = ''; digiTxQueued = null;
                 digiTxArmed = false; digiTxAttempts = 0; digiTxSlotParity = -1;
                 digiOurReport = ''; digiTheirReport = '';
@@ -13430,6 +13431,14 @@ function executeDigiTx(slotPhase) {
     digiTxUserInitiated = false; // consumed — re-arm from onDone uses the narrow window
     digiTxActive = true;
     var over = { msg: msg };
+    // Our RR73 (or RRR) completes the QSO on the CQ side, and it is logged
+    // when this over has gone out. The QSO is noted here, as the over starts:
+    // a click on the next caller while it is on the air changes the partner
+    // and the reports before it ends.
+    if (digiContestMode !== 'FD' && digiQsoState === 'RREPORT' && digiQsoPartner &&
+        /\s(RR73|RRR)$/.test(msg.trim().toUpperCase())) {
+        over.qso = { call: digiQsoPartner, rstSent: parseInt(digiOurReport, 10) || 0, rstRcvd: digiTheirReport, df: digiTxFreq };
+    }
     digiTxOnAir = over;
 
     var df = (digiTxFreq >= 200 && digiTxFreq <= 3000) ? digiTxFreq : 1000;
@@ -13510,6 +13519,7 @@ function executeDigiTx(slotPhase) {
             // The operator armed another message while this one was out (too
             // late in the slot to take over): this over was no try at that one.
             if (digiTxQueued === over.msg) digiTxAttempts++;
+            if (over.qso) logDigiQsoOnce(over.qso.call, over.qso.rstSent, over.qso.rstRcvd, over.qso.df);
             console.log('[DIGI TX] onDone: attempt ' + digiTxAttempts + '/' + DIGI_MAX_TX_ATTEMPTS +
                         ' state=' + digiQsoState);
 
@@ -14256,11 +14266,30 @@ function migrateBrowserLog() {
     } catch(e) { console.warn('Could not migrate browser QSO log', e); }
 }
 
-function logDigiQso(dxCall, rstSent) {
+// On the CQ side a QSO is logged when our RR73 has gone out, as WSJT-X does:
+// the other station owes us nothing after it, many send no 73, and the
+// operator of a pile-up has clicked the next caller by the time one comes
+// (waiting for that 73 with the partner already changed lost every QSO of a
+// run, 2026-11-16). The RR73 sent again to a station that did not copy it,
+// and the 73 that answers it, are that same QSO: one entry.
+var DIGI_SAME_QSO_MS = 5 * 60000;
+function logDigiQsoOnce(dxCall, rstSent, rstRcvd, txFreq) {
+    var call = String(dxCall || '').toUpperCase();
+    if (!call) return;
+    var band = freqToBand(vfoAFreq || currentFreq || 0), now = Date.now(), l = digiLastAutoLog;
+    if (l && l.call === call && l.band === band && l.mode === digiMode && now - l.ms < DIGI_SAME_QSO_MS) return;
+    digiLastAutoLog = { call: call, band: band, mode: digiMode, ms: now };
+    logDigiQso(call, rstSent, rstRcvd, txFreq);
+}
+
+// rstRcvd, txFreq: the report they gave us and our audio offset, when the
+// caller noted them earlier than now (both follow a click on another station).
+function logDigiQso(dxCall, rstSent, rstRcvd, txFreq) {
     var now = new Date();
     var iso = now.toISOString();
     var freqHz = (vfoAFreq || currentFreq || 0);
-    var df = (digiTxFreq >= 200 && digiTxFreq <= 3000) ? digiTxFreq : 0;
+    if (txFreq === undefined) txFreq = digiTxFreq;
+    var df = (txFreq >= 200 && txFreq <= 3000) ? txFreq : 0;
     var entry = {
         date: iso.substr(0, 10).replace(/-/g, ''),  // YYYYMMDD
         time: iso.substr(11, 8).replace(/:/g, ''),   // HHMMSS
@@ -14272,7 +14301,7 @@ function logDigiQso(dxCall, rstSent) {
         grid: ((document.getElementById('digiGrid') || {}).value || '').toUpperCase(),
         rstSent: (rstSent !== undefined && rstSent !== null) ?
                  ((rstSent >= 0 ? '+' : '') + Math.round(rstSent)) : '',
-        rstRcvd: digiTheirReport || ''
+        rstRcvd: (rstRcvd !== undefined ? rstRcvd : digiTheirReport) || ''
     };
     commitQsoLogEntry(entry);
     // Show "LOGGED" confirmation in the directed panel

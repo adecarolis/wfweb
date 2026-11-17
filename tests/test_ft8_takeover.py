@@ -9,6 +9,11 @@ digiLateStartLimit). tests/ft8_takeover_browser.mjs runs it on two Standalone
 virtual rigs: the report goes out in the CQ's slot, the other side decodes it
 there and the QSO reaches the log; past the limit the CQ runs to its end and
 the report waits a cycle.
+
+That second QSO runs on to our RR73, and the next caller of the pile-up is
+clicked while it is on the air: the QSO is logged as the RR73 ends, once,
+with its own reports (it used to wait for a 73 from a station that was no
+longer the partner, and a run logged nothing, 2026-11-16).
 """
 
 import shutil
