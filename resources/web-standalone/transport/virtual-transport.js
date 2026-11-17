@@ -149,6 +149,9 @@
                 // it, so the bench shows the digital-TX hold (#147).
                 compressor: true,
                 compLevel: 128,
+                // SSB transmit filter (FUNC TBW tile): MID. _tbw below keeps
+                // one setting with COMP off and one with COMP on, like the rig.
+                txBandwidth: 1,
                 // -54 dB = S0. The drawSMeter() scale treats 0 as S9, so a
                 // default of 0 would paint a permanent full-scale signal.
                 sMeter: -54,
@@ -219,12 +222,25 @@
             if (ECHO_FIELDS.hasOwnProperty(obj.cmd)) {
                 // Mirror SerialRigTransport: the operator's COMP wins over a hold.
                 if (obj.cmd === 'setCompressor' && this._compHeld) this._compRestoreOn = false;
+                var tbwAgain = obj.cmd === 'setCompressor' && this._tbwHeld;
+                if (obj.cmd === 'setCompressor') this._releaseTxBandwidth();
                 var field = ECHO_FIELDS[obj.cmd];
                 var val = (obj.cmd === 'setCWSpeed') ? obj.wpm : obj.value;
                 if (val === undefined) return;
                 this.state[field] = val;
                 var upd = {}; upd[field] = val;
                 this._emit('update', upd);
+                if (obj.cmd === 'setCompressor') {
+                    this._syncTxBandwidth();
+                    if (tbwAgain) this._holdTxBandwidth();
+                }
+                return;
+            }
+            if (obj.cmd === 'setTxBandwidth') {
+                // The operator's word wins over a digital-TX hold.
+                this._tbwHeld = false;
+                this._tbwSlots()[this.state.compressor ? 1 : 0] = Math.max(0, Math.min(2, obj.value | 0));
+                this._syncTxBandwidth();
                 return;
             }
 
@@ -634,6 +650,8 @@
                 // FUNC COMP tile and GAIN COMP row, echoed like the rest.
                 hasCompressor: true,
                 hasCompLevel: true,
+                // FUNC TBW tile, one setting per COMP state like the rig.
+                hasTxBandwidth: true,
                 // Switchable bottom meter: borrow the IC-705's meter faces so
                 // the SWR / ALC / COMP / Vd / Id cycle can be exercised off-air.
                 txMeters: virtualTxMeters(),
@@ -679,6 +697,7 @@
                 agc: this.state.agc,
                 compressor: this.state.compressor,
                 compLevel: this.state.compLevel,
+                txBandwidth: this.state.txBandwidth,
                 duplex: this.state.duplex || 'OFF',
                 toneMode: this.state.toneMode || 'OFF',
                 toneFreq: this.state.toneFreq,
@@ -793,25 +812,59 @@
         // Same rule as SerialRigTransport._holdCompressor: SSB only, and an
         // unread state is never guessed.
         _holdCompressor() {
-            if (this._compHeld) return;
             if (this.state.mode !== 'USB' && this.state.mode !== 'LSB') return;
-            if (this.state.compressor === undefined || this.state.compressor === null) return;
-            this._compHeld = true;
-            this._compRestoreOn = !!this.state.compressor;
-            if (this._compRestoreOn) {
-                this.state.compressor = false;
-                this._emit('update', { compressor: false });
+            if (!this._compHeld && this.state.compressor !== undefined && this.state.compressor !== null) {
+                this._compHeld = true;
+                this._compRestoreOn = !!this.state.compressor;
+                if (this._compRestoreOn) {
+                    this.state.compressor = false;
+                    this._emit('update', { compressor: false });
+                    this._syncTxBandwidth();
+                }
             }
+            this._holdTxBandwidth();
         }
 
         _releaseCompressor() {
+            this._releaseTxBandwidth();
             if (!this._compHeld) return;
             this._compHeld = false;
             if (this._compRestoreOn) {
                 this.state.compressor = true;
                 this._emit('update', { compressor: true });
+                this._syncTxBandwidth();
             }
             this._compRestoreOn = false;
+        }
+
+        // The SSB transmit filter, as SerialRigTransport holds it: WIDE for
+        // the over, the setting of the current COMP state back after it.
+        _tbwSlots() {
+            if (!this._tbw) this._tbw = [1, 1];   // [COMP off, COMP on], MID
+            return this._tbw;
+        }
+
+        _syncTxBandwidth() {
+            var v = this._tbwSlots()[this.state.compressor ? 1 : 0];
+            if (v === this.state.txBandwidth) return;
+            this.state.txBandwidth = v;
+            this._emit('update', { txBandwidth: v });
+        }
+
+        _holdTxBandwidth() {
+            if (this._tbwHeld) return;
+            var slot = this.state.compressor ? 1 : 0;
+            this._tbwHeld = true;
+            this._tbwRestore = this._tbwSlots()[slot];
+            this._tbwSlots()[slot] = 0;
+            this._syncTxBandwidth();
+        }
+
+        _releaseTxBandwidth() {
+            if (!this._tbwHeld) return;
+            this._tbwHeld = false;
+            this._tbwSlots()[this.state.compressor ? 1 : 0] = this._tbwRestore;
+            this._syncTxBandwidth();
         }
     }
 

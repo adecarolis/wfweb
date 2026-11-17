@@ -198,7 +198,7 @@
         // Bool toggles
         setAutoNotch: true, setNoiseBlanker: true, setNoiseReduction: true,
         setMonitor: true, setCompressor: true, setPreamp: true, setAttenuator: true, setBreakIn: true,
-        setAGC: true,
+        setAGC: true, setTxBandwidth: true,
         setAntenna: true,
         // VFO ops
         selectVFO: true, swapVFO: true, equalizeVFO: true, setSplit: true,
@@ -404,6 +404,7 @@
             this._tbwHeld = false;
             this._tbwAwait = false;
             this._tbwRestore = -1;
+            this._tbwAsked = false;
 
             // Per-rig MOD INPUT command bytes + USB/MIC register values.
             // Filled in once we identify the rig (default = IC-7300 layout
@@ -559,7 +560,8 @@
                 var bField = BOOL_SUB_TO_FIELD[bSub];
                 this.state[bField] = bOn;
                 this._enqueue(obj.cmd, civ.cmdSetBoolFunc(bSub, bOn));
-                if (tbwAgain) this._holdTxBandwidth();
+                if (tbwAgain) this._holdTxBandwidth(true);
+                else if (obj.cmd === 'setCompressor') this._readTxBandwidth();
                 var bUpd = {}; bUpd[bField] = bOn;
                 this._emit('update', bUpd);
                 return;
@@ -709,6 +711,18 @@
                     this._enqueue('setAGC', civ.cmdSetAgc(agc));
                     this._enqueue('readAgc', civ.cmdReadAgc());
                     this._emit('update', { agc: agc });
+                    return;
+                case 'setTxBandwidth':
+                    // FUNC TBW tile, 0x16 0x58: 0 WIDE / 1 MID / 2 NAR, the
+                    // setting of the current COMP state. The operator's word
+                    // wins over a digital-TX hold: the end of the over leaves it.
+                    if (!this._hasTxBandwidth) return;
+                    var tbw = Math.max(0, Math.min(2, obj.value | 0));
+                    if (this._tbwHeld) { this._tbwAwait = false; this._tbwRestore = -1; }
+                    this.state.txBandwidth = tbw;
+                    this._enqueue('setTxBandwidth', civ.cmdSetTxBandwidth(tbw));
+                    this._readTxBandwidth();
+                    this._emit('update', { txBandwidth: tbw });
                     return;
                 case 'setAttenuator':
                     var att = (typeof obj.value === 'number') ? obj.value : 0;
@@ -1447,6 +1461,7 @@
             if (this._hasTuner) this._enqueue('readTuner', civ.cmdReadTuner());
             if (this._hasBreakIn) this._enqueue('readBreakIn', civ.cmdReadBreakIn());
             if (this._hasAgc) this._enqueue('readAgc', civ.cmdReadAgc());
+            this._readTxBandwidth();
             this._enqueueToneReads();
             this._enqueue('readScopeSpan',  civ.cmdReadScopeSpan());
             // Mod inputs: read the user's current settings first (the
@@ -1755,6 +1770,8 @@
                     this._enqueue('readFilterShape', civ.cmdReadBoolFunc(0x56));
                     // So is the AGC setting, per mode.
                     if (modeChanged && this._hasAgc) this._enqueue('readAgc', civ.cmdReadAgc());
+                    // The transmit filter only exists in SSB (FUNC TBW tile).
+                    if (modeChanged) this._readTxBandwidth();
                 }
                 return;
             }
@@ -1840,7 +1857,12 @@
 
             // 0x16 0x58 — SSB transmit filter (TBW), read for a digital over.
             if (payload[0] === 0x16 && payload[1] === 0x58 && payload.length >= 3) {
-                this._onTxBandwidth(payload[2] & 0x0F);
+                var tbwNow = payload[2] & 0x0F;
+                if (tbwNow !== this.state.txBandwidth) {
+                    this.state.txBandwidth = tbwNow;
+                    this._emit('update', { txBandwidth: tbwNow });
+                }
+                this._onTxBandwidth(tbwNow);
                 return;
             }
 
@@ -1855,6 +1877,9 @@
                             this.state[bField] = bVal;
                             var bu = {}; bu[bField] = bVal;
                             this._emit('update', bu);
+                            // COMP switched on the rig: the transmit filter
+                            // is the other of its two settings now.
+                            if (bField === 'compressor' && !this._tbwHeld) this._readTxBandwidth();
                         }
                     }
                     return;
@@ -2703,6 +2728,8 @@
                 agcModes: this._hasAgc ? this._agcModes : [],
                 hasCompressor: !!caps.hasCompressor,
                 hasCompLevel: !!caps.hasCompLevel,
+                // FUNC TBW tile: the SSB transmit filter, WIDE / MID / NAR.
+                hasTxBandwidth: !!caps.hasTxBandwidth,
                 // Switchable second meter bar: one descriptor per reading this
                 // rig can actually produce, carrying the rig's own calibration
                 // table so the SPA can draw the matching face.
@@ -2783,7 +2810,7 @@
             // Pass through any cached values so the UI populates fully.
             var passthrough = ['afGain', 'rfGain', 'rfPower', 'squelch',
                 'micGain', 'monitorGain', 'pbtInner', 'pbtOuter', 'cwSpeed', 'cwPitch',
-                'autoNotch', 'nb', 'nr', 'preamp', 'attenuator', 'breakIn', 'agc',
+                'autoNotch', 'nb', 'nr', 'preamp', 'attenuator', 'breakIn', 'agc', 'txBandwidth',
                 'compressor', 'compLevel',
                 'antenna', 'rxAntenna',
                 'split', 'tuner', 'spanIndex', 'filterWidth', 'filterShape',
@@ -2845,6 +2872,8 @@
                     // So is COMP; skipped while transmitting, when wfweb may hold it.
                     if (this._hasCompressor && !this.state.transmitting)
                         this._enqueue('read_setCompressor', civ.cmdReadBoolFunc(0x44));
+                    // And TBW, likewise.
+                    if (!this.state.transmitting) this._readTxBandwidth();
                 }
                 // A tune ends on its own, and the IC-7300 keeps the tuner ON or
                 // OFF per band ([TUNER] Switch = Auto, #156): read it every
@@ -3777,7 +3806,7 @@
                 }
             }
             // After COMP: the transmit filter read is the one of that state.
-            this._holdTxBandwidth();
+            this._holdTxBandwidth(this._compHeld && this._compRestoreOn);
         }
 
         // Called after the unkey is queued, so COMP returns on receive.
@@ -3791,6 +3820,7 @@
                 this.state.compressor = true;
                 this._enqueue('setCompressor', civ.cmdSetBoolFunc(0x44, true));
                 this._emit('update', { compressor: true });
+                this._readTxBandwidth();
             }
             this._compRestoreOn = false;
         }
@@ -3803,29 +3833,60 @@
         // one setting with COMP on and another with COMP off and nothing
         // polls it, so it is read here, queued after the COMP switch: the
         // reply (_onTxBandwidth) is the setting of the state the over runs in.
-        _holdTxBandwidth() {
+        _holdTxBandwidth(compSwitched) {
             if (this._tbwHeld || !this._hasTxBandwidth) return;
             this._tbwHeld = true;
             this._tbwAwait = true;
             this._tbwRestore = -1;
-            this._enqueue('read_txBandwidth', civ.cmdReadTxBandwidth());
+            this._tbwAsked = false;
+            var self = this;
+            var ask = function () {
+                if (!self._tbwHeld || !self._tbwAwait) return;
+                self._tbwAsked = true;
+                self._enqueue('read_txBandwidth', civ.cmdReadTxBandwidth());
+            };
+            if (!compSwitched) { ask(); return; }
+            // The FUNC TBW tile reads the filter too. With COMP switched for
+            // this over, such a read may be queued or on the wire from before
+            // the switch, and its reply is the other setting: wait until the
+            // COMP set has gone out, 100 ms more for a reply on its way to
+            // land, then ask. A read still queued goes out after the switch
+            // now (same key, it keeps its place).
+            var waitComp = function () {
+                if (!self._tbwHeld || !self._tbwAwait) return;
+                if (self._queue.indexOf('setCompressor') !== -1) { setTimeout(waitComp, 20); return; }
+                setTimeout(ask, 100);
+            };
+            waitComp();
         }
 
         _onTxBandwidth(value) {
-            if (!this._tbwHeld || !this._tbwAwait) return;
+            if (!this._tbwHeld || !this._tbwAwait || !this._tbwAsked) return;
             this._tbwAwait = false;
             if (value === 0 || value > 2) return;   // WIDE already: nothing to undo
             this._tbwRestore = value;
+            this.state.txBandwidth = 0;
             this._enqueue('setTxBandwidth', civ.cmdSetTxBandwidth(0));
+            this._emit('update', { txBandwidth: 0 });
         }
 
         _releaseTxBandwidth() {
             if (!this._tbwHeld) return;
             this._tbwHeld = false;
             this._tbwAwait = false;
-            if (this._tbwRestore > 0)
+            if (this._tbwRestore > 0) {
+                this.state.txBandwidth = this._tbwRestore;
                 this._enqueue('setTxBandwidth', civ.cmdSetTxBandwidth(this._tbwRestore));
+                this._emit('update', { txBandwidth: this._tbwRestore });
+            }
             this._tbwRestore = -1;
+        }
+
+        // The tile's read: the rig only has the filter in SSB.
+        _readTxBandwidth() {
+            if (!this._hasTxBandwidth) return;
+            if (this.state.mode !== 'USB' && this.state.mode !== 'LSB') return;
+            this._enqueue('read_txBandwidth', civ.cmdReadTxBandwidth());
         }
 
         // close(): the queue is about to be dropped, so write it directly.

@@ -3406,6 +3406,8 @@ var monitorLevel = 128; // 0-255 (radio gain)
 var hasCompressor = false;
 var hasCompLevel = false;
 var compOn = false;
+var hasTxBandwidth = false; // rig has the SSB transmit filter command (FUNC TBW tile)
+var txBandwidth = null;     // 0 WIDE / 1 MID / 2 NAR, null until the rig reports it
 var compLevel = null;   // 0-255, null until the rig reports it
 // AGC: the FUNC AGC tile steps through the rig's own settings. rigInfo's
 // agcModes names them ([{num, name}]): the values differ per rig.
@@ -3860,7 +3862,7 @@ function handleMessage(msg) {
                 if (msg.hasMainSub !== undefined) { hasMainSub = msg.hasMainSub; updateVfoDisplay(); }
                 if (msg.hasDuplex !== undefined) hasDuplex = !!msg.hasDuplex;
                 updateToneCaps(msg);
-                if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner); if (msg.hasBreakIn !== undefined) updateHasBreakIn(!!msg.hasBreakIn); if (msg.hasCompressor !== undefined || msg.hasCompLevel !== undefined) updateHasCompressor(msg); if (msg.hasAgc !== undefined) updateHasAgc(msg);
+                if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner); if (msg.hasBreakIn !== undefined) updateHasBreakIn(!!msg.hasBreakIn); if (msg.hasCompressor !== undefined || msg.hasCompLevel !== undefined) updateHasCompressor(msg); if (msg.hasAgc !== undefined) updateHasAgc(msg); if (msg.hasTxBandwidth !== undefined) updateHasTxBandwidth(!!msg.hasTxBandwidth);
                 if (msg.txMeters !== undefined) setTxMeterCaps(msg.txMeters, msg.poCal);
                 if (msg.cwSpeedRange) applyCwSpeedRange(msg.cwSpeedRange);
                 if (msg.manufacturer !== undefined) cwKeyerType = (msg.manufacturer === 'Icom') ? 'icom' : 'ideal';
@@ -3896,7 +3898,7 @@ function handleMessage(msg) {
             if (msg.hasMainSub !== undefined) { hasMainSub = msg.hasMainSub; updateVfoDisplay(); }
             if (msg.hasDuplex !== undefined) hasDuplex = !!msg.hasDuplex;
             updateToneCaps(msg);
-            if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner); if (msg.hasBreakIn !== undefined) updateHasBreakIn(!!msg.hasBreakIn); if (msg.hasCompressor !== undefined || msg.hasCompLevel !== undefined) updateHasCompressor(msg); if (msg.hasAgc !== undefined) updateHasAgc(msg);
+            if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner); if (msg.hasBreakIn !== undefined) updateHasBreakIn(!!msg.hasBreakIn); if (msg.hasCompressor !== undefined || msg.hasCompLevel !== undefined) updateHasCompressor(msg); if (msg.hasAgc !== undefined) updateHasAgc(msg); if (msg.hasTxBandwidth !== undefined) updateHasTxBandwidth(!!msg.hasTxBandwidth);
             if (msg.txMeters !== undefined) setTxMeterCaps(msg.txMeters, msg.poCal);
                 if (msg.cwSpeedRange) applyCwSpeedRange(msg.cwSpeedRange);
                 if (msg.manufacturer !== undefined) cwKeyerType = (msg.manufacturer === 'Icom') ? 'icom' : 'ideal';
@@ -3944,6 +3946,7 @@ function handleMessage(msg) {
             if (msg.monitorGain !== undefined) { monitorLevel = msg.monitorGain; updateSlider('monitorLevel', msg.monitorGain); if (currentPanel === 'func') renderFuncOverlay(); }
             if (msg.compressor !== undefined) updateCompressor(msg.compressor);
             if (msg.agc !== undefined) updateAgc(msg.agc);
+            if (msg.txBandwidth !== undefined) updateTxBandwidth(msg.txBandwidth);
             if (msg.compLevel !== undefined) updateCompLevel(msg.compLevel);
             if (msg.split !== undefined) updateSplit(msg.split);
             if (msg.duplex !== undefined) updateDuplex(msg.duplex);
@@ -3996,6 +3999,7 @@ function handleMessage(msg) {
             if (msg.monitorGain !== undefined) { monitorLevel = msg.monitorGain; updateSlider('monitorLevel', msg.monitorGain); if (currentPanel === 'func') renderFuncOverlay(); }
             if (msg.compressor !== undefined) updateCompressor(msg.compressor);
             if (msg.agc !== undefined) updateAgc(msg.agc);
+            if (msg.txBandwidth !== undefined) updateTxBandwidth(msg.txBandwidth);
             if (msg.compLevel !== undefined) updateCompLevel(msg.compLevel);
             if (msg.split !== undefined) updateSplit(msg.split);
             if (msg.duplex !== undefined) updateDuplex(msg.duplex);
@@ -4250,6 +4254,7 @@ function updateMode(mode) {
     var prevMode = currentMode;
     currentMode = mode;
     if (mode !== prevMode) filterWidthStale();
+    if (mode !== prevMode && currentPanel === 'func') renderFuncOverlay();   // the TBW tile is SSB only
     updateModeBtnLabel();
     if (currentPanel === 'mode') renderModeOverlay();
     updateFilterConfig();
@@ -4620,6 +4625,22 @@ function updateCompLevel(val) {
 // The radio shows the level 0-10; the CI-V value is 0-255.
 function compLevelText(val) {
     return String(Math.round(val / 255 * 10));
+}
+
+// SSB transmit filter (TBW), the rig's FUNCTION > TBW key: WIDE / MID / NAR,
+// 100-2900 / 300-2700 / 500-2500 Hz unless changed in the rig's menu. The rig
+// keeps one setting with COMP on and one with COMP off; the tile shows and
+// sets the one in use. wfweb holds it at WIDE during its own digital overs,
+// and the tile says so while one runs.
+var TBW_NAMES = ['WIDE', 'MID', 'NAR'];
+function updateHasTxBandwidth(has) {
+    hasTxBandwidth = has;
+    if (currentPanel === 'func') renderFuncOverlay();
+}
+
+function updateTxBandwidth(val) {
+    txBandwidth = val;
+    if (currentPanel === 'func') renderFuncOverlay();
 }
 
 // AGC. agcModes is in the rig's own order (IC-7300 FAST, MID, SLOW; the
@@ -6012,6 +6033,16 @@ function renderFuncOverlay() {
             var want = !compOn;
             send({ cmd: 'setCompressor', value: want });
             updateCompressor(want);
+        }));
+    }
+
+    // SSB transmit filter, after COMP (the rig keeps one setting per COMP
+    // state): one press steps WIDE -> MID -> NAR like the rig's TBW key.
+    // SSB only, as on the rig.
+    if (hasTxBandwidth && (currentMode === 'USB' || currentMode === 'LSB')) {
+        grid.appendChild(makeFuncBtn('TBW', txBandwidth === null ? '' : (TBW_NAMES[txBandwidth] || ''), false, function() {
+            var want = txBandwidth === null ? 0 : (txBandwidth + 1) % 3;
+            if (send({ cmd: 'setTxBandwidth', value: want }) !== false) updateTxBandwidth(want);
         }));
     }
 

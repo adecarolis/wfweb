@@ -632,6 +632,8 @@ void webServer::receiveRigCaps(rigCapabilities *caps)
         // Speech compressor: the FUNC COMP tile and the GAIN COMP level row.
         obj["hasCompressor"] = rigCaps->commands.contains(funcCompressor);
         obj["hasCompLevel"] = rigCaps->commands.contains(funcCompressorLevel);
+        // SSB transmit filter (WIDE / MID / NAR): the FUNC TBW tile.
+        obj["hasTxBandwidth"] = rigCaps->commands.contains(funcSSBTXBandwidth);
         obj["hasPowerControl"] = rigCaps->commands.contains(funcPowerControl);
         obj["powerOnNeedsRemoteJack"] = powerOnNeedsRemoteJack(rigCaps);
         addAgcCaps(obj);
@@ -2981,7 +2983,19 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         const bool tbwAgain = tbwHeld && !tbwAwait;
         releaseTxBandwidth();
         queue->add(priorityImmediate, queueItem(funcCompressor, QVariant::fromValue<uchar>(on ? 1 : 0), false, 0));
-        if (tbwAgain) holdTxBandwidth("digital");
+        if (tbwAgain) holdTxBandwidth("digital", true);
+    }
+    else if (type == "setTxBandwidth") {
+        // FUNC TBW tile: 0 WIDE / 1 MID / 2 NAR, the setting of the current
+        // COMP state. The operator's word wins over a digital-TX hold: the
+        // end of the over leaves it. Read back like AGC.
+        if (!rigCaps || !rigCaps->commands.contains(funcSSBTXBandwidth)) return;
+        uchar val = static_cast<uchar>(qBound(0, cmd["value"].toInt(), 2));
+        if (tbwHeld) { tbwAwait = false; tbwRestore = -1; }
+        queue->addUnique(priorityImmediate, queueItem(funcSSBTXBandwidth, QVariant::fromValue<uchar>(val), false, 0));
+        QTimer::singleShot(200, this, [this]() {
+            if (queue) queue->add(priorityImmediate, funcSSBTXBandwidth, false, 0);
+        });
     }
     else if (type == "setCompLevel") {
         ushort val = static_cast<ushort>(qBound(0, cmd["value"].toInt(), 255));
@@ -4356,6 +4370,7 @@ QJsonObject webServer::buildInfoJson() const
         info["hasBreakIn"] = rigCaps->commands.contains(funcBreakIn);
         info["hasCompressor"] = rigCaps->commands.contains(funcCompressor);
         info["hasCompLevel"] = rigCaps->commands.contains(funcCompressorLevel);
+        info["hasTxBandwidth"] = rigCaps->commands.contains(funcSSBTXBandwidth);
         addAgcCaps(info);
         addToneCaps(info);
         addBandCaps(info);
@@ -4733,6 +4748,19 @@ QJsonObject webServer::buildStatusJson()
         if (agc.value.isValid()) status["agc"] = agc.value.toInt();
     }
 
+    // SSB transmit filter (FUNC TBW tile): 0 WIDE / 1 MID / 2 NAR. The rig
+    // only has it in SSB, so it is only asked for there; getCache() is what
+    // keeps it fresh (the rig's own TBW key is not announced).
+    if (rigCaps && rigCaps->commands.contains(funcSSBTXBandwidth)) {
+        rigMode_t mk = modeUnknown;
+        cacheItem m = operatingModeCache(queue->getVfoCommand(vfoA, 0, false));
+        if (m.value.isValid()) mk = m.value.value<modeInfo>().mk;
+        if (mk == modeUSB || mk == modeLSB) {
+            cacheItem tbw = queue->getCache(funcSSBTXBandwidth, 0);
+            if (tbw.value.isValid()) status["txBandwidth"] = tbw.value.toInt();
+        }
+    }
+
     // Tuner (0=off, 1=on, 2=tuning)
     cacheItem tuner = queue->getCache(funcTunerStatus, 0);
     if (tuner.value.isValid()) status["tuner"] = tuner.value.toInt();
@@ -4830,6 +4858,18 @@ void webServer::receiveCache(cacheItem item)
     // reports a mode once, when it changes, and REST and rigctld read AGC too.
     case funcMode: case funcModeGet: case funcModeSet: case funcModeTR: case funcSelectedMode:
         agcFollowMode(item);
+        break;
+    // The rig keeps one transmit filter setting with COMP on and one with it
+    // off, so the cached one goes stale with COMP: read it again. Deferred,
+    // like the AGC read (this can run inside queue->add()).
+    case funcCompressor:
+        if (rigCaps && rigCaps->commands.contains(funcSSBTXBandwidth)) {
+            QTimer::singleShot(200, this, [this]() {
+                // Not while a digital over waits for its own read of it.
+                if (queue && !tbwAwait && rigCaps && rigCaps->commands.contains(funcSSBTXBandwidth))
+                    queue->add(priorityImmediate, funcSSBTXBandwidth, false, 0);
+            });
+        }
         break;
     // The tone scan reads the squelch, not the browser, so it too is serviced
     // before that shortcut — otherwise a sweep whose last client walked away
@@ -5112,6 +5152,9 @@ void webServer::receiveCache(cacheItem item)
         break;
     case funcAGC:
         update["agc"] = item.value.toInt();       // one of rigInfo's agcModes nums
+        break;
+    case funcSSBTXBandwidth:
+        update["txBandwidth"] = item.value.toInt();   // 0 WIDE / 1 MID / 2 NAR
         break;
     case funcNoiseReduction:
         update["nr"] = item.value.toBool();
@@ -6956,8 +6999,8 @@ void webServer::holdCompressorForDigitalTx(const char *why)
             }
         }
     }
-    // After COMP: the transmit filter read below is the one of that state.
-    holdTxBandwidth(why);
+    // After COMP: the transmit filter read is the one of that state.
+    holdTxBandwidth(why, compHeld && compRestoreOn);
 }
 
 // Queued after the unkey, so the rig is back on receive when COMP returns.
@@ -6979,36 +7022,68 @@ void webServer::releaseCompressorHold()
 // an FT8 tone below 500 or above 2500 Hz left the IC-7300 with next to no
 // power, and the ALC loop cannot make up for a filter (2026-11-16). WIDE for
 // the over (100-2900 Hz by default), the operator's setting back after it.
-// The rig keeps one setting with COMP on and another with COMP off, and
-// nothing polls it, so it is read here, in queue order after the COMP switch:
-// the reply is the setting of the state the over runs in, and it comes a few
-// tens of ms after the key. cacheUpdated only fires on a changed value, so
-// the reply is recognised by its time (tbwHoldPoll).
+// The rig keeps one setting with COMP on and another with COMP off, so it is
+// read here, after the COMP switch: the reply is the setting of the state the
+// over runs in, and it comes a few tens of ms after the key (tbwHoldPoll).
 static const char *tbwName(int v)
 {
     return v == 0 ? "WIDE" : v == 1 ? "MID" : v == 2 ? "NAR" : "?";
 }
 
-void webServer::holdTxBandwidth(const char *why)
+void webServer::holdTxBandwidth(const char *why, bool compSwitched)
 {
     if (tbwHeld || !queue || !rigCaps || !rigCaps->commands.contains(funcSSBTXBandwidth))
         return;
     tbwHeld = true;
     tbwAwait = true;
     tbwRestore = -1;
-    tbwAskedAt = QDateTime::currentDateTime();
-    queue->add(priorityImmediate, funcSSBTXBandwidth, false, 0);
-    QTimer::singleShot(40, this, [this, why]() { tbwHoldPoll(why, 0); });
+    tbwPhase = compSwitched ? 0 : 2;
+    tbwHoldPoll(why, 0);
 }
 
-// Waits for the reply as long as the over lasts: behind a busy queue it can
-// take seconds. Every 40 ms for the first second, then four times a second.
+// The read of the filter for a held over, in three steps. The FUNC TBW tile
+// reads the filter too (the status, and after every COMP change), and with
+// COMP switched for this over such a read may be queued or on the wire from
+// before the switch: its reply is the other setting, and behind a busy queue
+// it can be seconds late (a server just started; the hold then set WIDE from
+// the COMP-on setting and put that one back in the COMP-off slot).
+//   0  the COMP set is still in the queue: wait until it has gone out;
+//   1  100 ms for a reply already on its way to land;
+//   2  ask (a read still pending goes out after the switch now, add() keeps
+//      it), then wait for a read *sent* from here on to be answered: the
+//      queue stamps a read's req as it goes out, the reply after it.
+// cacheUpdated only fires on a changed value, hence the polling: every 40 ms
+// for the first second, then four times a second, as long as the over lasts.
 void webServer::tbwHoldPoll(const char *why, int tries)
 {
     if (!tbwHeld || !tbwAwait || !queue) return;
+    auto again = [this, why, tries](int ms) {
+        QTimer::singleShot(ms, this, [this, why, tries]() { tbwHoldPoll(why, tries + 1); });
+    };
+    const int pace = tries < 25 ? 40 : 250;
+    if (tbwPhase == 0) {
+        bool pending = false;
+        auto *items = queue->getQueueItems();
+        for (auto it = items->cbegin(); it != items->cend(); ++it) {
+            if (it->command == funcCompressor && it->param.isValid()) { pending = true; break; }
+        }
+        queue->unlockMutex();
+        if (pending) { again(pace); return; }
+        tbwPhase = 1;
+        again(100);
+        return;
+    }
+    if (tbwPhase == 1 || tbwPhase == 2) {
+        tbwPhase = 3;
+        tbwAskedAt = QDateTime::currentDateTime();
+        queue->add(priorityImmediate, funcSSBTXBandwidth, false, 0);
+        again(40);
+        return;
+    }
     cacheItem t = queue->getCache(funcSSBTXBandwidth, 0);
-    if (!t.value.isValid() || !t.reply.isValid() || t.reply < tbwAskedAt) {
-        QTimer::singleShot(tries < 25 ? 40 : 250, this, [this, why, tries]() { tbwHoldPoll(why, tries + 1); });
+    if (!t.value.isValid() || !t.req.isValid() || !t.reply.isValid()
+        || t.req < tbwAskedAt || t.reply < t.req) {
+        again(pace);
         return;
     }
     tbwAwait = false;

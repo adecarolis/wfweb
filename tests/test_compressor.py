@@ -65,6 +65,14 @@ def _frames_since(mock, mark):
     return [bytes(f[4:-1]) for f in mock.civ_log[mark:]]
 
 
+def _set_tbw(mock, tbw):
+    """Change the mock's filter settings as the rig's own TBW key would, and
+    let a read of the old ones that is on its way (the tile's polling) land:
+    the test is about the hold, not about a key pressed in the same 100 ms."""
+    mock.tbw = list(tbw)
+    time.sleep(1.0)
+
+
 def _index(frames, cmd):
     return [i for i, f in enumerate(frames) if f == cmd]
 
@@ -257,14 +265,15 @@ def test_digital_over_holds_the_tx_filter_wide(rig):
     read brings the value the cache already holds, which the queue does not
     announce."""
     mock, send, _, _ = rig
-    mock.tbw = [2, 1]
+    _set_tbw(mock, [2, 1])
     for n in (1, 2):
         mark = len(mock.civ_log)
         send(cmd="setPTT", value=True, digital=True)
         _wait(lambda: mock.tbw[0] == 0, what=f"over {n}: TBW WIDE for the over")
         frames = _frames_since(mock, mark)
-        assert _index(frames, COMP_OFF)[0] < _index(frames, TBW_READ)[0], "TBW must be read with COMP off"
-        assert _index(frames, TBW_READ)[0] < _index(frames, PTT_ON)[0], "the read goes out before the key"
+        wide = _index(frames, TBW_WIDE)[0]
+        reads = [i for i in _index(frames, TBW_READ) if i < wide]
+        assert reads and reads[-1] > _index(frames, COMP_OFF)[0], "TBW must be read with COMP off"
         assert mock.tbw[1] == 1, "the COMP-on setting is not the over's"
 
         send(cmd="setPTT", value=False)
@@ -280,7 +289,7 @@ def test_tx_filter_already_wide_is_left_alone(rig):
     mock, send, status, _ = rig
     send(cmd="setCompressor", value=False)
     _wait(lambda: status().get("compressor") is False, what="status reports COMP off")
-    mock.tbw = [0, 2]
+    _set_tbw(mock, [0, 2])
     mark = len(mock.civ_log)
     send(cmd="setPTT", value=True, digital=True)
     _wait(lambda: TBW_READ in _frames_since(mock, mark), what="TBW read")
@@ -296,14 +305,14 @@ def test_tx_filter_already_wide_is_left_alone(rig):
 def test_voice_over_leaves_the_tx_filter_alone(rig):
     """A plain PTT is the operator's voice: TBW is neither read nor set."""
     mock, send, _, _ = rig
-    mock.tbw = [2, 2]
+    _set_tbw(mock, [2, 2])
     mark = len(mock.civ_log)
     send(cmd="setPTT", value=True)
     _wait(lambda: PTT_ON in _frames_since(mock, mark), what="PTT on reaches the rig")
     send(cmd="setPTT", value=False)
     _wait(lambda: PTT_OFF in _frames_since(mock, mark), what="PTT off reaches the rig")
     time.sleep(0.5)
-    assert not [f for f in _frames_since(mock, mark) if f[:2] == TBW_READ]
+    assert not [f for f in _frames_since(mock, mark) if f[:2] == TBW_READ and len(f) == 3]
     assert mock.tbw == [2, 2]
 
 
@@ -314,7 +323,7 @@ def test_comp_switched_mid_over_moves_the_tx_filter_hold(rig):
     mock, send, status, _ = rig
     send(cmd="setCompressor", value=False)
     _wait(lambda: status().get("compressor") is False, what="status reports COMP off")
-    mock.tbw = [2, 1]
+    _set_tbw(mock, [2, 1])
     mark = len(mock.civ_log)
     send(cmd="setPTT", value=True, digital=True)
     _wait(lambda: mock.tbw[0] == 0, what="COMP-off TBW WIDE for the over")
@@ -329,7 +338,7 @@ def test_comp_switched_mid_over_moves_the_tx_filter_hold(rig):
 def test_tx_filter_restored_when_keying_client_vanishes(rig):
     """A browser lost mid-over: the server unkeys and puts TBW back."""
     mock, send, _, ws = rig
-    mock.tbw = [2, 1]
+    _set_tbw(mock, [2, 1])
     mark = len(mock.civ_log)
     send(cmd="setPTT", value=True, digital=True)
     _wait(lambda: mock.tbw[0] == 0, what="TBW WIDE for the over")
@@ -337,6 +346,57 @@ def test_tx_filter_restored_when_keying_client_vanishes(rig):
     ws.close()
     _wait(lambda: PTT_OFF in _frames_since(mock, mark), what="server unkeys the vanished client")
     _wait(lambda: mock.tbw == [2, 1] and mock.compressor == 1, what="TBW and COMP back")
+
+
+def test_tbw_tile_reads_and_sets_the_filter_of_the_comp_state(wfweb_7300_instance, rig):
+    """The FUNC TBW tile: rigInfo says the rig has the filter, the status
+    carries the setting in use, COMP switched brings the other setting, and
+    setTxBandwidth writes the one in use."""
+    _, web_port = wfweb_7300_instance
+    info = requests.get(f"http://127.0.0.1:{web_port + 1}/api/v1/radio/info", timeout=2).json()
+    info = info.get("info", info)
+    assert info.get("hasTxBandwidth") is True
+    mock, send, _, ws = rig
+    _set_tbw(mock, [2, 1])
+
+    def tbw():
+        """What the WebSocket status says (the REST status does not carry it)."""
+        send(cmd="getStatus")
+        deadline = time.monotonic() + 3
+        while time.monotonic() < deadline:
+            try:
+                msg = json.loads(ws.recv(timeout=1))
+            except TimeoutError:
+                continue
+            if isinstance(msg, dict) and msg.get("type") == "status":
+                return msg.get("txBandwidth")
+        return None
+
+    _wait(lambda: tbw() == 1, timeout=30.0, what="status: MID, the COMP-on setting")
+    send(cmd="setCompressor", value=False)
+    _wait(lambda: tbw() == 2, timeout=15.0, what="COMP off: status follows to NAR")
+    send(cmd="setTxBandwidth", value=0)
+    _wait(lambda: mock.tbw == [0, 1], what="setTxBandwidth writes the COMP-off setting")
+    _wait(lambda: tbw() == 0, what="status says WIDE")
+    send(cmd="setCompressor", value=True)
+    _wait(lambda: tbw() == 1, timeout=15.0, what="COMP on: status back to MID")
+
+
+def test_tbw_set_by_the_operator_mid_over_stays(rig):
+    """The tile pressed during a digital over: that setting is not undone."""
+    mock, send, status, _ = rig
+    send(cmd="setCompressor", value=False)
+    _wait(lambda: status().get("compressor") is False, what="status reports COMP off")
+    _set_tbw(mock, [2, 1])
+    mark = len(mock.civ_log)
+    send(cmd="setPTT", value=True, digital=True)
+    _wait(lambda: mock.tbw[0] == 0, what="TBW WIDE for the over")
+    send(cmd="setTxBandwidth", value=1)
+    _wait(lambda: mock.tbw[0] == 1, what="the operator's MID reaches the rig")
+    send(cmd="setPTT", value=False)
+    _wait(lambda: PTT_OFF in _frames_since(mock, mark), what="PTT off reaches the rig")
+    time.sleep(1.0)
+    assert mock.tbw == [1, 1], f"MID must stay, got {mock.tbw}"
 
 
 def test_first_key_after_connect_reaches_the_rig(wfweb_7300_instance, mock_radio_7300):

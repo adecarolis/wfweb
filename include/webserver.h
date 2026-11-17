@@ -690,6 +690,7 @@ private:
     bool tbwHeld = false;
     bool tbwAwait = false;
     int tbwRestore = -1;
+    int tbwPhase = 0;          // step of the hold's read, see tbwHoldPoll()
     QDateTime tbwAskedAt;
     QWebSocket *micActiveClient = nullptr;
     QWebSocket *pttClient = nullptr;   // browser that last keyed the rig; unkeyed if it vanishes (#144)
@@ -721,7 +722,7 @@ private:
     void queuePacketModInput();
     void holdCompressorForDigitalTx(const char *why);
     void releaseCompressorHold();
-    void holdTxBandwidth(const char *why);
+    void holdTxBandwidth(const char *why, bool compSwitched);
     void tbwHoldPoll(const char *why, int tries);
     void releaseTxBandwidth();
     bool packetModInputLogged = false;

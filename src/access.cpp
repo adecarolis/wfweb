@@ -56,7 +56,7 @@ const char *const kViewCommands[] = {
 const char *const kControlCommands[] = {
     "setFrequency", "setBand", "setMode", "selectVFO", "swapVFO", "equalizeVFO",
     "setAfGain", "setRfGain", "setRfPower", "setSquelch", "setMicGain", "setAttenuator", "setPreamp",
-    "setAntenna", "setNoiseBlanker", "setBreakIn", "setNoiseReduction", "setAGC", "setCompressor",
+    "setAntenna", "setNoiseBlanker", "setBreakIn", "setNoiseReduction", "setAGC", "setCompressor", "setTxBandwidth",
     "setCompLevel", "setMonitor", "setMonitorGain", "setTxMeter", "setAutoNotch", "setFilterWidth",
     "setPBTInner", "setPBTOuter", "setFilterShape", "setFilter", "setSplit", "setDuplex", "setToneMode",
     "setToneFreq", "setDtcsCode", "setDuplexOffset", "setSpan", "setScopeRef", "setScopeSpeed",

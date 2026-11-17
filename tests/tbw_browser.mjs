@@ -7,7 +7,9 @@
 // A digital key (setPTT {digital: true}) switches COMP off, reads 16 58,
 // sets WIDE; the unkey puts the filter back, then COMP. A voice key touches
 // neither. WIDE already: no set. COMP switched by the operator mid-over: the
-// hold moves to the other setting.
+// hold moves to the other setting. Then the FUNC TBW tile: it reads the
+// setting of the COMP state in use, a tap steps and writes it, and it is
+// gone outside SSB.
 //
 // Needs playwright-core and a Chromium (found like comp_browser.mjs);
 // `--probe` only reports whether they were found. Run through
@@ -167,7 +169,10 @@ try {
   await page.waitForFunction(() => window.currentMode === 'USB', null, { timeout: 10000 });
   await page.waitForFunction(() => window.__civLog.some(p => p[0] === 0x16 && p[1] === 0x44), null, { timeout: 10000 });
   await settle();
-  check((await since(0)).indexOf('TBW?') < 0, 'TBW is not read or set outside a digital over');
+  check(!(await since(0)).some(x => /^TBW [A-Z]/.test(x)), 'TBW is not set outside a digital over');
+  // The reads of the tile (connect, slow tick, COMP change) are not the over's.
+  const sinceSets = async (m) => (await since(m)).filter(x => x !== 'TBW?');
+  const lastReadBefore = (list, what) => list.lastIndexOf('TBW?', list.indexOf(what));
 
   // ---- a digital over with COMP on, NAR in the COMP-off setting -------------
   for (const n of [1, 2]) {
@@ -177,8 +182,8 @@ try {
       .then(() => check(true, `over ${n}: the COMP-off filter goes to WIDE`),
             () => check(false, `over ${n}: the filter never went to WIDE`));
     let f = await since(m);
-    check(before(f, 'COMP off', 'TBW?') && before(f, 'TBW?', 'KEY') && before(f, 'TBW?', 'TBW WIDE'),
-          `over ${n}: COMP off, then the read, then the key and WIDE (got ${f.join(', ')})`);
+    check(f.includes('TBW WIDE') && lastReadBefore(f, 'TBW WIDE') > f.indexOf('COMP off') && f.includes('KEY'),
+          `over ${n}: COMP off, then the read, then WIDE (got ${f.join(', ')})`);
     check((await rig()).tbw[1] === 1, `over ${n}: the COMP-on setting is left alone`);
     await send({ cmd: 'setPTT', value: false });
     await page.waitForFunction(() => window.__rig.comp === 1, null, { timeout: 5000 }).catch(() => {});
@@ -197,7 +202,7 @@ try {
     await settle();
     await send({ cmd: 'setPTT', value: false });
     await settle();
-    const f = await since(m);
+    const f = await sinceSets(m);
     check(f.join() === 'KEY,UNKEY', `a voice over touches neither COMP nor the filter (got ${f.join(', ')})`);
   }
 
@@ -231,6 +236,40 @@ try {
     check(r.comp === 1 && r.tbw.join() === '2,1', `after that over: COMP stays on, both filters as the operator had them (got comp ${r.comp}, tbw ${r.tbw.join()})`);
   }
 
+  // ---- the FUNC TBW tile ----------------------------------------------------
+  const tile = () => page.evaluate(() => {
+    const t = [...document.querySelectorAll('#funcGrid .ov-btn')].find(b => (b.querySelector('.btn-label') || {}).textContent === 'TBW');
+    return t ? t.querySelector('.btn-state').textContent : null;
+  });
+  const tapTile = () => page.evaluate(() => {
+    [...document.querySelectorAll('#funcGrid .ov-btn')].find(b => (b.querySelector('.btn-label') || {}).textContent === 'TBW').click();
+  });
+  {
+    await page.evaluate(() => window.setPanel('func'));
+    await page.waitForFunction(() => window.txBandwidth === 1, null, { timeout: 8000 }).catch(() => {});
+    check(await tile() === 'MID', `the tile reads MID, the COMP-on setting (got ${await tile()})`);
+    const order = await page.evaluate(() => [...document.querySelectorAll('#funcGrid .ov-btn .btn-label')].map(e => e.textContent));
+    check(order.indexOf('COMP') >= 0 && order.indexOf('COMP') + 1 === order.indexOf('TBW'), `the tile sits after COMP (got ${order.join(' ')})`);
+    await send({ cmd: 'setCompressor', value: false });
+    await page.waitForFunction(() => window.txBandwidth === 2, null, { timeout: 5000 }).catch(() => {});
+    check(await tile() === 'NAR', `COMP off: the tile follows to that setting, NAR (got ${await tile()})`);
+    await tapTile();
+    await page.waitForFunction(() => window.__rig.tbw[0] === 0, null, { timeout: 5000 }).catch(() => {});
+    check((await rig()).tbw.join() === '0,1' && await tile() === 'WIDE', `a tap steps NAR -> WIDE and writes the COMP-off setting (got ${(await rig()).tbw.join()}, ${await tile()})`);
+    await tapTile();
+    await page.waitForFunction(() => window.__rig.tbw[0] === 1, null, { timeout: 5000 }).catch(() => {});
+    check(await tile() === 'MID', 'another tap: MID');
+    // Pressed during a digital over, the operator's setting stays.
+    await send({ cmd: 'setPTT', value: true, digital: true });
+    await page.waitForFunction(() => window.__rig.tbw[0] === 0, null, { timeout: 5000 }).catch(() => {});
+    check(await tile() === 'WIDE', `during a digital over the tile says WIDE (got ${await tile()})`);
+    await tapTile();
+    await page.waitForFunction(() => window.__rig.tbw[0] === 1, null, { timeout: 5000 }).catch(() => {});
+    await send({ cmd: 'setPTT', value: false });
+    await settle();
+    check((await rig()).tbw[0] === 1 && await tile() === 'MID', `a tap during the over is not undone by its end (got ${(await rig()).tbw.join()}, ${await tile()})`);
+  }
+
   // ---- outside SSB ----------------------------------------------------------
   {
     await send({ cmd: 'setMode', value: 'FM' });
@@ -241,7 +280,8 @@ try {
     await send({ cmd: 'setPTT', value: false });
     await settle();
     const f = await since(m);
-    check(f.join() === 'KEY,UNKEY', `an FM over (packet) touches neither (got ${f.join(', ')})`);
+    check(f.join() === 'KEY,UNKEY', `an FM over (packet) touches neither, and the filter is not read in FM (got ${f.join(', ')})`);
+    check(await tile() === null, 'no TBW tile outside SSB');
   }
   await page.close();
 } finally {

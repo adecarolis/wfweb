@@ -755,25 +755,44 @@ IC-7300, 7300MK2, 705, 7610, 7760, 785x, 905, 9100, 9700; no other rig has
 the command). On NAR an FT8 tone below
 500 or above 2500 Hz left the IC-7300 with next to no power, and the ALC
 loop cannot make up for a filter: its gain is capped (2026-11-16). The rig
-keeps **one TBW setting with COMP on and another with COMP off**, and
-nothing polls it, so the hold reads it, queued after the COMP switch and
-ahead of the key: the reply is the setting of the state the over runs in
-and lands a few tens of ms after the key. Not WIDE: remembered, WIDE set;
-the release puts it back *before* COMP returns (unkey, TBW, COMP).
-`holdTxBandwidth` / `tbwHoldPoll` / `releaseTxBandwidth` on the server,
-called from the two COMP functions so every keying and unkey site has it;
-`_holdTxBandwidth` / `_onTxBandwidth` / `_releaseTxBandwidth` in
-`serial-transport.js` (the virtual transport has no filter to mirror).
-Server detail: `cacheUpdated` fires only on a changed value, so the reply is
-recognised by its time (`cacheItem.reply` at or after `tbwAskedAt`), polled
-for as long as the over lasts. **Nothing else may read `funcSSBTXBandwidth`**
-(no slow tick, no status field): a read queued before the COMP switch would
-answer for the wrong setting. A `setCompressor` during the over puts the
-held filter back first and holds the other one. Confirmed by the operator
-on the IC-7300 (2026-11-17): the rig takes the set while keyed and the
-power is back outside 500-2500 Hz. Tests: the TBW cases of
+keeps **one TBW setting with COMP on and another with COMP off**, so the
+hold reads it after the COMP switch: the reply is the setting of the state
+the over runs in and lands a few tens of ms after the key. Not WIDE:
+remembered, WIDE set; the release puts it back *before* COMP returns (unkey,
+TBW, COMP). `holdTxBandwidth` / `tbwHoldPoll` / `releaseTxBandwidth` on the
+server, called from the two COMP functions so every keying and unkey site
+has it; `_holdTxBandwidth` / `_onTxBandwidth` / `_releaseTxBandwidth` in
+`serial-transport.js`, mirrored on two slots in `virtual-transport.js`.
+**The read must be one sent after the COMP set went out.** The FUNC TBW tile
+reads the filter too, and a read queued or on the wire from before the
+switch answers for the other setting; behind a busy queue (a server just
+started) it came seconds late, the hold set WIDE from the COMP-on setting
+and wrote that one into the COMP-off slot (caught by the mock, 2026-11-17).
+So `tbwHoldPoll` waits until no COMP set is left in the queue
+(`getQueueItems`), 100 ms more, asks, and accepts the cache only when the
+read's `req` (stamped as it goes out) is at or after that and its `reply`
+after the `req`; `cacheUpdated` fires only on a changed value, hence the
+polling, for as long as the over lasts. Standalone does the same on its
+key queue (`_queue.indexOf('setCompressor')`, `_tbwAsked`). A
+`setCompressor` during the over puts the held filter back first and holds
+the other one. Confirmed by the operator on the IC-7300 (2026-11-17, before
+the tile): the rig takes the set while keyed and the power
+is back outside 500-2500 Hz. Tests: the TBW cases of
 `tests/test_compressor.py` (the mock keeps a setting per COMP state) and
 `tests/tbw_browser.mjs` (Web Serial transport against a fake IC-7300).
+
+**FUNC TBW tile** (after COMP, both forks, SSB only like the rig's key): the
+setting in use, WIDE / MID / NAR, a press steps to the next
+(`setTxBandwidth {value}`, `txBandwidth` in the WebSocket status / update,
+`hasTxBandwidth` in rigInfo; Control level in `access.cpp`). It shows and
+writes the setting of the current COMP state, so it changes when COMP does:
+the server re-reads `16 58` 200 ms after any COMP change (`receiveCache`,
+deferred) and the status build asks for it in SSB only (`getCache`, which is
+all the polling there is: the rig does not announce its own TBW key).
+Standalone reads it at connect, on the 5 s slow tick, on a mode change and
+after a COMP change. During a digital over the tile says WIDE; a press then
+is the operator's word: `tbwRestore` is dropped and the end of the over
+leaves it.
 
 ### FUNC AGC tile
 The AGC tile (ahead of NOTCH) steps through the rig's settings like its AGC
