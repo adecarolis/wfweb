@@ -747,6 +747,34 @@ keyed the IC-7300 with 0 W out without it, 2026-10-31).
 Tests: `tests/test_compressor.py` (server, IC-7300 mock) and
 `tests/comp_browser.mjs` (Standalone virtual rig).
 
+**The same hold puts the rig's SSB transmit filter (TBW) on WIDE.** Plain
+USB / LSB keeps that filter in the path too (FUNCTION > TBW: WIDE 100-2900,
+MID 300-2700, NAR 500-2500 Hz by default; CI-V `16 58` = 0 / 1 / 2, rig-file
+"SSB TX Bandwidth", `hasTxBandwidth` in `rig-caps.js`; nine rig files:
+IC-7300, 7300MK2, 705, 7610, 7760, 785x, 905, 9100, 9700; no other rig has
+the command). On NAR an FT8 tone below
+500 or above 2500 Hz left the IC-7300 with next to no power, and the ALC
+loop cannot make up for a filter: its gain is capped (2026-11-16). The rig
+keeps **one TBW setting with COMP on and another with COMP off**, and
+nothing polls it, so the hold reads it, queued after the COMP switch and
+ahead of the key: the reply is the setting of the state the over runs in
+and lands a few tens of ms after the key. Not WIDE: remembered, WIDE set;
+the release puts it back *before* COMP returns (unkey, TBW, COMP).
+`holdTxBandwidth` / `tbwHoldPoll` / `releaseTxBandwidth` on the server,
+called from the two COMP functions so every keying and unkey site has it;
+`_holdTxBandwidth` / `_onTxBandwidth` / `_releaseTxBandwidth` in
+`serial-transport.js` (the virtual transport has no filter to mirror).
+Server detail: `cacheUpdated` fires only on a changed value, so the reply is
+recognised by its time (`cacheItem.reply` at or after `tbwAskedAt`), polled
+for as long as the over lasts. **Nothing else may read `funcSSBTXBandwidth`**
+(no slow tick, no status field): a read queued before the COMP switch would
+answer for the wrong setting. A `setCompressor` during the over puts the
+held filter back first and holds the other one. Confirmed by the operator
+on the IC-7300 (2026-11-17): the rig takes the set while keyed and the
+power is back outside 500-2500 Hz. Tests: the TBW cases of
+`tests/test_compressor.py` (the mock keeps a setting per COMP state) and
+`tests/tbw_browser.mjs` (Web Serial transport against a fake IC-7300).
+
 ### FUNC AGC tile
 The AGC tile (ahead of NOTCH) steps through the rig's settings like its AGC
 key, sending `setAGC {value}` (CI-V `16 12`, Kenwood `GC`; `agc` in status /

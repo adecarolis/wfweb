@@ -399,6 +399,7 @@ def extract_caps(props: dict[str, str], cmd_meta: dict[str, dict]) -> dict:
     has_agc = False
     has_compressor = False
     has_comp_level = False
+    has_tx_bandwidth = False
     has_memory_mode = False
     tone_cmds: set[str] = set()
     tx_meters: set[str] = set()
@@ -422,6 +423,8 @@ def extract_caps(props: dict[str, str], cmd_meta: dict[str, dict]) -> dict:
             has_compressor = True
         elif v.strip() == "Compressor Level":   # CI-V 0x14 0x0E: GAIN COMP
             has_comp_level = True
+        elif v.strip() == "SSB TX Bandwidth":   # CI-V 0x16 0x58: TBW, held WIDE for digital overs
+            has_tx_bandwidth = True
         elif v.strip() == "Memory Mode":
             has_memory_mode = True
         elif v.strip() in TONE_CMD_LABELS:
@@ -447,6 +450,7 @@ def extract_caps(props: dict[str, str], cmd_meta: dict[str, dict]) -> dict:
         "hasAgc": has_agc and bool(extract_num_name_list(props, "AGC")),
         "hasCompressor": has_compressor,
         "hasCompLevel": has_comp_level,
+        "hasTxBandwidth": has_tx_bandwidth,
         "hasCTCSS": can_engage_tone and bool(extract_tones(props, "CTCSS")),
         "hasDTCS": (can_engage_tone and bool(extract_tones(props, "DTCS"))
                     and "DTCS Code/Polarity" in tone_cmds),

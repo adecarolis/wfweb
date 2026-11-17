@@ -47,6 +47,7 @@ SUB_MIC_GAIN = 0x0B
 SUB_COMP_LEVEL = 0x0E
 SUB_COMPRESSOR = 0x44  # under CMD_FUNC
 SUB_AGC = 0x12  # under CMD_FUNC
+SUB_TBW = 0x58  # under CMD_FUNC: SSB transmit filter, 0 WIDE / 1 MID / 2 NAR
 SUB_S_METER = 0x02
 SUB_SWR_METER = 0x12
 SUB_ALC_METER = 0x13
@@ -120,6 +121,9 @@ class CivRadioBase:
         self._mic_gain: int = 128
         # Speech compressor ON at level 5 (128 of 255), as a voice operator leaves it.
         self.compressor: int = 1
+        # SSB transmit filter (TBW). The rig keeps one setting with COMP off
+        # and one with COMP on: index = self.compressor. MID is the default.
+        self.tbw: list[int] = [1, 1]
         # AGC as the IC-7300 numbers it: 1 FAST, 2 MID, 3 SLOW. In FM the rig
         # keeps FAST and refuses a set (agc_fm_fixed), like the real one.
         self.agc: int = 2
@@ -250,6 +254,16 @@ class CivRadioBase:
                 return self.civ_ack(to, frm)
             return self.civ_frame(to, frm, CMD_FUNC, sub=SUB_COMPRESSOR,
                                   data=bytes([self.compressor]))
+
+        if cmd == CMD_FUNC and payload and payload[0] == SUB_TBW:
+            slot = 1 if self.compressor else 0
+            if len(payload) > 1:
+                if payload[1] > 2:
+                    return self.civ_nak(to, frm)
+                self.tbw[slot] = payload[1]
+                return self.civ_ack(to, frm)
+            return self.civ_frame(to, frm, CMD_FUNC, sub=SUB_TBW,
+                                  data=bytes([self.tbw[slot]]))
 
         if cmd == CMD_FUNC and payload and payload[0] == SUB_AGC:
             in_fm = self._mode == 0x05 and self.agc_fm_fixed

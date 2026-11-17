@@ -2975,7 +2975,13 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         // The operator's word wins over a digital-TX hold: the end of the
         // over must not put the old state back on top of it.
         if (compHeld) compRestoreOn = false;
+        // The rig keeps one TBW setting with COMP on and one with it off: a
+        // held one goes back where it came from before COMP changes, and the
+        // other is held in its place.
+        const bool tbwAgain = tbwHeld && !tbwAwait;
+        releaseTxBandwidth();
         queue->add(priorityImmediate, queueItem(funcCompressor, QVariant::fromValue<uchar>(on ? 1 : 0), false, 0));
+        if (tbwAgain) holdTxBandwidth("digital");
     }
     else if (type == "setCompLevel") {
         ushort val = static_cast<ushort>(qBound(0, cmd["value"].toInt(), 255));
@@ -6930,30 +6936,35 @@ void webServer::queuePacketModInput()
 // SSB only: COMP does nothing in the other modes.
 void webServer::holdCompressorForDigitalTx(const char *why)
 {
-    if (compHeld || !queue || !rigCaps || !rigCaps->commands.contains(funcCompressor))
-        return;
+    if (!queue || !rigCaps) return;
     cacheItem mode = operatingModeCache(queue->getVfoCommand(vfoA, 0, false));
     rigMode_t mk = mode.value.isValid() ? mode.value.value<modeInfo>().mk : modeUnknown;
     if (mk != modeUSB && mk != modeLSB)
         return;
-    cacheItem comp = queue->getCache(funcCompressor, 0);
-    if (!comp.value.isValid()) {
-        // Not read yet (getCache() has just asked): leave it alone rather
-        // than guess; a guess could leave the operator's COMP off for good.
-        qInfo() << "Web: compressor state unknown, left as is for" << why << "TX";
-        return;
+    if (!compHeld && rigCaps->commands.contains(funcCompressor)) {
+        cacheItem comp = queue->getCache(funcCompressor, 0);
+        if (!comp.value.isValid()) {
+            // Not read yet (getCache() has just asked): leave it alone rather
+            // than guess; a guess could leave the operator's COMP off for good.
+            qInfo() << "Web: compressor state unknown, left as is for" << why << "TX";
+        } else {
+            compHeld = true;
+            compRestoreOn = comp.value.toBool();
+            if (compRestoreOn) {
+                queue->addUnique(priorityImmediate, queueItem(funcCompressor, QVariant::fromValue<uchar>(0), false, 0));
+                qInfo() << "Web: speech compressor OFF for" << why << "TX";
+            }
+        }
     }
-    compHeld = true;
-    compRestoreOn = comp.value.toBool();
-    if (compRestoreOn) {
-        queue->addUnique(priorityImmediate, queueItem(funcCompressor, QVariant::fromValue<uchar>(0), false, 0));
-        qInfo() << "Web: speech compressor OFF for" << why << "TX";
-    }
+    // After COMP: the transmit filter read below is the one of that state.
+    holdTxBandwidth(why);
 }
 
 // Queued after the unkey, so the rig is back on receive when COMP returns.
 void webServer::releaseCompressorHold()
 {
+    // First, while COMP is still off: the filter goes back where it was read.
+    releaseTxBandwidth();
     if (!compHeld) return;
     compHeld = false;
     if (compRestoreOn && queue) {
@@ -6961,6 +6972,63 @@ void webServer::releaseCompressorHold()
         qInfo() << "Web: speech compressor restored ON";
     }
     compRestoreOn = false;
+}
+
+// Plain USB / LSB also keeps the rig's SSB transmit filter in the path (TBW:
+// WIDE / MID / NAR, CI-V 16 58 = 0 / 1 / 2). On NAR, 500-2500 Hz by default,
+// an FT8 tone below 500 or above 2500 Hz left the IC-7300 with next to no
+// power, and the ALC loop cannot make up for a filter (2026-11-16). WIDE for
+// the over (100-2900 Hz by default), the operator's setting back after it.
+// The rig keeps one setting with COMP on and another with COMP off, and
+// nothing polls it, so it is read here, in queue order after the COMP switch:
+// the reply is the setting of the state the over runs in, and it comes a few
+// tens of ms after the key. cacheUpdated only fires on a changed value, so
+// the reply is recognised by its time (tbwHoldPoll).
+static const char *tbwName(int v)
+{
+    return v == 0 ? "WIDE" : v == 1 ? "MID" : v == 2 ? "NAR" : "?";
+}
+
+void webServer::holdTxBandwidth(const char *why)
+{
+    if (tbwHeld || !queue || !rigCaps || !rigCaps->commands.contains(funcSSBTXBandwidth))
+        return;
+    tbwHeld = true;
+    tbwAwait = true;
+    tbwRestore = -1;
+    tbwAskedAt = QDateTime::currentDateTime();
+    queue->add(priorityImmediate, funcSSBTXBandwidth, false, 0);
+    QTimer::singleShot(40, this, [this, why]() { tbwHoldPoll(why, 0); });
+}
+
+// Waits for the reply as long as the over lasts: behind a busy queue it can
+// take seconds. Every 40 ms for the first second, then four times a second.
+void webServer::tbwHoldPoll(const char *why, int tries)
+{
+    if (!tbwHeld || !tbwAwait || !queue) return;
+    cacheItem t = queue->getCache(funcSSBTXBandwidth, 0);
+    if (!t.value.isValid() || !t.reply.isValid() || t.reply < tbwAskedAt) {
+        QTimer::singleShot(tries < 25 ? 40 : 250, this, [this, why, tries]() { tbwHoldPoll(why, tries + 1); });
+        return;
+    }
+    tbwAwait = false;
+    const int v = t.value.toInt();
+    if (v == 0) return;   // WIDE already: nothing to do, nothing to undo
+    tbwRestore = v;
+    queue->addUnique(priorityImmediate, queueItem(funcSSBTXBandwidth, QVariant::fromValue<uchar>(0), false, 0));
+    qInfo() << "Web: SSB TX bandwidth" << tbwName(v) << "-> WIDE for" << why << "TX";
+}
+
+void webServer::releaseTxBandwidth()
+{
+    if (!tbwHeld) return;
+    tbwHeld = false;
+    tbwAwait = false;
+    if (tbwRestore > 0 && queue) {
+        queue->addUnique(priorityImmediate, queueItem(funcSSBTXBandwidth, QVariant::fromValue<uchar>(uchar(tbwRestore)), false, 0));
+        qInfo() << "Web: SSB TX bandwidth restored to" << tbwName(tbwRestore);
+    }
+    tbwRestore = -1;
 }
 
 // Beacon TX: AprsProcessor asked us to transmit a UI frame.  Mirror the

@@ -397,6 +397,13 @@
             // voice COMP. _compRestoreOn = turn it back on when the over ends.
             this._compHeld = false;
             this._compRestoreOn = false;
+            // The rig's SSB transmit filter (TBW, 0x16 0x58) held at WIDE for
+            // the same overs. _tbwAwait = its setting is being read;
+            // _tbwRestore = the setting to put back (1 MID, 2 NAR), -1 when
+            // there is nothing to undo.
+            this._tbwHeld = false;
+            this._tbwAwait = false;
+            this._tbwRestore = -1;
 
             // Per-rig MOD INPUT command bytes + USB/MIC register values.
             // Filled in once we identify the rig (default = IC-7300 layout
@@ -542,11 +549,17 @@
                 // The operator's word wins over a digital-TX hold: the end of
                 // the over must not put the old state back on top of it.
                 if (obj.cmd === 'setCompressor' && this._compHeld) this._compRestoreOn = false;
+                // The rig keeps one TBW setting with COMP on and one with it
+                // off: a held one goes back where it came from before COMP
+                // changes, and the other is held in its place.
+                var tbwAgain = obj.cmd === 'setCompressor' && this._tbwHeld && !this._tbwAwait;
+                if (obj.cmd === 'setCompressor') this._releaseTxBandwidth();
                 var bSub = BOOL_SUB[obj.cmd];
                 var bOn = !!obj.value;
                 var bField = BOOL_SUB_TO_FIELD[bSub];
                 this.state[bField] = bOn;
                 this._enqueue(obj.cmd, civ.cmdSetBoolFunc(bSub, bOn));
+                if (tbwAgain) this._holdTxBandwidth();
                 var bUpd = {}; bUpd[bField] = bOn;
                 this._emit('update', bUpd);
                 return;
@@ -1350,6 +1363,7 @@
             this._hasAgc = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasAgc) && this._agcModes.length > 0;
             this._hasCompressor = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasCompressor);
             this._hasCompLevel = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasCompLevel);
+            this._hasTxBandwidth = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasTxBandwidth);
             this._hasSpectrum = !!(capsEntry && capsEntry.caps && capsEntry.caps.hasSpectrum);
             // Keyer speed span of 0x14 0x0C's 0..255 (6-48 WPM on most Icoms,
             // 6-60 on the IC-7600 family), from the rig file (#141).
@@ -1821,6 +1835,12 @@
                     this.state.filterShape = shp;
                     this._emit('update', { filterShape: shp });
                 }
+                return;
+            }
+
+            // 0x16 0x58 — SSB transmit filter (TBW), read for a digital over.
+            if (payload[0] === 0x16 && payload[1] === 0x58 && payload.length >= 3) {
+                this._onTxBandwidth(payload[2] & 0x0F);
                 return;
             }
 
@@ -3745,20 +3765,26 @@
         // after it (#147).
         // SSB only, and never on a guess: an unread state is left alone.
         _holdCompressor() {
-            if (this._compHeld || !this._hasCompressor) return;
             if (this.state.mode !== 'USB' && this.state.mode !== 'LSB') return;
-            if (this.state.compressor === undefined || this.state.compressor === null) return;
-            this._compHeld = true;
-            this._compRestoreOn = !!this.state.compressor;
-            if (this._compRestoreOn) {
-                this.state.compressor = false;
-                this._enqueue('setCompressor', civ.cmdSetBoolFunc(0x44, false));
-                this._emit('update', { compressor: false });
+            if (!this._compHeld && this._hasCompressor &&
+                this.state.compressor !== undefined && this.state.compressor !== null) {
+                this._compHeld = true;
+                this._compRestoreOn = !!this.state.compressor;
+                if (this._compRestoreOn) {
+                    this.state.compressor = false;
+                    this._enqueue('setCompressor', civ.cmdSetBoolFunc(0x44, false));
+                    this._emit('update', { compressor: false });
+                }
             }
+            // After COMP: the transmit filter read is the one of that state.
+            this._holdTxBandwidth();
         }
 
         // Called after the unkey is queued, so COMP returns on receive.
         _releaseCompressor() {
+            // First, while COMP is still off: the filter goes back where it
+            // was read.
+            this._releaseTxBandwidth();
             if (!this._compHeld) return;
             this._compHeld = false;
             if (this._compRestoreOn) {
@@ -3769,16 +3795,59 @@
             this._compRestoreOn = false;
         }
 
+        // Plain USB / LSB also keeps the rig's SSB transmit filter in the
+        // path (TBW: WIDE / MID / NAR = 0 / 1 / 2). On NAR, 500-2500 Hz by
+        // default, an FT8 tone below 500 or above 2500 Hz left the IC-7300
+        // with next to no power (2026-11-16). WIDE for the over (100-2900 Hz
+        // by default), the operator's setting back after it. The rig keeps
+        // one setting with COMP on and another with COMP off and nothing
+        // polls it, so it is read here, queued after the COMP switch: the
+        // reply (_onTxBandwidth) is the setting of the state the over runs in.
+        _holdTxBandwidth() {
+            if (this._tbwHeld || !this._hasTxBandwidth) return;
+            this._tbwHeld = true;
+            this._tbwAwait = true;
+            this._tbwRestore = -1;
+            this._enqueue('read_txBandwidth', civ.cmdReadTxBandwidth());
+        }
+
+        _onTxBandwidth(value) {
+            if (!this._tbwHeld || !this._tbwAwait) return;
+            this._tbwAwait = false;
+            if (value === 0 || value > 2) return;   // WIDE already: nothing to undo
+            this._tbwRestore = value;
+            this._enqueue('setTxBandwidth', civ.cmdSetTxBandwidth(0));
+        }
+
+        _releaseTxBandwidth() {
+            if (!this._tbwHeld) return;
+            this._tbwHeld = false;
+            this._tbwAwait = false;
+            if (this._tbwRestore > 0)
+                this._enqueue('setTxBandwidth', civ.cmdSetTxBandwidth(this._tbwRestore));
+            this._tbwRestore = -1;
+        }
+
         // close(): the queue is about to be dropped, so write it directly.
+        // The filter first, while COMP is still off.
         async _restoreCompressorDirect() {
             var on = this._compHeld && this._compRestoreOn;
+            var tbw = this._tbwHeld ? this._tbwRestore : -1;
             this._compHeld = false;
             this._compRestoreOn = false;
-            if (!on || !this.writer) return;
+            this._tbwHeld = false;
+            this._tbwAwait = false;
+            this._tbwRestore = -1;
+            if (!this.writer) return;
             try {
-                var frame = civ.buildFrame(this.civAddr, this.controllerAddr,
-                    civ.cmdSetBoolFunc(0x44, true));
-                await withDeadline(this.writer.write(frame), 1000, 'Compressor restore write');
+                if (tbw > 0) {
+                    await withDeadline(this.writer.write(civ.buildFrame(this.civAddr, this.controllerAddr,
+                        civ.cmdSetTxBandwidth(tbw))), 1000, 'TX bandwidth restore write');
+                }
+                if (on) {
+                    await withDeadline(this.writer.write(civ.buildFrame(this.civAddr, this.controllerAddr,
+                        civ.cmdSetBoolFunc(0x44, true))), 1000, 'Compressor restore write');
+                }
             } catch (e) { /* best effort — the link may already be gone */ }
         }
     }

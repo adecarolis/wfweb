@@ -684,6 +684,13 @@ private:
     // compRestoreOn = turn it back on when the over ends.
     bool compHeld = false;
     bool compRestoreOn = false;
+    // The rig's SSB transmit filter (TBW, CI-V 16 58) held at WIDE for the
+    // same overs. tbwAwait = its setting is being read; tbwRestore = the
+    // setting to put back (1 MID, 2 NAR), -1 when there is nothing to undo.
+    bool tbwHeld = false;
+    bool tbwAwait = false;
+    int tbwRestore = -1;
+    QDateTime tbwAskedAt;
     QWebSocket *micActiveClient = nullptr;
     QWebSocket *pttClient = nullptr;   // browser that last keyed the rig; unkeyed if it vanishes (#144)
 
@@ -714,6 +721,9 @@ private:
     void queuePacketModInput();
     void holdCompressorForDigitalTx(const char *why);
     void releaseCompressorHold();
+    void holdTxBandwidth(const char *why);
+    void tbwHoldPoll(const char *why, int tries);
+    void releaseTxBandwidth();
     bool packetModInputLogged = false;
 
     // One-shot log guard for the LAN web-mic TX path (issue #72): logs once per

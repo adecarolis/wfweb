@@ -271,6 +271,11 @@
     function cmdSetAgc(value) {
         return new Uint8Array([0x16, 0x12, Math.max(0, Math.min(9, value | 0))]);
     }
+    // SSB transmit filter (TBW), 0x16 0x58: 0 = WIDE, 1 = MID, 2 = NAR.
+    function cmdReadTxBandwidth() { return new Uint8Array([0x16, 0x58]); }
+    function cmdSetTxBandwidth(value) {
+        return new Uint8Array([0x16, 0x58, Math.max(0, Math.min(2, value | 0))]);
+    }
     function parseBoolFuncReply(payload) {
         // [0x16, sub, value]
         if (payload.length < 3 || payload[0] !== 0x16) return null;
@@ -1485,6 +1490,8 @@
         cmdSetBreakIn: cmdSetBreakIn,
         cmdReadAgc: cmdReadAgc,
         cmdSetAgc: cmdSetAgc,
+        cmdReadTxBandwidth: cmdReadTxBandwidth,
+        cmdSetTxBandwidth: cmdSetTxBandwidth,
         cmdReadAttenuator: cmdReadAttenuator,
         cmdSetAttenuator: cmdSetAttenuator,
         cmdReadAntenna: cmdReadAntenna,

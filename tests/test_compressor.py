@@ -7,6 +7,12 @@ so a COMP the operator left on for voice would sit in the path. The server
 switches it off before a digital key and back on after the unkey, and only
 then. Runs on the IC-7300 mock: COMP is CI-V 16 44, its level 14 0E.
 
+The same overs hold the rig's SSB transmit filter (TBW, CI-V 16 58: 0 WIDE /
+1 MID / 2 NAR) at WIDE: on NAR, 500-2500 Hz, an FT8 tone outside that range
+left the radio with next to no power. The rig keeps one TBW setting with COMP
+on and one with COMP off, so the server reads it after the COMP switch, sets
+WIDE, and puts the setting back before COMP returns.
+
 tests/comp_browser.mjs is the in-browser check of the controls: the
 Standalone bundle on its virtual rig, the FUNC COMP tile, the GAIN COMP row,
 TUNE keying as a digital over and the transport's hold. It needs
@@ -30,6 +36,10 @@ COMP_OFF = bytes([0x16, 0x44, 0x00])
 COMP_ON = bytes([0x16, 0x44, 0x01])
 PTT_ON = bytes([0x1C, 0x00, 0x01])
 PTT_OFF = bytes([0x1C, 0x00, 0x00])
+TBW_READ = bytes([0x16, 0x58])
+TBW_WIDE = bytes([0x16, 0x58, 0x00])
+TBW_MID = bytes([0x16, 0x58, 0x01])
+TBW_NAR = bytes([0x16, 0x58, 0x02])
 
 
 def _wait(predicate, timeout=6.0, what="condition", detail=None):
@@ -69,6 +79,7 @@ def rig(wfweb_7300_instance, mock_radio_7300):
     mock = mock_radio_7300
     mock.set_mode(0x01)
     mock.compressor = 1
+    mock.tbw = [1, 1]
 
     def status():
         return requests.get(status_url, timeout=2).json()
@@ -98,6 +109,7 @@ def rig(wfweb_7300_instance, mock_radio_7300):
         pass
     mock.set_mode(0x01)
     mock.compressor = 1
+    mock.tbw = [1, 1]
 
 
 def test_info_and_status_carry_the_compressor(wfweb_7300_instance, rig):
@@ -238,6 +250,95 @@ def test_no_hold_outside_ssb(rig):
     assert mock.compressor == 1
 
 
+def test_digital_over_holds_the_tx_filter_wide(rig):
+    """NAR with COMP off, MID with COMP on, COMP on: the over runs with COMP
+    off, so that setting is the one read, set to WIDE and put back, in this
+    order: COMP off, read, key ... unkey, NAR back, COMP on. Twice: the second
+    read brings the value the cache already holds, which the queue does not
+    announce."""
+    mock, send, _, _ = rig
+    mock.tbw = [2, 1]
+    for n in (1, 2):
+        mark = len(mock.civ_log)
+        send(cmd="setPTT", value=True, digital=True)
+        _wait(lambda: mock.tbw[0] == 0, what=f"over {n}: TBW WIDE for the over")
+        frames = _frames_since(mock, mark)
+        assert _index(frames, COMP_OFF)[0] < _index(frames, TBW_READ)[0], "TBW must be read with COMP off"
+        assert _index(frames, TBW_READ)[0] < _index(frames, PTT_ON)[0], "the read goes out before the key"
+        assert mock.tbw[1] == 1, "the COMP-on setting is not the over's"
+
+        send(cmd="setPTT", value=False)
+        _wait(lambda: mock.compressor == 1, what=f"over {n}: COMP back on")
+        frames = _frames_since(mock, mark)
+        assert mock.tbw == [2, 1], f"over {n}: TBW settings back as they were, got {mock.tbw}"
+        assert _index(frames, PTT_OFF)[0] < _index(frames, TBW_NAR)[0] < _index(frames, COMP_ON)[0], \
+            "TBW returns after the unkey and before COMP"
+
+
+def test_tx_filter_already_wide_is_left_alone(rig):
+    """WIDE needs no set, and nothing is put back after the over."""
+    mock, send, status, _ = rig
+    send(cmd="setCompressor", value=False)
+    _wait(lambda: status().get("compressor") is False, what="status reports COMP off")
+    mock.tbw = [0, 2]
+    mark = len(mock.civ_log)
+    send(cmd="setPTT", value=True, digital=True)
+    _wait(lambda: TBW_READ in _frames_since(mock, mark), what="TBW read")
+    time.sleep(0.5)
+    send(cmd="setPTT", value=False)
+    _wait(lambda: PTT_OFF in _frames_since(mock, mark), what="PTT off reaches the rig")
+    time.sleep(0.5)
+    sets = [f for f in _frames_since(mock, mark) if f[:2] == TBW_READ and len(f) == 3]
+    assert not sets, f"no TBW set expected, got {sets}"
+    assert mock.tbw == [0, 2]
+
+
+def test_voice_over_leaves_the_tx_filter_alone(rig):
+    """A plain PTT is the operator's voice: TBW is neither read nor set."""
+    mock, send, _, _ = rig
+    mock.tbw = [2, 2]
+    mark = len(mock.civ_log)
+    send(cmd="setPTT", value=True)
+    _wait(lambda: PTT_ON in _frames_since(mock, mark), what="PTT on reaches the rig")
+    send(cmd="setPTT", value=False)
+    _wait(lambda: PTT_OFF in _frames_since(mock, mark), what="PTT off reaches the rig")
+    time.sleep(0.5)
+    assert not [f for f in _frames_since(mock, mark) if f[:2] == TBW_READ]
+    assert mock.tbw == [2, 2]
+
+
+def test_comp_switched_mid_over_moves_the_tx_filter_hold(rig):
+    """The operator switches COMP on during the over (it was held off): the
+    COMP-off filter goes back first, and the COMP-on one is held instead and
+    restored at the end."""
+    mock, send, status, _ = rig
+    send(cmd="setCompressor", value=False)
+    _wait(lambda: status().get("compressor") is False, what="status reports COMP off")
+    mock.tbw = [2, 1]
+    mark = len(mock.civ_log)
+    send(cmd="setPTT", value=True, digital=True)
+    _wait(lambda: mock.tbw[0] == 0, what="COMP-off TBW WIDE for the over")
+    send(cmd="setCompressor", value=True)
+    _wait(lambda: mock.compressor == 1 and mock.tbw == [2, 0],
+          what="COMP-off TBW back to NAR, COMP-on TBW WIDE", detail=lambda: f"tbw={mock.tbw}")
+    send(cmd="setPTT", value=False)
+    _wait(lambda: mock.tbw == [2, 1], what="COMP-on TBW back to MID", detail=lambda: f"tbw={mock.tbw}")
+    assert mock.compressor == 1
+
+
+def test_tx_filter_restored_when_keying_client_vanishes(rig):
+    """A browser lost mid-over: the server unkeys and puts TBW back."""
+    mock, send, _, ws = rig
+    mock.tbw = [2, 1]
+    mark = len(mock.civ_log)
+    send(cmd="setPTT", value=True, digital=True)
+    _wait(lambda: mock.tbw[0] == 0, what="TBW WIDE for the over")
+    ws.socket.close()
+    ws.close()
+    _wait(lambda: PTT_OFF in _frames_since(mock, mark), what="server unkeys the vanished client")
+    _wait(lambda: mock.tbw == [2, 1] and mock.compressor == 1, what="TBW and COMP back")
+
+
 def test_first_key_after_connect_reaches_the_rig(wfweb_7300_instance, mock_radio_7300):
     """A status read of the PTT state must not delete a queued key. The mock
     never answers that read, so the 5 Hz status re-queues it on every tick;
@@ -267,4 +368,16 @@ def test_comp_browser():
     if probe.returncode != 0:
         pytest.skip("no playwright-core / Chromium: " + probe.stdout.strip())
     result = _node("comp_browser.mjs")
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_tbw_browser():
+    """The Standalone transport's hold of the transmit filter, on the Web
+    Serial transport against a fake IC-7300."""
+    if not shutil.which("node"):
+        pytest.skip("node unavailable")
+    probe = _node("tbw_browser.mjs", "--probe", timeout=60)
+    if probe.returncode != 0:
+        pytest.skip("no playwright-core / Chromium: " + probe.stdout.strip())
+    result = _node("tbw_browser.mjs")
     assert result.returncode == 0, result.stdout + result.stderr
