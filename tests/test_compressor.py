@@ -335,6 +335,34 @@ def test_comp_switched_mid_over_moves_the_tx_filter_hold(rig):
     assert mock.compressor == 1
 
 
+def test_comp_switched_just_before_the_key_reads_the_right_filter(rig):
+    """The operator switches COMP off and keys at once. The set is in the
+    server's cache as it is queued, so the hold finds COMP "off" while the rig
+    still has it on, and a filter read sent meanwhile is the COMP-on setting:
+    the hold must wait for that set to go out before it asks. Here the tile's
+    own read-back (200 ms after setTxBandwidth) is what sits ahead of the COMP
+    set; several offsets, since the read must still be queued at the key. On
+    the macOS runner any read did, behind its slower queue (2026-11-17)."""
+    mock, send, status, _ = rig
+    for delay in (0.17, 0.19, 0.20, 0.21, 0.22, 0.24):
+        _set_tbw(mock, [2, 1])
+        mark = len(mock.civ_log)
+        send(cmd="setTxBandwidth", value=1)     # the COMP-on setting, as it is
+        time.sleep(delay)
+        send(cmd="setCompressor", value=False)
+        send(cmd="setPTT", value=True, digital=True)
+        _wait(lambda: mock.tbw[0] == 0, what="COMP-off TBW WIDE for the over",
+              detail=lambda: f"tbw={mock.tbw}")
+        send(cmd="setPTT", value=False)
+        _wait(lambda: PTT_OFF in _frames_since(mock, mark), what="PTT off reaches the rig")
+        time.sleep(0.5)
+        assert mock.tbw == [2, 1], f"delay {delay}: filters back as they were, got {mock.tbw}"
+        assert mock.compressor == 0, "COMP stays as the operator left it"
+        send(cmd="setCompressor", value=True)
+        _wait(lambda: mock.compressor == 1 and status().get("compressor") is True,
+              what="COMP back on for the next round")
+
+
 def test_tx_filter_restored_when_keying_client_vanishes(rig):
     """A browser lost mid-over: the server unkeys and puts TBW back."""
     mock, send, _, ws = rig

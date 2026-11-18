@@ -2983,7 +2983,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         const bool tbwAgain = tbwHeld && !tbwAwait;
         releaseTxBandwidth();
         queue->add(priorityImmediate, queueItem(funcCompressor, QVariant::fromValue<uchar>(on ? 1 : 0), false, 0));
-        if (tbwAgain) holdTxBandwidth("digital", true);
+        if (tbwAgain) holdTxBandwidth("digital");
     }
     else if (type == "setTxBandwidth") {
         // FUNC TBW tile: 0 WIDE / 1 MID / 2 NAR, the setting of the current
@@ -7000,7 +7000,7 @@ void webServer::holdCompressorForDigitalTx(const char *why)
         }
     }
     // After COMP: the transmit filter read is the one of that state.
-    holdTxBandwidth(why, compHeld && compRestoreOn);
+    holdTxBandwidth(why);
 }
 
 // Queued after the unkey, so the rig is back on receive when COMP returns.
@@ -7030,14 +7030,20 @@ static const char *tbwName(int v)
     return v == 0 ? "WIDE" : v == 1 ? "MID" : v == 2 ? "NAR" : "?";
 }
 
-void webServer::holdTxBandwidth(const char *why, bool compSwitched)
+void webServer::holdTxBandwidth(const char *why)
 {
     if (tbwHeld || !queue || !rigCaps || !rigCaps->commands.contains(funcSSBTXBandwidth))
         return;
     tbwHeld = true;
     tbwAwait = true;
     tbwRestore = -1;
-    tbwPhase = compSwitched ? 0 : 2;
+    // Always from step 0, COMP switched for this over or not: a COMP set of
+    // the operator's may still be waiting in the queue. A set is in the cache
+    // as it is queued, so the COMP state read here can be seconds ahead of the
+    // rig, and a filter read sent meanwhile is the other state's (the macOS
+    // runner, 2026-11-17: the hold took NAR from the COMP-on setting, put it
+    // "back" on a filter that was WIDE, and wrote MID into the COMP-off slot).
+    tbwPhase = 0;
     tbwHoldPoll(why, 0);
 }
 
@@ -7047,7 +7053,8 @@ void webServer::holdTxBandwidth(const char *why, bool compSwitched)
 // before the switch: its reply is the other setting, and behind a busy queue
 // it can be seconds late (a server just started; the hold then set WIDE from
 // the COMP-on setting and put that one back in the COMP-off slot).
-//   0  the COMP set is still in the queue: wait until it has gone out;
+//   0  a COMP set is still in the queue (the hold's, or the operator's from
+//      just before the key): wait until it has gone out;
 //   1  100 ms for a reply already on its way to land;
 //   2  ask (a read still pending goes out after the switch now, add() keeps
 //      it), then wait for a read *sent* from here on to be answered: the
@@ -7073,7 +7080,7 @@ void webServer::tbwHoldPoll(const char *why, int tries)
         again(100);
         return;
     }
-    if (tbwPhase == 1 || tbwPhase == 2) {
+    if (tbwPhase == 1) {
         tbwPhase = 3;
         tbwAskedAt = QDateTime::currentDateTime();
         queue->add(priorityImmediate, funcSSBTXBandwidth, false, 0);

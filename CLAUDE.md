@@ -772,7 +772,12 @@ So `tbwHoldPoll` waits until no COMP set is left in the queue
 (`getQueueItems`), 100 ms more, asks, and accepts the cache only when the
 read's `req` (stamped as it goes out) is at or after that and its `reply`
 after the `req`; `cacheUpdated` fires only on a changed value, hence the
-polling, for as long as the over lasts. Standalone does the same on its
+polling, for as long as the over lasts. **It waits whether or not the hold
+switched COMP itself**: an immediate set is in the cache as it is queued, so
+after the operator's own `setCompressor` the hold finds COMP "off" while the
+rig still has it on (two TBW tests on the macOS runner, behind its slower
+queue, 2026-11-17; `test_comp_switched_just_before_the_key_reads_the_right_filter`).
+Standalone does the same on its
 key queue (`_queue.indexOf('setCompressor')`, `_tbwAsked`). A
 `setCompressor` during the over puts the held filter back first and holds
 the other one. Confirmed by the operator on the IC-7300 (2026-11-17, before

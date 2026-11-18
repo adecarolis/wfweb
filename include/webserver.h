@@ -722,7 +722,7 @@ private:
     void queuePacketModInput();
     void holdCompressorForDigitalTx(const char *why);
     void releaseCompressorHold();
-    void holdTxBandwidth(const char *why, bool compSwitched);
+    void holdTxBandwidth(const char *why);
     void tbwHoldPoll(const char *why, int tries);
     void releaseTxBandwidth();
     bool packetModInputLogged = false;

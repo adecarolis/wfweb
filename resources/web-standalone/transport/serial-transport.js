@@ -560,7 +560,7 @@
                 var bField = BOOL_SUB_TO_FIELD[bSub];
                 this.state[bField] = bOn;
                 this._enqueue(obj.cmd, civ.cmdSetBoolFunc(bSub, bOn));
-                if (tbwAgain) this._holdTxBandwidth(true);
+                if (tbwAgain) this._holdTxBandwidth();
                 else if (obj.cmd === 'setCompressor') this._readTxBandwidth();
                 var bUpd = {}; bUpd[bField] = bOn;
                 this._emit('update', bUpd);
@@ -3806,7 +3806,7 @@
                 }
             }
             // After COMP: the transmit filter read is the one of that state.
-            this._holdTxBandwidth(this._compHeld && this._compRestoreOn);
+            this._holdTxBandwidth();
         }
 
         // Called after the unkey is queued, so COMP returns on receive.
@@ -3833,7 +3833,7 @@
         // one setting with COMP on and another with COMP off and nothing
         // polls it, so it is read here, queued after the COMP switch: the
         // reply (_onTxBandwidth) is the setting of the state the over runs in.
-        _holdTxBandwidth(compSwitched) {
+        _holdTxBandwidth() {
             if (this._tbwHeld || !this._hasTxBandwidth) return;
             this._tbwHeld = true;
             this._tbwAwait = true;
@@ -3845,13 +3845,14 @@
                 self._tbwAsked = true;
                 self._enqueue('read_txBandwidth', civ.cmdReadTxBandwidth());
             };
-            if (!compSwitched) { ask(); return; }
-            // The FUNC TBW tile reads the filter too. With COMP switched for
-            // this over, such a read may be queued or on the wire from before
-            // the switch, and its reply is the other setting: wait until the
-            // COMP set has gone out, 100 ms more for a reply on its way to
-            // land, then ask. A read still queued goes out after the switch
-            // now (same key, it keeps its place).
+            // The FUNC TBW tile reads the filter too. With a COMP set still
+            // queued (the hold's own, or the operator's from just before the
+            // key: state.compressor is ahead of the rig then), such a read
+            // may be queued or on the wire from before the switch, and its
+            // reply is the other setting: wait until the COMP set has gone
+            // out, 100 ms more for a reply on its way to land, then ask. A
+            // read still queued goes out after the switch now (same key, it
+            // keeps its place).
             var waitComp = function () {
                 if (!self._tbwHeld || !self._tbwAwait) return;
                 if (self._queue.indexOf('setCompressor') !== -1) { setTimeout(waitComp, 20); return; }
