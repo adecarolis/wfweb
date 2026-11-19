@@ -695,6 +695,23 @@ it and skips the slot (`digiSwitchAbortedSlot`). Test:
 `tests/test_ft8_takeover.py` (`ft8_takeover_browser.mjs`, FT8 on two
 Standalone virtual rigs, or the C++ bench with `WFWEB_FT8_URLS`).
 
+### FT8 / FT4: CQ: FIRST
+By default a station answering our CQ is answered by the operator's click
+(WSJT-X's `CQ: None`). The `#digiCqFirstBtn` toggle next to TX EVEN / CALL CQ
+(`digiCqFirst`, `localStorage wfDigiCqFirst`, off unless chosen) is WSJT-X's
+`CQ: First`, the old "Call 1st": while the message in hand is our CQ, the
+first decode addressed to us with a grid or nothing after the calls is
+answered by `digiCqFirstAnswer()`, called from the `IDLE` branch of
+`handleDigiAutoQso` and followed by `digiTakeOverTx()` like a click. It
+differs from a click in one thing: the TX offset stays on the CQ, only the RX
+marker moves. A station the sequencer logged within `DIGI_SAME_QSO_MS` is not
+answered again. **CQ is not called again after the QSO, on purpose**: WSJT-X
+de-activates Enable Tx at the end of each QSO ("an operator aid, not an
+operator replacement"), and a loop would run a station, a shared one
+included, with nobody at it (asked for by a Shared Station tester,
+2026-11-18). Identical in both forks. Test: the fourth part of
+`tests/test_ft8_takeover.py`.
+
 ### FT8 / FT4: when a QSO is logged
 Search and pounce: when their RR73 / RRR is decoded (`EXCHANGE` / `REPORT`
 -> `LOGGED`), before our 73 goes out. **CQ side: when our RR73 has gone out**,

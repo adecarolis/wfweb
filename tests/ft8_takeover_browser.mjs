@@ -275,6 +275,52 @@ try {
     }
     await A.evaluate(() => { window.haltDigiTx(); window.digiTxEnabled = false; window.digiTxArmed = false; window.digiTxQueued = null; });
   }
+  // ---- CQ: FIRST: the caller is answered with no click at all
+  // (WSJT-X's "Call 1st"). A's TX offset stays where its CQ is.
+  for (const p of [A, B]) {
+    await p.waitForFunction(() => !window.digiTxActive, null, { timeout: 30000 }).catch(() => {});
+    await p.evaluate(() => {
+      window.haltDigiTx();
+      window.digiTxEnabled = false; window.digiTxArmed = false; window.digiTxQueued = null;
+      window.digiQsoState = 'IDLE'; window.digiQsoPartner = ''; window.__tx = [];
+      window.digiLastAutoLog = null;
+      document.getElementById('digiDxCall').value = '';
+      window.digiDecodes.length = 0;
+      window.renderDigiDecodes();
+      window.updateDigiMsgRows();
+    });
+  }
+  const off = await A.evaluate(() => document.getElementById('digiCqFirstBtn').textContent);
+  await A.click('#digiCqFirstBtn');
+  const on = await A.evaluate(() => [document.getElementById('digiCqFirstBtn').textContent, window.digiCqFirst, localStorage.getItem('wfDigiCqFirst')]);
+  check(off === 'CQ: NONE' && on[0] === 'CQ: FIRST' && on[1] === true && on[2] === '1', `CQ: FIRST is off until pressed (${off} -> ${JSON.stringify(on)})`);
+  const txf = await A.evaluate(() => window.digiTxFreq);
+  const n0 = await A.evaluate((c) => window.qsoLog.filter(q => q.call === c).length, CALLER);
+  await A.evaluate(() => window.digiCallCq());
+  await pick(B, 'B', new RegExp(`^CQ ${CQER} FN42$`));
+  const auto = await A.waitForFunction((re) => window.__tx.some(t => new RegExp(re).test(t.m)), reportRe.source, { timeout: 60000 }).then(() => true, () => false);
+  const st = await A.evaluate(() => ({ partner: window.digiQsoPartner, dx: document.getElementById('digiDxCall').value, txf: window.digiTxFreq, tx: window.__tx }));
+  check(auto && st.partner === CALLER && st.dx === CALLER, `A answered ${CALLER} by itself (${JSON.stringify(st.tx.map(t => t.m))})`);
+  check(st.txf === txf, `A's TX offset stayed on its CQ (${txf} -> ${st.txf})`);
+  await A.waitForFunction((n) => window.qsoLog.filter(q => q.call === n[0]).length > n[1], [CALLER, n0], { timeout: 90000 }).catch(() => {});
+  const n1 = await A.evaluate((c) => window.qsoLog.filter(q => q.call === c).length, CALLER);
+  check(n1 === n0 + 1, `and the QSO ran to A's log without a click (${n0} -> ${n1})`);
+  // B still sends its first message for a moment (bench: its 73); a station just
+  // logged is not answered again.
+  await A.waitForTimeout(1000);
+  // Asked directly, with a CQ in hand: refused for the station just logged,
+  // taken for any other (so the refusal is the log's, not the state's).
+  const again = await A.evaluate(([me, dx, g, other]) => {
+    window.haltDigiTx();
+    const cq = () => { window.digiQsoState = 'IDLE'; window.digiTxEnabled = true; window.digiTxQueued = 'CQ ' + me + ' ' + g; };
+    const at = { freq: 1500, snr: 0 }, slot = window.getDigiSlotInfo().slotIndex;
+    cq(); const same = window.digiCqFirstAnswer([me, dx, g], at, slot);
+    cq(); const next = window.digiCqFirstAnswer([me, other, g], at, slot);
+    return [same, next, window.digiQsoPartner];
+  }, [CQER, CALLER, 'FN35', THIRD]);
+  check(again[0] === false && again[1] === true && again[2] === THIRD, `a station logged a moment ago is not answered again, another is (${JSON.stringify(again)})`);
+  await A.click('#digiCqFirstBtn');
+  for (const p of [A, B]) await p.evaluate(() => { window.haltDigiTx(); window.digiTxEnabled = false; window.digiTxArmed = false; window.digiTxQueued = null; });
 } finally {
   await browser.close();
   if (!onServer) { server.close(); fs.rmSync(dist, { recursive: true, force: true }); }

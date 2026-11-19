@@ -1449,6 +1449,7 @@ body.digi-open #bottomBar { grid-row: 5; }
     letter-spacing: 0.5px;
 }
 .digi-cq-parity-btn:hover { background: #003060; border-color: var(--mode-accent); color: #0af; }
+.digi-cq-parity-btn.active { background: #003060; border-color: var(--mode-accent); color: #0cf; }
 .digi-call-cq-btn {
     flex: 1;
     background: #002820;
@@ -2982,6 +2983,7 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
                     <div class="digi-col-header digi-msg-header">QSO Messages</div>
                     <div class="digi-msg-cq-bar">
                         <button id="digiCqParityBtn" class="digi-cq-parity-btn" onclick="toggleDigiCqParity()">TX EVEN</button>
+                        <button id="digiCqFirstBtn" class="digi-cq-parity-btn" onclick="toggleDigiCqFirst()" title="CQ: FIRST answers the first station that calls you while you call CQ, as WSJT-X does. CQ: NONE waits for your click.">CQ: NONE</button>
                         <button id="digiCallCqBtn" class="digi-call-cq-btn wf-btn" onclick="digiCallCq()">CALL CQ</button>
                     </div>
                     <div id="digiMsgRows" class="digi-msg-rows"></div>
@@ -3702,6 +3704,9 @@ var digiTxPacerReady = false; // true after first addModule succeeds on digiTxCt
 var digiTuneWorkletReady = false; // same, for the tune-tone processor
 var digiTxSlotParity = -1; // 0=even slots, 1=odd slots, -1=unconstrained
 var digiCqParity = 0;      // user-selected parity for CQ calling: 0=even, 1=odd
+// CQ: FIRST (WSJT-X's "Call 1st"): while we call CQ, the first decoded
+// station that calls us is answered without a click. Off unless chosen.
+var digiCqFirst = (function () { try { return localStorage.getItem('wfDigiCqFirst') === '1'; } catch (e) { return false; } })();
 var digiTxQueued = null;
 var digiTxArmed = false;
 var digiTxActive = false; // true while audio is streaming — prevents concurrent TXs
@@ -12666,6 +12671,50 @@ function digiRowDblClick(el, ev) {
 
 // Double-click on a message row: enable TX (if needed) AND arm the message immediately.
 // Toggle the CQ TX parity preference (even / odd slots)
+function updateDigiCqFirstBtn() {
+    var btn = document.getElementById('digiCqFirstBtn');
+    if (!btn) return;
+    btn.textContent = digiCqFirst ? 'CQ: FIRST' : 'CQ: NONE';
+    btn.classList.toggle('active', digiCqFirst);
+}
+function toggleDigiCqFirst() {
+    digiCqFirst = !digiCqFirst;
+    try { localStorage.setItem('wfDigiCqFirst', digiCqFirst ? '1' : '0'); } catch (e) {}
+    updateDigiCqFirstBtn();
+}
+document.addEventListener('DOMContentLoaded', updateDigiCqFirstBtn);
+if (document.readyState !== 'loading') updateDigiCqFirstBtn();
+
+// CQ: FIRST. The decode is a station calling us ("MYCALL THEIRS GRID", or
+// with no grid) while our CQ is the message in hand: answer it as a click on
+// that row does (state ANSWERED, our report armed for the slot after
+// theirs), except that our TX offset stays where the CQ is; the RX marker
+// goes to them. Not a station whose QSO the sequencer logged a moment ago
+// and who is still sending its first message. The caller then lets
+// digiTakeOverTx() put the report in place of a CQ that has just started.
+function digiCqFirstAnswer(parts, decode, slotIndex) {
+    if (!digiCqFirst || !digiTxEnabled || !/^CQ(\s|$)/.test(digiTxQueued || '')) return false;
+    var myCall = getMyCall(), dx = parts[1];
+    if (parts[0] !== myCall || !dx || dx === myCall || dx === '<...>' || !/\d/.test(dx)) return false;
+    if (parts.length > 3 || (parts.length === 3 && !/^[A-R]{2}\d{2}$/.test(parts[2]))) return false;
+    if (parts[2] === 'RR73') return false;
+    var l = digiLastAutoLog;
+    if (l && l.call === dx && l.mode === digiMode && Date.now() - l.ms < DIGI_SAME_QSO_MS) return false;
+    console.log('[DIGI QSO] CQ: FIRST answers ' + dx);
+    var dxEl = document.getElementById('digiDxCall');
+    if (dxEl) dxEl.value = dx;
+    if (decode.freq >= 200 && decode.freq <= 3000) { digiRxFreq = decode.freq; updateDigiRxFreqDisplay(); }
+    digiQsoPartner = dx;
+    digiQsoPartnerBusyWith = '';
+    digiQsoState = 'ANSWERED';
+    digiTheirReport = '';
+    var snr = Math.round(decode.snr || 0);
+    digiOurReport = (snr >= 0 ? '+' : '') + snr;
+    armMessageForQsoState(slotIndex);
+    updateDigiMsgRows();
+    return true;
+}
+
 function toggleDigiCqParity() {
     digiCqParity = digiCqParity === 0 ? 1 : 0;
     var btn = document.getElementById('digiCqParityBtn');
@@ -13070,7 +13119,10 @@ function handleDigiAutoQso(decodes, decodedSlotIndex) {
         // Each decode's slot index (prefer per-decode if present, fall back to argument)
         var dSlot = (decodes[i].slotIndex !== undefined) ? decodes[i].slotIndex : decodedSlotIndex;
 
-        if (digiQsoState === 'IDLE') {
+        if (digiQsoState === 'IDLE' && digiCqFirstAnswer(parts, decodes[i], dSlot)) {
+            digiTakeOverTx();
+            break;
+        } else if (digiQsoState === 'IDLE') {
             // Look for CQ <CALL> <GRID> — only auto-arm if the user has already
             // targeted this specific station in the DX field. Never auto-select
             // random CQ callers; the user must click a decode row to start a QSO.
