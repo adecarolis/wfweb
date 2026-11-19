@@ -7,6 +7,7 @@
 #include <QString>
 #include <QByteArray>
 #include <QVector>
+#include <QMap>
 #include <QMutex>
 
 #include "rigserver.h"
@@ -50,7 +51,7 @@ public:
     bool isTransmitting() const override { return ptt; }
 
 public slots:
-    void onRxAudioFromMixer(int dstRig, const audioPacket& pkt) override;
+    void onRxAudioFromMixer(int dstRig, int srcRig, const audioPacket& pkt) override;
 
 private slots:
     void onTxAudioFromClient(const audioPacket& pkt);
@@ -81,7 +82,7 @@ private:
     // silence if the buffer is short). This gives the client a single cadence
     // and packet size so its jitter buffer never sees interleaved silence.
     QMutex rxMutex;
-    QByteArray rxBuffer;
+    QMap<int, QByteArray> rxBuffers;   // one FIFO per transmitting rig, summed on each tick
 
     // 2nd-order Butterworth low-pass, re-tuned when the rig's mode changes.
     // Applied on TX audio so the bus only carries what this rig would

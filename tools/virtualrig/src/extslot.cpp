@@ -133,7 +133,7 @@ void ExtSlot::setSplitMode(quint8 icomMode, quint32 widthHz)
     if (widthHz > 0) splitModeWidth_ = widthHz;
 }
 
-void ExtSlot::onRxAudioFromMixer(int dstRig, const audioPacket& pkt)
+void ExtSlot::onRxAudioFromMixer(int dstRig, int /*srcRig*/, const audioPacket& pkt)
 {
     if (dstRig != index()) return;
     if (audio_) audio_->queueRxAudio(pkt.data);

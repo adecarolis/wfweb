@@ -71,7 +71,7 @@ signals:
     // Emitted once per destination rig, per incoming TX packet.
     // Connect with a queued connection so it lands in the destination
     // icomServer's thread.
-    void rxAudioForRig(int dstRig, const audioPacket& pkt);
+    void rxAudioForRig(int dstRig, int srcRig, const audioPacket& pkt);
 
 private:
     int numRigs;

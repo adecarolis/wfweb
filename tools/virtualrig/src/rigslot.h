@@ -44,7 +44,7 @@ public slots:
     // mixer dispatches one packet per destination; slot ignores anything not
     // addressed to it. Connect with a queued connection so it runs in this
     // slot's thread context.
-    virtual void onRxAudioFromMixer(int dstRig, const audioPacket& pkt) = 0;
+    virtual void onRxAudioFromMixer(int dstRig, int srcRig, const audioPacket& pkt) = 0;
 
 protected:
     int idx_;

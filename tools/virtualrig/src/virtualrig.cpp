@@ -413,21 +413,30 @@ void virtualRig::emitIdleRx()
     qint16 peak = 0;
     {
         QMutexLocker lock(&rxMutex);
-        int take = qMin(rxBuffer.size(), bytes);
-        if (take > 0) {
-            memcpy(data.data(), rxBuffer.constData(), take);
-            rxBuffer.remove(0, take);
-            // Cap runaway growth if the timer ever stalls; drop oldest.
-            const int maxBytes = 48 * 500 * 2; // 500 ms
-            if (rxBuffer.size() > maxBytes) {
-                rxBuffer.remove(0, rxBuffer.size() - maxBytes);
+        // Two rigs keyed at once are heard together, as on the air: one
+        // chunk from every source FIFO is summed (with clipping) into this
+        // tick. Appending them to one FIFO instead time-sliced concurrent
+        // signals, which broke multi-station FT8 on the bench.
+        qint16* out = reinterpret_cast<qint16*>(data.data());
+        int filled = 0;
+        for (auto it = rxBuffers.begin(); it != rxBuffers.end();) {
+            QByteArray& buf = it.value();
+            int take = qMin(buf.size(), bytes);
+            const qint16* s = reinterpret_cast<const qint16*>(buf.constData());
+            int n = take / 2;
+            for (int i = 0; i < n; ++i) {
+                int v = out[i] + s[i];
+                if (v > 32767) v = 32767;
+                if (v < -32768) v = -32768;
+                out[i] = (qint16)v;
             }
+            if (n > filled) filled = n;
+            buf.remove(0, take);
+            if (buf.isEmpty()) it = rxBuffers.erase(it); else ++it;
         }
         // Peak over the portion we actually filled with real audio.
-        const qint16* s = reinterpret_cast<const qint16*>(data.constData());
-        int n = take / 2;
-        for (int i = 0; i < n; ++i) {
-            qint16 v = s[i] < 0 ? (qint16)-s[i] : s[i];
+        for (int i = 0; i < filled; ++i) {
+            qint16 v = out[i] < 0 ? (qint16)-out[i] : out[i];
             if (v > peak) peak = v;
         }
     }
@@ -511,7 +520,7 @@ void virtualRig::onTxAudioFromClient(const audioPacket& pkt)
     mixer->pushTxAudio(cfg.index, filtered);
 }
 
-void virtualRig::onRxAudioFromMixer(int dstRig, const audioPacket& pkt)
+void virtualRig::onRxAudioFromMixer(int dstRig, int srcRig, const audioPacket& pkt)
 {
     if (dstRig != cfg.index) return;
     static int tick = 0;
@@ -522,10 +531,11 @@ void virtualRig::onRxAudioFromMixer(int dstRig, const audioPacket& pkt)
     // S-meter is recomputed from whatever bytes are actually emitted, so it
     // reflects what the client will hear, not speculative buffer contents.
     QMutexLocker lock(&rxMutex);
-    rxBuffer.append(pkt.data);
+    QByteArray& buf = rxBuffers[srcRig];
+    buf.append(pkt.data);
     const int maxBytes = 48 * 500 * 2; // 500 ms hard cap
-    if (rxBuffer.size() > maxBytes) {
-        rxBuffer.remove(0, rxBuffer.size() - maxBytes);
+    if (buf.size() > maxBytes) {
+        buf.remove(0, buf.size() - maxBytes);
     }
 }
 

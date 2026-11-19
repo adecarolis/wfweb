@@ -228,6 +228,6 @@ void channelMixer::pushTxAudio(int srcRig, const audioPacket& pkt)
                 dstSamples[i] = static_cast<qint16>(v);
             }
         }
-        emit rxAudioForRig(dst, out);
+        emit rxAudioForRig(dst, srcRig, out);
     }
 }
