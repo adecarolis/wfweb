@@ -1670,6 +1670,10 @@ body.digi-open #bottomBar { grid-row: 5; }
     font-family: var(--font-mono); font-size: var(--fs-sm);
     width: 100%; box-sizing: border-box; padding: 2px 3px;
 }
+/* Band, Mode and the two reports of the row being edited: grid cells like
+   the rest here, a second line in the narrow layout (see there). */
+.dle-more, .dle-more label { display: contents; }
+.dle-more label span { display: none; }
 /* "Add QSO" alone on the left; everything that manages the log file on the
    right, behind one menu, so a logging action never sits next to a
    download/import one. */
@@ -2395,11 +2399,20 @@ body.digi-open #bottomBar { grid-row: 5; }
        and both RST columns (band is implied by freq) and let Call flex. */
     .digi-log-row { grid-template-columns: 70px 40px minmax(44px, 1fr) 56px 34px 20px 20px; gap: 3px; font-size: 11px; }
     .digi-log-row .digi-log-call { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .digi-log-band, .digi-log-rstsent, .digi-log-rstrcvd, #dleBand, #dleRstSent, #dleRstRcvd { display: none; }
+    .digi-log-band, .digi-log-rstsent, .digi-log-rstrcvd { display: none; }
+    /* The row being edited keeps every field: the columns dropped above go
+       on a second line with their names, the header having none for them.
+       Hiding them left a hand-added QSO with no way to set its band, mode
+       or reports on a phone or in a portrait window. */
+    .digi-log-row.editing .dle-more { display: flex; gap: 3px; grid-column: 1 / -1; grid-row: 2; }
+    .digi-log-row.editing .dle-more label { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+    .digi-log-row.editing .dle-more label span { display: block; color: var(--text-dim); font-size: var(--fs-xs); white-space: nowrap; }
+    .digi-log-row.editing .digi-log-save { grid-row: 1; grid-column: -3; }
+    .digi-log-row.editing .digi-log-del { grid-row: 1; grid-column: -2; }
     /* Operator in place of the mode column, no station column: who made
        it is what a phone has room for. */
     .digi-log-modal.has-ops .digi-log-row { grid-template-columns: 70px 40px minmax(44px, 1fr) 56px 56px 20px 20px; }
-    .digi-log-modal.has-ops .digi-log-stn, .digi-log-modal.has-ops .digi-log-mode, .digi-log-modal.has-ops #dleMode { display: none; }
+    .digi-log-modal.has-ops .digi-log-stn, .digi-log-modal.has-ops .digi-log-mode { display: none; }
     /* FreeDV readout is right-anchored and ~470px wide; let it wrap onto
        two rows instead of pushing the mode link off the left edge. */
     /* ...and keep it clear of the tile column (AUDIO/MIC/P.AMP/DUP/TONE/RF
@@ -14524,15 +14537,20 @@ function digiLogRowHtml(q, editing) {
     var timeDisp = q.time ? q.time.substr(0,2)+':'+q.time.substr(2,2) : (q.time || '');
     var freqDisp = q.freq ? (q.freq / 1e6).toFixed(3) : '';
     if (editing) {
-        return '<div class="digi-log-row">' +
+        // .dle-more is transparent to the grid on a wide screen; the narrow
+        // layout has no column for these four and puts them on a second,
+        // labelled line, so the row being edited never loses a field.
+        return '<div class="digi-log-row editing">' +
             '<input class="digi-log-input" id="dleDate" value="' + escapeHtml(dateDisp) + '">' +
             '<input class="digi-log-input" id="dleTime" value="' + escapeHtml(timeDisp) + '">' +
             '<input class="digi-log-input" id="dleCall" value="' + escapeHtml(q.call || '') + '">' +
             '<input class="digi-log-input" id="dleFreq" value="' + escapeHtml(freqDisp) + '">' +
-            '<input class="digi-log-input" id="dleBand" value="' + escapeHtml(q.band || '') + '">' +
-            '<input class="digi-log-input" id="dleMode" value="' + escapeHtml(q.mode || '') + '">' +
-            '<input class="digi-log-input" id="dleRstSent" value="' + escapeHtml(q.rstSent || '') + '">' +
-            '<input class="digi-log-input" id="dleRstRcvd" value="' + escapeHtml(q.rstRcvd || '') + '">' +
+            '<span class="dle-more">' +
+            '<label><span>Band</span><input class="digi-log-input" id="dleBand" value="' + escapeHtml(q.band || '') + '"></label>' +
+            '<label><span>Mode</span><input class="digi-log-input" id="dleMode" value="' + escapeHtml(q.mode || '') + '"></label>' +
+            '<label><span>TX Rpt</span><input class="digi-log-input" id="dleRstSent" value="' + escapeHtml(q.rstSent || '') + '"></label>' +
+            '<label><span>RX Rpt</span><input class="digi-log-input" id="dleRstRcvd" value="' + escapeHtml(q.rstRcvd || '') + '"></label>' +
+            '</span>' +
             '<span class="digi-log-op"></span><span class="digi-log-stn"></span>' +
             '<span class="digi-log-save" title="Save" onclick="saveDigiQso(digiLogRowIdx(this))">&#x2713;</span>' +
             '<span class="digi-log-del" title="Cancel" onclick="cancelEditDigiQso()">&#x2715;</span>' +
