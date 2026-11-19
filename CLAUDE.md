@@ -695,7 +695,14 @@ answer went out a cycle late. The key stays down across the switch;
 on the air (it counts as no try at the new message) and a double click cuts
 it and skips the slot (`digiSwitchAbortedSlot`). Test:
 `tests/test_ft8_takeover.py` (`ft8_takeover_browser.mjs`, FT8 on two
-Standalone virtual rigs, or the C++ bench with `WFWEB_FT8_URLS`).
+Standalone virtual rigs, or the C++ bench with `WFWEB_FT8_URLS`). Under
+Shared Station: `TESTRIG_SHARED=1 scripts/testrig.sh up 2` starts the bench
+servers with `--shared` (accounts in `.testrig/shared_<i>`, setup code in
+the log) and `WFWEB_FT8_LOGIN=name:password` makes each page log in, take
+the seat and work under the call the server puts on the air; it releases
+the seat at the end, since a holder that vanishes keeps it for the 30 s
+grace. Passed as admin, as a member on the station call and as one on
+their own call (2026-11-17).
 
 ### FT8 / FT4: CQ: NONE / FIRST / MAX DIST
 By default a station answering our CQ is answered by the operator's click

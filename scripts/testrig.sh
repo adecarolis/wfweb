@@ -22,6 +22,9 @@
 #
 # Anything after the two counts is forwarded to virtualrig.
 #
+# TESTRIG_SHARED=1 starts every wfweb with --shared (Shared Station), its
+# accounts under .testrig/shared_<i>; the setup code is in wfweb_<i>.log.
+#
 # Scratch dir .testrig/ holds PIDs, logs, per-instance settings files and
 # per-instance scratch logbooks (logbook_<i>.adi) — bench QSOs never reach
 # the operator's real logbook.
@@ -153,6 +156,10 @@ cmd_up() {
         local logbook="$SCRATCH/logbook_${i}.adi"
         local sstvdir="$SCRATCH/sstv_${i}"
         local pidfile="$SCRATCH/wfweb_${i}.pid"
+        local shared_args=()
+        if [[ -n "${TESTRIG_SHARED:-}" ]]; then
+            shared_args=(--shared --shared-dir "$SCRATCH/shared_${i}")
+        fi
 
         echo "testrig: starting wfweb #$i (web :$web -> rig LAN :$ctrl/$civ/$aud)"
         # --logbook / --no-remote-log: without them wfweb falls back to the
@@ -174,6 +181,7 @@ cmd_up() {
                 --lan-audio   "$aud" \
                 --lan-user    wfweb \
                 --lan-pass    wfweb \
+                "${shared_args[@]}" \
                 </dev/null >/dev/null 2>&1 &
             echo $! > "$pidfile"
         )
