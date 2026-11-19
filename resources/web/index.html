@@ -2983,7 +2983,7 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
                     <div class="digi-col-header digi-msg-header">QSO Messages</div>
                     <div class="digi-msg-cq-bar">
                         <button id="digiCqParityBtn" class="digi-cq-parity-btn" onclick="toggleDigiCqParity()">TX EVEN</button>
-                        <button id="digiCqFirstBtn" class="digi-cq-parity-btn" onclick="toggleDigiCqFirst()" title="CQ: FIRST answers the first station that calls you while you call CQ, as WSJT-X does. CQ: NONE waits for your click.">CQ: NONE</button>
+                        <button id="digiCqAnswerBtn" class="digi-cq-parity-btn" onclick="toggleDigiCqAnswer()" title="While you call CQ: FIRST answers the first station that calls you, MAX DIST the most distant one, as WSJT-X does. NONE waits for your click.">CQ: NONE</button>
                         <button id="digiCallCqBtn" class="digi-call-cq-btn wf-btn" onclick="digiCallCq()">CALL CQ</button>
                     </div>
                     <div id="digiMsgRows" class="digi-msg-rows"></div>
@@ -3704,9 +3704,12 @@ var digiTxPacerReady = false; // true after first addModule succeeds on digiTxCt
 var digiTuneWorkletReady = false; // same, for the tune-tone processor
 var digiTxSlotParity = -1; // 0=even slots, 1=odd slots, -1=unconstrained
 var digiCqParity = 0;      // user-selected parity for CQ calling: 0=even, 1=odd
-// CQ: FIRST (WSJT-X's "Call 1st"): while we call CQ, the first decoded
-// station that calls us is answered without a click. Off unless chosen.
-var digiCqFirst = (function () { try { return localStorage.getItem('wfDigiCqFirst') === '1'; } catch (e) { return false; } })();
+// Who is answered while we call CQ, as WSJT-X's CQ: None / First / Max Dist
+// (the old "Call 1st"): 'none' waits for a click, 'first' takes the first
+// decoded station calling us, 'dist' the most distant one. None unless chosen.
+var digiCqAnswer = (function () {
+    try { var v = localStorage.getItem('wfDigiCqAnswer'); return (v === 'first' || v === 'dist') ? v : 'none'; } catch (e) { return 'none'; }
+})();
 var digiTxQueued = null;
 var digiTxArmed = false;
 var digiTxActive = false; // true while audio is streaming — prevents concurrent TXs
@@ -12671,36 +12674,55 @@ function digiRowDblClick(el, ev) {
 
 // Double-click on a message row: enable TX (if needed) AND arm the message immediately.
 // Toggle the CQ TX parity preference (even / odd slots)
-function updateDigiCqFirstBtn() {
-    var btn = document.getElementById('digiCqFirstBtn');
+function updateDigiCqAnswerBtn() {
+    var btn = document.getElementById('digiCqAnswerBtn');
     if (!btn) return;
-    btn.textContent = digiCqFirst ? 'CQ: FIRST' : 'CQ: NONE';
-    btn.classList.toggle('active', digiCqFirst);
+    btn.textContent = digiCqAnswer === 'first' ? 'CQ: FIRST' : digiCqAnswer === 'dist' ? 'CQ: MAX DIST' : 'CQ: NONE';
+    btn.classList.toggle('active', digiCqAnswer !== 'none');
 }
-function toggleDigiCqFirst() {
-    digiCqFirst = !digiCqFirst;
-    try { localStorage.setItem('wfDigiCqFirst', digiCqFirst ? '1' : '0'); } catch (e) {}
-    updateDigiCqFirstBtn();
+function toggleDigiCqAnswer() {
+    digiCqAnswer = digiCqAnswer === 'none' ? 'first' : digiCqAnswer === 'first' ? 'dist' : 'none';
+    try { localStorage.setItem('wfDigiCqAnswer', digiCqAnswer); } catch (e) {}
+    updateDigiCqAnswerBtn();
 }
-document.addEventListener('DOMContentLoaded', updateDigiCqFirstBtn);
-if (document.readyState !== 'loading') updateDigiCqFirstBtn();
+document.addEventListener('DOMContentLoaded', updateDigiCqAnswerBtn);
+if (document.readyState !== 'loading') updateDigiCqAnswerBtn();
 
-// CQ: FIRST. The decode is a station calling us ("MYCALL THEIRS GRID", or
-// with no grid) while our CQ is the message in hand: answer it as a click on
-// that row does (state ANSWERED, our report armed for the slot after
-// theirs), except that our TX offset stays where the CQ is; the RX marker
-// goes to them. Not a station whose QSO the sequencer logged a moment ago
-// and who is still sending its first message. The caller then lets
-// digiTakeOverTx() put the report in place of a CQ that has just started.
-function digiCqFirstAnswer(parts, decode, slotIndex) {
-    if (!digiCqFirst || !digiTxEnabled || !/^CQ(\s|$)/.test(digiTxQueued || '')) return false;
+// CQ: FIRST / CQ: MAX DIST. Is this decode ("MYCALL THEIRS GRID", or with no
+// grid) a station calling us that we may answer? Not a station whose QSO the
+// sequencer logged a moment ago and who is still sending its first message.
+function digiCqCallerOk(parts) {
     var myCall = getMyCall(), dx = parts[1];
     if (parts[0] !== myCall || !dx || dx === myCall || dx === '<...>' || !/\d/.test(dx)) return false;
     if (parts.length > 3 || (parts.length === 3 && !/^[A-R]{2}\d{2}$/.test(parts[2]))) return false;
     if (parts[2] === 'RR73') return false;
     var l = digiLastAutoLog;
     if (l && l.call === dx && l.mode === digiMode && Date.now() - l.ms < DIGI_SAME_QSO_MS) return false;
-    console.log('[DIGI QSO] CQ: FIRST answers ' + dx);
+    return true;
+}
+
+// While our CQ is the message in hand, answer one of the stations calling us
+// in this batch of decodes: the first decoded (FIRST) or the one whose grid
+// is farthest from ours (MAX DIST; a caller without a grid ranks last, the
+// first decoded wins a tie). Done as a click on that row does (state
+// ANSWERED, our report armed for the slot after theirs), except that our TX
+// offset stays where the CQ is; the RX marker goes to them. The caller then
+// lets digiTakeOverTx() put the report in place of a CQ that has just started.
+function digiCqAutoAnswer(decodes, decodedSlotIndex) {
+    if (digiCqAnswer === 'none' || digiQsoState !== 'IDLE' || !digiTxEnabled || !/^CQ(\s|$)/.test(digiTxQueued || '')) return false;
+    var myCall = getMyCall(), myGrid = getMyGrid(), best = null;
+    for (var i = 0; i < decodes.length; i++) {
+        var parts = digiStdMsg(decodes[i].msg, myCall).trim().toUpperCase().split(/\s+/);
+        if (!digiCqCallerOk(parts)) continue;
+        var km = digiGridKm(myGrid, parts[2]);
+        if (!best || (digiCqAnswer === 'dist' && km > best.km)) best = { parts: parts, decode: decodes[i], km: km };
+        if (digiCqAnswer === 'first') break;
+    }
+    if (!best) return false;
+    var dx = best.parts[1], decode = best.decode;
+    var slotIndex = (decode.slotIndex !== undefined) ? decode.slotIndex : decodedSlotIndex;
+    console.log('[DIGI QSO] CQ: ' + (digiCqAnswer === 'dist' ? 'MAX DIST' : 'FIRST') + ' answers ' + dx +
+                (best.km >= 0 ? ' (' + Math.round(best.km) + ' km)' : ''));
     var dxEl = document.getElementById('digiDxCall');
     if (dxEl) dxEl.value = dx;
     if (decode.freq >= 200 && decode.freq <= 3000) { digiRxFreq = decode.freq; updateDigiRxFreqDisplay(); }
@@ -13110,6 +13132,7 @@ function handleDigiAutoQso(decodes, decodedSlotIndex) {
     var myCall = getMyCall();
     var myGrid = getMyGrid();
     if (!myCall || !myGrid) return;
+    if (digiCqAutoAnswer(decodes, decodedSlotIndex)) { digiTakeOverTx(); return; }
 
     for (var i = 0; i < decodes.length; i++) {
         // Multi-answer decode (#129): read the half addressed to us.
@@ -13119,10 +13142,7 @@ function handleDigiAutoQso(decodes, decodedSlotIndex) {
         // Each decode's slot index (prefer per-decode if present, fall back to argument)
         var dSlot = (decodes[i].slotIndex !== undefined) ? decodes[i].slotIndex : decodedSlotIndex;
 
-        if (digiQsoState === 'IDLE' && digiCqFirstAnswer(parts, decodes[i], dSlot)) {
-            digiTakeOverTx();
-            break;
-        } else if (digiQsoState === 'IDLE') {
+        if (digiQsoState === 'IDLE') {
             // Look for CQ <CALL> <GRID> — only auto-arm if the user has already
             // targeted this specific station in the DX field. Never auto-select
             // random CQ callers; the user must click a decode row to start a QSO.

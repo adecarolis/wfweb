@@ -88,6 +88,23 @@ function digiSenderCall(msg) {
     return tok === '<...>' ? '' : tok;
 }
 
+// Great-circle distance in km between two 4-character grid squares, centre to
+// centre; -1 when either is not a grid (CQ: MAX DIST ranks callers by it).
+function digiGridKm(a, b) {
+    function ll(g) {
+        g = String(g || '').toUpperCase();
+        if (!/^[A-R]{2}\d{2}/.test(g) || g === 'RR73') return null;
+        return [(g.charCodeAt(1) - 65) * 10 + (g.charCodeAt(3) - 48) + 0.5 - 90,
+                (g.charCodeAt(0) - 65) * 20 + (g.charCodeAt(2) - 48) * 2 + 1 - 180];
+    }
+    var p = ll(a), q = ll(b);
+    if (!p || !q) return -1;
+    var r = Math.PI / 180, dLat = (q[0] - p[0]) * r, dLon = (q[1] - p[1]) * r;
+    var h = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(p[0] * r) * Math.cos(q[0] * r) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
 if (typeof module !== 'undefined') {
-    module.exports = { digiStdCall, digiStripHash, digiCqText, digiQsoTexts, digiSplitMulti, digiStdMsg, digiSenderCall };
+    module.exports = { digiStdCall, digiStripHash, digiCqText, digiQsoTexts, digiSplitMulti, digiStdMsg, digiSenderCall, digiGridKm };
 }

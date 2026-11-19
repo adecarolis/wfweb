@@ -290,10 +290,10 @@ try {
       window.updateDigiMsgRows();
     });
   }
-  const off = await A.evaluate(() => document.getElementById('digiCqFirstBtn').textContent);
-  await A.click('#digiCqFirstBtn');
-  const on = await A.evaluate(() => [document.getElementById('digiCqFirstBtn').textContent, window.digiCqFirst, localStorage.getItem('wfDigiCqFirst')]);
-  check(off === 'CQ: NONE' && on[0] === 'CQ: FIRST' && on[1] === true && on[2] === '1', `CQ: FIRST is off until pressed (${off} -> ${JSON.stringify(on)})`);
+  const off = await A.evaluate(() => document.getElementById('digiCqAnswerBtn').textContent);
+  await A.click('#digiCqAnswerBtn');
+  const on = await A.evaluate(() => [document.getElementById('digiCqAnswerBtn').textContent, window.digiCqAnswer, localStorage.getItem('wfDigiCqAnswer')]);
+  check(off === 'CQ: NONE' && on[0] === 'CQ: FIRST' && on[1] === 'first' && on[2] === 'first', `CQ: FIRST is off until pressed (${off} -> ${JSON.stringify(on)})`);
   const txf = await A.evaluate(() => window.digiTxFreq);
   const n0 = await A.evaluate((c) => window.qsoLog.filter(q => q.call === c).length, CALLER);
   await A.evaluate(() => window.digiCallCq());
@@ -308,18 +308,34 @@ try {
   // B still sends its first message for a moment (bench: its 73); a station just
   // logged is not answered again.
   await A.waitForTimeout(1000);
-  // Asked directly, with a CQ in hand: refused for the station just logged,
-  // taken for any other (so the refusal is the log's, not the state's).
-  const again = await A.evaluate(([me, dx, g, other]) => {
+  // Asked directly, with a CQ in hand and three callers in one batch (no
+  // grid, near, far): FIRST takes the first decoded, MAX DIST the farthest,
+  // neither the station just logged.
+  await A.click('#digiCqAnswerBtn');
+  const label = await A.evaluate(() => [document.getElementById('digiCqAnswerBtn').textContent, window.digiCqAnswer]);
+  const picks = await A.evaluate(([me, logged, g]) => {
     window.haltDigiTx();
-    const cq = () => { window.digiQsoState = 'IDLE'; window.digiTxEnabled = true; window.digiTxQueued = 'CQ ' + me + ' ' + g; };
-    const at = { freq: 1500, snr: 0 }, slot = window.getDigiSlotInfo().slotIndex;
-    cq(); const same = window.digiCqFirstAnswer([me, dx, g], at, slot);
-    cq(); const next = window.digiCqFirstAnswer([me, other, g], at, slot);
-    return [same, next, window.digiQsoPartner];
-  }, [CQER, CALLER, 'FN35', THIRD]);
-  check(again[0] === false && again[1] === true && again[2] === THIRD, `a station logged a moment ago is not answered again, another is (${JSON.stringify(again)})`);
-  await A.click('#digiCqFirstBtn');
+    const batch = [me + ' ' + logged + ' PM95', me + ' W9XYZ', me + ' K2DEF FN30', me + ' JA1XYZ PM95', me + ' DL1ABC JO62']
+      .map((msg, k) => ({ msg, freq: 1200 + 100 * k, snr: -5, dt: 0.1 }));
+    const run = (mode) => {
+      window.digiCqAnswer = mode; window.digiQsoState = 'IDLE'; window.digiQsoPartner = '';
+      window.digiTxEnabled = true; window.digiTxQueued = 'CQ ' + me + ' ' + g;
+      const ok = window.digiCqAutoAnswer(batch, window.getDigiSlotInfo().slotIndex);
+      return [ok, window.digiQsoPartner, window.digiQsoState];
+    };
+    const out = { first: run('first'), dist: run('dist'), none: run('none') };
+    out.km = [window.digiGridKm('FN42', 'FN35'), window.digiGridKm('FN42', 'PM95'), window.digiGridKm('FN42', ''), window.digiGridKm('FN42', 'RR73')].map(Math.round);
+    window.digiCqAnswer = 'dist';
+    return out;
+  }, [CQER, CALLER, 'FN42']);
+  check(label[0] === 'CQ: MAX DIST' && label[1] === 'dist', `the second press is CQ: MAX DIST (${JSON.stringify(label)})`);
+  check(picks.first[0] && picks.first[1] === 'W9XYZ' && picks.first[2] === 'ANSWERED', `FIRST takes the first caller decoded, not the one just logged (${JSON.stringify(picks.first)})`);
+  check(picks.dist[0] && picks.dist[1] === 'JA1XYZ', `MAX DIST takes the most distant caller (${JSON.stringify(picks.dist)})`);
+  check(picks.none[0] === false && picks.none[1] === '', `NONE answers nobody (${JSON.stringify(picks.none)})`);
+  check(picks.km[0] > 300 && picks.km[0] < 450 && picks.km[1] > 10000 && picks.km[1] < 11500 && picks.km[2] === -1 && picks.km[3] === -1, `grid distances are sane (${JSON.stringify(picks.km)})`);
+  await A.click('#digiCqAnswerBtn');
+  const back = await A.evaluate(() => [document.getElementById('digiCqAnswerBtn').textContent, localStorage.getItem('wfDigiCqAnswer')]);
+  check(back[0] === 'CQ: NONE' && back[1] === 'none', `the third press is back to CQ: NONE (${JSON.stringify(back)})`);
   for (const p of [A, B]) await p.evaluate(() => { window.haltDigiTx(); window.digiTxEnabled = false; window.digiTxArmed = false; window.digiTxQueued = null; });
 } finally {
   await browser.close();

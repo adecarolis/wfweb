@@ -695,14 +695,18 @@ it and skips the slot (`digiSwitchAbortedSlot`). Test:
 `tests/test_ft8_takeover.py` (`ft8_takeover_browser.mjs`, FT8 on two
 Standalone virtual rigs, or the C++ bench with `WFWEB_FT8_URLS`).
 
-### FT8 / FT4: CQ: FIRST
+### FT8 / FT4: CQ: NONE / FIRST / MAX DIST
 By default a station answering our CQ is answered by the operator's click
-(WSJT-X's `CQ: None`). The `#digiCqFirstBtn` toggle next to TX EVEN / CALL CQ
-(`digiCqFirst`, `localStorage wfDigiCqFirst`, off unless chosen) is WSJT-X's
-`CQ: First`, the old "Call 1st": while the message in hand is our CQ, the
-first decode addressed to us with a grid or nothing after the calls is
-answered by `digiCqFirstAnswer()`, called from the `IDLE` branch of
-`handleDigiAutoQso` and followed by `digiTakeOverTx()` like a click. It
+(WSJT-X's `CQ: None`). The `#digiCqAnswerBtn` button next to TX EVEN / CALL CQ
+steps NONE -> FIRST -> MAX DIST (`digiCqAnswer` = `none` | `first` | `dist`,
+`localStorage wfDigiCqAnswer`, none unless chosen), WSJT-X's `CQ: First` (the
+old "Call 1st") and `CQ: Max Dist`. While the message in hand is our CQ,
+`digiCqAutoAnswer()` runs at the top of `handleDigiAutoQso` over the whole
+batch of decodes: the callers are the decodes addressed to us with a grid or
+nothing after the calls (`digiCqCallerOk`), FIRST takes the first decoded,
+MAX DIST the one whose grid is farthest from ours (`digiGridKm` in
+`digi-msg.js`, square centres; a caller without a grid ranks last, the first
+decoded wins a tie). It is followed by `digiTakeOverTx()` like a click, and
 differs from a click in one thing: the TX offset stays on the CQ, only the RX
 marker moves. A station the sequencer logged within `DIGI_SAME_QSO_MS` is not
 answered again. **CQ is not called again after the QSO, on purpose**: WSJT-X
