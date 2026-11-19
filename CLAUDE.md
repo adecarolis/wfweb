@@ -405,7 +405,9 @@ with one -> `{type:'access', user}` first, then `sendCurrentState`.
 Roles `listen < control < operate < admin` are enforced by one table,
 `Access::commandCapability` in `access.cpp` (View / Control / Tx / Admin;
 **a command not in the table is Admin-only**, so classify every new
-WebSocket command there) and `Access::restCapability` (every GET is View,
+WebSocket command there; `tests/test_access_table.py` checks
+`handleCommand` against it, after `setTsqlFreq` was found missing and
+refused to every member, 2026-11-17) and `Access::restCapability` (every GET is View,
 writes by route). `handleCommand` asks it first for any browser (`client`
 non-null; nullptr is rigctld / REST, gated earlier), `onWsBinaryMessage`
 drops 0x03 frames from anyone below operate (one `denied` per stream), and

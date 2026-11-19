@@ -59,7 +59,7 @@ const char *const kControlCommands[] = {
     "setAntenna", "setNoiseBlanker", "setBreakIn", "setNoiseReduction", "setAGC", "setCompressor", "setTxBandwidth",
     "setCompLevel", "setMonitor", "setMonitorGain", "setTxMeter", "setAutoNotch", "setFilterWidth",
     "setPBTInner", "setPBTOuter", "setFilterShape", "setFilter", "setSplit", "setDuplex", "setToneMode",
-    "setToneFreq", "setDtcsCode", "setDuplexOffset", "setSpan", "setScopeRef", "setScopeSpeed",
+    "setToneFreq", "setTsqlFreq", "setDtcsCode", "setDuplexOffset", "setSpan", "setScopeRef", "setScopeSpeed",
     "setScopeMode", "setScopeEdges", "setCWSpeed", "recallMemory", "setFreeDV", "setFreeDVTxGain",
     "setFreeDVMonitor", "packetEnable", "packetSetMode", "setDigiActive", "reportDigiSpot",
     "aprsClearStations",

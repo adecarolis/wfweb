@@ -66,6 +66,8 @@ int main()
     require(Access::commandCapability("getStatus") == Cap::View, "getStatus is view");
     require(Access::commandCapability("enableAudio") == Cap::View, "a listener may hear");
     require(Access::commandCapability("setFrequency") == Cap::Control, "setFrequency is control");
+    require(Access::commandCapability("setToneFreq") == Cap::Control && Access::commandCapability("setTsqlFreq") == Cap::Control,
+            "both tones are control");
     require(Access::commandCapability("setPTT") == Cap::Tx, "setPTT is tx");
     require(Access::commandCapability("setTuner") == Cap::Tx, "the antenna tuner transmits");
     require(Access::commandCapability("enableMic") == Cap::Tx, "the mic is tx");
