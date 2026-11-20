@@ -5,6 +5,8 @@ These tests guard against the known regression where <uchar> was used instead,
 which would corrupt gain values during BCD encoding.
 """
 
+import time
+
 import requests
 
 
@@ -104,9 +106,14 @@ def test_mic_gain_is_the_lan_mod_level_on_a_lan_rig(rest_url, poll, mock_radio):
     r = requests.put(f"{rest_url}/gains", json={"micGain": 150}, timeout=5)
     assert r.status_code == 202
     poll("gains", lambda d: d.get("micGain") == 150)
-    poll("gains", lambda d: mock_radio.settings.get(REG_LAN_MOD_LEVEL) == bytes([0x01, 0x50]))
+    # Wait on the mock itself: a REST poll here only adds reads to the queue
+    # the set is waiting in (seconds on the macOS runner).
+    deadline = time.monotonic() + 30.0
+    while mock_radio.settings.get(REG_LAN_MOD_LEVEL) != bytes([0x01, 0x50]):
+        assert time.monotonic() < deadline, f"LAN mod level never written: {mock_radio.settings}"
+        time.sleep(0.1)
     assert REG_USB_MOD_LEVEL not in mock_radio.settings
     # Read back from the rig, not only from what we queued.
     mock_radio.settings[REG_LAN_MOD_LEVEL] = bytes([0x00, 0x77])
-    poll("gains", lambda d: d.get("micGain") == 77, timeout=20.0)
+    poll("gains", lambda d: d.get("micGain") == 77, timeout=30.0)
     requests.put(f"{rest_url}/gains", json={"micGain": 128}, timeout=5)
