@@ -9093,17 +9093,41 @@ window.closeOtherModes = closeOtherModes;
 // ============================================================
 // FreeDV
 // ============================================================
+// FreeDV / RADE put a modem signal at a fixed level into the rig, like the
+// other digital modes, so they need the rig's mod level at the same known
+// setting and not wherever the voice MIC slider was left: at a low one RADE
+// keyed the IC-7300 with next to no power (#158).  Held while the mode is
+// on, put back when it goes.
+var freedvSavedModLevel = -1;   // -1 = nothing of ours to put back
+function freedvHoldModLevel() {
+    if (freedvSavedModLevel >= 0) return;
+    var slider = document.getElementById('micGainSlider');
+    freedvSavedModLevel = slider ? parseInt(slider.value) : -1;
+    throttledSend('micGain', 'setMicGain', DIGI_MOD_LEVEL);
+    updateSlider('micGain', DIGI_MOD_LEVEL);
+}
+function freedvRestoreModLevel() {
+    if (freedvSavedModLevel < 0) return;
+    throttledSend('micGain', 'setMicGain', freedvSavedModLevel);
+    updateSlider('micGain', freedvSavedModLevel);
+    freedvSavedModLevel = -1;
+}
+
 function toggleFreeDV() {
     if (freedvModes.length === 0) return;
     if (freedvEnabled) {
-        send({ cmd: 'setFreeDV', enabled: false });
+        if (send({ cmd: 'setFreeDV', enabled: false }) === false) return;
+        // Here and not only on the server's answer: a panel opening over
+        // FreeDV saves the mod level it finds, in this same task.
+        freedvRestoreModLevel();
     } else {
         closeOtherModes('freedv');
         freedvModeName = freedvModes[0];
         freedvTxGain = 0.25;
         ALC_SMOOTHED = 0;
-        send({ cmd: 'setFreeDV', enabled: true, mode: freedvModeName });
+        if (send({ cmd: 'setFreeDV', enabled: true, mode: freedvModeName }) === false) return;
         send({ cmd: 'setFreeDVTxGain', value: freedvTxGain });
+        freedvHoldModLevel();
     }
 }
 
@@ -9118,8 +9142,11 @@ function cycleFreeDVMode() {
 }
 
 function updateFreeDVStatus(msg) {
+    var freedvWasEnabled = freedvEnabled;
     if (msg.enabled !== undefined) freedvEnabled = msg.enabled;
     if (msg.freedv !== undefined) freedvEnabled = msg.freedv;
+    // Switched off from elsewhere (a mode change, another device).
+    if (freedvWasEnabled && !freedvEnabled) freedvRestoreModLevel();
     if (msg.freedvMode !== undefined && msg.freedvMode) freedvModeName = msg.freedvMode;
     if (msg.freedvSync !== undefined) freedvSync = msg.freedvSync;
     if (msg.freedvSNR !== undefined) freedvSNR = msg.freedvSNR;

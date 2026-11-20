@@ -51,6 +51,16 @@ static quint64 jsonHz(const QJsonValue &v);   // a Hz field from JSON, bounded; 
 // classic-FreeDV ALC loop can't affect RADE.
 static constexpr float RADE_TX_GAIN = 0.4f;
 
+// The RADE end-of-over frame: rade_n_tx_eoo_out() = 1152 samples at the
+// modem's 8 kHz.
+static constexpr int RADE_EOO_MS = 144;
+
+// LAN pacer for the voice modems (modemLanTxQueue): how much is held back
+// before the first slice goes out, and how much may pile up behind a stalled
+// mic stream before the oldest audio is dropped.
+static constexpr int MODEM_LAN_CUSHION_MS = 60;
+static constexpr int MODEM_LAN_MAX_MS = 1000;
+
 // Repeater duplex direction on the wire. The browser and the REST clients
 // speak these three names; the parser only ever caches simplex / DUP- / DUP+,
 // so the default arm is just a guard.
@@ -2323,6 +2333,7 @@ void webServer::onWsDisconnected()
             micStatsLog("client disconnected");
             micDeviceLabel.clear();
             usbTxReset();
+            modemLanTxReset();
         }
         // Restore DATA MOD OFF if this client had mic active
         if (pClient == micActiveClient && dataOffModSaved && queue) {
@@ -2576,6 +2587,7 @@ void webServer::disableFreeDV()
     freedvTxBuffer.clear();
     freedvTxActive = false;
     if (freedvTxDrainTimer) freedvTxDrainTimer->stop();
+    modemLanTxReset();
     if (freedvProcessor)
         QMetaObject::invokeMethod(freedvProcessor, "cleanup", Qt::QueuedConnection);
     freedvFreqOffset = 0.0f;
@@ -2881,9 +2893,15 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         bool radeUnkey = !on && freedvEnabled && freedvModeName == "RADE" && radeProcessor;
         bool hasTxOut  = (usbAudioOutput && txAudioConfigured) || txConverter;
         if (radeUnkey && hasTxOut) {
+            // USB: 300 ms plays the frame out.  LAN: the frame is paced out
+            // in real time behind what the pacer still holds, and the rig
+            // buffers what it gets (150 ms by our TX latency setting).
+            int unkeyMs = 300;
+            if (!(usbAudioOutput && txAudioConfigured))
+                unkeyMs = qMax(300, modemLanTxPendingMs() + MODEM_LAN_CUSHION_MS + RADE_EOO_MS + 150);
             QMetaObject::invokeMethod(radeProcessor, "sendEoo", Qt::BlockingQueuedConnection);
-            qInfo() << "Web: queued RADE EOO frame, delaying unkey 300ms";
-            QTimer::singleShot(300, this, [this]() {
+            qInfo() << "Web: queued RADE EOO frame, delaying unkey" << unkeyMs << "ms";
+            QTimer::singleShot(unkeyMs, this, [this]() {
                 queue->add(priorityImmediate, queueItem(funcTransceiverStatus, QVariant::fromValue<bool>(false), false, uchar(0)));
                 queue->del(funcALCMeter, 0);
                 releaseCompressorHold();
@@ -3258,6 +3276,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             // logs afresh.
             micLanTxLogged = false;
             micLanTxBuffer.clear();
+            modemLanTxLogged = false;
             // Pick the mod input from rig capabilities: LAN when LAN-connected,
             // otherwise USB (shared with the packet TX path).
             rigInput modInput;
@@ -3324,6 +3343,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             freedvTxBuffer.clear();
             freedvTxActive = false;
             if (freedvTxDrainTimer) freedvTxDrainTimer->stop();
+            modemLanTxReset();
             txAudioActive = false;
             micLanTxBuffer.clear();
             usbTxReset();
@@ -6594,7 +6614,7 @@ void webServer::onFreeDVTxReady(audioPacket audio)
             }
         }
     } else if (txConverter) {
-        emit sendToTxConverter(audio);
+        modemLanTxQueue(audio.data);
     }
 }
 
@@ -6815,7 +6835,111 @@ void webServer::onRadeTxReady(audioPacket audio)
             }
         }
     } else if (txConverter) {
-        emit sendToTxConverter(audio);
+        modemLanTxQueue(audio.data);
+    }
+}
+
+// 20 ms of mono 16-bit PCM at the rig's rate: the slice a LAN rig takes
+// its TX audio in (1920 bytes at 48 kHz, two UDP packets of 1364 + 556).
+int webServer::lanTxChunkBytes() const
+{
+    const quint32 rate = rigSampleRate ? rigSampleRate : 48000;
+    return (int)(rate / 50) * (int)sizeof(qint16);
+}
+
+int webServer::modemLanTxPendingMs() const
+{
+    return modemLanTxBuffer.size() * 20 / lanTxChunkBytes();
+}
+
+void webServer::modemLanTxReset()
+{
+    if (modemLanTxTimer) modemLanTxTimer->stop();
+    if (modemLanTxSlices > 0)
+        qInfo().noquote() << QStringLiteral("Web: LAN modem TX - %1 s sent in %2 slices, encoder ran dry %3 time(s)")
+                                 .arg(modemLanTxSlices * 0.02, 0, 'f', 1).arg(modemLanTxSlices)
+                                 .arg(qMax(0, modemLanTxStarts - 1));
+    modemLanTxBuffer.clear();
+    modemLanTxSent = 0;
+    modemLanTxSlices = 0;
+    modemLanTxStarts = 0;
+    modemLanTxLogged = false;
+}
+
+// FreeDV / RADE modem audio for a LAN rig.  The encoder emits a whole modem
+// frame at once (RADE 120 ms, 700D 160 ms); sent on as it came, that is a
+// burst of nine UDP packets every 120 ms.  In RADE the IC-705 and IC-9700
+// keyed with no modulation at all while FT8 worked on the same link (#158),
+// and the burst was the one difference; the IC-7610 did the same on the
+// browser's 2.7 ms mic frames (#72).  What those rigs take is what wfview's
+// mic, our mic path and the packet modem send: 20 ms slices in real time.
+// So the frames queue here and modemLanTxDrain() sends them on the wall
+// clock.
+void webServer::modemLanTxQueue(const QByteArray &pcm)
+{
+    if (pcm.isEmpty()) return;
+    const int chunk = lanTxChunkBytes();
+    modemLanTxBuffer.append(pcm);
+
+    // A mic stream that stalled and then caught up leaves its backlog here
+    // for good, the drain being real time.  Past a second, drop the oldest.
+    const int maxBytes = chunk * (MODEM_LAN_MAX_MS / 20);
+    if (modemLanTxBuffer.size() > maxBytes) {
+        const int keep = chunk * ((MODEM_LAN_CUSHION_MS + 120) / 20);
+        qInfo() << "Web: LAN modem TX backlog" << modemLanTxPendingMs()
+                << "ms, dropping the oldest audio";
+        modemLanTxBuffer.remove(0, modemLanTxBuffer.size() - keep);
+    }
+
+    if (!modemLanTxTimer) {
+        modemLanTxTimer = new QTimer(this);
+        modemLanTxTimer->setTimerType(Qt::PreciseTimer);
+        connect(modemLanTxTimer, &QTimer::timeout, this, &webServer::modemLanTxDrain);
+    }
+    if (!modemLanTxTimer->isActive()) {
+        // Start the clock a cushion behind, so the next frame is here
+        // before this one has gone out.
+        modemLanTxClock.start();
+        modemLanTxSent = (qint64)chunk * MODEM_LAN_CUSHION_MS / 20;
+        modemLanTxStarts++;
+        modemLanTxTimer->start(10);
+        if (!modemLanTxLogged) {
+            modemLanTxLogged = true;
+            qInfo() << "Web: LAN modem TX - first frame from the encoder," << pcm.size()
+                    << "bytes, pacing in" << chunk << "byte slices";
+        }
+    }
+}
+
+void webServer::modemLanTxDrain()
+{
+    const int chunk = lanTxChunkBytes();
+    // Bytes due by the wall clock, not one slice per tick: a timer that
+    // fires late must not stretch the audio.
+    if (modemLanTxClock.elapsed() * chunk / 20 - modemLanTxSent < chunk) return;
+
+    if (modemLanTxBuffer.isEmpty()) {
+        // The encoder stopped (mic off, or its input stalled).  The next
+        // frame starts the clock again, cushion included.
+        modemLanTxTimer->stop();
+        return;
+    }
+
+    // At most two slices a tick: enough to catch up after a late timer,
+    // not enough to be a burst.  A buffer shorter than a slice is the tail
+    // of what the encoder gave and goes out as it is.
+    for (int n = 0; n < 2 && !modemLanTxBuffer.isEmpty()
+                    && modemLanTxClock.elapsed() * chunk / 20 - modemLanTxSent >= chunk; n++) {
+        const int take = qMin(chunk, modemLanTxBuffer.size());
+        audioPacket pkt;
+        pkt.data = modemLanTxBuffer.left(take);
+        pkt.time = QTime::currentTime();
+        pkt.sent = 0;
+        pkt.volume = 1.0;
+        modemLanTxBuffer.remove(0, take);
+        modemLanTxSent += chunk;
+        modemLanTxSlices++;
+        emit sendToTxConverter(pkt);
     }
 }
 

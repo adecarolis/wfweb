@@ -1251,11 +1251,60 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
   `BlockingQueuedConnection`. `sendEoo` calls `generateEooAudio()` and emits `txReady`,
   which is routed by `onRadeTxReady` through the same TX path as voice frames —
   USB-attached rigs (`freedvTxBuffer` → ALSA drain) and LAN-attached rigs
-  (`emit sendToTxConverter` → audio converter → LAN UDP) both work. Radio unkey
-  is delayed 300ms so the frame plays out.
+  (`modemLanTxQueue` → the LAN pacer below) both work. Radio unkey is delayed
+  so the frame plays out: 300 ms on USB; on LAN what the pacer still holds +
+  its cushion + the frame (`RADE_EOO_MS`, 144) + 150 ms for the rig's buffer.
+  The EOO frame has a quiet 60 ms of its own (pilots, data slots, pilots): a
+  hole there in a capture is not a dropout.
 - **RX**: `rade_rx()` detects EOO → `rade_text_rx()` decodes → `rxCallsign` signal → webserver → browser
 - **Important**: The callsign arrives AFTER sync is lost (EOO is the last frame). Do not gate
   reporter or UI updates on `freedvSync`.
+
+### Modem audio to a LAN rig is paced (#158)
+- The encoders emit a whole modem frame at a time (RADE 120 ms, 700D 160 ms).
+  Sent on as it came, that is a burst of nine UDP packets every 120 ms, and
+  the IC-705 and IC-9700 keyed on it with **no modulation at all** while FT8,
+  JS8 and TUNE worked on the same link (2026-11-19; reproduced on the
+  operator's IC-705). A LAN rig takes TX audio as 20 ms slices in real time
+  (1920 bytes at 48 kHz = 1364 + 556), which is what wfview's mic, our mic
+  path (#72, coalesced), the packet modem (`drainPacketLanTxBuffer`) and now
+  the voice modems send: `modemLanTxQueue` / `modemLanTxDrain` in
+  `webserver.cpp`, a 10 ms timer that sends what the **wall clock** says is
+  due (at most two slices a tick), starting `MODEM_LAN_CUSHION_MS` (60)
+  behind so the next frame is in before the last slice has gone, dropping
+  the oldest audio past `MODEM_LAN_MAX_MS`. **A new TX source on the LAN
+  path must arrive as 20 ms slices in real time**, never as it was computed.
+  The log says so once per mic session ("LAN modem TX - first frame from the
+  encoder ... pacing in 1920 byte slices") and sums up at its end ("15.0 s
+  sent in 751 slices, encoder ran dry 0 time(s)").
+- `tests/rade_lan_bench.py` (two-rig bench, by hand): a RADE over with real
+  speech as the mic, the modem signal whole at the other rig, the EOO
+  callsign decoded. The virtual rig takes TX audio in any shape, so the
+  bench shows the paced audio is intact, not what a real rig does with a
+  burst. With the pacer the operator's IC-705 makes power in RADE over
+  LAN, at every setting of the MIC slider (2026-11-19, same evening; the
+  pacer was the only change on the LAN path, the slider being the USB mod
+  level, which a LAN rig does not use). The IC-9700 of the report is not
+  confirmed.
+
+### Mod level in FreeDV / RADE (#158)
+- RADE goes out at a fixed level (`RADE_TX_SCALE` x `RADE_TX_GAIN` on USB)
+  with no ALC loop, so the power depends on the rig's mod level; that used
+  to be wherever the voice MIC slider was, and at a low one the IC-7300
+  keyed with next to no power. `toggleFreeDV` now holds it at
+  `DIGI_MOD_LEVEL` like FT8, SSTV and RTTY (`freedvHoldModLevel`) and puts
+  the voice level back when the mode goes (`freedvRestoreModLevel`: on the
+  toggle itself, because a panel opening over FreeDV saves the level it
+  finds in that same task, and on a `freedvStatus` that switches it off
+  from elsewhere). Both forks. **The hold is only where the slider starts**:
+  the USB mod level is the IC-7300's input gain, so RADE's power still
+  follows the slider when the operator moves it, and at zero there is none
+  (operator's IC-7300, 2026-11-19). Whether 75 % is the right level for
+  RADE on that rig has not been measured.
+- Not done: `setMicGain` is the **USB** mod level on every rig. On a LAN rig
+  the level that counts is the rig's LAN / WLAN MOD Level, which wfweb never
+  sets (FT8 gets by on its ALC loop), and RADE's LAN level is `RADE_TX_SCALE`
+  alone, without `RADE_TX_GAIN`.
 
 ### FreeDV Reporter
 - Socket.IO Engine.IO v4 client over QWebSocket → qso.freedv.org

@@ -12,6 +12,7 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QTimer>
+#include <QElapsedTimer>
 #include <QSet>
 #include <QThread>
 #include <QSslSocket>
@@ -196,6 +197,7 @@ private slots:
     void onReporterStateChanged(int state);
     void onPskReporterStateChanged(int state);
     void drainFreeDVTxBuffer();
+    void modemLanTxDrain();
     void usbTxPump();
 
     // RADE V1
@@ -738,6 +740,24 @@ private:
     // at the rig sample rate, computed lazily on the first frame.
     QByteArray micLanTxBuffer;
     int micLanTxChunkBytes = 0;
+
+    // LAN pacer for the voice modems (FreeDV / RADE, issue #158).  The
+    // encoders hand over a whole modem frame at a time (RADE: 120 ms) and a
+    // LAN rig takes TX audio as 20 ms slices in real time: with the frame
+    // sent as one burst RADE keyed the IC-705 and IC-9700 with no
+    // modulation at all.  Frames queue here and modemLanTxDrain() sends
+    // the slices on the wall clock.
+    QByteArray modemLanTxBuffer;
+    QTimer *modemLanTxTimer = nullptr;
+    QElapsedTimer modemLanTxClock;
+    qint64 modemLanTxSent = 0;      // bytes sent since the clock started
+    bool modemLanTxLogged = false;  // one line per mic session
+    int modemLanTxSlices = 0;       // sent this session, for the closing log line
+    int modemLanTxStarts = 0;       // clock starts: 1 + the times it ran dry
+    int lanTxChunkBytes() const;    // 20 ms of mono PCM at the rig rate
+    void modemLanTxQueue(const QByteArray &pcm);
+    void modemLanTxReset();
+    int modemLanTxPendingMs() const;
 
     // FreeDV processing
     FreeDVProcessor *freedvProcessor = nullptr;
