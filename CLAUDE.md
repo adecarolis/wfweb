@@ -1265,15 +1265,20 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
   Sent on as it came, that is a burst of nine UDP packets every 120 ms, and
   the IC-705 and IC-9700 keyed on it with **no modulation at all** while FT8,
   JS8 and TUNE worked on the same link (2026-11-19; reproduced on the
-  operator's IC-705). A LAN rig takes TX audio as 20 ms slices in real time
-  (1920 bytes at 48 kHz = 1364 + 556), which is what wfview's mic, our mic
-  path (#72, coalesced), the packet modem (`drainPacketLanTxBuffer`) and now
-  the voice modems send: `modemLanTxQueue` / `modemLanTxDrain` in
+  operator's IC-705). Every LAN path that works sends 20 ms slices
+  (1920 bytes at 48 kHz = 1364 + 556): wfview's mic, our mic path (#72,
+  coalesced), the packet modem (`drainPacketLanTxBuffer`) and now the voice
+  modems: `modemLanTxQueue` / `modemLanTxDrain` in
   `webserver.cpp`, a 10 ms timer that sends what the **wall clock** says is
   due (at most two slices a tick), starting `MODEM_LAN_CUSHION_MS` (60)
   behind so the next frame is in before the last slice has gone, dropping
   the oldest audio past `MODEM_LAN_MAX_MS`. **A new TX source on the LAN
-  path must arrive as 20 ms slices in real time**, never as it was computed.
+  path must reach the rig as 20 ms slices**, never as whole computed frames.
+  **What the rig objected to is not known.** It was taken for the burst, but
+  the IC-705 made full power on a tone delivered as six 20 ms slices at once
+  every 120 ms (keyed test, 2026-11-19): the timing of the slices is not
+  it. What is left is the shape of the packets, one 120 ms block cut into
+  1364-byte UDP packets against 20 ms blocks cut 1364 + 556; untested.
   The log says so once per mic session ("LAN modem TX - first frame from the
   encoder ... pacing in 1920 byte slices") and sums up at its end ("15.0 s
   sent in 751 slices, encoder ran dry 0 time(s)").
@@ -1301,10 +1306,46 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
   follows the slider when the operator moves it, and at zero there is none
   (operator's IC-7300, 2026-11-19). Whether 75 % is the right level for
   RADE on that rig has not been measured.
-- Not done: `setMicGain` is the **USB** mod level on every rig. On a LAN rig
-  the level that counts is the rig's LAN / WLAN MOD Level, which wfweb never
-  sets (FT8 gets by on its ALC loop), and RADE's LAN level is `RADE_TX_SCALE`
-  alone, without `RADE_TX_GAIN`.
+- **The MIC slider is the level of the input our TX audio goes in by**
+  (`setMicGain`, REST and status `micGain`): `micLevelFunc()` in
+  `webserver.cpp` is `funcLANModLevel` when the server is LAN-connected and
+  the rig file has "LAN Mod Level" (IC-705, 7610, 785x, 7760, 905, 9700,
+  7300MK2), else `funcUSBModLevel`. Status carries `micInput` (`LAN` | `USB`)
+  and the slider's label follows it (`updateMicInput`: LAN MIC / USB MIC;
+  Standalone is always USB). It used to be the USB level on every rig, which
+  a LAN rig does not use: the slider and every `DIGI_MOD_LEVEL` hold did
+  nothing there, and the level in force was whatever the rig's own menu had
+  (operator's question, 2026-11-19). **Use `micLevelFunc()`, never
+  `funcUSBModLevel`, for the mic level.** The IC-9700 file had `Max=0` on
+  its three mod levels, so every set was refused, USB included (2.12).
+- So on a LAN rig FT8 / JS8 / SSTV / RTTY / FreeDV now put the LAN level at
+  75 % while they are open and give the operator's back after. RADE goes
+  to a LAN rig at the same fixed level as on USB (`RADE_TX_GAIN` in the LAN
+  branch of `onRadeTxReady`); it used to go 8 dB hotter. RTTY over LAN has
+  no ALC loop and has not been measured.
+- **IC-705 LAN input, measured** (operator's rig keyed over the WebSocket
+  with his word, 1 kHz tone, RF power at 21 % = 2 W, 2026-11-19). LAN level
+  99 %: -22 dBFS 1.8 W / ALC 0.1, -10 dBFS 2.0 W / 0.9, -3 dBFS 2.0 W / 1.0.
+  LAN level 75 %: -9.6 dBFS (RADE without the gain) 2.0 W / 0.8, -17.6 dBFS
+  (with it) 1.9 W / 0.3. The set and the read-back of the LAN level work on
+  the rig. The test was a tagged 0x03 stream + `setPTT` + the `powerMeter`
+  / `alcMeter` of the status messages; a keying script must check the
+  frequency before every key (one run went out where the VFO had been
+  moved to).
+- Voice over LAN works on that rig with the mic captured raw
+  (`micConstraints`: no browser AGC, no gain stage). One evening of "no
+  power in SSB" there was the one browser session, not wfweb: another
+  browser on the same server made power at once, and a replay of the page's
+  own frame shape (untagged, 128 samples) keyed 1.8 W at -22 dBFS. **Try a
+  second browser before reading a level problem into a voice report**: a
+  speech-shaped test tone peaking at -20 dBFS read 0.0 W and sent the
+  diagnosis after a make-up gain nobody needed.
+- Bench: the default virtual rig is an IC-7300, which has no LAN mod level
+  and falls back to USB; `scripts/testrig.sh up 2 0 --civ a4` gives two
+  virtual IC-705. The virtual rig and the test mock keep the `1A 05 xx yy`
+  registers written to them and read them back (one never written is still
+  ACKed). Tests: `test_gains.py` (LAN mock: register 0090, read back) and
+  `test_usb.py` (0089, never 0090).
 
 ### FreeDV Reporter
 - Socket.IO Engine.IO v4 client over QWebSocket → qso.freedv.org

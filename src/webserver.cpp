@@ -45,7 +45,7 @@ static quint64 jsonHz(const QJsonValue &v);   // a Hz field from JSON, bounded; 
 #endif
 
 // Fixed TX gain applied to RADE modem output (and the EOO frame) in the
-// webserver before writing to the USB CODEC. Combined with RADE_TX_SCALE
+// webserver before it goes to the USB CODEC or to a LAN rig. Combined with RADE_TX_SCALE
 // in radeprocessor.cpp, this gives a stable drive level that hits ~100%
 // power on a full-duty signal. Kept separate from freedvTxGain so the
 // classic-FreeDV ALC loop can't affect RADE.
@@ -1891,7 +1891,7 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
             if (rfPower.value.isValid()) resp["rfPower"] = rfPower.value.toInt();
             cacheItem squelch = queue->getCache(funcSquelch, 0);
             if (squelch.value.isValid()) resp["squelch"] = squelch.value.toInt();
-            cacheItem micGain = queue->getCache(funcUSBModLevel, 0);
+            cacheItem micGain = queue->getCache(micLevelFunc(), 0);
             if (micGain.value.isValid()) resp["micGain"] = micGain.value.toInt();
             sendRestResponse(socket, 200, resp);
         } else if (method == "PUT") {
@@ -1922,7 +1922,7 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
             }
             if (obj.contains("micGain")) {
                 ushort val = static_cast<ushort>(qBound(0, obj["micGain"].toInt(), 255));
-                queue->addUnique(priorityImmediate, queueItem(funcUSBModLevel, QVariant::fromValue<ushort>(val), false, 0));
+                queue->addUnique(priorityImmediate, queueItem(micLevelFunc(), QVariant::fromValue<ushort>(val), false, 0));
             }
             QJsonObject resp; resp["status"] = "accepted";
             sendRestResponse(socket, 202, resp);
@@ -2940,7 +2940,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
     }
     else if (type == "setMicGain") {
         ushort val = static_cast<ushort>(qBound(0, cmd["value"].toInt(), 255));
-        queue->addUnique(priorityImmediate, queueItem(funcUSBModLevel, QVariant::fromValue<ushort>(val), false, 0));
+        queue->addUnique(priorityImmediate, queueItem(micLevelFunc(), QVariant::fromValue<ushort>(val), false, 0));
     }
     else if (type == "setAttenuator") {
         uchar val = static_cast<uchar>(qBound(0, cmd["value"].toInt(), 255));
@@ -4717,10 +4717,11 @@ QJsonObject webServer::buildStatusJson()
     }
 
     // Mic Gain
-    cacheItem micGain = queue->getCache(funcUSBModLevel, 0);
+    cacheItem micGain = queue->getCache(micLevelFunc(), 0);
     if (micGain.value.isValid()) {
         status["micGain"] = micGain.value.toInt();
     }
+    status["micInput"] = micLevelFunc() == funcLANModLevel ? "LAN" : "USB";
 
     // Split
     cacheItem split = queue->getCache(funcSplitStatus, 0);
@@ -5075,7 +5076,11 @@ void webServer::receiveCache(cacheItem item)
         update["squelch"] = item.value.toInt();
         break;
     case funcUSBModLevel:
-        update["micGain"] = item.value.toInt();
+    case funcLANModLevel:
+        // Only the level of the input our TX audio goes in by is the page's
+        // MIC slider; the other one is the rig's own business.
+        if (item.command == micLevelFunc())
+            update["micGain"] = item.value.toInt();
         break;
     case funcScopeWaveData:
     {
@@ -6835,7 +6840,16 @@ void webServer::onRadeTxReady(audioPacket audio)
             }
         }
     } else if (txConverter) {
-        modemLanTxQueue(audio.data);
+        // The same fixed level as on USB.  Without it RADE went to the rig
+        // 8 dB hotter: on the IC-705 at 75 % LAN mod level a tone at that
+        // level made full power with the ALC at 0.8, and one at this level
+        // 1.9 W of 2.0 with the ALC at 0.3 (keyed measurement, 2026-11-19).
+        QByteArray scaled = audio.data;
+        qint16 *samples = reinterpret_cast<qint16 *>(scaled.data());
+        const int count = scaled.size() / (int)sizeof(qint16);
+        for (int i = 0; i < count; i++)
+            samples[i] = (qint16)qBound(-32768, (int)(samples[i] * RADE_TX_GAIN), 32767);
+        modemLanTxQueue(scaled);
     }
 }
 
@@ -6867,14 +6881,14 @@ void webServer::modemLanTxReset()
 }
 
 // FreeDV / RADE modem audio for a LAN rig.  The encoder emits a whole modem
-// frame at once (RADE 120 ms, 700D 160 ms); sent on as it came, that is a
-// burst of nine UDP packets every 120 ms.  In RADE the IC-705 and IC-9700
-// keyed with no modulation at all while FT8 worked on the same link (#158),
-// and the burst was the one difference; the IC-7610 did the same on the
+// frame at once (RADE 120 ms, 700D 160 ms); sent on as it came, in one
+// block, the IC-705 and IC-9700 keyed in RADE with no modulation at all
+// while FT8 worked on the same link (#158); the IC-7610 did the same on the
 // browser's 2.7 ms mic frames (#72).  What those rigs take is what wfview's
-// mic, our mic path and the packet modem send: 20 ms slices in real time.
-// So the frames queue here and modemLanTxDrain() sends them on the wall
-// clock.
+// mic, our mic path and the packet modem send: 20 ms slices.  So the frames
+// queue here and modemLanTxDrain() sends them, a slice at a time on the
+// wall clock.  The steady clock is a choice, not a proven need: the IC-705
+// also took a tone as six slices at once every 120 ms (keyed, 2026-11-19).
 void webServer::modemLanTxQueue(const QByteArray &pcm)
 {
     if (pcm.isEmpty()) return;
@@ -7046,6 +7060,18 @@ void webServer::onAprsStationsCleared()
     msg["type"] = "aprsSnapshot";
     msg["stations"] = QJsonArray();
     sendJsonToAll(msg);
+}
+
+// The mod level the page's MIC slider stands for, and the one the digital
+// modes hold at DIGI_MOD_LEVEL: that of the input our TX audio goes in by.
+// A LAN rig takes it on its LAN / WLAN input, which has a level of its own
+// in the rig's menu; the USB level the slider used to write there did
+// nothing at all (#158).
+funcs webServer::micLevelFunc() const
+{
+    if (lanMode && rigCaps && rigCaps->commands.contains(funcLANModLevel))
+        return funcLANModLevel;
+    return funcUSBModLevel;
 }
 
 // Pick the DATA MOD OFF input matching our audio transport: LAN when

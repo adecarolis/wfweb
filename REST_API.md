@@ -588,7 +588,7 @@ curl -s http://localhost:8081/api/v1/radio/gains | jq .
 
 **Response:**
 ```json
-{"afGain": 200, "rfGain": 255, "rfPower": 128, "squelch": 0}
+{"afGain": 200, "rfGain": 255, "rfPower": 128, "squelch": 0, "micGain": 128}
 ```
 
 ### PUT /api/v1/radio/gains
@@ -601,6 +601,7 @@ All fields are optional. Only provided fields are updated.
 | `rfGain` | 0–255 | RF input sensitivity |
 | `rfPower` | 0–255 | TX power output |
 | `squelch` | 0–255 | Squelch threshold |
+| `micGain` | 0–255 | TX audio level: the rig's USB mod level, or its LAN mod level when the server reaches the rig over LAN |
 
 ```bash
 curl -s -X PUT http://localhost:8081/api/v1/radio/gains \

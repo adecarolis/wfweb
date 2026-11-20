@@ -108,6 +108,7 @@ class CivRadioBase:
 
     def __init__(self, radio_addr: int = RADIO_IC7610_ADDR) -> None:
         self._radio_addr = radio_addr
+        self.settings = {}      # 1A 05 register (xxyy) -> bytes written
 
         # Radio state
         self._frequency: int = 14_074_000
@@ -274,6 +275,19 @@ class CivRadioBase:
                 return self.civ_ack(to, frm)
             return self.civ_frame(to, frm, CMD_FUNC, sub=SUB_AGC,
                                   data=bytes([1 if in_fm else self.agc]))
+
+        # 1A 05 xx yy: the SET-mode registers (mod levels, mod inputs...).
+        # A register keeps what was written to it and reads it back; one
+        # never written is ACKed like any command the mock does not model.
+        if cmd == 0x1A and len(payload) >= 3 and payload[0] == 0x05:
+            reg = (payload[1] << 8) | payload[2]
+            if len(payload) > 3:
+                self.settings[reg] = bytes(payload[3:])
+                return self.civ_ack(to, frm)
+            if reg in self.settings:
+                return self.civ_frame(to, frm, 0x1A,
+                                      data=bytes(payload[:3]) + self.settings[reg])
+            return self.civ_ack(to, frm)
 
         if cmd == CMD_POWER_CTRL:
             return self.civ_ack(to, frm)

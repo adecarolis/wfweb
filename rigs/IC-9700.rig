@@ -1,5 +1,5 @@
 [General]
-Version=2.11
+Version=2.12
 
 [Rig]
 Manufacturer=0
@@ -765,7 +765,7 @@ Commands\82\Admin=false
 Commands\83\Type=ACC1 Mod Level
 Commands\83\String=\\x1a\\x05\\x01\\x12
 Commands\83\Min=0
-Commands\83\Max=0
+Commands\83\Max=255
 Commands\83\Bytes=0
 Commands\83\Command29=false
 Commands\83\GetCommand=true
@@ -774,7 +774,7 @@ Commands\83\Admin=false
 Commands\84\Type=USB Mod Level
 Commands\84\String=\\x1a\\x05\\x01\\x13
 Commands\84\Min=0
-Commands\84\Max=0
+Commands\84\Max=255
 Commands\84\Bytes=0
 Commands\84\Command29=false
 Commands\84\GetCommand=true
@@ -783,7 +783,7 @@ Commands\84\Admin=false
 Commands\85\Type=LAN Mod Level
 Commands\85\String=\\x1a\\x05\\x01\\x14
 Commands\85\Min=0
-Commands\85\Max=0
+Commands\85\Max=255
 Commands\85\Bytes=0
 Commands\85\Command29=false
 Commands\85\GetCommand=true

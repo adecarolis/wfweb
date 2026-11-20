@@ -717,6 +717,7 @@ private:
     // the LAN input's numeric type is inconsistent across .rig files).
     // Returns false if rigCaps lists no suitable input.
     bool pickDataModInput(rigInput &out) const;
+    funcs micLevelFunc() const;     // USB or LAN mod level: the MIC slider's
     // Queue the DATA MOD OFF switch for a packet TX.  Every packet keying
     // site must call this before PTT: unlike the mic path there is no
     // enableMic step, so nothing else routes the modulator to the audio
@@ -743,10 +744,10 @@ private:
 
     // LAN pacer for the voice modems (FreeDV / RADE, issue #158).  The
     // encoders hand over a whole modem frame at a time (RADE: 120 ms) and a
-    // LAN rig takes TX audio as 20 ms slices in real time: with the frame
-    // sent as one burst RADE keyed the IC-705 and IC-9700 with no
-    // modulation at all.  Frames queue here and modemLanTxDrain() sends
-    // the slices on the wall clock.
+    // LAN rig takes TX audio as 20 ms slices: with the frame sent as one
+    // block RADE keyed the IC-705 and IC-9700 with no modulation at all.
+    // Frames queue here and modemLanTxDrain() sends the slices on the
+    // wall clock.
     QByteArray modemLanTxBuffer;
     QTimer *modemLanTxTimer = nullptr;
     QElapsedTimer modemLanTxClock;

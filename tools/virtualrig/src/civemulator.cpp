@@ -436,6 +436,31 @@ void civEmulator::onCivFromClient(const QByteArray& frame)
         handleScopeCommand(body);
         break;
     }
+    case 0x1A: { // 1A 05 xx yy: SET-mode registers (mod levels, mod inputs...)
+        // A register keeps what was written to it and reads it back; one
+        // never written, and the rest of 0x1A, is ACKed like any command we
+        // do not model.
+        if (body.size() >= 3 && (quint8)body[0] == 0x05) {
+            const quint16 reg = (quint16)(((quint8)body[1] << 8) | (quint8)body[2]);
+            if (body.size() > 3) {
+                settings1A05[reg] = body.mid(3);
+                qInfo().noquote() << QString("  -> 1A 05 %1 set to %2")
+                    .arg(reg, 4, 16, QChar('0')).arg(QString(body.mid(3).toHex()));
+                emit replyFrame(ack(true));
+                break;
+            }
+            if (settings1A05.contains(reg)) {
+                QByteArray pl;
+                pl.append((char)0x1A);
+                pl.append(body.left(3));
+                pl.append(settings1A05.value(reg));
+                emit replyFrame(buildFrame(ctlCiv, pl));
+                break;
+            }
+        }
+        emit replyFrame(ack(true));
+        break;
+    }
     default:
         qInfo().noquote() << QString("  -> unhandled cmd 0x%1, sending ACK")
             .arg(cmd, 2, 16, QChar('0'));

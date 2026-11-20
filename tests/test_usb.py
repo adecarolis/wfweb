@@ -122,3 +122,18 @@ def test_usb_civ_frames_logged(usb_rest_url, serial_mock):
         assert frame[:2] == b"\xfe\xfe", f"Bad preamble: {frame.hex()}"
         assert frame[-1:] == b"\xfd", f"Bad terminator: {frame.hex()}"
         assert len(frame) >= 6, f"Frame too short: {frame.hex()}"
+
+
+# ---------------------------------------------------------------------------
+# Mic level over serial
+# ---------------------------------------------------------------------------
+
+
+def test_usb_mic_gain_is_the_usb_mod_level(usb_rest_url, usb_poll, serial_mock):
+    """On a USB rig micGain is the USB mod level (IC-7610 register 0089),
+    never the LAN one (0090), which is the LAN-connected server's (#158)."""
+    r = requests.put(f"{usb_rest_url}/gains", json={"micGain": 150}, timeout=5)
+    assert r.status_code == 202
+    usb_poll("gains", lambda d: d.get("micGain") == 150)
+    usb_poll("gains", lambda d: serial_mock.settings.get(0x0089) == bytes([0x01, 0x50]))
+    assert 0x0090 not in serial_mock.settings

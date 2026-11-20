@@ -89,3 +89,24 @@ def test_gain_bcd_round_trip(rest_url, poll):
     # Restore
     requests.put(f"{rest_url}/gains", json={"afGain": 128}, timeout=5)
     poll("gains", lambda d: d.get("afGain") == 128)
+
+
+# IC-7610 SET-mode registers (rigs/IC-7610.rig)
+REG_USB_MOD_LEVEL = 0x0089
+REG_LAN_MOD_LEVEL = 0x0090
+
+
+def test_mic_gain_is_the_lan_mod_level_on_a_lan_rig(rest_url, poll, mock_radio):
+    """A LAN rig takes our TX audio on its LAN input, so micGain is that
+    input's level.  The USB one, which it used to write, does nothing there
+    (#158)."""
+    mock_radio.settings.pop(REG_USB_MOD_LEVEL, None)
+    r = requests.put(f"{rest_url}/gains", json={"micGain": 150}, timeout=5)
+    assert r.status_code == 202
+    poll("gains", lambda d: d.get("micGain") == 150)
+    poll("gains", lambda d: mock_radio.settings.get(REG_LAN_MOD_LEVEL) == bytes([0x01, 0x50]))
+    assert REG_USB_MOD_LEVEL not in mock_radio.settings
+    # Read back from the rig, not only from what we queued.
+    mock_radio.settings[REG_LAN_MOD_LEVEL] = bytes([0x00, 0x77])
+    poll("gains", lambda d: d.get("micGain") == 77, timeout=20.0)
+    requests.put(f"{rest_url}/gains", json={"micGain": 128}, timeout=5)
