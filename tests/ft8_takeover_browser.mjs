@@ -363,6 +363,39 @@ try {
   const back = await A.evaluate(() => [document.getElementById('digiCqAnswerBtn').textContent, localStorage.getItem('wfDigiCqAnswer')]);
   check(back[0] === 'CQ: NONE' && back[1] === 'none', `the third press is back to CQ: NONE (${JSON.stringify(back)})`);
   for (const p of [A, B]) await p.evaluate(() => { window.haltDigiTx(); window.digiTxEnabled = false; window.digiTxArmed = false; window.digiTxQueued = null; });
+
+  // ---- the station we just worked on our CQ goes back to calling CQ
+  // Its 73 ends the QSO with its call still in the DX field and TX enabled;
+  // its next CQ read as "the station we target" and got our grid (2026-11-19).
+  const again = await A.evaluate(([me, dx]) => {
+    const feed = (msg) => { const s = window.getDigiSlotInfo(); window.handleDigiAutoQso([{ snr: 1, dt: 0.1, freq: 1500, msg, slotIndex: s.slotIndex - 1 }], s.slotIndex - 1); };
+    const st = () => [window.digiQsoState, window.digiTxArmed, window.digiTxEnabled, document.getElementById('digiDxCall').value, window.digiTxQueued];
+    const out = {};
+    document.getElementById('digiDxCall').value = dx;
+    window.digiQsoState = 'RREPORT'; window.digiQsoPartner = dx; window.digiTxEnabled = true;
+    window.digiLastAutoLog = null;
+    feed(`${me} ${dx} 73`);
+    out.after73 = st();
+    feed(`CQ ${dx} EN71`);
+    out.afterCq = st();
+    // The call still (or again) in the DX field with TX on, minutes not yet gone.
+    document.getElementById('digiDxCall').value = dx;
+    window.digiTxEnabled = true;
+    window.digiLastAutoLog = { call: dx, band: '', mode: window.digiMode, ms: Date.now() };
+    feed(`CQ ${dx} EN71`);
+    out.guarded = st();
+    // A targeted station we did not just log is still answered.
+    window.digiLastAutoLog = null;
+    feed(`CQ ${dx} EN71`);
+    out.targeted = st();
+    window.haltDigiTx(); window.digiTxEnabled = false; window.digiTxArmed = false; window.digiTxQueued = null;
+    window.digiQsoState = 'IDLE'; window.digiQsoPartner = ''; document.getElementById('digiDxCall').value = '';
+    return out;
+  }, [CQER, 'KF9UG']);
+  check(again.after73[0] === 'IDLE' && again.after73[2] === false && again.after73[3] === '', `their 73 ends the QSO: TX off, DX field cleared (${JSON.stringify(again.after73)})`);
+  check(again.afterCq[0] === 'IDLE' && !again.afterCq[1] && !again.afterCq[4], `their CQ after it is not answered (${JSON.stringify(again.afterCq)})`);
+  check(again.guarded[0] === 'IDLE' && !again.guarded[1] && !again.guarded[4], `nor with the call still in the DX field, the QSO just logged (${JSON.stringify(again.guarded)})`);
+  check(again.targeted[0] === 'CALLING' && again.targeted[1] === true, `a targeted station not just logged is still answered (${JSON.stringify(again.targeted)})`);
   // Leave the seat free: a holder that just vanishes keeps it for the grace time.
   if (LOGIN) for (const p of [A, B]) { await p.evaluate(() => window.send({ cmd: 'seatRelease' })); await p.waitForTimeout(300); }
 } finally {

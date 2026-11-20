@@ -13200,7 +13200,12 @@ function handleDigiAutoQso(decodes, decodedSlotIndex) {
             if (/^CQ/.test(msg) && parts.length >= 2) {
                 var cqCall = digiSenderCall(msg);
                 var userDx = getDxCall();
-                if (cqCall && cqCall !== myCall && userDx && userDx === cqCall) {
+                // Not the station we just logged, back to calling CQ: that QSO
+                // is over (its call stayed in the DX field, 2026-11-19).
+                var ll = digiLastAutoLog;
+                var justLogged = ll && ll.call === cqCall && ll.mode === digiMode &&
+                                 Date.now() - ll.ms < DIGI_SAME_QSO_MS;
+                if (cqCall && cqCall !== myCall && userDx && userDx === cqCall && !justLogged) {
                     console.log('[DIGI QSO] IDLE→CALLING: targeted station ' + cqCall + ' sent CQ');
                     digiQsoPartner = cqCall;
                     digiQsoPartnerBusyWith = '';
@@ -13293,7 +13298,15 @@ function handleDigiAutoQso(decodes, decodedSlotIndex) {
                 digiQsoState = 'IDLE'; digiQsoPartner = ''; digiTxQueued = null;
                 digiTxArmed = false; digiTxAttempts = 0; digiTxSlotParity = -1;
                 digiOurReport = ''; digiTheirReport = '';
-                updateDigiStatus('IDLE', '');
+                // QSO complete: end it as the search-and-pounce side does (TX
+                // off, DX field cleared), or their next CQ reads as the
+                // station we target and is answered with our grid.
+                digiTxEnabled = false;
+                var etb73 = document.getElementById('digiEnableTxBtn');
+                if (etb73) etb73.classList.remove('active');
+                var dx73 = document.getElementById('digiDxCall');
+                if (dx73) dx73.value = '';
+                updateDigiStatus('QSO DONE', '');
                 updateDigiMsgRows();
                 break;
             }
