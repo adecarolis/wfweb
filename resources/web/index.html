@@ -5012,7 +5012,7 @@ function renderSharedRules(panel, pol) {
     sharedRule(panel, 'Longest turn while others wait', sharedNumber('seatMaxSecs', pol.seatMaxSecs, 0, 1440, 'min', 60),
         'With somebody in line, the seat moves on after this long. 0: no limit.');
     sharedRule(panel, 'A higher role takes over', sharedSwitch(!!pol.seatPreemptHigher, function () { sharedSetPolicy({ seatPreemptHigher: !pol.seatPreemptHigher }); }),
-        'An operator takes the seat from a control user at once, without asking.');
+        'An ASK from a higher role (an operator asking a control user) is granted after 30 s when unanswered, whatever the time above.');
     sharedRule(panel, 'Listen-in', sharedSwitch(pol.listenIn !== false, function () { sharedSetPolicy({ listenIn: pol.listenIn === false }); }),
         'The others hear the audio and see the scope while somebody has the seat.');
     sharedRule(panel, 'Private sessions', sharedSwitch(!!pol.allowPrivate, function () { sharedSetPolicy({ allowPrivate: !pol.allowPrivate }); }),

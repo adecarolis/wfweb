@@ -10,6 +10,7 @@
 #include <QRandomGenerator>
 #include <QRegularExpression>
 #include <QSaveFile>
+#include <QSet>
 #include <QtMath>
 #include <algorithm>
 #include <limits>
@@ -123,17 +124,21 @@ Access::Cap Access::commandCapability(const QString &cmd)
     return commandTable().value(cmd, Cap::Admin);
 }
 
+bool Access::restReadOnly(const QString &method, const QString &path)
+{
+    const QString m = method.toUpper();
+    if (m == QLatin1String("GET") || m == QLatin1String("HEAD") || m == QLatin1String("OPTIONS"))
+        return false;
+    return path == QLatin1String("/api/v1/radio") || path.startsWith(QLatin1String("/api/v1/radio/"));
+}
+
 Access::Cap Access::restCapability(const QString &method, const QString &path)
 {
     const QString m = method.toUpper();
     if (m == QLatin1String("GET") || m == QLatin1String("HEAD") || m == QLatin1String("OPTIONS"))
         return Cap::View;
-    if (path == QLatin1String("/api/v1/radio/ptt") || path == QLatin1String("/api/v1/radio/cw"))
-        return Cap::Tx;
-    if (path.startsWith(QLatin1String("/api/v1/radio/memories")))
-        return path.endsWith(QLatin1String("/recall")) ? Cap::Control : Cap::Admin;
-    if (path.startsWith(QLatin1String("/api/v1/radio")))
-        return Cap::Control;
+    // No row for /api/v1/radio: a shared station does not take writes to the
+    // radio over REST at all (restReadOnly, asked first by the gate).
     if (path.startsWith(QLatin1String("/api/v1/logbook"))) {
         // Whole-log operations: clear, and the ADIF import.
         if ((m == QLatin1String("DELETE") && path == QLatin1String("/api/v1/logbook"))
@@ -145,6 +150,13 @@ Access::Cap Access::restCapability(const QString &method, const QString &path)
         return Cap::Control;
     // /api/v1/station, /api/v1/cw/macros, /api/v1/shared/*, anything new
     return Cap::Admin;
+}
+
+bool Access::txInhibitExempt(const QString &cmd)
+{
+    static const QSet<QString> set{QStringLiteral("qsoLogged"), QStringLiteral("updateQso"),
+                                   QStringLiteral("deleteQso"), QStringLiteral("stopCW")};
+    return set.contains(cmd);
 }
 
 QStringList Access::commandsDeniedTo(Role role)

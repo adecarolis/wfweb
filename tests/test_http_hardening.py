@@ -33,6 +33,7 @@ import requests
 # Mirrors include/webserver.h; the assertions below are written against them.
 HTTP_MAX_CONNECTIONS = 128      # kHttpMaxConnections
 HTTP_HEADER_TIMEOUT_S = 10.0    # kHttpHeaderTimeoutMs
+HTTP_BODY_STALL_S = 30.0        # kHttpBodyStallMs
 SWEEP_PERIOD_S = 1.0            # httpSweepTimer
 
 
@@ -199,6 +200,46 @@ def test_paused_request_completes(wfweb_instance):
     finally:
         s.close()
     assert head.startswith(b"HTTP/1.1 200 "), head[:200]
+
+
+def _upload_head(web_port, length):
+    return (f"POST /api/v1/logbook/adif HTTP/1.1\r\nHost: 127.0.0.1:{web_port}\r\n"
+            f"Content-Type: text/plain\r\nContent-Length: {length}\r\nConnection: close\r\n\r\n").encode()
+
+
+def test_slow_upload_is_not_cut(wfweb_instance):
+    """The 10 s are for the headers. A body that keeps arriving is waited
+    for: the clock used to run to the response, so an upload slower than
+    that (a log import over a weak link) was dropped unanswered."""
+    _, web_port = wfweb_instance
+    body = b" " * 13                 # an ADIF file of nothing, a byte a second
+    s = _tls_connect(web_port)
+    try:
+        s.sendall(_upload_head(web_port, len(body)))
+        for i in range(len(body)):
+            time.sleep(1.0)
+            s.sendall(body[i:i + 1])
+        head = _read_head(s)
+    finally:
+        s.close()
+    assert head.startswith(b"HTTP/1.1 "), f"no answer to a 13 s upload: {head[:200]!r}"
+    assert not head.startswith(b"HTTP/1.1 5"), head[:200]
+
+
+def test_stalled_upload_is_cut(wfweb_instance):
+    """A body that stops arriving is not waited for for ever: the connection
+    goes at the first sweep past kHttpBodyStallMs from its last byte."""
+    _, web_port = wfweb_instance
+    s = _tls_connect(web_port)
+    try:
+        s.sendall(_upload_head(web_port, 100) + b" " * 10)
+        t = time.monotonic()
+        closed = _wait_closed([s], HTTP_BODY_STALL_S + 6.0)
+        assert s in closed, "a stalled upload is still open 36 s after its last byte"
+        elapsed = closed[s] - t
+        assert HTTP_BODY_STALL_S - 2.0 <= elapsed <= HTTP_BODY_STALL_S + 6.0, f"closed after {elapsed:.1f} s"
+    finally:
+        s.close()
 
 
 def test_cross_site_websocket_refused(wfweb_instance):

@@ -239,11 +239,15 @@ private:
     // --- HTTP connection hygiene -------------------------------------------
     // Every socket from accept to close: a request that never completes its
     // headers (slowloris, a TLS client that never handshakes) is cut after
-    // kHttpHeaderTimeoutMs, a client that stops reading its response after
+    // kHttpHeaderTimeoutMs, one whose body stops arriving for
+    // kHttpBodyStallMs, a client that stops reading its response after
     // kHttpDrainStallMs, and no more than kHttpMaxConnections are kept at
     // once.  Sockets handed to the WebSocket server leave the table.
     struct HttpConn {
         qint64 openedMs = 0;
+        bool headersDone = false;      // the header block is in
+        bool requestComplete = false;  // and the body: the answer is ours to give
+        qint64 lastRxMs = 0;           // a byte of the request last arrived
         bool requestDone = false;      // response handed to the socket
         qint64 lastProgressMs = 0;     // bytesToWrite() last went down
         qint64 lastBytesToWrite = 0;
@@ -280,6 +284,7 @@ private:
     QHash<QWebSocket *, QPointer<QTcpSocket>> wsRawSocket_;
     static QString peerKey(const QHostAddress &addr, quint16 port) { return addr.toString() + ':' + QString::number(port); }
     static const int kHttpHeaderTimeoutMs = 10000;
+    static const int kHttpBodyStallMs = 30000;
     static const int kHttpDrainStallMs = 60000;
     static QByteArray headerValue(const QByteArray &headerSection, const QByteArray &name);
     static QString hostOf(const QString &hostOrOrigin);
@@ -365,7 +370,6 @@ private:
     QTimer *txTimeoutTimer = nullptr;
     qint64 pttSinceMs = 0;
     QString pttWho;
-    QString restWho_;      // the REST caller while handleRestRequest runs, for the PTT audit
 
     // --- the seat: one browser drives the radio at a time ---------------
     // Whoever holds it tunes and, with the role for it, keys; everyone else
@@ -526,6 +530,13 @@ private:
     // An admin edited an account: its open sockets follow, and so does
     // the on-air call when it holds the seat.
     void refreshUserClients(const QString &userId);
+    // "name@address" of a browser, as the audit log names it.
+    QString wsWho(QWebSocket *client) const;
+    // A transmission with no key of its own (CW through the rig's keyer,
+    // packet and APRS frames, a tune): a "tx" line in the audit log, at most
+    // one a minute per account and kind.
+    void auditOnAir(const QString &kind, const QString &who);
+    QHash<QString, qint64> onAirAudited_;
     QString onAirApplied_;
     QString onAirAppliedBy_;
     bool logbookClear(const char *who);

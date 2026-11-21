@@ -43,8 +43,16 @@ bool roleAllows(Role role, Cap cap);
 // The WebSocket command table (src/access.cpp).  A command not in it is
 // Admin: a new command is denied to everyone but admins until classified.
 Cap commandCapability(const QString &cmd);
-// REST: every GET is View; writes by route.  Unknown writes are Admin.
+// REST on a shared station reads the radio and never sets it: true for any
+// write under /api/v1/radio, which the gate refuses to every account.  The
+// radio is operated from the page, by whoever has the seat.
+bool restReadOnly(const QString &method, const QString &path);
+// REST: every GET is View; the other writes by route (the log, the SSTV
+// gallery, station configuration).  Unknown writes are Admin.
 Cap restCapability(const QString &method, const QString &path);
+// Tx-level commands TX inhibit lets through: they put nothing on the air
+// (the log after a QSO, the keyer's STOP).
+bool txInhibitExempt(const QString &cmd);
 // The commands a role may not send, for the page to refuse them locally.
 QStringList commandsDeniedTo(Role role);
 // The seat (phase 3): Control and Tx commands act on the one radio, so

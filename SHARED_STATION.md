@@ -23,13 +23,19 @@ the browser it runs in and has nothing to share.
   (`listen`, `control`, `operate`, `admin`).
 - **Login** from the page: a session cookie (`HttpOnly`, `SameSite=Strict`,
   `Secure`) that the browser sends on every request, the WebSocket
-  included. Sessions last 30 days of inactivity; logging out ends one, an
-  admin can end all of a user's.
+  included. A session ends after 30 days without use, and the browser's
+  cookie 30 days after the login, so that is the longest one lasts; logging
+  out ends one, an admin can end all of a user's.
 - **API tokens** for scripts and microcontrollers (`Authorization: Bearer`),
-  made from a logged-in browser and shown once.
+  made with a logged-in session and shown once (one REST call, see *REST*
+  below; the page has no button for it). A token has its account's level and
+  no expiry, and a password change or a KICK does not end it: revoke it, or
+  disable the account. A token reads the station and logs; it never sets
+  the radio (see *The seat*).
 - **The gate**: with `--shared` on, every `/api/v1/` route but the login
-  routes, and every WebSocket, needs an account. The page itself (HTML, JS,
-  the decoder models) stays public so the login sheet can load.
+  routes, and every WebSocket, needs an account, unless the admin admits
+  visitors (below). The page itself (HTML, JS, the decoder models) stays
+  public so the login sheet can load.
 - **First run** prints a setup code on the console and in the log; the first
   browser to enter it creates the admin account. No default password.
 - **Account management** in the page (the ACCOUNTS tab of the Shared
@@ -45,11 +51,14 @@ the browser it runs in and has nothing to share.
 - **Access levels, enforced.** Every WebSocket command, every TX audio
   frame and every REST write is checked against the account's level before
   anything happens; the page refuses the same things locally and says why.
+- **The radio is operated from the page.** Over REST it is read, never set:
+  no tuning, no key, by any account. Scripts read the station and log.
 - **Visitors**: the admin decides what a browser without a login gets —
   nothing (the login sheet), `listen`, or `control`. Never more without a
   login.
-- **TX inhibit**: one switch, and nobody keys the rig — browsers, REST and
-  rigctld alike; a key held at that moment is released.
+- **TX inhibit**: one switch, and nobody keys the rig — browsers and
+  rigctld's key alike; a key held at that moment is released. Logging a QSO and
+  the keyer's STOP still work.
 - **Bands nobody transmits on**: the same refusal for one band or several,
   for everyone at once (admins included). The strip shows `TX INHIBIT · 20m`
   while the VFO is on one; tuning and listening there are not affected, and
@@ -59,15 +68,18 @@ the browser it runs in and has nothing to share.
 - **Who is here**: the admin's window lists every connection and can drop
   one; the room has a size (20 connections by default, admins always get in).
 - **Every key-down and key-up** goes to the audit log with the account, the
-  address, the frequency and mode, and the duration.
+  address, the frequency and mode, and the duration. What goes on the air
+  without a key of its own (CW through the rig's keyer, packet and APRS
+  frames, a tune) is a `tx` line naming the account, the kind and the
+  frequency, one a minute at most per account and kind.
 
 - **The seat**: one browser drives the radio at a time. Whoever holds it
   tunes and, with `operate`, keys; everyone else watches. It is taken when
   free, asked for when held (the holder is prompted, an unanswered request
   is granted after a minute), kept for 30 s for a holder whose connection
   dropped, released after 10 minutes without touching the radio, and
-  offered down the line of those waiting when it frees. Admins take it
-  outright.
+  offered down the line of those waiting when it frees. An admin can take
+  it outright from the Shared station window (NOW > TAKE IT).
 
 - **Reservations**: the admin gives an account the seat at a time — once,
   every day, or every week at the same time, until a date or for good. Two
@@ -203,8 +215,10 @@ audio modes (FT8, JS8, CW, RTTY, SSTV, voice) the callsign is in audio
 the browser makes, which the server cannot read: the page follows the
 on-air call and does not let a member type another, but a modified page
 could send anything. Accountability there is the `OPERATOR` field on
-what gets logged and the audit log's key-down lines, which name the
-account behind every transmission.
+what gets logged and the audit log's `key-down` and `tx` lines, which
+name the account behind every transmission a browser makes.
+The unattended APRS beacon and rigctld's own CW are the station's and are
+not in it.
 
 ## The seat
 
@@ -240,17 +254,30 @@ the first in line has 30 s to take it before it goes to the next.
 A holder whose connection drops (a reload, a phone off the network) keeps
 the seat for 30 s; coming back within that, they have it again without
 asking. Everyone keeps their level: a `control` holder tunes, an `operate`
-holder keys. Scripts with an API token act on the radio only while the
-seat is free or held by their own account (`409` otherwise). `rigctld`,
-being the station's own software, is not held to the seat.
+holder keys. Scripts with an API token read the radio and never set it:
+every write under `/api/v1/radio/` (tuning, mode, gains, the key, the
+keyer, the tuner, a memory recall) is refused to every account, the
+admin's included (`403`). A shared station is operated from the page, by
+somebody in the seat; a token has no expiry and nobody at it, cannot be
+asked for the seat and is not in the connection list. What a script still
+writes is not the radio: a QSO into the log and a picture into the SSTV
+gallery, both refused (`409`) while a browser of another account holds the
+seat. An admin who has to stop the station from a script has TX inhibit
+(`PUT /api/v1/shared/policy`). `rigctld`,
+being the station's own software, needs no account and is not held to the
+seat; only TX inhibit and the TX time-out apply to it, and only to its
+key (`set_ptt`): text given to its `send_morse` goes to the rig's keyer
+unchecked and unrecorded. Leave it on
+localhost: `--rigctld-bind-all` on a shared station hands the radio to the
+network without a login.
 
 The seat's rules are in the Shared station window's **RULES** tab: the seat on or off (off: everyone with
 the level controls the radio at once, with no seat at all), idle minutes,
 seconds before an unanswered request is granted, the most minutes a seat
 may be kept while others wait (0 = no limit), whether a higher level may
 take the seat over (then a request from one is granted after 30 s),
-**LISTEN-IN** (others hear and see while someone has the seat; off, they
-get status only) and **PRIVATE ALLOWED** (the holder may switch the others'
+*Listen-in* (others hear and see while someone has the seat; off, they
+get status only) and *Private sessions* (the holder may switch the others'
 audio and scope off from the seat menu). Admins always hear and see.
 Whoever is kept out sees why for as long as it lasts: the scope is covered
 by "W1ABC has started a private session" (or, with listen-in off, "W1ABC
@@ -281,7 +308,10 @@ Four tabs:
   level, address, SEAT / ON AIR; KICK ends that connection (the account
   stays — disable it to keep them out).
 - **ACCOUNTS**: the callsign, STATION / OWN (what the station identifies
-  as while the account has the seat, see "Callsigns and the log"), level, PASSWORD (sets a new one and ends the account's
+  as while the account has the seat, see "Callsigns and the log"), level (a
+  change applies to the account's open pages at once: lowered below
+  `operate` a key it holds is released, below `control` it leaves the
+  seat), PASSWORD (sets a new one and ends the account's
   sessions), NOTES (a line about the account for the admins only: a name, a
   membership number; the account never sees it), ENABLE / DISABLE, DELETE
   (two presses), and a form to add one. USER LIST at the bottom: EXPORT
@@ -307,12 +337,15 @@ Four tabs:
 wfweb --shared
 ```
 
-or `Shared/Enabled=true` in the settings file. On the first start the
-console status page and the log say:
+or `Shared/Enabled=true` in the settings file. On the first start the log
+says:
 
 ```
 Shared: no admin account yet - open the web page and enter setup code K7QX-4MZP
 ```
+
+and the console status page shows the same code on its Access line
+(`shared station - SETUP CODE K7QX-4MZP`).
 
 Open the page, enter the code with a user name and a password of at least
 eight characters, and you are the admin. Add the other accounts from
@@ -321,7 +354,7 @@ eight characters, and you are the admin. Add the other accounts from
 ### Files
 
 Everything lives in one directory, `<data dir>/shared` by default
-(`~/.local/share/wfweb/shared` on Linux), `--shared-dir <dir>` or
+(`~/.local/share/wfweb/wfweb/shared` on Linux, `/data/wfweb/wfweb/shared` in Docker), `--shared-dir <dir>` or
 `Shared/Dir=` to move it. The directory is created `0700`, the files `0600`.
 
 | File | Holds |
@@ -355,8 +388,8 @@ The code is valid for that run only, until it is used.
 | `Shared/Anonymous=none\|listen\|control` | what a visitor without a login gets (default `none`); the RULES tab |
 | `Shared/TxInhibit=true` | nobody keys the rig (default off); INHIBIT TX in the NOW tab |
 | `Shared/TxInhibitBands=20m, 60m` | bands nobody transmits on (default none), by the rig file's band names; the RULES tab |
-| `Shared/TxTimeoutSecs=` | a key held this long is released (default 600, 0 = never) |
-| `Shared/MaxClients=` | connections at once, admins excepted (default 20) |
+| `Shared/TxTimeoutSecs=` | a key held this long is released (default 600, 0 = never, 3600 at most) |
+| `Shared/MaxClients=` | connections at once, admins excepted (default 20, 1 to 500) |
 | `Shared/Seat=false` | no seat: everyone with the level controls the radio at once (default on) |
 | `Shared/SeatIdleSecs=` | the seat is released after this long without a command (default 600, 0 = never) |
 | `Shared/SeatRequestSecs=` | an unanswered request is granted after this (default 60, 0 = only by hand) |
@@ -365,7 +398,7 @@ The code is valid for that run only, until it is used.
 | `Shared/ListenIn=false` | nobody but the holder (and admins) hears or sees while the seat is held |
 | `Shared/AllowPrivate=true` | the holder may go private |
 | `Shared/PasswordIterations=` | PBKDF2 rounds for new passwords; default 600 000 with libcrypto, 150 000 with Qt's own implementation |
-| `--cert <file> --key <file>`, `Web/CertFile=`, `Web/KeyFile=` | serve HTTPS with your own certificate (PEM; the certificate file may carry its chain, the key may be RSA or EC, unencrypted) |
+| `--cert <file> --key <file>`, `Web/CertFile=`, `Web/KeyFile=` | serve HTTPS with your own certificate (PEM; the certificate file may carry its chain, the key may be RSA or EC, unencrypted). The two go together, and the server does not start on a file it cannot read |
 
 ## Deployment
 
@@ -384,10 +417,16 @@ Three ways to reach a shared station from outside, best first:
 2. **An identity-aware proxy** (Cloudflare Tunnel + Access, Pangolin). The
    proxy terminates TLS with a real certificate, asks for identity, and
    forwards to wfweb on `localhost:8080`. Run wfweb with
-   `--trust-proxy 127.0.0.1` so the audit log sees the visitor's address
-   and the cookie learns the connection is HTTPS. Mapping the proxy's
-   identity onto wfweb accounts is planned; until then users log in to the
-   proxy and then to wfweb.
+   `--trust-proxy 127.0.0.1` so the audit log and the lockout see the
+   visitor's address, not the proxy's. Two things the proxy must do: speak
+   **HTTPS** to wfweb (`https://localhost:8080`: wfweb keeps serving TLS
+   on its own certificate, so switch the proxy's verification of it off,
+   `noTLSVerify` in cloudflared, `tls_insecure_skip_verify` in Caddy), and
+   pass the **`Host`** header through as the browser sent it (nginx:
+   `proxy_set_header Host $host;`), or every WebSocket is refused with
+   `403` as a cross-site one. Mapping the proxy's identity onto wfweb
+   accounts is planned; until then users log in to the proxy and then to
+   wfweb.
 3. **A port forward** with a real certificate: `--cert fullchain.pem --key
    privkey.pem` from Let's Encrypt (restart wfweb after a renewal), and
    `--shared`. wfweb's HTTP server is small and hand-written; a reverse
@@ -404,11 +443,11 @@ All under `/api/v1/auth/`; JSON in and out. `POST` bodies are JSON objects.
 
 | Route | Who | Does |
 |-------|-----|------|
-| `GET /auth/me` | anyone | `{shared, authenticated, user, setupRequired, recovery, secure}`; `{shared:false}` without `--shared` |
-| `POST /auth/setup` `{code, username, password, callsign}` | first run / recovery | creates the admin, logs them in (sets the cookie) |
+| `GET /auth/me` | anyone | `{shared, authenticated, user, setupRequired, recovery, secure, anonymousAccess}`; `{shared:false}` without `--shared` |
+| `POST /auth/setup` `{code, username, password, callsign}` | first run / recovery, HTTPS only | creates the admin, logs them in (sets the cookie); wrong codes lock the address out like wrong passwords |
 | `POST /auth/login` `{username, password}` | anyone, HTTPS only | sets the session cookie; `401` wrong, `403` disabled, `429` + `Retry-After` locked |
 | `POST /auth/logout` | session | ends it (and closes its WebSockets), clears the cookie |
-| `POST /auth/password` `{current, password}` | session | changes the caller's password |
+| `POST /auth/password` `{current, password}` | session, HTTPS only | changes the caller's password |
 | `GET /auth/tokens` | session | the caller's API tokens (ids, names, dates) |
 | `POST /auth/tokens` `{name}` | session | `{id, name, token}` — the token is shown this once |
 | `DELETE /auth/tokens/<id>` | session | revokes it |
@@ -419,7 +458,7 @@ Account management, admins only, under `/api/v1/shared/users`:
 |-------|------|
 | `GET` | `{users:[{id, name, callsign, onAir, role, notes, disabled, created, lastLogin, tokens}]}` |
 | `POST` `{username, password, role, callsign, notes?}` | adds an account (`201`) |
-| `PUT /<id>` `{role?, callsign?, onAir?, notes?, disabled?, password?, kick?}` | changes it; `notes` is free text for the admins (500 characters, never shown to the account, and the audit log records that it changed, not what it says); `disabled`, a new `password` and `kick` end the account's sessions. `onAir` is `station` or `own` (`400` without a callsign on the account); a callsign is letters, digits and `/`. The account's open pages follow at once, and so does the on-air call when it holds the seat |
+| `PUT /<id>` `{role?, callsign?, onAir?, notes?, disabled?, password?, kick?}` | changes it; `notes` is free text for the admins (500 characters, never shown to the account, and the audit log records that it changed, not what it says); `disabled`, a new `password` and `kick` end the account's sessions. `onAir` is `station` or `own` (`400` without a callsign on the account); a callsign is letters, digits and `/`. The account's open pages follow at once, a new `role` included (a key or a seat the new level does not cover is given up), and so does the on-air call when it holds the seat |
 | `DELETE /<id>` | removes it; not yourself, not the last admin |
 | `GET /export` | `{wfwebUsers: 1, exported, users:[{username, callsign, role, onAir, notes, disabled, passwordHash}]}`: every account, with the hash its password is stored as. No ids, sessions or API tokens |
 | `POST /import` `{users:[...]}` | adds each entry (those of an export, or `{username, role, password, callsign?, onAir?, notes?, disabled?}` with a plain password, which is hashed here); at most 500. Answers `{added:[names], skipped:[{username, reason}], users}`. Never replaces an account: an existing name, a bad role or callsign, a missing or too short password are skipped with the reason |
@@ -429,12 +468,12 @@ Policy and connections, admins only:
 | Route | Does |
 |-------|------|
 | `GET /api/v1/shared/policy` | `{policy:{anonymous, txInhibit, txInhibitBands, txTimeoutSecs, maxClients, ...}}` |
-| `PUT /api/v1/shared/policy` `{anonymous?, txInhibit?, txInhibitBands?, txTimeoutSecs?, maxClients?}` | `txInhibitBands` is the whole list of band names (`["20m","60m"]`, `[]` for none). Changes what is given; applied at once, saved to the settings file, pushed to every page as `{type:"sharedPolicy", policy}` |
+| `PUT /api/v1/shared/policy` `{anonymous?, txInhibit?, txInhibitBands?, txTimeoutSecs?, maxClients?, seat?, seatIdleSecs?, seatRequestSecs?, seatMaxSecs?, seatPreemptHigher?, listenIn?, allowPrivate?}` | `txInhibitBands` is the whole list of band names (`["20m","60m"]`, `[]` for none). Changes what is given; applied at once, saved to the settings file, pushed to every page as `{type:"sharedPolicy", policy}` |
 | `GET /api/v1/shared/connections` | `{connections:[{id, name, anonymous, role, callsign, ip, since, keying, seat}], max}` |
 | `DELETE /api/v1/shared/connections/<id>` | ends that connection (not your own) |
-| `GET /api/v1/shared/seat` | `{seat:{enabled, holder:{name, id, role, since, private, keying}|null, queue, grace, privateNow, listenIn, allowPrivate, reservation?, next?}}` (any account) |
+| `GET /api/v1/shared/seat` | `{seat:{enabled, holder:{name, id, role, since, private, keying}|null, queue, grace, privateNow, listenIn, allowPrivate, reservation?, next?}}` (anyone the station admits: it is what the strip shows) |
 | `DELETE /api/v1/shared/seat` | frees the seat (admin) |
-| `GET /api/v1/shared/reservations` | `{reservations:[{id, userId, name, callsign, title, start, minutes, repeat, until?, createdBy, created}], upcoming:[runs in the next 14 days: {id, name, title, start, end, minutes, repeat}], active}` (any account) |
+| `GET /api/v1/shared/reservations` | `{reservations:[{id, userId, name, callsign, title, start, minutes, repeat, until?, createdBy, created}], upcoming:[runs in the next 14 days: {id, name, title, start, end, minutes, repeat}], active}` (any account; `401` for a visitor without one) |
 | `POST /api/v1/shared/reservations` `{username|userId, start (ISO), minutes, repeat: once|daily|weekly, until?, title?}` | adds a slot (`201`); `400` bad input, `409 {conflict}` when it overlaps another |
 | `DELETE /api/v1/shared/reservations/<id>` | removes the slot and all its runs |
 
@@ -453,10 +492,13 @@ request?, requested?, offer?, grace?, privateNow, listenIn, allowPrivate}`
 {text}` for the rest (declined, offer expired, the idle warning).
 
 Every other `/api/v1/` route needs the level in the table above: a `GET`
-is `listen`, a write to `/radio/*` is `control` except `/radio/ptt` and
-`/radio/cw` (`operate`), the logbook is `operate`, `/station`, `/cw/macros`
-and memory writes are `admin`. Short of it: `403 {"error": "needs operate
-access", "need": "operate"}`.
+is `listen`, a write under `/radio/` is `403` for everyone (the radio is
+read-only over REST), a write to the SSTV gallery is `control`,
+the logbook is `operate`
+(clearing it and importing into it: `admin`), `/station` and `/cw/macros`
+are `admin`. Short of it: `403 {"error": "needs operate access", "need":
+"operate"}`. Where visitors are admitted, a request with no cookie and no
+token is answered at the visitor's level.
 
 The WebSocket says who the browser is as its first message:
 `{type:"access", shared, user:{id, name, callsign, role}|null, anonymous,
@@ -480,9 +522,10 @@ curl -H "Authorization: Bearer <token>" http://station:8081/api/v1/radio/frequen
 These apply with or without `--shared`:
 
 - A connection that has not finished sending its request headers after 10 s
-  is dropped, as is one that stops reading its response for 60 s; no more
-  than 128 HTTP connections are kept at once. A slow but moving download
-  (the 27 MB CW model on a weak link) is left alone.
+  is dropped, as is one whose upload stops arriving for 30 s or that stops
+  reading its response for 60 s; no more than 128 HTTP connections are kept
+  at once. A slow but moving upload or download (a log import, the 27 MB CW
+  model on a weak link) is left alone.
 - A WebSocket upgrade whose `Origin` names another host than the one it was
   sent to is refused with `403` (a page on another site cannot drive your
   radio with your browser's cookie). Scripts, which send no `Origin`, are

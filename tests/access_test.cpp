@@ -76,11 +76,23 @@ int main()
     require(Access::commandCapability("setPower") == Cap::Admin, "rig power is admin");
     require(Access::commandCapability("someNewCommand") == Cap::Admin, "an unknown command fails closed");
     require(Access::restCapability("GET", "/api/v1/radio/ptt") == Cap::View, "every GET is view");
-    require(Access::restCapability("PUT", "/api/v1/radio/ptt") == Cap::Tx, "PUT ptt is tx");
-    require(Access::restCapability("POST", "/api/v1/radio/cw") == Cap::Tx, "CW is tx");
-    require(Access::restCapability("PUT", "/api/v1/radio/frequency") == Cap::Control, "PUT frequency is control");
-    require(Access::restCapability("POST", "/api/v1/radio/memories/3/recall") == Cap::Control, "memory recall is control");
-    require(Access::restCapability("POST", "/api/v1/radio/memories") == Cap::Admin, "memory write is admin");
+    // A shared station does not take writes to the radio over REST at all.
+    require(Access::restReadOnly("PUT", "/api/v1/radio/ptt") && Access::restReadOnly("POST", "/api/v1/radio/cw")
+            && Access::restReadOnly("DELETE", "/api/v1/radio/cw") && Access::restReadOnly("PUT", "/api/v1/radio/frequency")
+            && Access::restReadOnly("put", "/api/v1/radio/tx") && Access::restReadOnly("POST", "/api/v1/radio/memories/3/recall")
+            && Access::restReadOnly("POST", "/api/v1/radio/memories"), "every write under /radio is refused");
+    require(!Access::restReadOnly("GET", "/api/v1/radio/ptt") && !Access::restReadOnly("GET", "/api/v1/radio/memories")
+            && !Access::restReadOnly("OPTIONS", "/api/v1/radio/frequency"), "reading the radio is not");
+    require(!Access::restReadOnly("POST", "/api/v1/logbook") && !Access::restReadOnly("POST", "/api/v1/sstv/images")
+            && !Access::restReadOnly("PUT", "/api/v1/station") && !Access::restReadOnly("PUT", "/api/v1/shared/policy")
+            && !Access::restReadOnly("PUT", "/api/v1/radiology"), "nor is what is not the radio");
+    require(Access::restCapability("PUT", "/api/v1/radio/frequency") == Cap::Admin, "the table has no row for it: fails closed");
+    {
+        require(Access::txInhibitExempt("qsoLogged") && Access::txInhibitExempt("updateQso") && Access::txInhibitExempt("deleteQso")
+                && Access::txInhibitExempt("stopCW"), "TX inhibit spares the log and STOP");
+        require(!Access::txInhibitExempt("sendCW") && !Access::txInhibitExempt("setTuner") && !Access::txInhibitExempt("packetTx")
+                && !Access::txInhibitExempt("enableMic") && !Access::txInhibitExempt("someNewCommand"), "and nothing that transmits");
+    }
     require(Access::restCapability("POST", "/api/v1/logbook") == Cap::Tx, "logbook write is operate");
     require(Access::restCapability("PUT", "/api/v1/logbook/abc") == Cap::Tx && Access::restCapability("DELETE", "/api/v1/logbook/abc") == Cap::Tx
             && Access::restCapability("POST", "/api/v1/logbook/exported") == Cap::Tx, "one's own QSOs are operate");

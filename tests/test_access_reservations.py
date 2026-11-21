@@ -149,6 +149,17 @@ def test_schedule_rest(srv):
     sched = schedule(srv, "lis")
     assert sched == {"reservations": [], "upcoming": [], "active": None}, "a listener reads the schedule"
 
+    # The schedule names accounts: a visitor the station lets in to listen
+    # sees whose seat it is (the strip), not the schedule.
+    r = srv.req("PUT", "/api/v1/shared/policy", json={"anonymous": "listen"}, cookie=srv.admin_cookie)
+    assert r.status_code == 200, r.text
+    try:
+        assert srv.get("/api/v1/shared/reservations").status_code == 401, "no schedule without an account"
+        assert srv.get("/api/v1/shared/reservations", plain=True).status_code == 401
+        assert srv.get("/api/v1/shared/seat").status_code == 200
+    finally:
+        srv.req("PUT", "/api/v1/shared/policy", json={"anonymous": "none"}, cookie=srv.admin_cookie)
+
     start = now() + timedelta(hours=2)
     r = srv.post("/api/v1/shared/reservations", {"username": "op1", "start": iso(start), "minutes": 60}, cookie=srv.cookies["con1"])
     assert r.status_code == 403, "only admins write"

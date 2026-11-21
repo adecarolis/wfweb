@@ -408,7 +408,22 @@ Roles `listen < control < operate < admin` are enforced by one table,
 WebSocket command there; `tests/test_access_table.py` checks
 `handleCommand` against it, after `setTsqlFreq` was found missing and
 refused to every member, 2026-11-17) and `Access::restCapability` (every GET is View,
-writes by route). `handleCommand` asks it first for any browser (`client`
+the other writes by route: the log, the SSTV gallery, station
+configuration). **Over REST the radio is read-only on a shared station**:
+`Access::restReadOnly` is true for any write under `/api/v1/radio` and the
+gate in `onHttpReadyRead` answers it 403 for every account, admins
+included, before it looks at the level: no tuning, no key, no keyer, no
+tuner, no memory recall. The radio is operated from the page by whoever
+has the seat; a token has no expiry and nobody at it, cannot be asked for
+the seat and is not in the connection list, and every rule made for a
+browser needed a second, weaker copy for it (the 2026-11-20 audit found a
+REST key with no audit or time-out, a REST tune past TX inhibit, a REST
+key left down when the seat was taken, and REST tuning in the grace /
+offer / reserved-slot windows; the user's decision, 2026-11-21). **Do not
+add a REST route that sets the radio outside `/api/v1/radio/`**, and do
+not bring per-route levels for radio writes back. rigctld (localhost) is
+the door for local programs and still keys. Open mode is unchanged.
+`handleCommand` asks it first for any browser (`client`
 non-null; nullptr is rigctld / REST, gated earlier), `onWsBinaryMessage`
 drops 0x03 frames from anyone below operate (one `denied` per stream), and
 the REST gate in `onHttpReadyRead` answers 403 `{need}`. A refused command
@@ -428,7 +443,10 @@ band names) closes bands to transmitting for everyone, admins included:
 for the on-air commands in the gate (`sendCW`, `packetTx`, `aprsTxBeacon`,
 `termConnect` / `termSend` / `termFileSend` / `termXferAccept`, `setTuner 2`:
 **a new command that transmits goes in that set**; the log and the mic are
-not refused) and for REST `/api/v1/radio/` writes of Tx level; `seatTick`
+not refused; the same set gets a `tx <who> <kind> <freq mode>` audit line,
+`auditOnAir`, one a minute per account and kind, since only `setPTT` has a
+key-down of its own; the global inhibit lets `Access::txInhibitExempt`
+through: the log and `stopCW`); `seatTick`
 releases a key held while tuning onto one. Page: `rigBandTable`,
 `txInhibitBand()`, `updateTxInhibitUi()` (the strip's `TX INHIBIT · 20m`,
 re-run as the VFO moves), band buttons in the RULES tab. The user list
@@ -438,8 +456,12 @@ included, no ids / sessions / tokens; an import only adds, never replaces),
 hashed off the web thread, one entry at a time), EXPORT / IMPORT at the
 bottom of the ACCOUNTS tab. TX inhibit holds in `setPTT` for every caller and releases
 a held key (`forceUnkey`); `pttAccounting` writes key-down (freq + mode)
-and key-up (duration) to the audit log and runs the time-out timer; the
-REST caller's name reaches it through `restWho_`. The page
+and key-up (duration) to the audit log and runs the time-out timer; a
+key with no browser behind it is rigctld's. **A route that keys
+the rig calls `handleCommand(nullptr, setPTT)`**, as `onRigCtlPtt` and
+`PUT /radio/ptt` do (the latter in open mode only: under `--shared` the gate refuses it): queued straight
+to the rig, a REST key had no compressor hold and no RADE EOO, and under
+`--shared` no audit line, time-out or release under TX inhibit (2026-11-20). The page
 (`resources/web/index.html` only) shows `#loginOverlay` on `authRequired` /
 close 4401 (setup variant when `setupRequired`; a visitor opens it from the
 LOG IN button and may put it away), holds the auto-reconnect while it is up,
@@ -469,7 +491,10 @@ the first entry was the client's to choose, which defeated the per-address
 lockout and forged the audit log (2026-11-07; `tests/test_access_forwarded.py`). The console status page
 shows the setup code while no admin exists and "open - anyone who reaches
 this port can transmit" without `--shared`. HTTP hygiene that came with it,
-flag or not: header-read timeout 10 s, 128-connection cap, a 60 s drain
+flag or not: header-read timeout 10 s, a 30 s stall cut on a request body
+(`kHttpBodyStallMs`; the 10 s used to run to the response, so any upload
+slower than that was dropped, and a whole request now waits for our answer
+however long we take), 128-connection cap, a 60 s drain
 stall cut (`sweepHttpConnections`), the `Origin`/`Host` check on the WSS
 upgrade (`hostOf`), `nosniff` / `Referrer-Policy`, HSTS only with a user
 certificate (`--cert/--key`, `Web/CertFile`; chain and EC keys accepted).
@@ -498,8 +523,9 @@ uninitialised enums at start-up (`rigidentities.h`, `icomudpbase.h`,
 **The seat** (phase 3, `Seat seat_` in webserver.h): one socket holds it;
 Control / Tx commands need it unless `Access::seatExempt` (decoder
 bookkeeping, the seat commands) -- `seatRequired` in the gate, the 0x03
-path, and the REST gate (409 unless the seat is free or held by the
-token's own account; rigctld is never held to it). `seatCommand` handles
+path, and the REST gate for what REST still writes at those levels, a QSO
+into the log and a picture into the gallery (409 unless the seat is free or
+held by the token's own account; rigctld is never held to it). `seatCommand` handles
 `seatTake` (free: take, or the offer / grace; held: request, `force` for
 admins), `seatRelease`, `seatHandover {accept}`, `seatCancel`,
 `seatAccept`, `seatPrivate`, `seatClear`; `seatTick` (1 s) runs grace
@@ -575,9 +601,12 @@ persisted; with the seat off it is always the station call.
 `applyOnAirCall()` is the one place a change is applied (RADE
 `setTxCallsign`, the FreeDV / PSK reporters, `stationChanged`, the `onair`
 audit line), called from `seatGive`, `seatFree`, `seatOnDisconnect`,
-`applyStationCallsign`, `refreshUserClients` (an account's callsign /
-`onAir` edited: its sockets get a new `access`, a holder left without a
-callsign loses the seat) and a seat policy change. **Read `onAirCall()`,
+`applyStationCallsign`, `refreshUserClients` (an account's role, callsign
+or `onAir` edited: its sockets get a new `access`, a holder left without a
+callsign loses the seat; a role lowered below Tx releases its key, below
+Control frees its seat -- a socket used to keep the role it connected
+with, so a demoted operator kept transmitting until a reload, 2026-11-20)
+and a seat policy change. **Read `onAirCall()`,
 never `reporterCallsign`, for anything that identifies the station on the
 air**; `reporterCallsign` is the station call (what the club log is, the
 settings file, `PUT /api/v1/station`). `stationChanged` / `rigInfo` carry

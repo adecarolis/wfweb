@@ -821,7 +821,16 @@ void webServer::sweepHttpConnections()
         QTcpSocket *s = it.key();
         HttpConn &c = it.value();
         if (!c.requestDone) {
-            if (now - c.openedMs > kHttpHeaderTimeoutMs) dead.append(s);
+            // Headers: all of them within the time-out, from accept.  The
+            // body after them: as long as it keeps arriving (the time-out
+            // used to run to the response, so an upload slower than 10 s
+            // was cut -- a log import over a weak link).  A whole request
+            // waits for our answer, however long that takes us.
+            if (!c.headersDone) {
+                if (now - c.openedMs > kHttpHeaderTimeoutMs) dead.append(s);
+            } else if (!c.requestComplete) {
+                if (now - c.lastRxMs > kHttpBodyStallMs) dead.append(s);
+            }
             continue;
         }
         const qint64 pending = pendingWriteBytes(s);
@@ -976,6 +985,11 @@ void webServer::onHttpReadyRead()
     // Wait until we have the complete headers
     int sepIdx = request.indexOf("\r\n\r\n");
     if (sepIdx < 0) return;
+    const auto httpConn = httpConns.find(socket);
+    if (httpConn != httpConns.end()) {
+        httpConn->headersDone = true;
+        httpConn->lastRxMs = QDateTime::currentMSecsSinceEpoch();
+    }
 
     qDebug() << "REST headers:" << request.left(sepIdx);
 
@@ -997,6 +1011,7 @@ void webServer::onHttpReadyRead()
     }
 
     // Full request received — extract body then release the buffer
+    if (httpConn != httpConns.end()) httpConn->requestComplete = true;
     QByteArray body;
     if (clIdx >= 0) {
         int clEnd = lowerHeaders.indexOf("\r\n", clIdx);
@@ -1059,29 +1074,27 @@ void webServer::onHttpReadyRead()
                                  "WWW-Authenticate: Bearer realm=\"wfweb\"\r\n");
                 return;
             }
+            // A shared station is operated from the page, by whoever has the
+            // seat: over REST the radio is read, never set.  Not by a member,
+            // not by an admin.  A token has no expiry and nobody at it, cannot
+            // be asked for the seat and is not in the connection list, and
+            // every rule made for a browser (level, seat, TX inhibit, audit)
+            // needed a second, weaker copy for it.  (rigctld, the station's
+            // own software on localhost, is the door for local programs.)
+            if (Access::restReadOnly(method, path)) {
+                sendRestResponse(socket, 403, QJsonObject{{"error", "a shared station is operated from the page: over REST the radio is read-only"}});
+                return;
+            }
             const Access::Cap cap = Access::restCapability(method, path);
             if (!Access::roleAllows(role, cap)) {
                 const QString need = Access::roleName(Access::capRole(cap));
                 sendRestResponse(socket, 403, QJsonObject{{"error", QString("needs %1 access").arg(need)}, {"need", need}});
                 return;
             }
-            if (cap == Access::Cap::Tx && txInhibit_) {
-                sendRestResponse(socket, 403, QJsonObject{{"error", "transmitting is inhibited by the admin"}});
-                return;
-            }
-            // A band nobody transmits on stops the key and the keyer, not the log.
-            if (cap == Access::Cap::Tx && path.startsWith("/api/v1/radio/")) {
-                const QString band = inhibitedBand();
-                if (!band.isEmpty()) {
-                    sendRestResponse(socket, 403, QJsonObject{{"error", txBlockedReason()}, {"band", band}});
-                    return;
-                }
-            }
-            // A script acts on the radio only while nobody else has the seat:
-            // a free seat, or one held by a browser of the same account.
-            // Correcting the log (an edit, a delete, the export stamp) does not
-            // act on the radio; logging a new QSO does, it is stamped with
-            // the call on the air.
+            // What is left of Control / Tx level here is the SSTV gallery and
+            // logging a QSO, which is stamped with the call on the air: both
+            // are the seat's while a browser of another account holds it.
+            // Correcting the log (an edit, a delete, the export stamp) is not.
             const bool logEdit = path.startsWith("/api/v1/logbook/");
             if (seatEnabled_ && seat_.holder && (cap == Access::Cap::Control || cap == Access::Cap::Tx) && !logEdit
                 && !seatHolderIs(ctx.who.authenticated ? ctx.who.userId : QString())) {
@@ -1108,12 +1121,10 @@ void webServer::onHttpReadyRead()
                 handleSharedConnectionsRequest(socket, method, path, ctx);
                 return;
             }
-            restWho_ = AccessControl::who(ctx.who.authenticated ? ctx.who.name : QStringLiteral("anonymous"), ctx.ip);
             restPrincipal_ = &ctx.who;
             restIp_ = ctx.ip;
         }
         handleRestRequest(socket, method, path, query, body);
-        restWho_.clear();
         restPrincipal_ = nullptr;
         restIp_.clear();
         return;
@@ -1393,8 +1404,11 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
         if (method == "GET") {
             sendRestResponse(socket, 200, stationOut());
         } else if (method == "PUT" || method == "POST") {
+            // A field left out keeps what is stored: a grid alone used to
+            // clear the callsign.  An empty callsign still clears it.
             const QJsonObject in = parseBody();
-            applyStationCallsign(in.value("callsign").toString(), in.value("grid").toString(), true);
+            applyStationCallsign(in.contains("callsign") ? in.value("callsign").toString() : reporterCallsign,
+                                 in.value("grid").toString(), true);
             sendRestResponse(socket, 200, stationOut());
         } else {
             sendRestResponse(socket, 405, QJsonObject{{"error", "Method not allowed"}});
@@ -1840,8 +1854,10 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
                 QJsonObject e; e["error"] = "Missing field: transmitting";
                 sendRestResponse(socket, 400, e); return;
             }
-            bool on = obj["transmitting"].toBool();
-            queue->add(priorityImmediate, queueItem(funcTransceiverStatus, QVariant::fromValue<bool>(on), false, uchar(0)));
+            // Through the setPTT branch, as rigctld does: queued straight to
+            // the rig, a REST key had no audit line, no time-out, and TX
+            // inhibit did not release it; RADE got no EOO on its unkey.
+            handleCommand(nullptr, QJsonObject{{"cmd", "setPTT"}, {"value", obj["transmitting"].toBool()}});
             QJsonObject resp; resp["status"] = "accepted";
             sendRestResponse(socket, 202, resp);
         } else {
@@ -2641,8 +2657,9 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             deny(client, type, cap);
             return;
         }
-        if (cap == Access::Cap::Tx && txInhibit_ && type != "setPTT") {
+        if (cap == Access::Cap::Tx && txInhibit_ && type != "setPTT" && !Access::txInhibitExempt(type)) {
             // setPTT answers for itself below, for rigctld and REST too.
+            // The log and the keyer's STOP put nothing on the air.
             deny(client, type, cap, QStringLiteral("transmitting is inhibited by the admin"));
             return;
         }
@@ -2651,7 +2668,9 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         // mic, STOP, the tuner's ON / OFF) is not.
         static const QSet<QString> onAir{"sendCW", "packetTx", "aprsTxBeacon", "termConnect", "termSend",
                                          "termFileSend", "termXferAccept"};
-        if (onAir.contains(type) || (type == "setTuner" && cmd["value"].toInt() == 2)) {
+        // (setTuner clamps its value to 0..2: anything from 2 up is a tune.)
+        const bool tunes = type == "setTuner" && cmd["value"].toInt() >= 2;
+        if (onAir.contains(type) || tunes) {
             if (!inhibitedBand().isEmpty()) {
                 deny(client, type, cap, txBlockedReason());
                 return;
@@ -2669,6 +2688,11 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         }
         if (client == seat_.holder && (cap == Access::Cap::Control || cap == Access::Cap::Tx))
             seat_.lastActivityMs = QDateTime::currentMSecsSinceEpoch();
+        // On the air with no key of its own to account for: named here.
+        if (tunes) auditOnAir(QStringLiteral("tune"), wsWho(client));
+        else if (type == "sendCW") { if (!cmd["text"].toString().isEmpty()) auditOnAir(QStringLiteral("cw"), wsWho(client)); }
+        else if (type == "aprsTxBeacon") auditOnAir(QStringLiteral("aprs"), wsWho(client));
+        else if (onAir.contains(type)) auditOnAir(QStringLiteral("packet"), wsWho(client));
     }
 
     // The account behind a browser's log command (shared mode only).
@@ -7854,20 +7878,39 @@ void webServer::refreshUserClients(const QString &userId)
     bool found = false;
     const AccessUser u = access_->user(userId, &found);
     if (!found) return;
+    bool seatChanged = false;
     const QList<QWebSocket *> clients = wsClients;
     for (QWebSocket *c : clients) {
         auto it = wsInfo.find(c);
         if (it == wsInfo.end() || !it->who.authenticated || it->who.userId != userId) continue;
-        if (it->who.callsign == u.callsign && it->who.onAirOwn == u.onAirOwn) continue;
+        const bool roleChanged = it->who.role != u.role;
+        if (it->who.callsign == u.callsign && it->who.onAirOwn == u.onAirOwn && !roleChanged) continue;
         it->who.callsign = u.callsign;
         it->who.onAirOwn = u.onAirOwn;
+        it->who.role = u.role;
+        it->warnedTxAudio = false;
         sendJsonTo(c, accessJson(it->who));
+        // A level taken away ends what the page was doing with it, now: the
+        // socket's level used to be the one it connected with, so a demoted
+        // operator kept the key until they reloaded.
+        if (roleChanged) {
+            if (c == pttClient && !Access::roleAllows(u.role, Access::Cap::Tx))
+                forceUnkey(QStringLiteral("the account's access level was changed"));
+            if (!Access::roleAllows(u.role, Access::Cap::Control)) {
+                if (c == seat_.holder) seatFree(QStringLiteral("the account's access level was changed"));
+                else seatLeaveQueue(c);
+            }
+            seatChanged = true;
+        }
         // Own call, no callsign: off the seat and out of the line.
         if (u.onAirOwn && u.callsign.isEmpty()) {
             if (c == seat_.holder) seatFree(QStringLiteral("the account has no callsign to transmit under"));
             else { seatLeaveQueue(c); broadcastSeat(); }
         }
     }
+    // The seat message names the holder's level, and what the others hear
+    // and see while it is held depends on theirs (admins always do).
+    if (seatChanged) broadcastSeat();
     applyOnAirCall();
     logbookReset();     // /worked and the export set follow the account's call
 }
@@ -10397,11 +10440,11 @@ void webServer::pttAccounting(bool on, QWebSocket *client)
         if (pttSinceMs) return;   // a repeat from a latched key
         pttSinceMs = now;
         if (client) {
-            const WsClient c = wsInfo.value(client);
-            pttWho = AccessControl::who(c.who.authenticated ? c.who.name : QStringLiteral("anonymous"),
-                                        c.ip.isEmpty() ? peerIp(client->peerAddress()) : c.ip);
+            pttWho = wsWho(client);
         } else {
-            pttWho = restWho_.isEmpty() ? QStringLiteral("rigctld@127.0.0.1") : restWho_;
+            // Not a browser: rigctld.  REST does not key a shared station
+            // (the gate in onHttpReadyRead).
+            pttWho = QStringLiteral("rigctld@127.0.0.1");
         }
         if (access_) access_->audit("key-down", pttWho, operatingText());
         if (txTimeoutSecs_ > 0 && txTimeoutTimer) txTimeoutTimer->start(txTimeoutSecs_ * 1000);
@@ -10412,6 +10455,28 @@ void webServer::pttAccounting(bool on, QWebSocket *client)
         pttSinceMs = 0;
         pttWho.clear();
     }
+}
+
+QString webServer::wsWho(QWebSocket *client) const
+{
+    const WsClient c = wsInfo.value(client);
+    return AccessControl::who(c.who.authenticated ? c.who.name : QStringLiteral("anonymous"),
+                              c.ip.isEmpty() ? peerIp(client->peerAddress()) : c.ip);
+}
+
+// One line a minute at most per account and kind: a CW over typed a
+// character at a time is one sendCW per character, a terminal session one
+// termSend per line.  Open mode: no audit log, nothing to write.
+void webServer::auditOnAir(const QString &kind, const QString &who)
+{
+    if (!sharedMode_ || !access_ || who.isEmpty()) return;
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    const QString key = who + ' ' + kind;
+    const qint64 last = onAirAudited_.value(key, 0);
+    if (last && now - last < 60000) return;
+    if (onAirAudited_.size() > 512) onAirAudited_.clear();
+    onAirAudited_.insert(key, now);
+    access_->audit("tx", who, kind + ' ' + operatingText());
 }
 
 void webServer::forceUnkey(const QString &reason)
@@ -10912,6 +10977,13 @@ void webServer::handleSharedReservationsRequest(QTcpSocket *socket, const QStrin
         return;
     }
     const QString sub = path.mid(int(strlen("/api/v1/shared/reservations")));
+    // The schedule names accounts and their callsigns: for those who have
+    // one, not for a visitor the station lets in to listen.
+    if (!ctx.who.authenticated) {
+        sendRestResponse(socket, 401, QJsonObject{{"error", "authentication required"}},
+                         "WWW-Authenticate: Bearer realm=\"wfweb\"\r\n");
+        return;
+    }
     if (sub.isEmpty() && method == "GET") {
         QJsonArray defs;
         const QList<Reservation> all = reservations_->list();
@@ -11520,7 +11592,7 @@ void webServer::handleSharedUsersRequest(QTcpSocket *socket, const QString &meth
             }
             changes << "onair=" + in.value("onAir").toString();
         }
-        if (in.contains("callsign") || in.contains("onAir")) refreshUserClients(targetId);
+        if (in.contains("role") || in.contains("callsign") || in.contains("onAir")) refreshUserClients(targetId);
         if (in.contains("notes")) {
             // What the note says stays out of the audit log: it is about a person.
             access_->setNotes(targetId, in.value("notes").toString());

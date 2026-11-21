@@ -14,6 +14,9 @@ are added (listen / control / operate), and then:
 - TX inhibit: refused keys, a keyed operator released at once, rigctld
   and REST included;
 - the TX time-out releasing a key held too long;
+- a REST key in the audit log, under the time-out and the inhibit; the
+  tuner over REST at operate level; a role change reaching open pages;
+- TX inhibit sparing the log and STOP; CW named in the audit log;
 - the connection cap and the admin's connection list with KICK;
 - the audit log naming key-down / key-up / policy / kick.
 """
@@ -208,9 +211,10 @@ def test_tx_audio_from_a_listener_is_dropped_once(srv):
     ("lis", "GET", "/api/v1/radio/frequency", None, 200),
     ("lis", "PUT", "/api/v1/radio/frequency", {"hz": 7074000}, 403),
     ("lis", "PUT", "/api/v1/radio/ptt", {"transmitting": True}, 403),
-    ("con", "PUT", "/api/v1/radio/frequency", {"hz": 7074000}, 202),
+    ("con", "PUT", "/api/v1/radio/frequency", {"hz": 7074000}, 403),
     ("con", "PUT", "/api/v1/radio/ptt", {"transmitting": True}, 403),
     ("con", "POST", "/api/v1/radio/cw", {"text": "TEST"}, 403),
+    ("op", "GET", "/api/v1/radio/ptt", None, 200),
     ("con", "PUT", "/api/v1/station", {"callsign": "X1X"}, 403),
     ("op", "PUT", "/api/v1/station", {"callsign": "X1X"}, 403),
     ("op", "PUT", "/api/v1/cw/macros", {"macros": {}}, 403),
@@ -223,7 +227,7 @@ def test_rest_gate(srv, name, method, path, body, status):
         else srv.req(method, path, token=srv.tokens[name], plain=True)
     assert r.status_code == status, f"{name} {method} {path}: {r.status_code} {r.text}"
     if status == 403:
-        assert "access" in r.json()["error"] or "admin" in r.json()["error"]
+        assert "access" in r.json()["error"] or "admin" in r.json()["error"] or "read-only" in r.json()["error"]
 
 
 # ---------------------------------------------------------------------------
@@ -256,7 +260,8 @@ def test_visitor_policy(srv):
         upd = recv_until(ws, lambda m: m.get("type") == "access", 5.0)
         assert upd is not None and upd["role"] == "control"
         assert denied_for(ws, {"cmd": "setFrequency", "value": 7074000}) is None
-        assert srv.req("PUT", "/api/v1/radio/frequency", json={"hz": 7074000}).status_code == 202
+        assert srv.req("PUT", "/api/v1/radio/frequency", json={"hz": 7074000}).status_code == 403, \
+            "the page tunes; REST never does"
 
         # Visitors refused again: the socket is closed with 4401.
         set_policy(srv, anonymous="none")
@@ -308,7 +313,7 @@ def test_tx_inhibit(srv):
         assert d is not None and "inhibit" in d["reason"]
         assert denied_for(ws, {"cmd": "setFrequency", "value": 7074000}) is None, "tuning is not transmitting"
         r = srv.req("PUT", "/api/v1/radio/ptt", json={"transmitting": True}, token=srv.tokens["op"], plain=True)
-        assert r.status_code == 403 and "inhibit" in r.json()["error"]
+        assert r.status_code == 403
         assert ptt_state(srv) is False
 
         set_policy(srv, txInhibit=False)
@@ -343,7 +348,7 @@ def test_tx_inhibit_per_band(srv):
         d = denied_for(ws, {"cmd": "sendCW", "text": "TEST"})
         assert d is not None and "on 20m" in d["reason"]
         r = srv.req("PUT", "/api/v1/radio/ptt", json={"transmitting": True}, token=srv.tokens["op"], plain=True)
-        assert r.status_code == 403 and r.json()["band"] == "20m"
+        assert r.status_code == 403
         assert ptt_state(srv) is False
 
         # Another band: the key works; tuned onto the closed one, it is released.
@@ -408,6 +413,136 @@ def test_tx_timeout(srv):
 # ---------------------------------------------------------------------------
 # Connections: the cap, the list, KICK
 # ---------------------------------------------------------------------------
+
+
+def _wait_ptt(srv, want, secs=5.0):
+    deadline = time.monotonic() + secs
+    while time.monotonic() < deadline and ptt_state(srv) is not want:
+        time.sleep(0.1)
+    return ptt_state(srv) is want
+
+
+def _audit_mark(srv):
+    return len((srv.shared_dir / "audit.log").read_text().splitlines())
+
+
+def _audit_since(srv, mark):
+    return (srv.shared_dir / "audit.log").read_text().splitlines()[mark:]
+
+
+def test_rest_does_not_touch_the_radio(srv):
+    """A shared station is operated from the page, by whoever has the seat:
+    over REST the radio is read, never set -- not tuned, not keyed, not
+    stopped -- by any account, the admin's included, with a token or a
+    cookie.  A script reads; what is not the radio (the log, the station
+    configuration) is still REST's."""
+    mark = _audit_mark(srv)
+    before = srv.get("/api/v1/radio/frequency", cookie=srv.admin_cookie).json().get("hz")
+    writes = (("PUT", "/api/v1/radio/ptt", {"transmitting": True}),
+              ("PUT", "/api/v1/radio/ptt", {"transmitting": False}),
+              ("POST", "/api/v1/radio/cw", {"text": "TEST"}),
+              ("DELETE", "/api/v1/radio/cw", None),
+              ("PUT", "/api/v1/radio/tx", {"tuner": 2}),
+              ("PUT", "/api/v1/radio/tx", {"tuner": 1}),
+              ("PUT", "/api/v1/radio/tx", {"split": False}),
+              ("PUT", "/api/v1/radio/frequency", {"hz": 7123000}),
+              ("PUT", "/api/v1/radio/mode", {"mode": "CW"}),
+              ("POST", "/api/v1/radio/memories/1/recall", None))
+    for name in ("lis", "con", "op", "clubadmin"):
+        for method, path, body in writes:
+            r = srv.req(method, path, json=body, token=srv.tokens[name], plain=True)
+            assert r.status_code == 403 and "read-only" in r.json()["error"], (name, method, path, r.text)
+    for method, path, body in writes:
+        r = srv.req(method, path, json=body, cookie=srv.admin_cookie)
+        assert r.status_code == 403 and "read-only" in r.json()["error"], (method, path, r.text)
+    set_policy(srv, anonymous="control")
+    try:
+        r = srv.req("PUT", "/api/v1/radio/frequency", json={"hz": 7123000}, plain=True)
+        assert r.status_code == 403 and "read-only" in r.json()["error"], "a visitor admitted to tune tunes on the page"
+    finally:
+        set_policy(srv, anonymous="none")
+    time.sleep(0.5)
+    assert ptt_state(srv) is False
+    assert srv.get("/api/v1/radio/frequency", cookie=srv.admin_cookie).json().get("hz") == before
+    lines = _audit_since(srv, mark)
+    assert not any(" key-down " in l or " tx " in l for l in lines), lines
+
+    for path in ("/api/v1/radio/info", "/api/v1/radio/frequency", "/api/v1/radio/mode", "/api/v1/radio/ptt",
+                 "/api/v1/radio/status"):
+        assert srv.get(path, token=srv.tokens["lis"], plain=True).status_code == 200, path
+    r = srv.req("POST", "/api/v1/logbook", json={}, token=srv.tokens["op"], plain=True)
+    assert r.status_code != 403, "the log is not the radio"
+
+
+def test_role_change_reaches_open_pages(srv):
+    """An account's level changed by the admin applies to its open pages at
+    once.  The socket used to keep the level it connected with, so a demoted
+    operator went on transmitting until they reloaded."""
+    users = srv.get("/api/v1/shared/users", cookie=srv.admin_cookie).json()["users"]
+    op_id = next(u["id"] for u in users if u["name"] == "op")
+
+    def set_role(role):
+        return srv.req("PUT", f"/api/v1/shared/users/{op_id}", json={"role": role}, cookie=srv.admin_cookie)
+
+    ws, access = open_ws(srv, "op")
+    with ws:
+        try:
+            assert access["role"] == "operate"
+            assert denied_for(ws, {"cmd": "setPTT", "value": True}) is None
+            assert _wait_ptt(srv, True)
+            assert set_role("control").status_code == 200
+            a = recv_until(ws, lambda m: m.get("type") == "access", 3.0)
+            assert a is not None and a["role"] == "control" and a["can"]["tx"] is False
+            told = recv_until(ws, lambda m: m.get("type") == "denied" and "access level" in m.get("reason", ""), 3.0)
+            assert told is not None, "the page is told why its key was released"
+            assert _wait_ptt(srv, False), "a key held by a demoted account is released"
+            d = denied_for(ws, {"cmd": "setPTT", "value": True})
+            assert d is not None and d["need"] == "operate"
+            assert denied_for(ws, {"cmd": "setFrequency", "value": 7074000}) is None, "control still tunes"
+        finally:
+            r = set_role("operate")
+        assert r.status_code == 200
+        a = recv_until(ws, lambda m: m.get("type") == "access", 3.0)
+        assert a is not None and a["role"] == "operate" and a["can"]["tx"] is True
+        assert denied_for(ws, {"cmd": "setPTT", "value": True}) is None
+        assert denied_for(ws, {"cmd": "setPTT", "value": False}) is None
+    assert ptt_state(srv) is False
+
+
+def test_tx_inhibit_spares_the_log_and_stop(srv):
+    """TX inhibit stops what transmits.  It used to refuse every operate-level
+    command, so nobody could log a QSO or stop the keyer while it was on."""
+    def rest(method, path, body=None):
+        return srv.req(method, path, json=body, token=srv.tokens["op"], plain=True)
+
+    ws, _ = open_ws(srv, "op")
+    with ws:
+        set_policy(srv, txInhibit=True)
+        try:
+            assert denied_for(ws, {"cmd": "qsoLogged", "qso": {}}) is None, "the log is not a transmission"
+            assert denied_for(ws, {"cmd": "stopCW"}) is None, "STOP is always allowed"
+            for cmd in ({"cmd": "sendCW", "text": "TEST"}, {"cmd": "setTuner", "value": 1}, {"cmd": "enableMic", "value": True}):
+                d = denied_for(ws, cmd)
+                assert d is not None and "inhibit" in d["reason"], cmd
+            assert rest("POST", "/api/v1/logbook", {}).status_code != 403, "logging over REST too"
+        finally:
+            set_policy(srv, txInhibit=False)
+    assert ptt_state(srv) is False
+
+
+def test_on_air_commands_are_audited(srv):
+    """CW through the rig's keyer has no key-down of its own: a 'tx' line
+    names the account, one a minute at most however many characters go out."""
+    mark = _audit_mark(srv)
+    ws, _ = open_ws(srv, "op")
+    with ws:
+        for _ in range(3):
+            assert denied_for(ws, {"cmd": "sendCW", "text": "E"}, timeout=0.3) is None
+    time.sleep(0.3)
+    audit = (srv.shared_dir / "audit.log").read_text().splitlines()
+    assert any(" tx op@127.0.0.1 cw" in l for l in audit), "a browser's CW is named"
+    new = _audit_since(srv, mark)
+    assert sum(" tx op@127.0.0.1 cw" in l for l in new) <= 1, new
 
 
 def test_connection_cap_and_kick(srv):

@@ -348,6 +348,29 @@ def test_admin_takes_and_clears(srv):
         assert all(c["seat"] is False for c in conns)
 
 
+def test_demoted_holder_loses_the_seat(srv):
+    """A holder whose account is lowered to listen cannot keep the seat."""
+    users = srv.get("/api/v1/shared/users", cookie=srv.admin_cookie).json()["users"]
+    con_id = next(u["id"] for u in users if u["name"] == "con2")
+
+    def set_role(role):
+        return srv.req("PUT", f"/api/v1/shared/users/{con_id}", json={"role": role}, cookie=srv.admin_cookie)
+
+    con2, _ = open_ws(srv, "con2")
+    with con2:
+        try:
+            send(con2, "seatTake")
+            assert seat_msg(con2, lambda m: m["mine"]) is not None
+            assert set_role("listen").status_code == 200
+            lost = recv_until(con2, lambda m: m.get("type") == "seatLost")
+            assert lost is not None and "access level" in lost["reason"]
+            assert rest_seat(srv)["holder"] is None
+            assert denied_for(con2, "seatTake") is not None, "a listener cannot take it back"
+        finally:
+            r = set_role("control")
+        assert r.status_code == 200
+
+
 def test_tx_follows_the_seat(srv):
     op1, _ = open_ws(srv, "op1")
     op2, _ = open_ws(srv, "op2")
@@ -378,17 +401,21 @@ def test_tx_follows_the_seat(srv):
             assert d is not None and "seat" in d["reason"]
 
 
-def test_rest_writes_and_the_seat(srv):
-    r = srv.req("PUT", "/api/v1/radio/frequency", json={"hz": 7074000}, token=srv.tokens["op1"], plain=True)
-    assert r.status_code == 202, "a free seat: the script tunes"
+def test_rest_and_the_seat(srv):
+    """Over REST the radio is read-only on a shared station, whoever has the
+    seat: free, somebody else's, or the caller's own browser's."""
+    def tune(name):
+        return srv.req("PUT", "/api/v1/radio/frequency", json={"hz": 7074000}, token=srv.tokens[name], plain=True)
+
+    assert tune("op1").status_code == 403, "a free seat: still not REST's"
     con1, _ = open_ws(srv, "con1")
     with con1:
         send(con1, "seatTake")
         assert seat_msg(con1, lambda m: m["mine"]) is not None
-        r = srv.req("PUT", "/api/v1/radio/frequency", json={"hz": 7074000}, token=srv.tokens["op1"], plain=True)
-        assert r.status_code == 409 and "con1 has the seat" in r.json()["error"]
-        r = srv.req("PUT", "/api/v1/radio/frequency", json={"hz": 7074000}, token=srv.tokens["con1"], plain=True)
-        assert r.status_code == 202, "the holder's own script tunes"
+        r = tune("op1")
+        assert r.status_code == 403 and "read-only" in r.json()["error"]
+        assert tune("con1").status_code == 403, "nor the holder's own script"
+        assert tune("clubadmin").status_code == 403, "nor an admin's"
         r = srv.get("/api/v1/radio/frequency", token=srv.tokens["op1"], plain=True)
         assert r.status_code == 200, "reading never needs the seat"
         r = srv.req("PUT", "/api/v1/station", json={"callsign": "K1FM"}, token=srv.tokens["clubadmin"], plain=True)
