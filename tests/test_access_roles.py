@@ -436,14 +436,17 @@ def _audit_since(srv, mark):
     return (srv.shared_dir / "audit.log").read_text().splitlines()[mark:]
 
 
-def test_rest_does_not_touch_the_radio(srv):
+def test_rest_does_not_touch_the_radio(srv, roles_mock):
     """A shared station is operated from the page, by whoever has the seat:
     over REST the radio is read, never set -- not tuned, not keyed, not
     stopped -- by any account, the admin's included, with a token or a
     cookie.  A script reads; what is not the radio (the log, the station
     configuration) is still REST's."""
     mark = _audit_mark(srv)
-    before = srv.get("/api/v1/radio/frequency", cookie=srv.admin_cookie).json().get("hz")
+    # The mock rig's own state is the proof: what REST reports of the radio
+    # depends on what the server has read so far (right after the connect
+    # the frequency was still unknown on a slow runner).
+    before = (roles_mock._frequency, roles_mock._mode)
     writes = (("PUT", "/api/v1/radio/ptt", {"transmitting": True}),
               ("PUT", "/api/v1/radio/ptt", {"transmitting": False}),
               ("POST", "/api/v1/radio/cw", {"text": "TEST"}),
@@ -469,7 +472,7 @@ def test_rest_does_not_touch_the_radio(srv):
         set_policy(srv, anonymous="none")
     time.sleep(0.5)
     assert ptt_state(srv) is not True, "nothing keyed the rig"
-    assert srv.get("/api/v1/radio/frequency", cookie=srv.admin_cookie).json().get("hz") == before
+    assert (roles_mock._frequency, roles_mock._mode) == before, "nothing reached the rig"
     lines = _audit_since(srv, mark)
     assert not any(" key-down " in l or " tx " in l for l in lines), lines
 
