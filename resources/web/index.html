@@ -6873,14 +6873,6 @@ function drawTxMeters(ctx, cw, ch, barX, barW) {
 
     // --- Selected meter's scale below the bar (same face as RX) ---
     drawTxMeterScale(ctx, barX, barW, auxTickY, auxNumY, fs, tickH, face);
-
-    // ALC readout — visible during DIGI TX or FreeDV TX (drives auto-gain)
-    if (digiTxActive || digiTuneActive || (freedvEnabled && micEnabled && isTransmitting)) {
-        ctx.fillStyle = alcVal > 0.05 ? '#ff4444' : '#44cc44';
-        ctx.font = 'bold 9px system-ui, sans-serif';
-        ctx.textAlign = 'right';
-        ctx.fillText('ALC ' + Math.round(alcVal * 100) + '%', barX + barW - 12, auxNumY);
-    }
 }
 
 // ============================================================
