@@ -117,7 +117,13 @@ def set_policy(srv, **fields):
 
 
 def ptt_state(srv):
-    return srv.get("/api/v1/radio/ptt", cookie=srv.admin_cookie).json().get("transmitting", False)
+    """True / False, or None while the server does not know the state:
+    GET /radio/ptt answers 200 with an empty body until a key has been set
+    or the rig has answered a read, and the mock answers none.  That is what
+    a test gets when nothing keyed before it (the Linux CI images have no
+    websockets package, so the tests that key are skipped there)."""
+    r = srv.get("/api/v1/radio/ptt", cookie=srv.admin_cookie)
+    return r.json().get("transmitting", False) if r.text.strip() else None
 
 
 # ---------------------------------------------------------------------------
@@ -462,7 +468,7 @@ def test_rest_does_not_touch_the_radio(srv):
     finally:
         set_policy(srv, anonymous="none")
     time.sleep(0.5)
-    assert ptt_state(srv) is False
+    assert ptt_state(srv) is not True, "nothing keyed the rig"
     assert srv.get("/api/v1/radio/frequency", cookie=srv.admin_cookie).json().get("hz") == before
     lines = _audit_since(srv, mark)
     assert not any(" key-down " in l or " tx " in l for l in lines), lines
