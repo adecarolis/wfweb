@@ -39,6 +39,11 @@ qmake wfweb.pro
 make -j$(nproc)
 ```
 
+A build from a checkout that is not the commit tagged for a release says so:
+`./wfweb --version`, the terminal status page and the page footer read
+`X.Y.Z+dev.<commit>` instead of the bare `X.Y.Z`. Quote that string in a bug
+report.
+
 ### Install
 
 ```bash

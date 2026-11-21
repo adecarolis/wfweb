@@ -187,8 +187,9 @@ The REST port is always web port + 1.
 
 The image points Qt's configuration and data roots at a single `/data`
 directory, so one volume persists everything: the settings file
-(`/data/wfweb/wfweb.conf`), the TLS certificate, the ADIF logbook and the
-SSTV gallery (all under `/data/wfweb/wfweb/`).
+(`/data/wfweb/wfweb.conf`), the TLS certificate, the ADIF logbook, the SSTV
+gallery and, with `--shared`, the accounts and the audit log (all under
+`/data/wfweb/wfweb/`).
 
 ```bash
 docker run --rm -it \
@@ -246,8 +247,42 @@ and `--manufacturer <id>` directly.
 > automatically from its install's `rigs/` directory based on the radio
 > it detects on the bus.
 
-To supply your own TLS certificate, place `wfweb-web.crt` and `wfweb-web.key`
-under `/data/wfweb/wfweb/` in the volume.
+To supply your own TLS certificate, mount it and name it with `--cert` and
+`--key` (PEM, unencrypted key; the certificate file may carry its chain), or
+place `wfweb-web.crt` and `wfweb-web.key` under `/data/wfweb/wfweb/` in the
+volume.
+
+---
+
+## Shared Station (accounts and access control)
+
+Without `--shared` anyone who can reach the published port can key the
+transmitter. For a station reached by other people, or from outside the LAN,
+add the flag and keep the volume:
+
+```bash
+docker run -d --name wfweb \
+  -v wfweb-data:/data \
+  -p 8080:8080 -p 8081:8081 \
+  k1fm/wfweb --lan 192.168.1.100 --lan-user admin --lan-pass secret --shared
+docker logs wfweb | grep 'setup code'
+```
+
+The first start prints a setup code in the log; the first browser to enter
+it creates the admin account. Accounts, sessions, reservations and the audit
+log are kept in `/data/wfweb/wfweb/shared` (`--shared-dir` moves them), so
+without the volume every restart asks for a new admin. Locked out:
+start the container once with `--shared --shared-reset-admin` added and read
+the new code from the log.
+
+Behind a reverse proxy that terminates TLS (Caddy, nginx, Traefik, a
+Cloudflare tunnel), name the proxy's address as the container sees it with
+`--trust-proxy` (with the proxy on the Docker host and the default bridge
+that is usually the bridge gateway, `172.17.0.1`; the audit log shows the
+address connections arrive from), so the audit log and the login lockout see
+the visitor's address and not the proxy's. Do not publish 8081 beyond the LAN: it is plain HTTP
+and accepts API tokens. Everything else is in
+[SHARED_STATION.md](SHARED_STATION.md).
 
 ---
 
@@ -260,7 +295,7 @@ wfweb [options]
 
 Connection:
   --serial-port <path>    Serial port device (e.g. /dev/ttyUSB0)
-  --civ <addr>            CI-V address in decimal (e.g. 148 for IC-7300)
+  --civ <addr>            CI-V address, hex or decimal (0x94 or 148 for IC-7300)
   --manufacturer <id>     Manufacturer (0=Icom, 1=Kenwood, 2=Yaesu)
 
 LAN mode:
@@ -283,9 +318,22 @@ Server:
   --no-remote-log         Disable remote logging even if enabled in settings
   --remote-log-decodes    Also forward FT8/FT4 decodes to the remote logger
   --sstv-dir <dir>        SSTV gallery (default /data/wfweb/wfweb/sstv)
+  --cert <file> --key <file>  Serve HTTPS with your own certificate and key
+  -n --name <tag>         Name shown in the top bar and the browser tab
+  --no-autoconnect        Start with the LAN session closed (also
+                          WFWEB_NO_AUTOCONNECT=1)
+
+Shared Station:
+  --shared                Accounts, login and access control
+  --shared-dir <dir>      Accounts, sessions, audit log
+                          (default /data/wfweb/wfweb/shared)
+  --shared-reset-admin    Print a setup code that resets or creates an admin
+  --trust-proxy <cidr>    Reverse proxy whose X-Forwarded-For / -Proto
+                          headers are trusted (comma separated)
 
 Audio:
   --audio-system <id>     Audio backend (0=Qt, 1=PortAudio, 2=RtAudio)
+  --audio-device <name>   Rig audio device by name; 'list' prints them
 
 General:
   -s --settings <file>    Path to a wfweb settings file (see "pre-made
@@ -295,7 +343,7 @@ General:
   --no-tui                Plain log instead of the terminal status page
                           (already the default in this image)
   -b --background         Run as daemon
-  -d --debug              Enable debug logging
+  -d --debug [file]       Enable debug logging (optionally to a file)
   -v --version            Show version
 ```
 
