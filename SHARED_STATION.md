@@ -373,8 +373,8 @@ A visitor admitted at `control` can therefore take the seat and tune. A
 command the server has no level for is `admin`.
 
 A command the page sends that the level lacks is refused on the page with a
-short toast ("Needs control access — log in", "Needs operate access (you
-have control)") and, should anything reach the server regardless, refused
+red note in the middle of the screen ("Needs control access — log in",
+"Needs operate access (you have control)") and, should anything reach the server regardless, refused
 there with the same answer. The PTT key is dimmed for anyone who cannot
 transmit; the frequency display and MODE for a listener.
 

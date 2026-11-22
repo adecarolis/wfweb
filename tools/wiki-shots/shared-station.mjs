@@ -67,7 +67,7 @@ if (phase === 'setup') {
     await seat(me, 'seat-free');
     await me.evaluate(() => send({ cmd: 'setFrequency', value: 14074000 })); await wait(me, 250);
     await crop(me, 'toast-take-first', '#accessToast', 8);
-    await wait(me, 2600);
+    await wait(me, 3700);   // the refusal stays 3.5 s
     await me.click('#seatTag'); await wait(me, 600);
     await seat(me, 'seat-yours');
     await me.click('#seatTag'); await wait(me, 300);
@@ -85,7 +85,7 @@ if (phase === 'setup') {
     await seat(me, 'seat-held');
     await me.evaluate(() => send({ cmd: 'setFrequency', value: 14074000 })); await wait(me, 250);
     await crop(me, 'toast-held', '#accessToast', 8);
-    await wait(me, 2600);
+    await wait(me, 3700);   // the refusal stays 3.5 s
     await me.click('#seatTag'); await wait(me, 800);
     await seat(me, 'seat-asked');
     await crop(other, 'prompt-request', '#seatPrompt', 6);
