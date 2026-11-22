@@ -201,6 +201,19 @@ int main()
                 "an IPv6 zone id carries no text into the log");
     }
 
+    // --- public addresses (the console page's internet warning) ---
+    {
+        for (const char *a : {"127.0.0.1", "10.1.2.3", "172.16.0.1", "172.31.255.254", "192.168.1.20",
+                              "100.64.0.1", "100.101.102.103", "169.254.10.1", "0.0.0.0", "224.0.0.251",
+                              "255.255.255.255", "::1", "::", "fe80::1", "fd7a:115c:a1e0::1", "fc00::5",
+                              "ff02::1", "::ffff:192.168.1.20", "::ffff:127.0.0.1"})
+            require(!AccessControl::publicAddress(QHostAddress(QLatin1String(a))), qPrintable(QString("not public: ") + a));
+        for (const char *a : {"8.8.8.8", "203.0.113.9", "172.32.0.1", "100.128.0.1", "1.1.1.1",
+                              "2001:4860:4860::8888", "2a01:e0a::1", "::ffff:8.8.8.8"})
+            require(AccessControl::publicAddress(QHostAddress(QLatin1String(a))), qPrintable(QString("public: ") + a));
+        require(!AccessControl::publicAddress(QHostAddress()), "no address is not public");
+    }
+
     QTemporaryDir tmp;
     require(tmp.isValid(), "temporary directory");
     const QString dir = tmp.filePath("shared");

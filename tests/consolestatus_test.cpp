@@ -122,6 +122,31 @@ int main()
         require(!contains(lines, "Rig"), "no rig line before the server exists");
     }
 
+    // --- reachable from the internet ---
+    {
+        ConsoleSnapshot s = full;
+        require(!contains(ConsoleStatus::render(s, 80, 24), "Internet"), "no internet line on a LAN");
+        s.publicClient = "203.0.113.9 at 14:02";
+        s.publicClients = 1;
+        QStringList lines = ConsoleStatus::render(s, 80, 24);
+        require(contains(lines, "Internet   PUBLIC CLIENT 203.0.113.9 at 14:02"), "public client named");
+        require(!contains(lines, "addresses so far"), "no count for a single address");
+        require(contains(lines, "meant for a LAN or a VPN"), "what wfweb is for");
+        s.publicClients = 3;
+        s.publicInterface = "198.51.100.4";
+        lines = ConsoleStatus::render(s, 80, 24);
+        require(contains(lines, "(3 addresses so far)"), "count of public addresses");
+        require(contains(lines, "           this host has the public address 198.51.100.4"),
+                "public interface on its own line under the client");
+        s.publicClient.clear();
+        lines = ConsoleStatus::render(s, 80, 24);
+        require(contains(lines, "Internet   this host has the public address 198.51.100.4"), "public interface alone");
+        // A short terminal keeps the warning over the less urgent lines.
+        s.publicClient = "203.0.113.9 at 14:02";
+        lines = ConsoleStatus::render(s, 80, 12);
+        require(contains(lines, "PUBLIC CLIENT"), "warning survives a short terminal");
+    }
+
     // --- shared station and a real certificate ---
     {
         ConsoleSnapshot s = full;

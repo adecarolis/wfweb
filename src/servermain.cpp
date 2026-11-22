@@ -428,6 +428,10 @@ ConsoleSnapshot servermain::consoleSnapshot()
         snap.shared = web->sharedMode();
         snap.sharedUsers = web->sharedUserCount();
         snap.setupCode = web->sharedSetupCode();
+        const webServer::Exposure exposure = web->exposure();
+        snap.publicClient = exposure.client;
+        snap.publicClients = exposure.clients;
+        snap.publicInterface = exposure.iface;
         snap.browsers = web->browserCount();
         switch (web->webListenState()) {
         case webServer::ListenPending: snap.web = ConsoleSnapshot::WebStarting; break;

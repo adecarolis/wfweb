@@ -100,6 +100,13 @@ public:
     bool sharedMode() const { return sharedMode_.load(); }
     int sharedUserCount() const { return sharedUsers_.load(); }
     QString sharedSetupCode() const;
+    // Signs that this server is reachable from the internet, which wfweb is
+    // not meant to be (a LAN or a VPN only): the last client that came from a
+    // public address ("203.0.113.9 at 14:02"), how many such addresses have
+    // connected, and a public IPv4 address on one of this host's interfaces.
+    // Clients that came through a --trust-proxy proxy are not counted.
+    struct Exposure { QString client; int clients = 0; QString iface; };
+    Exposure exposure() const;
 
 signals:
     void closed();
@@ -315,6 +322,14 @@ private:
     void closeUserClients(const QString &userId, const QString &reason);
     RequestContext requestContext(QTcpSocket *socket, const QByteArray &headerSection);
     bool trustedProxy(const QHostAddress &peer) const;
+    void notePublicPeer(const QHostAddress &peer);
+    void checkPublicInterfaces(quint16 port);
+    mutable QMutex exposureMutex_;
+    Exposure exposure_;
+    QSet<QString> publicPeers_;
+    bool onOwnIpv6Prefix(const QHostAddress &peer);
+    QList<QPair<QHostAddress, int>> ownIpv6Prefixes_;
+    qint64 ownIpv6PrefixesMs_ = 0;
     void handleAuthRequest(QTcpSocket *socket, const QString &method, const QString &path,
                            const QByteArray &body, const RequestContext &ctx);
     void handleSharedUsersRequest(QTcpSocket *socket, const QString &method, const QString &path,

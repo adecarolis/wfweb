@@ -441,6 +441,28 @@ bool AccessControl::inSubnets(const QHostAddress &addrIn, const QList<QPair<QHos
     return false;
 }
 
+bool AccessControl::publicAddress(const QHostAddress &addrIn)
+{
+    bool v4 = false;
+    const quint32 ip4 = addrIn.toIPv4Address(&v4);
+    const QHostAddress addr = v4 ? QHostAddress(ip4) : addrIn;
+    if (addr.isNull()) return false;
+    static const QList<QPair<QHostAddress, int>> local = [] {
+        QList<QPair<QHostAddress, int>> l;
+        for (const char *net : {"0.0.0.0/8", "10.0.0.0/8", "100.64.0.0/10", "127.0.0.0/8",
+                                "169.254.0.0/16", "172.16.0.0/12", "192.168.0.0/16", "198.18.0.0/15",
+                                "224.0.0.0/4", "240.0.0.0/4",
+                                "::/128", "::1/128", "fe80::/10", "fec0::/10", "fc00::/7", "ff00::/8"})
+            l.append(QHostAddress::parseSubnet(QLatin1String(net)));
+        return l;
+    }();
+    if (addr.protocol() != QAbstractSocket::IPv4Protocol && addr.protocol() != QAbstractSocket::IPv6Protocol)
+        return false;
+    for (const auto &subnet : local)
+        if (addr.isInSubnet(subnet.first, subnet.second)) return false;
+    return true;
+}
+
 QHostAddress AccessControl::forwardedClient(const QHostAddress &peer, const QByteArray &forwardedFor,
                                             const QList<QPair<QHostAddress, int>> &trustedProxies)
 {

@@ -5,14 +5,22 @@ reaches: a club station, a remote station shared with friends, a receiver
 anyone may listen to. Off unless asked for; with the flag off, wfweb behaves
 exactly as before.
 
-> **Read this first.** Without `--shared`, anyone who can reach the web port
-> can key the transmitter, send CW, rewrite the station callsign and the
-> logbook. That is fine on a home LAN and nowhere else. If a wfweb server is
-> reachable from the internet, run it with `--shared`, and put it behind a
-> reverse proxy or a private network (Tailscale, a VPN) as well — see
-> *Deployment* below. The station licensee stays the responsible control
-> operator whatever the software does; Shared Station gives them accounts,
-> an audit log and the means to say who may transmit.
+> **Read this first: a shared station belongs on a local network or behind a
+> VPN, not on the open internet.** `--shared` is made for a club or a
+> multi-operator station whose members reach it on the station's own network
+> or over a private network (Tailscale, WireGuard, the club's VPN). It is
+> **not** meant to be exposed to the public internet: do not forward its
+> ports from the router and do not run it on a public address. Accounts, the
+> seat and the audit log decide who may do what among the people already let
+> onto that network; they are not a front door for the whole internet. See
+> *Deployment* below.
+>
+> Without `--shared`, anyone who can reach the web port can key the
+> transmitter, send CW, rewrite the station callsign and the logbook. That
+> is fine on a home LAN with one operator and nowhere else. The station
+> licensee stays the responsible control operator whatever the software
+> does; Shared Station gives them accounts, an audit log and the means to
+> say who may transmit.
 
 Server build only. The Standalone (browser-only) build drives a USB rig from
 the browser it runs in and has nothing to share.
@@ -489,43 +497,58 @@ code is valid for that run only, until it is used.
 
 ## Deployment
 
+**A shared station lives on a private network.** Its members reach it in
+one of two ways:
+
+1. **The local network**: the club's LAN, the station's Wi-Fi.
+2. **A private network or VPN** (Tailscale, WireGuard, ZeroTier, the club's
+   own VPN) for members away from the station. Nothing is exposed to the
+   internet; wfweb's own certificate and accounts are enough. Tailscale's
+   `tailscale serve` also gives you a trusted certificate.
+
+**Not supported: a port forward or a public address.** Do not forward
+8080 / 8081 from the router to wfweb, and do not run it on a host with a
+public address (a VPS, a DMZ) unless a firewall admits nothing but the VPN.
+wfweb's HTTP server is small and hand-written, and Shared Station has been
+reviewed and fuzzed for a station whose users are already on its network;
+it is not built, tested or maintained as a public web service. The
+console status page and the log say so when a client comes from a public
+address (see *What else changed*).
+
 **`--shared` needs TLS.** The session cookie must not travel in clear, so
 wfweb refuses to start in shared mode on plain HTTP unless `--trust-proxy`
 names a TLS-terminating proxy in front of it. Logins are refused on the
 plain-HTTP REST port (8081) whatever the mode; bearer tokens are accepted
-there, so keep that port off the internet (it exists for microcontrollers on
-the LAN).
+there, so keep that port on the LAN (it exists for microcontrollers there).
 
-Three ways to reach a shared station from outside, best first:
-
-1. **A private network** (Tailscale, WireGuard, ZeroTier). Nothing is
-   exposed to the internet; wfweb's own certificate and accounts are enough.
-   Tailscale's `tailscale serve` also gives you a trusted certificate.
-2. **An identity-aware proxy** (Cloudflare Tunnel + Access, Pangolin). The
-   proxy terminates TLS with a real certificate, asks for identity, and
-   forwards to wfweb on `localhost:8080`. Run wfweb with
-   `--trust-proxy 127.0.0.1` so the audit log and the lockout see the
-   visitor's address, not the proxy's. Three things the proxy must do: speak
-   **HTTPS** to wfweb (`https://localhost:8080`: wfweb keeps serving TLS
-   on its own certificate, so switch the proxy's verification of it off,
-   `noTLSVerify` in cloudflared, `tls_insecure_skip_verify` in Caddy);
-   pass the **`Host`** header through as the browser sent it (nginx:
-   `proxy_set_header Host $host;`), or every WebSocket, and every change
-   made from the page, is refused with `403` as a cross-site one; and
-   serve the station over **HTTPS only**: a proxy that says
-   `X-Forwarded-Proto: http` (the browser came in on port 80) has logins
-   refused, as on any plain-HTTP hop. Mapping the proxy's identity onto wfweb
-   accounts is planned; until then users log in to the proxy and then to
-   wfweb.
-3. **A port forward** with a real certificate: `--cert fullchain.pem --key
-   privkey.pem` from Let's Encrypt (restart wfweb after a renewal), and
-   `--shared`. wfweb's HTTP server is small and hand-written; a reverse
-   proxy (Caddy, nginx) in front of it is still the better place to meet the
-   internet.
+**An identity-aware proxy** (Cloudflare Tunnel + Access, Pangolin) is the
+same idea from the other side: the proxy refuses everyone it does not know
+before a single request reaches wfweb, so it plays the part of the VPN, as
+long as its access policy names your members and never "everyone". A
+plain reverse proxy facing the internet that passes every visitor on
+(nginx, Caddy on their own) is a port forward with extra steps and is not
+supported either; on the LAN it is fine. The
+proxy terminates TLS with a real certificate, asks for identity, and
+forwards to wfweb on `localhost:8080`. Run wfweb with
+`--trust-proxy 127.0.0.1` so the audit log and the lockout see the
+visitor's address, not the proxy's. Three things the proxy must do: speak
+**HTTPS** to wfweb (`https://localhost:8080`: wfweb keeps serving TLS
+on its own certificate, so switch the proxy's verification of it off,
+`noTLSVerify` in cloudflared, `tls_insecure_skip_verify` in Caddy);
+pass the **`Host`** header through as the browser sent it (nginx:
+`proxy_set_header Host $host;`), or every WebSocket, and every change
+made from the page, is refused with `403` as a cross-site one; and
+serve the station over **HTTPS only**: a proxy that says
+`X-Forwarded-Proto: http` (the browser came in on port 80) has logins
+refused, as on any plain-HTTP hop. Mapping the proxy's identity onto wfweb
+accounts is planned; until then users log in to the proxy and then to
+wfweb.
 
 Whatever the route, the browser needs a certificate it trusts for the
 `Secure` cookie: wfweb's self-signed one works after the warning is
-accepted; a real one is better.
+accepted; a real one is better (`tailscale serve`, or `--cert` / `--key`
+with a certificate from your own CA or Let's Encrypt via DNS validation,
+which needs no open port; restart wfweb after a renewal).
 
 ## REST
 
@@ -656,6 +679,15 @@ These apply with or without `--shared`:
   with the self-signed certificate, which would lock the browser out).
 - The console status page states the access mode: *open - anyone who
   reaches this port can transmit* without `--shared`.
+- The server says when the internet can reach it, open or shared: a client
+  from a public address (anything but loopback, the private ranges,
+  link-local, 100.64/10 as Tailscale uses, IPv6 unique-local, or the host's
+  own IPv6 prefix) puts an `Internet  PUBLIC CLIENT <address>` line on the
+  console status page and a `Network:` warning in the log (the first ten
+  addresses; the page keeps the count), and so does a public IPv4 address
+  on one of the host's interfaces (a VPS). A client handed on by a
+  `--trust-proxy` proxy is not counted. It is a warning only: nothing is
+  refused.
 
 ## On responsibility
 

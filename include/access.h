@@ -272,6 +272,11 @@ public:
     static QHostAddress forwardedClient(const QHostAddress &peer, const QByteArray &forwardedFor,
                                         const QList<QPair<QHostAddress, int>> &trustedProxies);
     static bool inSubnets(const QHostAddress &addr, const QList<QPair<QHostAddress, int>> &subnets);
+    // An address that may be anywhere on the internet: not loopback, not a
+    // private / link-local / CGNAT (Tailscale's 100.64/10) / unique-local
+    // block, not multicast or reserved.  The console page warns when a
+    // client comes from one: wfweb is meant for a LAN or a VPN.
+    static bool publicAddress(const QHostAddress &addr);
     static QByteArray randomToken();                   // 32 bytes, base64url, no padding
     static QByteArray tokenHash(const QByteArray &token); // SHA-256, hex
     static QString randomId(int bytes = 8);            // hex

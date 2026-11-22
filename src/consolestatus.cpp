@@ -128,8 +128,8 @@ QStringList ConsoleStatus::render(const ConsoleSnapshot &snap, int cols, int row
         return QStringList();
 
     // In drop order: when the terminal is too short, the earliest kinds go first.
-    enum Kind { Blank, CertNote, Warning, LogFile, RigCtl, Rest, AccessRow, Browsers,
-                Frequency, ExtraUrl, Rig, Heading, Keys, Title, FirstUrl };
+    enum Kind { Blank, CertNote, Warning, LogFile, RigCtl, Rest, ExposedNote, AccessRow, Browsers,
+                Frequency, ExtraUrl, Rig, Exposed, Heading, Keys, Title, FirstUrl };
     struct Row { Kind kind; QString text; };
     QList<Row> page;
 
@@ -192,6 +192,25 @@ QStringList ConsoleStatus::render(const ConsoleSnapshot &snap, int cols, int row
         else
             access = QString("shared station, %1 account%2").arg(snap.sharedUsers).arg(snap.sharedUsers == 1 ? "" : "s");
         field(AccessRow, "Access", access);
+
+        // wfweb is for a LAN or a VPN: say so when the internet can reach it.
+        const QString cont = QString(11, QLatin1Char(' '));
+        bool exposed = false;
+        if (!snap.publicClient.isEmpty()) {
+            QString text = "PUBLIC CLIENT " + snap.publicClient;
+            if (snap.publicClients > 1)
+                text += QString(" (%1 addresses so far)").arg(snap.publicClients);
+            field(Exposed, "Internet", text);
+            exposed = true;
+        }
+        if (!snap.publicInterface.isEmpty()) {
+            const QString text = "this host has the public address " + snap.publicInterface;
+            if (exposed) add(Exposed, cont + text);
+            else field(Exposed, "Internet", text);
+            exposed = true;
+        }
+        if (exposed)
+            add(ExposedNote, cont + "wfweb is meant for a LAN or a VPN, not the internet");
     }
     if (!snap.restUrl.isEmpty())
         field(Rest, "REST API", snap.restFailed ? "FAILED to listen (" + snap.restUrl + ")" : snap.restUrl);

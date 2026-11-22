@@ -1,4 +1,5 @@
 #include "webserver.h"
+#include <QNetworkInterface>
 #include "freedvprocessor.h"
 #include <QtMath>
 #include <codec2/freedv_api.h>
@@ -549,6 +550,8 @@ void webServer::init(quint16 httpPort, quint16 wsPort)
     if (sharedMode_ && restServer && restListen_.load() == ListenOk)
         qWarning() << "Shared: the plain-HTTP REST port" << wsPort
                    << "carries bearer tokens in clear text; keep it off the internet";
+    if (webListen_.load() == ListenOk)
+        checkPublicInterfaces(httpPort);
 
     // Connection hygiene for the hand-rolled HTTP side: see sweepHttpConnections().
     httpSweepTimer = new QTimer(this);
@@ -800,6 +803,7 @@ void webServer::onHttpConnection()
     HttpConn conn;
     conn.openedMs = conn.lastProgressMs = QDateTime::currentMSecsSinceEpoch();
     httpConns.insert(socket, conn);
+    notePublicPeer(clientAddress(socket->peerAddress(), socket->peerPort(), socket->localPort()));
     // Tag connections arriving on the plain-HTTP REST port so onHttpReadyRead
     // can serve them the signpost page instead of the SPA (#69).
     if (srv == restServer)
@@ -2393,6 +2397,7 @@ void webServer::onWsNewConnection()
     AccessPrincipal who;
     const QHostAddress wsPeer = clientAddress(pSocket->peerAddress(), pSocket->peerPort(), pSocket->localPort());
     QString ip = peerIp(wsPeer);
+    notePublicPeer(wsPeer);
     if (sharedMode_ && access_) {
         const QNetworkRequest req = pSocket->request();
         if (trustedProxy(wsPeer))
@@ -10416,6 +10421,86 @@ void webServer::configureShared(bool enableOverride, const QString &dirOverride,
 bool webServer::trustedProxy(const QHostAddress &peer) const
 {
     return AccessControl::inSubnets(peer, trustedProxies_);
+}
+
+// wfweb, open or shared, is meant for a local network or a VPN.  A client
+// from a public address means a port forward, a public host or a VPN that
+// routes the internet in: say so on the console page and in the log, once
+// per address (the first few: a scanner brings hundreds).  Never refused --
+// a wrong guess must not lock anyone out of their station.  A client handed
+// on by a --trust-proxy proxy is the identity-aware proxy's to vet.
+void webServer::notePublicPeer(const QHostAddress &peer)
+{
+    if (!AccessControl::publicAddress(peer) || trustedProxy(peer) || onOwnIpv6Prefix(peer)) return;
+    static const int kLoggedAddresses = 10;
+    const QString ip = peerIp(peer);
+    int seen;
+    bool fresh;
+    {
+        QMutexLocker lock(&exposureMutex_);
+        exposure_.client = ip + " at " + QDateTime::currentDateTime().toString("hh:mm");
+        fresh = !publicPeers_.contains(ip) && publicPeers_.size() < 4096;
+        if (fresh) publicPeers_.insert(ip);
+        exposure_.clients = publicPeers_.size();
+        seen = exposure_.clients;
+    }
+    if (!fresh || seen > kLoggedAddresses) return;
+    qWarning().noquote() << "Network: a connection from the public address" << ip
+                         << "- this server is reachable from the internet. wfweb is meant for a local"
+                            " network or a VPN, never the open internet (SHARED_STATION.md, Deployment)";
+    if (seen == kLoggedAddresses)
+        qWarning() << "Network: further public addresses are counted on the status page, not logged";
+}
+
+// A LAN client that reaches us by our global IPv6 address (the router's DNS
+// or mDNS hands it out) comes from a global address of its own, on our
+// prefix: the same network, not the internet.  So is this host itself.
+bool webServer::onOwnIpv6Prefix(const QHostAddress &peer)
+{
+    bool v4 = false;
+    peer.toIPv4Address(&v4);
+    if (v4 || peer.protocol() != QAbstractSocket::IPv6Protocol) return false;
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    if (now - ownIpv6PrefixesMs_ > 60000) {   // prefixes move (ISP renumbering), slowly
+        ownIpv6PrefixesMs_ = now;
+        ownIpv6Prefixes_.clear();
+        for (const QNetworkInterface &iface : QNetworkInterface::allInterfaces())
+            for (const QNetworkAddressEntry &entry : iface.addressEntries())
+                if (entry.ip().protocol() == QAbstractSocket::IPv6Protocol && entry.prefixLength() > 0)
+                    ownIpv6Prefixes_.append({entry.ip(), qBound(48, entry.prefixLength(), 64)});
+    }
+    return AccessControl::inSubnets(peer, ownIpv6Prefixes_);
+}
+
+// A public IPv4 address on an interface (a VPS, a host in the DMZ): the
+// server is likely reachable from anywhere unless a firewall says otherwise.
+// IPv6 is left out: nearly every home host has a global IPv6 address, kept
+// out of reach by the router's firewall.
+void webServer::checkPublicInterfaces(quint16 port)
+{
+    for (const QNetworkInterface &iface : QNetworkInterface::allInterfaces()) {
+        const QNetworkInterface::InterfaceFlags flags = iface.flags();
+        if (!(flags & QNetworkInterface::IsUp) || (flags & QNetworkInterface::IsLoopBack)) continue;
+        for (const QNetworkAddressEntry &entry : iface.addressEntries()) {
+            const QHostAddress ip = entry.ip();
+            if (ip.protocol() != QAbstractSocket::IPv4Protocol || !AccessControl::publicAddress(ip)) continue;
+            {
+                QMutexLocker lock(&exposureMutex_);
+                exposure_.iface = ip.toString();
+            }
+            qWarning().noquote() << QString("Network: this host has the public address %1 on %2 - unless a "
+                                            "firewall lets only your LAN or VPN reach port %3, the internet can. "
+                                            "wfweb is meant for a local network or a VPN (SHARED_STATION.md, "
+                                            "Deployment)").arg(ip.toString(), iface.name()).arg(port);
+            return;
+        }
+    }
+}
+
+webServer::Exposure webServer::exposure() const
+{
+    QMutexLocker lock(&exposureMutex_);
+    return exposure_;
 }
 
 webServer::RequestContext webServer::requestContext(QTcpSocket *socket, const QByteArray &headerSection)

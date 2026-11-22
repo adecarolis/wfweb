@@ -115,7 +115,7 @@ If you'd rather not depend on a third-party host, build the static bundle yourse
 
 In every case, once wfweb is running you open `https://<host>:8080` in your browser and accept the self-signed certificate warning.
 
-> **Who can reach that port can transmit.** Out of the box the page has no login, which is right for a home LAN and nowhere else. For a station reached by other people, or from outside, start the server with `--shared` — see [Shared Station](#shared-station--accounts-access-levels-and-one-operators-seat).
+> **Who can reach that port can transmit.** Out of the box the page has no login, which is right for a home LAN and nowhere else. For a station reached by other people, start the server with `--shared` — see [Shared Station](#shared-station--accounts-access-levels-and-one-operators-seat). Either way, keep wfweb on your local network or behind a VPN: do not forward its ports to the internet.
 
 ### 1. Native build — USB radio
 
@@ -384,7 +384,7 @@ The first start prints a setup code on the console and in the log; the first bro
 | **Callsigns and the log** | Every QSO records who made it (`OPERATOR`) next to the call it was made under (`STATION_CALLSIGN`). An account can be set to transmit under its own callsign while it holds the seat; those QSOs are its own, not the club's |
 | **Scripts** | API tokens for the REST API (`Authorization: Bearer`): a script reads the station and logs, and an admin's can set the rules (TX inhibit). The radio itself is operated from the page only (over REST it is read-only), and accounts are managed from a logged-in browser only |
 
-`--shared` needs HTTPS: wfweb's own certificate, yours with `--cert` / `--key`, or a TLS-terminating proxy named with `--trust-proxy`. To reach the station from outside, a private network (Tailscale, WireGuard) or an identity-aware proxy in front of it is the better door than a forwarded port. **[SHARED_STATION.md](SHARED_STATION.md)** has the setup, the deployment options, the settings, the files and the REST routes; the wiki's [Shared Station](https://github.com/adecarolis/wfweb/wiki/Shared-Station) page is for the people using such a station, with pictures.
+`--shared` needs HTTPS: wfweb's own certificate, yours with `--cert` / `--key`, or a TLS-terminating proxy named with `--trust-proxy`. **Shared Station is for a club or multi-operator station reached on its local network or over a VPN** (Tailscale, WireGuard, the club's own), **not for the public internet**: no port forward, no public address. An identity-aware proxy that admits only your members (Cloudflare Access) plays the part of the VPN. **[SHARED_STATION.md](SHARED_STATION.md)** has the setup, the deployment options, the settings, the files and the REST routes; the wiki's [Shared Station](https://github.com/adecarolis/wfweb/wiki/Shared-Station) page is for the people using such a station, with pictures.
 
 The station licensee stays responsible for what the station transmits. Give `operate` to licensed people you know.
 
@@ -465,7 +465,7 @@ All settings can be passed as CLI flags. Run `wfweb --help` for the full list.
 
 ### Terminal status page
 
-Started from an interactive terminal, wfweb shows a status page instead of the scrolling log: the URL to open for each network address, the rig and its connection, frequency and mode, connected browsers, the access mode (open, or Shared Station, with the setup code while no admin exists), the REST and rigctld ports, the log file and the last warning. It redraws to fit any terminal size.
+Started from an interactive terminal, wfweb shows a status page instead of the scrolling log: the URL to open for each network address, the rig and its connection, frequency and mode, connected browsers, the access mode (open, or Shared Station, with the setup code while no admin exists), a warning when a client connects from a public internet address or the host has one (wfweb belongs on a LAN or behind a VPN), the REST and rigctld ports, the log file and the last warning. It redraws to fit any terminal size.
 
 - **`l`** switches to the live log (same format as before, with the last 500 lines replayed) and back.
 - **`q`** or Ctrl-C quits.

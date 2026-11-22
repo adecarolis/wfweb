@@ -28,6 +28,12 @@ struct ConsoleSnapshot {
     bool shared = false;
     int sharedUsers = 0;
     QString setupCode;
+    // Signs the server is reachable from the internet (webServer::exposure):
+    // the last client from a public address ("203.0.113.9 at 14:02"), how
+    // many such addresses, a public IPv4 address on an interface.
+    QString publicClient;
+    int publicClients = 0;
+    QString publicInterface;
     QStringList urls;           // one per reachable address, best first
     QString restUrl;            // plain-HTTP REST endpoint, empty when none
     bool restFailed = false;

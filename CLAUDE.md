@@ -379,7 +379,18 @@ Run them after any change to the worker, the shim, the vendored crate or
 the panel.
 
 ### Shared Station (`--shared`): accounts and the gate
-Server build only; off by default and then nothing changes. `AccessControl`
+Server build only; off by default and then nothing changes. **Scope: a club
+or multi-operator station reached on its LAN or over a VPN, never exposed
+to the public internet** (no port forward, no public address; an
+identity-aware proxy that admits only members counts as the VPN; the user's
+decision, 2026-11-22, in SHARED_STATION.md and the README). The server
+says when it is reachable anyway, open mode too: `notePublicPeer` (every
+HTTP accept and WS connection; `AccessControl::publicAddress`, the host's
+own IPv6 prefixes and `--trust-proxy` peers exempt) and
+`checkPublicInterfaces` (a public IPv4 on an interface; never IPv6, which
+every home host has) feed `webServer::exposure()` -> the console page's
+`Internet` row and a `Network:` log warning. Warning only, never refused.
+`AccessControl`
 (`include/access.h`, `src/access.cpp`) owns accounts, sessions, API tokens,
 the setup code, the lockout and `audit.log` in `<data dir>/shared`
 (`--shared-dir`); it is Qt5Core + QtNetwork only (`QPasswordDigestor`), no
