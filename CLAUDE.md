@@ -1865,6 +1865,16 @@ thread's `rigCaps->commands[funcKeySpeed]` (cwSpeedRange) detached it and
 freed the old data while the main thread's `initPeriodicPolling()` walked it:
 SIGSEGV 2 s after start on the bench, once (2026-11-22, read off the core).
 
+**`~webServer` takes the browsers' sockets off its slots before it deletes
+them** (`c->disconnect(this)`): a `QWebSocket`'s destructor closes the
+socket and emits `disconnected`, and `onWsDisconnected` -> `seatOnDisconnect`
+-> `applyOnAirCall` reached the RADE processor, deleted a few lines up when
+its thread finished (`deleteLater` on `QThread::finished` runs inside
+`wait()`; the pointers are now nulled there). Every stop of a `--shared`
+server with a browser connected died with SIGSEGV (three cores, 2026-11-18
+and 2026-11-22; `tests/test_shutdown_clients.py`). Nothing in the destructor
+may call back into the server's own slots.
+
 ## Workflow Rules
 
 ### 1. Plan First

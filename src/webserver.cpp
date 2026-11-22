@@ -201,26 +201,33 @@ webServer::~webServer()
     if (freedvTxDrainTimer) {
         freedvTxDrainTimer->stop();
     }
+    // Each of these objects is deleted as its thread finishes (deleteLater
+    // on QThread::finished), inside wait(): the pointer goes with it.
     if (freedvThread) {
         freedvThread->quit();
         freedvThread->wait();
+        freedvProcessor = nullptr;
     }
     if (radeThread) {
         if (radeProcessor) radeProcessor->stopRequested.store(true);
         radeThread->quit();
         radeThread->wait();
+        radeProcessor = nullptr;
     }
     if (dwThread) {
         dwThread->quit();
         dwThread->wait();
+        dwProc = nullptr;
     }
     if (txConverterThread) {
         txConverterThread->quit();
         txConverterThread->wait();
+        txConverter = nullptr;
     }
     if (rxConverterThread) {
         rxConverterThread->quit();
         rxConverterThread->wait();
+        rxConverter = nullptr;
     }
 #ifdef Q_OS_MACOS
     if (tlsProxyWorker) {
@@ -241,6 +248,13 @@ webServer::~webServer()
         httpServer->close();
     }
     audioClients.clear();
+    // A QWebSocket's destructor closes its socket and emits disconnected.
+    // Not to us: onWsDisconnected would run the seat and on-air bookkeeping
+    // on a server half torn down (it reached the RADE processor deleted
+    // above: SIGSEGV on every stop of a --shared server with a browser
+    // connected, 2026-11-22).
+    for (QWebSocket *c : qAsConst(wsClients))
+        c->disconnect(this);
     qDeleteAll(wsClients);
     wsClients.clear();
 }
