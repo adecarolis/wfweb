@@ -90,11 +90,27 @@ void cachingQueue::run()
             //if (it != queue.end() && it.key() == prio)
             auto it = queue.find(prio);
             if (it != queue.end()) {
+                // The oldest item of this priority is the last of its run.
+                // Among the immediate ones a command that carries a value (a
+                // set, or a read addressed by channel / register, which the
+                // caller orders itself) goes before the plain reads queued
+                // ahead of it: the status re-asks stale values at immediate
+                // priority, one a tick, and a set waited its turn behind
+                // them -- a second or more on the macOS CI runner
+                // (test_set_is_not_held_up_by_refresh_reads, 2026-11-22). A
+                // read that goes out after the set answers with the new
+                // value, which is what it was asked for. Sets keep their
+                // order among themselves.
+                auto pick = queue.end();
                 while (it != queue.end() && it.key() == prio)
                 {
+                    if (prio == priorityImmediate && it.value().param.isValid())
+                        pick = it;
                     it++;
                 }
                 it--;
+                if (pick != queue.end())
+                    it = pick;
                 auto item = it.value();
 
                 // A recurring read the rig keeps refusing sits out its retry

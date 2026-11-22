@@ -1207,6 +1207,14 @@ modeInfo.filter = 1;
 // behind (6 s+ on the macOS runner). Not FA in the mock: five FAs in a row
 // read as "radio powered off" (consecutiveFAErrors) and polling stops.
 
+// Among immediate items, one that carries a value (a set, or a read addressed
+// by channel / register) goes out before the plain reads queued ahead of it;
+// sets keep their order among themselves. The status re-asks stale values at
+// immediate priority, one per tick, and a set used to wait behind them (a
+// second or more on the macOS runner, test_set_is_not_held_up_by_refresh_reads).
+// So never rely on a plain read queued before a set going out first: a read
+// that must see the old value has to be answered before the set is queued.
+
 // EXCEPTION: funcMemoryContents is addressed by channel, so two of them are
 // never duplicates. Use add() — addUnique() compares command+receiver only
 // and would evict a queued read/write for a *different* channel (#108).
