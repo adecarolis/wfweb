@@ -30,7 +30,6 @@ html, body {
     width: 100%;
     height: var(--viewport-height);
     height: 100dvh; /* Dynamic viewport height for modern browsers */
-    max-width: calc(100vh * 16 / 9);
     margin: 0 auto;
     overflow: hidden;
     background: var(--bg-app);
@@ -933,8 +932,7 @@ body.meter-needle #meterCanvas { width: auto; height: 128px; aspect-ratio: 611 /
 
 /* CW Bar - RTTY decoder style (green terminal theme).
    Lives inside #scopeArea (position: relative) and pins to its bottom,
-   so the bar tracks the 16:9 #radio container instead of spilling into
-   the letterboxed area on widescreen viewports. Capped at 65% of the
+   so the bar tracks the #radio container. Capped at 65% of the
    area: resizeCanvases() lays the spectrum + waterfall out in the strip
    above the bar, so with the decoder open you can still see (and tap)
    the waterfall to tune. */
@@ -1169,8 +1167,7 @@ body.meter-needle #meterCanvas { width: auto; height: 128px; aspect-ratio: 611 /
 
 /* ── DIGI Bar (blue theme, WSJT-X inspired) ──
    Lives inside #scopeArea (position: relative) and fills it via
-   inset: 0, so the bar tracks the 16:9 #radio container instead of
-   spilling into the letterboxed area on widescreen viewports. */
+   inset: 0, so the bar tracks the #radio container. */
 .digi-bar {
     position: absolute;
     inset: 0;
