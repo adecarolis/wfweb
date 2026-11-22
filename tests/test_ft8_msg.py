@@ -62,3 +62,5 @@ def test_reports_are_rounded_before_the_sign():
         assert "'+' : '') + Math.round(" not in page, fork
         assert "(q.snr>=0?'+':'')" not in page, fork
         assert page.count("digiReportText(") == 6, fork
+    js8 = (ROOT / "resources" / "web-shared" / "js8-panel.mjs").read_text(encoding="utf-8")
+    assert ">= 0 ? '+' : '')" not in js8, "js8-panel.mjs: use signedSnr()"

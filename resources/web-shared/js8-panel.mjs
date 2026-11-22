@@ -421,6 +421,13 @@ const JS8_PANEL_MARKUP = `
             return { '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c];
         });
     }
+    // An SNR as JS8Call shows it ("+5", "-12"): rounded before the sign is
+    // chosen, so a fraction just under 0 reads "+0", never "0" or "-0".
+    function signedSnr(v) {
+        var n = Math.round(v);
+        return (n >= 0 ? '+' : '-') + Math.abs(n);
+    }
+
     function utcStamp() {
         var d = new Date(), p = (n) => n < 10 ? '0' + n : '' + n;
         return p(d.getUTCHours()) + ':' + p(d.getUTCMinutes()) + ':' + p(d.getUTCSeconds());
@@ -1307,7 +1314,7 @@ const JS8_PANEL_MARKUP = `
         if (parsed.cmd === 'SNR?') {
             if (typeof d.snr !== 'number') return;
             var snr = Math.max(-31, Math.min(31, Math.round(d.snr)));
-            replyText = fromCall + ' SNR ' + (snr >= 0 ? '+' : '') + snr;
+            replyText = fromCall + ' SNR ' + signedSnr(snr);
         } else if (parsed.cmd === 'GRID?') {
             var g = getMyGridLocal();
             if (!g) return;
@@ -1382,7 +1389,7 @@ const JS8_PANEL_MARKUP = `
         // Format SNR per JS8Call convention: signed dB clipped to ±31
         // (the codec only carries 5 bits + sign).
         var snr = Math.max(-31, Math.min(31, Math.round(d.snr)));
-        var snrStr = (snr >= 0 ? '+' : '') + snr;
+        var snrStr = signedSnr(snr);
         // " HEARTBEAT SNR " (cmd 29) is the canonical JS8Call HB-ACK form,
         // distinct from plain " SNR " (cmd 25, a general SNR report). The
         // packed-bit layout flags it via the second bit of the SNR-encoded
@@ -1868,7 +1875,7 @@ const JS8_PANEL_MARKUP = `
         if (typeof window.addQsoLogEntry !== 'function') return;
         var st = S.stations.get(peer) || {};
         var rcvd = (typeof st.snr === 'number')
-                 ? ((st.snr >= 0 ? '+' : '') + Math.round(st.snr)) : '';
+                 ? signedSnr(st.snr) : '';
         window.addQsoLogEntry({
             call: peer, mode: 'JS8', df: S.baseHz,
             grid: getMyGridLocal(),   // operator's own grid → MY_GRIDSQUARE
@@ -1952,7 +1959,7 @@ const JS8_PANEL_MARKUP = `
             var metaParts = [];
             if (m.t) metaParts.push(m.t);
             if (typeof m.snr === 'number' && !m.fromMe) {
-                metaParts.push((m.snr >= 0 ? '+' : '') + m.snr + ' dB');
+                metaParts.push(signedSnr(m.snr) + ' dB');
             }
             if (m.fromMe && m.framesTotal) {
                 var st = m.txStatus || 'queued';
@@ -2150,7 +2157,7 @@ const JS8_PANEL_MARKUP = `
             var call = arr[i][0], s = arr[i][1];
             var sel = call === S.dxCall ? ' selected' : '';
             var dbm = typeof s.snr === 'number'
-                ? (s.snr >= 0 ? '+' : '') + s.snr + ' dB'
+                ? signedSnr(s.snr) + ' dB'
                 : '—';
             var age = formatAge(s.lastUtc);
             html += '<div class="js8-station' + sel + '" data-call="' + escapeHtml(call) + '">';
