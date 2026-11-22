@@ -437,6 +437,24 @@ body.seat-watch #freqDisplay, body.seat-watch #modeBtn { opacity: 0.55; }
     max-width: calc(100vw - 32px); pointer-events: none;
 }
 #accessToast.visible { display: block; }
+/* A press that was refused (the seat is not ours, the role does not reach):
+   said in the middle of the screen, in red.  The small note at the bottom went unseen. */
+#accessToast.alert {
+    /* left / right + auto margins, not left: 50%: that would leave the text
+       half a phone's width to wrap in */
+    left: 0; right: 0; bottom: auto; top: 50%; transform: translateY(-50%);
+    margin: 0 auto; width: max-content; box-sizing: border-box;
+    background: rgba(170,20,20,0.96); border: 2px solid #f66; color: #fff;
+    padding: 16px 24px; border-radius: 10px;
+    font-size: 22px; font-weight: bold; line-height: 1.3;
+    box-shadow: 0 6px 30px rgba(0,0,0,0.7);
+}
+#accessToast.alert.visible { animation: accessToastPop 0.18s ease-out; }
+@keyframes accessToastPop {
+    from { transform: translateY(-50%) scale(0.85); opacity: 0; }
+    to   { transform: translateY(-50%) scale(1); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) { #accessToast.alert.visible { animation: none; } }
 /* The controls a role lacks are dimmed, not hidden: the page keeps its
    shape, and a tap says why (the toast). */
 body.access-listen .ptt-btn, body.access-notx .ptt-btn, body.tx-inhibit .ptt-btn { opacity: 0.35; }
@@ -4315,7 +4333,9 @@ function accessDeniedText(need) {
 }
 
 var accessToastTimer = null;
-function accessToast(text) {
+// alert: the big red one in the middle of the screen, for a press that was
+// refused (the seat, the role, the server's own 'denied').
+function accessToast(text, alert) {
     var el = document.getElementById('accessToast');
     if (!el) {
         el = document.createElement('div');
@@ -4323,9 +4343,12 @@ function accessToast(text) {
         document.body.appendChild(el);
     }
     el.textContent = text;
+    el.classList.remove('visible');
+    el.classList.toggle('alert', !!alert);
+    void el.offsetWidth;   // a second press shows it anew
     el.classList.add('visible');
     if (accessToastTimer) clearTimeout(accessToastTimer);
-    accessToastTimer = setTimeout(function () { el.classList.remove('visible'); accessToastTimer = null; }, 2500);
+    accessToastTimer = setTimeout(function () { el.classList.remove('visible'); accessToastTimer = null; }, alert ? 3500 : 2500);
 }
 
 // setup: '' = log in, 'first' = create the first admin, 'recovery' = the
@@ -5139,7 +5162,7 @@ function send(obj) {
     // reason on screen; the server refuses it again regardless. false tells a
     // control that shows its new state at once (FUNC AGC) to leave it alone.
     if (accessState.shared && obj && accessState.denied[obj.cmd]) {
-        accessToast(accessDeniedText(accessState.denied[obj.cmd]));
+        accessToast(accessDeniedText(accessState.denied[obj.cmd]), true);
         return false;
     }
     // Our own key-up always goes out: the seat may have gone while the key
@@ -5155,7 +5178,7 @@ function send(obj) {
         }
         accessToast(seatState.holder
             ? seatState.holder.name + ' has the seat' + (accessState.can.control ? ' — press ASK, top left' : '')
-            : 'Take the seat first (TAKE, top left)');
+            : 'Take the seat first (TAKE, top left)', true);
         seatTagNudge();
         return false;
     }
@@ -5560,7 +5583,7 @@ function handleMessage(msg) {
             updateAccessUi();
             break;
         case 'denied':
-            accessToast(msg.reason || ('needs ' + msg.need + ' access'));
+            accessToast(msg.reason || ('needs ' + msg.need + ' access'), true);
             // The server took the key away, or never gave it: the PTT
             // button does not go on saying "TX LOCKED" for three minutes.
             if (msg.cmd === 'setPTT') { pttSentHere = false; dropPttLatch(); }
