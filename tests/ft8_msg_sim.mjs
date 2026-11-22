@@ -52,6 +52,24 @@ same(d.digiQsoTexts('K1ABC', 'VA2BBW', 'FN35', '+3').rreport, 'K1ABC VA2BBW R+3'
 same(d.digiCqText('VA2BBW', 'FN35'), 'CQ VA2BBW FN35', 'CQ with a grid');
 same(d.digiCqText('AO40EUDXF', 'FN35'), 'CQ AO40EUDXF', 'a nonstandard CQ has no room for a grid');
 
+// ---- reports: rounded before the sign is chosen, WSJT-X's "%+2.2d". An SNR
+// of -0.3 dB used to give "0" and the R-report "R0", which the codec sends as
+// free text "K1ABC VA2BBW R": no report, and the QSO stalled.
+for (const [snr, want] of [[-0.3, '+00'], [-0.5, '+00'], [0, '+00'], [0.4, '+00'], [-0.6, '-01'], [3, '+03'],
+                           [-7.4, '-07'], [-10, '-10'], [12.6, '+13'], [-24, '-24'], [-63, '-50'], [70, '+49'],
+                           [NaN, '+00'], ['-12', '-12']]) {
+  same(d.digiReportText(snr), want, `report for SNR ${snr}`);
+}
+for (const ft4 of [false, true]) {
+  const tag = ft4 ? 'FT4' : 'FT8';
+  for (const snr of [-0.3, -0.6, 4, -18]) {
+    const t = d.digiQsoTexts('K1ABC', 'VA2BBW', 'FN35', d.digiReportText(snr));
+    const rpt = d.digiReportText(snr);
+    same(heard(t.report, 'K1ABC', 'VA2BBW', ft4), `K1ABC VA2BBW ${rpt}`, `${tag} report at SNR ${snr}`);
+    same(heard(t.rreport, 'K1ABC', 'VA2BBW', ft4), `K1ABC VA2BBW R${rpt}`, `${tag} R-report at SNR ${snr}`);
+  }
+}
+
 // ---- over the air, both modes, every message of the QSO; each message must
 // reach the other end as TO FROM DATA with nothing lost
 const cases = [['AO40EUDXF', 'VA2BBW'], ['VA2BBW', 'AO40EUDXF'], ['6W1/F4ABC', 'VA2BBW'], ['K1ABC/QRP', 'W1AW'], ['K1ABC', 'VA2BBW']];

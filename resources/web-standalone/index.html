@@ -11285,8 +11285,7 @@ function digiRowSelect(el, ev) {
         var msgToMe = myCall && parts[0].toUpperCase() === myCall.toUpperCase();
         if (msgToMe) {
             digiQsoPartnerBusyWith = '';
-            var roundedSnr = Math.round(snr);
-            var ourSnrStr = (roundedSnr >= 0 ? '+' : '') + roundedSnr;
+            var ourSnrStr = digiReportText(snr);
             if (/\bRR73\b/i.test(msg) || /\bRRR\b/i.test(msg)) {
                 digiQsoState = 'RRR';
                 // RR73/RRR carries no report: keep the one we already have
@@ -11416,8 +11415,7 @@ function digiCqAutoAnswer(decodes, decodedSlotIndex) {
     digiQsoPartnerBusyWith = '';
     digiQsoState = 'ANSWERED';
     digiTheirReport = '';
-    var snr = Math.round(decode.snr || 0);
-    digiOurReport = (snr >= 0 ? '+' : '') + snr;
+    digiOurReport = digiReportText(decode.snr || 0);
     armMessageForQsoState(slotIndex);
     updateDigiMsgRows();
     return true;
@@ -11508,8 +11506,7 @@ function getDigiBaseMsgTexts() {
     // digiTheirReport = their report of our signal (used in Tx1.5 plain report, fallback)
     var rpt = digiOurReport || digiTheirReport || '';
     var rptNum = parseInt(rpt, 10);
-    if (isNaN(rptNum)) rptNum = 0;
-    var report = (rptNum >= 0 ? '+' : '') + rptNum;
+    var report = digiReportText(isNaN(rptNum) ? 0 : rptNum);
     var dash = '\u2014'; // em-dash placeholder when no DX
     var cq = digiCqText(myCall, myGrid);
     var q = dxCall ? digiQsoTexts(dxCall, myCall, myGrid, report) : null;
@@ -11860,8 +11857,7 @@ function handleDigiAutoQso(decodes, decodedSlotIndex) {
                 // Preserve their report to us
                 digiTheirReport = digiReportFromToken(parts[2]);
                 // Our reply uses OUR SNR (how well we received them), not their report
-                var ourSnr = decodes[i].snr;
-                digiOurReport = (ourSnr >= 0 ? '+' : '') + Math.round(ourSnr);
+                digiOurReport = digiReportText(decodes[i].snr);
                 digiTxAttempts = 0;
                 digiTxQueued = digiQsoTexts(digiQsoPartner, myCall, myGrid, digiOurReport).rreport;
                 digiTxSlotParity = (dSlot + 1) % 2; // TX on slot OPPOSITE to their slot
@@ -12959,8 +12955,7 @@ function logDigiQso(dxCall, rstSent, rstRcvd, txFreq) {
         mode: digiMode,
         df:   df,
         grid: ((document.getElementById('digiGrid') || {}).value || '').toUpperCase(),
-        rstSent: (rstSent !== undefined && rstSent !== null) ?
-                 ((rstSent >= 0 ? '+' : '') + Math.round(rstSent)) : '',
+        rstSent: (rstSent !== undefined && rstSent !== null) ? digiReportText(rstSent) : '',
         rstRcvd: (rstRcvd !== undefined ? rstRcvd : digiTheirReport) || ''
     };
     qsoLog.unshift(entry);
@@ -13113,7 +13108,7 @@ function renderDigiLog() {
                 '<span class="digi-log-del" title="Cancel" onclick="cancelEditDigiQso()">&#x2715;</span>' +
                 '</div>';
         } else {
-            var rstSentDisp = q.rstSent !== undefined ? q.rstSent : (q.snr !== undefined ? ((q.snr>=0?'+':'')+Math.round(q.snr)) : '');
+            var rstSentDisp = q.rstSent !== undefined ? q.rstSent : (q.snr !== undefined ? digiReportText(q.snr) : '');
             html += '<div class="digi-log-row">' +
                 '<span class="digi-log-date">' + escapeHtml(dateDisp) + '</span>' +
                 '<span class="digi-log-time">' + escapeHtml(timeDisp) + '</span>' +

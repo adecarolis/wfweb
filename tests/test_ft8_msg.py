@@ -51,3 +51,14 @@ def test_ft8_msg_browser():
         pytest.skip("no playwright-core / Chromium")
     result = subprocess.run(["node", script], check=False, capture_output=True, text=True, timeout=420)
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_reports_are_rounded_before_the_sign():
+    """Every report goes through digiReportText (digi-msg.js): choosing the sign
+    from the raw SNR and then rounding sent "R0" at -0.3 dB, which the codec
+    packs as free text "R" (two-rig bench, 2026-11-22)."""
+    for fork in ("web", "web-standalone"):
+        page = (ROOT / "resources" / fork / "index.html").read_text(encoding="utf-8")
+        assert "'+' : '') + Math.round(" not in page, fork
+        assert "(q.snr>=0?'+':'')" not in page, fork
+        assert page.count("digiReportText(") == 6, fork

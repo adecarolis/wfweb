@@ -32,6 +32,20 @@ function digiCqText(myCall, myGrid) {
     return 'CQ ' + myCall + (digiStdCall(myCall) ? ' ' + myGrid : '');
 }
 
+// A signal report as it goes out, from an SNR in dB: WSJT-X's "%+2.2d" ("-07",
+// "+00", "+12"), clamped to -50..+49 like genStdMsgs. Rounded *before* the
+// sign is chosen: -0.3 dB used to come out as "0" (sign from -0.3, value
+// Math.round = -0), "R0" is no report, the codec sent it as free text "R" and
+// the QSO stalled at the R-report (two-rig bench, 2026-11-22). Every report
+// the page puts in a message or the log goes through here.
+function digiReportText(snr) {
+    var n = Math.round(Number(snr));
+    if (!isFinite(n)) n = 0;
+    n = Math.max(-50, Math.min(49, n));
+    var a = Math.abs(n);
+    return (n < 0 ? '-' : '+') + (a < 10 ? '0' : '') + a;
+}
+
 // The five messages of a QSO with dxCall. rpt is the report as sent ("-10").
 function digiQsoTexts(dxCall, myCall, myGrid, rpt) {
     var hisStd = digiStdCall(dxCall), myStd = digiStdCall(myCall);
@@ -106,5 +120,5 @@ function digiGridKm(a, b) {
 }
 
 if (typeof module !== 'undefined') {
-    module.exports = { digiStdCall, digiStripHash, digiCqText, digiQsoTexts, digiSplitMulti, digiStdMsg, digiSenderCall, digiGridKm };
+    module.exports = { digiReportText, digiStdCall, digiStripHash, digiCqText, digiQsoTexts, digiSplitMulti, digiStdMsg, digiSenderCall, digiGridKm };
 }
