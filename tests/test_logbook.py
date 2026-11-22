@@ -147,6 +147,10 @@ def test_station_callsign_is_server_state_and_stamps_qsos(rest_url):
     assert info["stationCallsign"] == "W2ERC" and info["stationGrid"] == "FN20"
     # An empty grid in an update leaves the stored one alone.
     assert requests.put(station, json={"callsign": "W2ERC", "grid": ""}, timeout=5).json()["grid"] == "FN20"
+    # A field left out keeps what is stored: a grid alone used to clear the callsign.
+    assert requests.put(station, json={"grid": "fn31"}, timeout=5).json() == {"callsign": "W2ERC", "grid": "FN31"}
+    assert requests.put(station, json={}, timeout=5).json() == {"callsign": "W2ERC", "grid": "FN31"}
+    assert requests.put(station, json={"callsign": "W2ERC", "grid": "FN20"}, timeout=5).json()["grid"] == "FN20"
 
     # A logged QSO is stamped with it; the ADIF carries STATION_CALLSIGN.
     e = requests.post(base, json=_qso("K1TEST", "20260921", "100000"), timeout=5).json()

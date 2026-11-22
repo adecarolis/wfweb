@@ -45,6 +45,11 @@ jobs:
           # Pass the full commit SHA so fingerprint URLs survive a force-push
           # and stay in lock-step with the deployed commit.
           WFWEB_BUILD_VERSION: ${{ github.sha }}
+          # What the page footer shows. master is what gets released: the
+          # push that publishes it comes before the v* tag exists, so the
+          # tag rule of tools/build-id.sh would call it a dev build. A
+          # manual run from another branch shows <version>+dev.<commit>.
+          WFWEB_BUILD_ID: ${{ github.ref == 'refs/heads/master' && 'release' || '' }}
         run: tools/build-static.sh dist
 
       - uses: actions/upload-pages-artifact@v3

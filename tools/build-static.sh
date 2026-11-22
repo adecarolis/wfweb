@@ -49,7 +49,7 @@ for f in cw-decoder.js cw-decoder-stft.js cw-decoder-utils.js cw-decoder-worker.
          ctcss.js dxcc.js recorder.js needle-meter.js rx-jitter.js cw-keyer.js \
          cw-paddle.js midi.js paddle-panel.js \
          theme.css js8-panel.css js8-panel.mjs js8.mjs \
-         rtty.js rtty-panel.js rtty-panel.css rtty-decoder-worker.js \
+         digi-msg.js rtty.js rtty-panel.js rtty-panel.css rtty-decoder-worker.js \
          sstv-panel.js sstv-panel.css sstv-worker.js; do
     cp "$SHARED/$f" "$DIST/"
 done
@@ -180,7 +180,11 @@ if [ -z "${WFWEB_BUILD_VERSION:-}" ]; then
     SHA="$(git -C "$REPO_ROOT" rev-parse --short=12 HEAD 2>/dev/null || echo dev)"
     WFWEB_BUILD_VERSION="${WFWEB_SEMVER}-${SHA}-$(date -u +%s)"
 fi
-"$REPO_ROOT/tools/fingerprint-static.py" "$DIST" "$WFWEB_BUILD_VERSION" "$WFWEB_SEMVER"
+
+# What the page shows: the release number, or <version>+dev.<commit> when this
+# is not the tagged release (same rules as the server, tools/build-id.sh).
+WFWEB_SHOWN_VERSION="$("$REPO_ROOT/tools/build-id.sh")"
+"$REPO_ROOT/tools/fingerprint-static.py" "$DIST" "$WFWEB_BUILD_VERSION" "$WFWEB_SHOWN_VERSION"
 
 echo
 echo "Static bundle written to: $DIST"

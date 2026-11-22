@@ -1,16 +1,24 @@
-# wfview REST API
+# wfweb REST API
 
 ## Overview
 
-The wfview web server exposes a REST API over HTTP for scripting and integration with external tools. All radio control operations available via WebSocket are also available via REST.
+The wfweb web server exposes a REST API over HTTP for scripting and integration with external tools. It covers the everyday radio controls, the station identity, the CW macros, the logbook and the SSTV gallery; a few controls (band stacking registers, scope settings, break-in, COMP level, TBW, memory writes) exist only on the WebSocket the page uses.
 
 **Format:** JSON (`Content-Type: application/json`)
-**Authentication:** None (Phase 4)
-**CORS:** `Access-Control-Allow-Origin: *` on all responses
+**Authentication:** None by default. With `--shared` (Shared Station, see
+`SHARED_STATION.md`) every route but `/api/v1/auth/*` needs a session cookie
+or an API token (`Authorization: Bearer <token>`), else `401`. Where the
+admin admits visitors (`Shared/Anonymous=listen` or `control`), a request
+without either is answered at the visitor's level instead.
+**With `--shared` the radio is read-only over REST**: every `GET` below
+works, every `PUT` / `POST` / `DELETE` under `/api/v1/radio/` answers `403`
+to every account. See *Shared Station* below.
+**CORS:** `Access-Control-Allow-Origin: *` on all responses (no credentials
+are ever accepted cross-origin: the cookie is `SameSite=Strict`)
 
 ## Ports
 
-wfview runs two HTTP listeners simultaneously when SSL is available:
+wfweb runs two HTTP listeners simultaneously when SSL is available:
 
 | Port | Protocol | Best for |
 |------|----------|----------|
@@ -23,6 +31,9 @@ wfview runs two HTTP listeners simultaneously when SSL is available:
 When SSL is not available on the host system, port 8080 is plain HTTP and port 8081 is the WebSocket port (no separate REST HTTP server in that case — use port 8080).
 
 > **Microcontrollers (ESP32, Pico W, Arduino):** use port 8081 with plain HTTP. No TLS stack needed.
+> With `--shared`, send an API token as `Authorization: Bearer <token>` on every request
+> (made once from a logged-in browser: `POST /api/v1/auth/tokens`). Logins themselves are
+> refused on this port — a password must not travel in clear.
 
 > **Hamlib rigctld** (server build only): TCP, default port 4532, bound to `127.0.0.1`. Disabled by default — enable with `--rigctld-port 4532` or `RigCtldEnabled=true` in settings. Pass `--rigctld-bind-all` to listen on all interfaces (the Hamlib protocol is unauthenticated, so binding to a network interface hands PTT to anyone on the LAN). PTT requests route through the same path the WebSocket `setPTT` command uses, so RADE EOO synthesis and packet TX coordination stay intact. Use any Hamlib client (`rigctl`, fldigi, WSJT-X, POTACAT, gpredict) with `-m 2 -r 127.0.0.1:4532`.
 
@@ -34,11 +45,17 @@ All responses are JSON objects.
 
 **Success (GET):** `200 OK` with requested data fields.
 
-**Success (write):** `202 Accepted` — the command was queued. Writes are fire-and-forget via the cachingQueue; the radio will process them asynchronously.
+**Success (write to the radio):** `202 Accepted` — the command was queued. Writes are fire-and-forget via the cachingQueue; the radio will process them asynchronously.
 
 ```json
 {"status": "accepted"}
 ```
+
+Writes to the server's own state answer with the result instead: `200` with
+the object for the station identity, the CW macros, a changed QSO and the
+SSTV gallery, `201` for a new API token, account or reservation, and the
+logbook's `POST` / `DELETE` answer `202` with the QSO or `{"status":
+"cleared"}` / `{"status": "deleted"}`.
 
 **Error:** appropriate 4xx/5xx status code with:
 
@@ -51,15 +68,77 @@ All responses are JSON objects.
 | Code | Meaning |
 |------|---------|
 | `200` | OK — GET success |
+| `201` | Created — a new API token, account or reservation |
 | `202` | Accepted — PUT/POST/DELETE queued |
-| `400` | Bad Request — malformed JSON or missing required field |
+| `400` | Bad Request — malformed JSON, a missing required field, or (`--shared`) a value of the wrong type |
+| `401` | Unauthorized — `--shared` is on and the request carries no session cookie or API token (answered from the headers, before the body is taken); a wrong user name or password |
+| `403` | Forbidden — `--shared`: not allowed for this account (`{"need": level}`); a write to the radio; an account route or a password change asked with a token instead of a logged-in browser; a wrong setup code or current password; a disabled account; a login over plain HTTP; a write with the session cookie from another site's page |
 | `404` | Not Found — unknown API path |
 | `405` | Method Not Allowed |
-| `503` | Service Unavailable — rig not connected |
+| `409` | Conflict — `--shared`: another account has the seat and the request logs a QSO or writes to the gallery (`{"error", "need": "seat"}`); a reservation overlaps another; a user name is taken; the change would leave the station without an admin; the target is the caller's own account or connection |
+| `413` | Payload Too Large — a request over 16 MB (an SSTV picture over 4 MB). With `--shared` a body is capped by its route: 64 KB, except the ADIF import (16 MB), the rest of `/logbook` (4 MB), an SSTV picture (6 MB) and a user-list import (2 MB) |
+| `429` | Too Many Requests — login lockout, or five wrong current passwords on a password change (`Retry-After` says for how long) |
+| `500` | Internal Server Error — the logbook or the gallery could not be written |
+| `503` | Service Unavailable — rig not connected; the SSTV directory unavailable; the server has too much unsent data queued (`Retry-After: 5`); or (`--shared`) the line of password checks is full (`Retry-After: 3`) |
+
+A request's headers must be complete within 10 s of connecting, and a body
+that stops arriving for 30 s is dropped; a slow upload that keeps moving is
+waited for.
 
 ---
 
 ## Endpoints
+
+### Authentication (Shared Station)
+
+Only meaningful with `--shared`; without it `GET /api/v1/auth/me` answers
+`{"shared": false}` and the other routes `404`. Full description, the account
+management routes under `/api/v1/shared/users` and the deployment notes are in
+`SHARED_STATION.md`.
+
+| Route | Does |
+|-------|------|
+| `GET /api/v1/auth/me` | who the caller is: `{shared, authenticated, user:{id,name,callsign,onAir,role}, setupRequired, recovery, secure, anonymousAccess}` (`anonymousAccess`: what a visitor without a login gets, `none`, `listen` or `control`) |
+| `POST /api/v1/auth/setup` `{code, username, password, callsign}` | HTTPS only; first run: the setup code from the console creates the admin and logs them in |
+| `POST /api/v1/auth/login` `{username, password}` | HTTPS only; sets the `wfweb_session` cookie (`HttpOnly; SameSite=Strict; Secure`) |
+| `POST /api/v1/auth/logout` | ends the session, clears the cookie, closes its WebSockets |
+| `POST /api/v1/auth/password` `{current, password}` | HTTPS only, from a logged-in browser (not a token); changes the caller's password and ends the account's other sessions |
+| `GET` / `POST {name}` / `DELETE /<id>` `/api/v1/auth/tokens` | the caller's API tokens, from a logged-in browser; the token value is returned once, on creation |
+
+A browser without a session gets `{"type":"authRequired","setupRequired":bool}`
+on the WebSocket and close code `4401` (unless the admin admits visitors);
+with one, the first message is `{"type":"access","shared":true,"user":{...},
+"role":...,"can":{...},"denied":{...},"policy":{...}}`.
+
+With `--shared` every route needs the account's level: a `GET` is `listen`
+(the accounts, their export, the policy and the connection list under
+`/api/v1/shared/` are `admin` to read as well); writes to the SSTV gallery
+are `control`, to the logbook `operate`; `/station`, `/cw/macros` and writes under
+`/api/v1/shared/*` are `admin`. Short of it the answer is
+`403 {"error":"needs operate access","need":"operate"}`. A path is the same
+route with or without a trailing slash.
+**An API token is for reading the station and for logging.** Whatever its
+account's level it does not set the radio (below), and it does not manage
+accounts (`/api/v1/shared/users*`), change a password or make another
+token: those answer `403` with "from a logged-in browser". An admin's
+token does read and set the policy (`/api/v1/shared/policy`), end a
+connection and clear the seat. `info.logbookPath` (the server's own file
+path) is given to an admin only.
+**A shared station is not operated over REST.** Every write under
+`/api/v1/radio/` (frequency, mode, gains, `/radio/tx`, `/radio/ptt`,
+`/radio/cw`, a memory recall) answers
+`403 {"error":"a shared station is operated from the page: over REST the radio is read-only"}`
+to every account, the admin's included, with a token or a cookie. The
+radio is tuned and keyed from the page, by whoever has the seat; a script
+reads it. Local programs that must set the radio use rigctld.
+While another account's browser holds the seat, logging a QSO or writing
+to the gallery answers `409 {"error":"W1ABC has the seat","need":"seat"}`
+(changing or deleting one's own QSO, and the export
+stamp, are not held to the seat). Clearing the logbook and importing into it
+are `admin`.
+Policy, connections, the seat and the reservations (`/api/v1/shared/policy`,
+`/api/v1/shared/connections`, `/api/v1/shared/seat`,
+`/api/v1/shared/reservations`) are described in `SHARED_STATION.md`.
 
 ### Station identity
 
@@ -73,8 +152,8 @@ QSO). Logged QSOs are stamped with it (`stationCall`, ADIF
 
 | Method | Endpoint | Action |
 |---|---|---|
-| `GET` | `/api/v1/station` | `{"callsign","grid"}` |
-| `PUT` | `/api/v1/station` | Set either or both; an empty `grid` keeps the stored one |
+| `GET` | `/api/v1/station` | `{"callsign","grid"}`; with `--shared` also `onAir` (the call in use right now), `clubCallsign`, `onAirOwn`, `onAirOperator` |
+| `PUT` | `/api/v1/station` | Set either or both: a field left out keeps the stored value, and so does an empty `grid`; an empty `callsign` clears it. Answers `200` with the new object |
 
 Over the WebSocket the browser sends `setStationCallsign {callsign,grid}` and
 every client receives `{"type":"stationChanged","callsign","grid"}`;
@@ -83,7 +162,7 @@ every client receives `{"type":"stationChanged","callsign","grid"}`;
 ### CW keyer macros
 
 The ten macro keys of the CW bar are server state too, persisted under
-`[CW]` (`Macro1` … `Macro10`; slot 5 is the EDIT key and never holds one) in
+`[CW]` (`Macro1` … `Macro10`; slot 5 is the page's EDIT key, which shows no macro) in
 the settings file, so every browser shows the same set. `[CALL]` and `[QSO]`
 in a macro are filled in by the browser when it is sent.
 
@@ -113,6 +192,7 @@ lifetime log stays cheap for the browser and the server alike.
 | `GET` | `/api/v1/logbook?limit=100&before=<cursor>&call=<CALL>` | Page of entries, newest first |
 | `POST` | `/api/v1/logbook` | Add an entry from a JSON QSO object |
 | `DELETE` | `/api/v1/logbook` | Clear the whole log (the previous file is kept as `logbook.adi.<timestamp>.bak`) |
+| `GET` | `/api/v1/logbook/{id}` | One entry |
 | `PUT` | `/api/v1/logbook/{id}` | Replace an entry (the id is kept) |
 | `DELETE` | `/api/v1/logbook/{id}` | Delete an entry |
 | `GET` | `/api/v1/logbook/adif` | Download the complete ADIF file |
@@ -131,9 +211,38 @@ size of the whole log.
 
 A QSO object carries `date` (YYYYMMDD), `time` (HHMMSS), `call`, `freq` (Hz),
 `band`, `mode`, `grid` (own), `theirGrid`, `rstSent`, `rstRcvd`, and
-optionally `comment`, `name`, `df`, `exported`, `stationCall`. Only `call` is
-required; `stationCall` defaults to the station callsign when a QSO is
-logged (imported files keep whatever they carry).
+optionally `comment`, `name`, `df`, `exported`, `stationCall`, `operator`.
+Only `call` is required; `stationCall` (ADIF `STATION_CALLSIGN`) defaults to
+the station callsign when a QSO is logged (imported files keep whatever they
+carry); `operator` is ADIF `OPERATOR`. A record logged by an account also
+carries `userId` (ADIF `APP_WFWEB_USER`, never taken from a client) and, in
+the JSON only, `operatorName`, the account's name or `deleted account`.
+
+**With `--shared`** (see "Callsigns and the log" in `SHARED_STATION.md`):
+
+- *Stamping.* When an account logs a QSO the server sets `stationCall` to
+  the call on the air at that moment (the account's own callsign while an
+  `onAir: own` account holds the seat, else the station call), `operator`
+  to the account's callsign and `userId` to the account, ignoring what the
+  request sent for them. An edit keeps the stored record's three values.
+- *Per-viewer filtering.* Admins get every record. An account gets the
+  club log (records whose `stationCall` is the station callsign, or empty)
+  plus the records it logged itself; a visitor without an account gets
+  none. This holds for the page (`total` and `unexported` are the caller's
+  own numbers), `GET /{id}` (`404` for a record the caller may not see),
+  the full ADIF download (built from the visible records for anyone but an
+  admin), `/worked` (for the call the caller transmits as: its own for an
+  `own` account, else the station's; the reply names it in `callsign`) and
+  the WebSocket deltas, which go only to sockets that may see the record.
+- *Changes.* `PUT` / `DELETE /{id}` answer `403` unless the caller logged
+  the record or is an admin; a record with no `userId` is admin-only.
+- *Whole-log operations* (`DELETE /api/v1/logbook`, `POST
+  /api/v1/logbook/adif`, the WebSocket `mergeLogbook`) are admin-only:
+  `403 {"need":"admin"}` / `denied`.
+- *Export.* `/export` and `/adif?new=1` give an admin the club log's new
+  records and anyone else the new records they made under their own
+  callsign (`?own=1` gives an admin theirs); `/exported` stamps only
+  records the caller may export.
 
 **Export bookkeeping.** Each record carries an export stamp
 (`APP_WFWEB_EXPORTED`, UTC `yyyyMMddTHHmmssZ`) once it has been included in
@@ -254,7 +363,7 @@ curl -s http://localhost:8081/api/v1/radio | jq .
     "connected": true,
     "model": "IC-7300",
     "name": "",
-    "version": "0.2.4",
+    "version": "0.9.5",
     "logbookPath": "/home/alain/.local/share/wfweb/wfweb/logbook.adi",
     "logbookPersistent": true,
     "hasTransmit": true,
@@ -264,6 +373,8 @@ curl -s http://localhost:8081/api/v1/radio | jq .
     "audioSampleRate": 48000,
     "txAudioAvailable": true,
     "preamps": [{"num": 1, "name": "Preamp 1"}, {"num": 2, "name": "Preamp 2"}],
+    "hasAgc": true,
+    "agcModes": [{"num": 1, "name": "FAST"}, {"num": 2, "name": "MID"}, {"num": 3, "name": "SLOW"}],
     "bands": [{"num": 20, "name": "160m", "start": 1800000, "end": 2000000}, {"num": 6, "name": "2m", "start": 144000000, "end": 148000000}],
     "filters": [{"num": 1, "name": "FIL1"}, {"num": 2, "name": "FIL2"}, {"num": 3, "name": "FIL3"}],
     "spans": [{"reg": 1, "name": "±2.5kHz", "freq": 5000}],
@@ -290,6 +401,7 @@ curl -s http://localhost:8081/api/v1/radio | jq .
     "split": false,
     "tuner": 0,
     "preamp": 1,
+    "attenuator": 0,
     "autoNotch": false,
     "nb": false,
     "nr": false,
@@ -310,6 +422,11 @@ curl -s http://localhost:8081/api/v1/radio/info | jq .
 
 **Response:** same as `info` object above.
 
+`version` is the release number (`0.9.5`) for a release build. A development
+build appends its commit: `0.9.5+dev.e49e8c76` when built from a local tree,
+`0.9.5+dev.20261115.e49e8c76` when built by GitHub (the id in the package's
+file name).
+
 ---
 
 ### GET /api/v1/radio/status
@@ -326,6 +443,18 @@ Icom sitting on a blank memory channel answers the frequency and mode reads
 with `0xFF` instead of a value. Treat `null` as "unknown", never as 0 Hz.
 
 **Response:** same as `status` object above. Returns `503` if rig not connected.
+
+The example shows the core fields. The object is the same one the web page
+receives, so it carries more wherever the rig has the control, among them:
+`agc` (see `/radio/rx`), `compressor` and `compLevel` (speech compressor on /
+off and its level), `txBandwidth` (the SSB transmit filter, 0 WIDE / 1 MID /
+2 NAR; SSB only), `breakIn` (0 off / 1 semi / 2 full), `cwPitch` (Hz),
+`micGain` and `micInput` (`USB` or `LAN`: which of the rig's modulation
+inputs the mic level belongs to), `alcMeter`, `monitor`, `antenna`,
+`duplex` and the tone keys, `pbtInner` / `pbtOuter`, `scopeMode`, the
+`freedv*` and reporter state. Likewise `info` says what the rig has:
+`hasCompressor`, `hasCompLevel`, `hasTxBandwidth`, `hasBreakIn`,
+`hasTuner`, `hasDuplex`, and each band's stacking register `bsr`.
 
 ---
 
@@ -379,7 +508,7 @@ channel, or no reply yet).
 {"mode": "USB", "filter": 1}
 ```
 
-`filter` is optional (1=FIL1, 2=FIL2, 3=FIL3). Omitting it keeps the current filter.
+`filter` is optional (1=FIL1, 2=FIL2, 3=FIL3). Omitting it selects FIL1.
 
 ```bash
 curl -s -X PUT http://localhost:8081/api/v1/radio/mode \
@@ -464,6 +593,10 @@ curl -s -X PUT http://localhost:8081/api/v1/radio/ptt \
   -d '{"transmitting": false}' | jq .
 ```
 
+The key takes the same path as the page's PTT and rigctld's: in RADE the
+unkey sends the end-of-over frame first. With `--shared` this route only
+reads: the `PUT` answers `403`.
+
 ---
 
 ### GET /api/v1/radio/meters
@@ -506,7 +639,7 @@ curl -s http://localhost:8081/api/v1/radio/gains | jq .
 
 **Response:**
 ```json
-{"afGain": 200, "rfGain": 255, "rfPower": 128, "squelch": 0}
+{"afGain": 200, "rfGain": 255, "rfPower": 128, "squelch": 0, "micGain": 128}
 ```
 
 ### PUT /api/v1/radio/gains
@@ -519,6 +652,7 @@ All fields are optional. Only provided fields are updated.
 | `rfGain` | 0–255 | RF input sensitivity |
 | `rfPower` | 0–255 | TX power output |
 | `squelch` | 0–255 | Squelch threshold |
+| `micGain` | 0–255 | TX audio level: the rig's USB mod level, or its LAN mod level when the server reaches the rig over LAN |
 
 ```bash
 curl -s -X PUT http://localhost:8081/api/v1/radio/gains \
@@ -559,9 +693,16 @@ All fields optional. Only provided fields are updated.
 | `attenuator` | int (0–255) | Attenuator level |
 | `nb` | bool | Noise Blanker on/off |
 | `nr` | bool | Noise Reduction on/off |
-| `agc` | int (0–255) | AGC mode |
+| `agc` | int (0–255) | AGC setting: one of the `num` values in `agcModes` |
 | `autoNotch` | bool | Auto Notch on/off |
 | `filterWidth` | int (0–10000) | IF filter width in Hz |
+
+`agc` is the rig's own value, which differs per rig: `agcModes` in
+`/api/v1/radio/info` names them (IC-7300 `1` FAST / `2` MID / `3` SLOW,
+IC-7600 `0`-`2` FAST-SLOW, IC-785x and IC-7200 with `0` = OFF, the Kenwoods
+`0` OFF then SLOW upward). `hasAgc` is false, and `agcModes` absent, on a rig
+whose rig file names no AGC settings. In FM the Icoms keep FAST and refuse a
+change.
 
 ```bash
 curl -s -X PUT http://localhost:8081/api/v1/radio/rx \
@@ -654,6 +795,7 @@ Send CW text.
 ```
 
 `wpm` is optional (range 6–48). If omitted, current radio speed is used.
+With `--shared` this route and its `DELETE` answer `403`.
 Text longer than 30 characters is sent to an Icom rig as consecutive CI-V
 frames of 30 (the rig keys them back to back); the browser spaces such
 frames out so the keyer buffer never overflows, a script sending very long
@@ -671,6 +813,29 @@ Stop CW transmission.
 
 ```bash
 curl -s -X DELETE http://localhost:8081/api/v1/radio/cw | jq .
+```
+
+---
+
+### GET /api/v1/radio/memories
+
+The memory channels: `{"memories": [...], "count": n, "local": false}`. On a
+rig whose memories cannot be read over CI-V (IC-718 and others) the list is
+wfweb's own channels and `local` is `true`. Answers without a rig connected.
+
+```bash
+curl -s http://localhost:8081/api/v1/radio/memories | jq .
+```
+
+### POST /api/v1/radio/memories/{channel}/recall
+
+Puts the radio on a memory channel. Optional body `{"group": n}` on rigs with
+memory groups. `202 {"status": "accepted"}`, or `200 {"channel": n, "local":
+true}` for one of wfweb's own channels; `400` for a channel that does not
+exist.
+
+```bash
+curl -s -X POST http://localhost:8081/api/v1/radio/memories/5/recall | jq .
 ```
 
 ---

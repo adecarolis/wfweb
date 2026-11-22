@@ -4,6 +4,7 @@
 #include "rigidentities.h"
 #include "logcategories.h"
 #include "rigctld.h"
+#include "buildinfo.h"
 #include <QNetworkInterface>
 #include <QHostInfo>
 
@@ -108,6 +109,16 @@ servermain::servermain(const QString settingsFile, const cmdLineOverrides& overr
                                   Q_ARG(bool, cliOverrides.remoteLogDecodes));
         QMetaObject::invokeMethod(web, "configureSstvDir", Qt::QueuedConnection,
                                   Q_ARG(QString, cliOverrides.sstvDir));
+        // Both before init(): the certificate is loaded there, and the first
+        // connection must already be gated.
+        QMetaObject::invokeMethod(web, "configureTls", Qt::QueuedConnection,
+                                  Q_ARG(QString, cliOverrides.certFile),
+                                  Q_ARG(QString, cliOverrides.keyFile));
+        QMetaObject::invokeMethod(web, "configureShared", Qt::QueuedConnection,
+                                  Q_ARG(bool, cliOverrides.shared),
+                                  Q_ARG(QString, cliOverrides.sharedDir),
+                                  Q_ARG(bool, cliOverrides.sharedResetAdmin),
+                                  Q_ARG(QString, cliOverrides.trustProxy));
         connect(queue, SIGNAL(rigCapsUpdated(rigCapabilities*)), web, SLOT(receiveRigCaps(rigCapabilities*)));
         connect(webThread, SIGNAL(finished()), web, SLOT(deleteLater()));
         connect(web, &webServer::requestPowerOn, this, &servermain::powerRigOn);
@@ -131,6 +142,10 @@ servermain::servermain(const QString settingsFile, const cmdLineOverrides& overr
             connect(rigctl, &rigCtlD::pttRequested,
                     web, &webServer::onRigCtlPtt,
                     Qt::QueuedConnection);
+            connect(rigctl, &rigCtlD::cwRequested,
+                    web, &webServer::onRigCtlCw,
+                    Qt::QueuedConnection);
+            rigctl->routeCw = true;
             // rigCtlClient::rigCtlClient subscribes to cachingQueue::rigCapsUpdated
             // directly per-connection, so we don't fan out from rigCtlD.
             QMetaObject::invokeMethod(rigctl, "startServer",
@@ -138,6 +153,12 @@ servermain::servermain(const QString settingsFile, const cmdLineOverrides& overr
                                       Q_ARG(qint16, prefs.rigCtlPort));
             qInfo(logSystem()) << "rigctld starting on port" << prefs.rigCtlPort
                                << (prefs.rigCtlBindAll ? "(0.0.0.0)" : "(127.0.0.1)");
+            // The Hamlib protocol has no login: on every interface it is a
+            // way round a shared station's accounts.
+            if (prefs.rigCtlBindAll && (cliOverrides.shared || (settings && settings->value("Shared/Enabled", false).toBool())))
+                qWarning(logSystem()) << "Shared: rigctld is open to the network (--rigctld-bind-all) on port" << prefs.rigCtlPort
+                                      << "- it takes no login, tunes the radio and keys it, and is not held to the seat."
+                                      << "Leave it on localhost on a shared station.";
         }
     }
 
@@ -235,6 +256,8 @@ void servermain::openRig()
                 udpPrefs.waterfallFormat = radio->waterfallFormat;
                 audioSetup lanRxSetup = rxSetup;
                 audioSetup lanTxSetup = txSetup;
+                lanRxSetup.type = prefs.audioSystem;
+                lanTxSetup.type = prefs.audioSystem;
                 memcpy(lanRxSetup.guid, radio->guid, GUIDLEN);
                 memcpy(lanTxSetup.guid, radio->guid, GUIDLEN);
                 QMetaObject::invokeMethod(radio->rig, [=]() {
@@ -392,6 +415,7 @@ static QStringList reachableHosts()
 ConsoleSnapshot servermain::consoleSnapshot()
 {
     ConsoleSnapshot snap;
+    snap.version = QString(wfwebVersion());
     snap.name = cliOverrides.name;
     const QStringList hosts = reachableHosts();
 
@@ -400,6 +424,14 @@ ConsoleSnapshot servermain::consoleSnapshot()
     } else {
         snap.webPort = (cliOverrides.webPort > 0) ? cliOverrides.webPort : prefs.webPort;
         snap.https = web->httpsActive();
+        snap.selfSigned = web->selfSignedCert();
+        snap.shared = web->sharedMode();
+        snap.sharedUsers = web->sharedUserCount();
+        snap.setupCode = web->sharedSetupCode();
+        const webServer::Exposure exposure = web->exposure();
+        snap.publicClient = exposure.client;
+        snap.publicClients = exposure.clients;
+        snap.publicInterface = exposure.iface;
         snap.browsers = web->browserCount();
         switch (web->webListenState()) {
         case webServer::ListenPending: snap.web = ConsoleSnapshot::WebStarting; break;
@@ -568,9 +600,14 @@ void servermain::receiveRigCaps(rigCapabilities* rigCaps)
         bool guidMatch = (sender != Q_NULLPTR && radio->rig != Q_NULLPTR && !memcmp(sender->getGUID(), radio->guid, GUIDLEN));
         bool fromQueue = (sender == Q_NULLPTR); // Signal came from cachingQueue
 
-        if ((guidMatch || fromQueue) && radio->rig != Q_NULLPTR && !radio->rigAvailable)
+        // Once per connection, on a flag of our own.  This used to test
+        // rigAvailable, which rigServer::receiveRigCaps also sets from the
+        // same signal: when the rig server's slot ran first, polling never
+        // started and the server sat silent on a connected rig (--no-web on
+        // the CI runners, twice in some thirty job runs, 2026-11-16).
+        if ((guidMatch || fromQueue) && radio->rig != Q_NULLPTR && !radio->pollingStarted)
         {
-            // Set rigAvailable immediately to prevent re-entry from rigServer race
+            radio->pollingStarted = true;
             radio->rigAvailable = true;
 
             qDebug(logSystem()) << "Rig name: " << rigCaps->modelName;
@@ -673,6 +710,9 @@ void servermain::setServerToPrefs()
         qInfo(logSystem()) << "Rig server disabled (use --no-web to enable)";
         return;
     }
+    if (settings && settings->value("Shared/Enabled", false).toBool())
+        qWarning(logSystem()) << "Shared: Shared/Enabled is set but the web server is off (--no-web):"
+                              << "the rig server has no accounts, no seat and no audit log";
 
     serverThread = new QThread(this);
 
@@ -1279,12 +1319,17 @@ void servermain::initPeriodicPolling()
                 periodicFuncs.insert(cap.func);
             }
 
-            if (!periodicFuncs.contains(funcPowerMeter) && rigCaps->commands.contains(funcPowerMeter))
-                queue->addUnique(priorityHighest, queueItem(funcPowerMeter, true, 0));
-            if (!periodicFuncs.contains(funcSWRMeter) && rigCaps->commands.contains(funcSWRMeter))
-                queue->addUnique(priorityHighest, queueItem(funcSWRMeter, true, 0));
-            if (!periodicFuncs.contains(funcALCMeter) && rigCaps->commands.contains(funcALCMeter))
-                queue->addUnique(priorityHighest, queueItem(funcALCMeter, true, 0));
+            // The TX meters are read for the web UI and rigctld only. With --no-web the
+            // rig server forwards every reply to its LAN clients, and a wfview client
+            // then flips its main meter between S and PWR while receiving.
+            if (!cliOverrides.noWeb) {
+                if (!periodicFuncs.contains(funcPowerMeter) && rigCaps->commands.contains(funcPowerMeter))
+                    queue->addUnique(priorityHighest, queueItem(funcPowerMeter, true, 0));
+                if (!periodicFuncs.contains(funcSWRMeter) && rigCaps->commands.contains(funcSWRMeter))
+                    queue->addUnique(priorityHighest, queueItem(funcSWRMeter, true, 0));
+                if (!periodicFuncs.contains(funcALCMeter) && rigCaps->commands.contains(funcALCMeter))
+                    queue->addUnique(priorityHighest, queueItem(funcALCMeter, true, 0));
+            }
 
             if (rigCaps->hasSpectrum) {
                 queue->add(priorityImmediate, queueItem(funcScopeOnOff, QVariant::fromValue(quint8(1)), false));
@@ -1323,6 +1368,7 @@ void servermain::disconnectLan()
             QMetaObject::invokeMethod(radio->rig, "closeComm", Qt::BlockingQueuedConnection);
         }
         radio->rigAvailable = false;
+        radio->pollingStarted = false;
     }
     if (web != Q_NULLPTR) {
         QMetaObject::invokeMethod(web, "setLanInfo", Qt::QueuedConnection,

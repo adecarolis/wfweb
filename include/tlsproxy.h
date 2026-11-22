@@ -7,6 +7,7 @@
 
 #include <QObject>
 #include <QThread>
+#include <QHostAddress>
 #include <atomic>
 #include <vector>
 
@@ -21,6 +22,14 @@ public:
                    QObject *parent = nullptr);
     ~TlsProxyWorker();
 
+    // The browser behind a connection the internal server sees coming from
+    // this proxy: every one of them arrives from 127.0.0.1, told apart by
+    // the proxy's local port.  Without this every client of a macOS server
+    // had the same address: one lockout for all of them, an audit log with
+    // nothing in it, and --trust-proxy 127.0.0.1 trusting the whole world.
+    // Thread-safe.  False when the port is not one of ours.
+    static bool clientOf(quint16 proxyPort, QHostAddress *client);
+
 public slots:
     void start();
     void stop();
@@ -31,7 +40,7 @@ signals:
 
 private:
     void acceptLoop();
-    static void proxyConnection(int clientFd, SSL_CTX *ctx, quint16 backendPort);
+    static void proxyConnection(int clientFd, SSL_CTX *ctx, quint16 backendPort, quint32 clientIp);
 
     quint16 m_listenPort;
     quint16 m_backendPort;

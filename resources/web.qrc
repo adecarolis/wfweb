@@ -17,6 +17,7 @@
         <file alias="models/deepcw.onnx">web-shared/models/deepcw.onnx</file>
         <file alias="models/deepcw.onnx.json">web-shared/models/deepcw.onnx.json</file>
         <file alias="models/deepcw-LICENSE">web-shared/models/deepcw-LICENSE</file>
+        <file alias="digi-msg.js">web-shared/digi-msg.js</file>
         <file alias="rtty.js">web-shared/rtty.js</file>
         <file alias="rtty-panel.js">web-shared/rtty-panel.js</file>
         <file alias="rtty-panel.css">web-shared/rtty-panel.css</file>

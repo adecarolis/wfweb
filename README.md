@@ -4,6 +4,8 @@
 
 wfweb turns your transceiver into a web-accessible station. Waterfall, SSB, CW decoding, RTTY, SSTV pictures, FT8/FT4, JS8 messaging, FreeDV digital voice, [RADE](https://youtu.be/Rj9E1CAQ9Ls), and AX.25 packet (APRS, connected QSOs, file transfer) — all in the browser, no client software required.
 
+More than one person at the station? **[Shared Station](#shared-station--accounts-access-levels-and-one-operators-seat)** (`--shared`) adds accounts, access levels, a single operator's seat with a schedule, and an audit log of who transmitted.
+
 This README is the overview. The **[wiki](https://github.com/adecarolis/wfweb/wiki)** is the manual: installation, which rigs are known to work, the radio menus that matter, troubleshooting, and a page per mode.
 
 ![SSB mode](ssb.png)
@@ -69,6 +71,7 @@ wfweb keeps wfview's radio engine and replaces the desktop GUI with a built-in w
 | Server-side ADIF logbook, remote logging (GridTracker, JTAlert, Log4OM…) | — | ✓ |
 | Recording — MP3 audio, or video of the waterfall with frequency and settings | — | ✓ |
 | Mobile-responsive UI, touch key lock and latching PTT | — | ✓ |
+| Shared Station: accounts, access levels, one operator's seat, reservations, audit log | — | ✓ |
 | Headless / no-display operation | — | ✓ |
 
 ---
@@ -90,14 +93,15 @@ wfweb ships in two flavours. Both run in the browser; they differ in what drives
 | RADE voice | ✓ | ✓ |
 | Classic FreeDV (700D/700E/1600) | — | ✓ |
 | PSK Reporter / FreeDV Reporter spotting | — | ✓ |
+| Accounts and access control (Shared Station) | — | ✓ |
 
 ### Standalone — no install, no server
 
 1. Plug your Icom into your computer via USB.
 2. Open **[https://wfweb.k1fm.us](https://wfweb.k1fm.us)** in Chrome, Edge, or another Chromium-family browser (Brave, Arc, Opera).
-3. Click the connection dot in the top-right corner → **Connect rig**, and pick the rig's USB serial port from the OS picker. wfweb auto-probes baud rates and identifies the rig from its CI-V address.
+3. Press **PAIR USB RIG** on the start screen and pick the rig's USB serial port from the browser's picker. wfweb auto-probes baud rates and identifies the rig from its CI-V address.
 
-Frequency, mode, filter, audio, FT8/FT4, JS8, CW, RTTY, SSTV, AX.25 packet, and RADE V1 voice all run in the browser. Subsequent visits auto-reconnect to the same port — no picker on return.
+Frequency, mode, filter, audio, FT8/FT4, JS8, CW, RTTY, SSTV, AX.25 packet, and RADE V1 voice all run in the browser. On later visits the button reads **CLICK TO START** and reconnects to the same port — no picker on return.
 
 If you'd rather not depend on a third-party host, build the static bundle yourself and serve it from any HTTPS site — see [Self-hosting Standalone](#self-hosting-standalone) below.
 
@@ -110,6 +114,8 @@ If you'd rather not depend on a third-party host, build the static bundle yourse
 3. [**Docker**](#3-docker) — zero-install, multi-arch image for either USB or LAN radios
 
 In every case, once wfweb is running you open `https://<host>:8080` in your browser and accept the self-signed certificate warning.
+
+> **Who can reach that port can transmit.** Out of the box the page has no login, which is right for a home LAN and nowhere else. For a station reached by other people, start the server with `--shared` — see [Shared Station](#shared-station--accounts-access-levels-and-one-operators-seat). Either way, keep wfweb on your local network or behind a VPN: do not forward its ports to the internet.
 
 ### 1. Native build — USB radio
 
@@ -148,7 +154,7 @@ Replace the IP and credentials with your radio's settings. If your radio uses a 
 
 No build, no dependencies. The image `k1fm/wfweb` is multi-arch (`linux/amd64` and `linux/arm64`) — it runs on x86 servers, Raspberry Pi, and everything in between.
 
-Always mount a volume at `/data`: it holds your settings, the TLS certificate and the QSO logbook. Without one, all of that disappears with the container (wfweb warns about it in its log and in the web UI's log panel).
+Always mount a volume at `/data`: it holds your settings, the TLS certificate, the QSO logbook, the SSTV gallery and, with `--shared`, the accounts and the audit log. Without one, all of that disappears with the container (wfweb warns about it in its log and in the web UI's log panel).
 
 **LAN radio (e.g. IC-7300 Mk2 via Ethernet):**
 
@@ -210,7 +216,7 @@ Pre-built binaries are published on [GitHub Releases](../../releases):
 > plus the `openssl` command, used to create the certificate on first start).
 > If it complains about FUSE, run it with `--appimage-extract-and-run`. To start
 > it at boot, point a systemd unit's `ExecStart` at the file (see
-> `systemd/wfweb@.service`).
+> `systemd/README`).
 
 > **Windows:** unzip and run `wfweb-launcher.exe`. It is a small window that
 > picks the serial port or LAN rig, the audio device and the web port, starts
@@ -225,7 +231,7 @@ Pre-built binaries are published on [GitHub Releases](../../releases):
 
 wfweb is the first web-based transceiver interface with built-in [FreeDV](https://freedv.org/) support. Operate FreeDV digital voice modes directly from your browser — no additional software needed on the client side.
 
-All FreeDV processing happens **server-side**: the server encodes and decodes modem tones in real time, so browser clients send and receive normal speech audio while the radio transmits and receives FreeDV signals over SSB.
+On the Server build all FreeDV processing happens **server-side**: the server encodes and decodes modem tones in real time, so browser clients send and receive normal speech audio while the radio transmits and receives FreeDV signals over SSB. Standalone runs RADE in the browser (WebAssembly); the classic modes need the server.
 
 ### Supported modes
 
@@ -243,7 +249,7 @@ RX:  Radio (modem tones) → FreeDV/RADE decode → speech audio → browser
 TX:  Browser (speech) → FreeDV/RADE encode → modem tones → radio (SSB)
 ```
 
-Select the FreeDV mode from the web UI, key up, and talk — wfweb handles the rest.
+Select the FreeDV mode from the web UI, key up, and talk — wfweb handles the rest. Entering the mode puts the MIC slider at the level the modem is sent at, and leaving it puts your voice level back.
 
 ### Performance
 
@@ -273,7 +279,7 @@ RX:  Radio (audio) → Direwolf demod → AX.25 stack → frames to browser
 TX:  Browser (frame, beacon, file) → AX.25 → Direwolf modem → SSB/FM mic to radio
 ```
 
-Packet runs entirely server-side using a built-in [Direwolf](https://github.com/wb2osz/direwolf) modem. The browser renders the waterfall, displays the monitor, and exposes the APRS / Terminal tabs; the radio just sees a normal voice carrier.
+On the Server build packet runs entirely server-side using a built-in [Direwolf](https://github.com/wb2osz/direwolf) modem; the browser renders the waterfall, displays the monitor, and exposes the APRS / Terminal tabs. Standalone runs the same modem and AX.25 stack in the browser (WebAssembly). Either way the radio just sees a normal voice carrier.
 
 Tune to a packet frequency in a voice mode (LSB/USB/FM/AM), open the **Packet** panel, pick the demodulator, and frames stream into the monitor as they decode. To open a connected QSO type the peer call, optional digipeater path, and press **Connect** — once `CONNECTED` shows you can send messages or push files via YAPP.
 
@@ -359,11 +365,36 @@ On a touch screen the operating controls change; a desktop keeps its five soft k
 
 ---
 
+## Shared Station — accounts, access levels and one operator's seat
+
+For a server that more than one person reaches: a club station, a remote shared with friends, a receiver anyone may listen to. Server build only, and off unless you ask for it:
+
+```bash
+wfweb --shared
+```
+
+The first start prints a setup code on the console and in the log; the first browser to enter it creates the admin account (there is no default password). Accounts, rules and the schedule are then managed from the page.
+
+| Capability | Details |
+|------------|---------|
+| **Accounts** | A user name, a password, a callsign and a level: `listen` (hear, see, run the decoders), `control` (tune), `operate` (transmit, log) or `admin`. Every command, TX audio frame and REST write is checked on the server. Visitors without a login are refused, or let in to listen or to tune, as the admin decides; never to transmit |
+| **The seat** | One person drives the radio at a time; everyone else hears and sees the same radio and may ask for it. The holder hands over or declines, those who wait stand in line, a reload or a dropped connection keeps the seat for 30 s, and 10 minutes without touching the radio free it. A strip under the top bar says whose seat it is and who you are |
+| **Schedule** | The admin reserves the seat for an account: once, every day or every week |
+| **Transmit safeguards** | TX inhibit for everything or for chosen bands (the band the rig transmits on, in split too), holding for rigctld and the packet link layer as for a browser; a TX time-out (10 minutes by default), a cap on connections, and an audit log with every login, seat change and key-down: account, address, frequency, mode, duration |
+| **Callsigns and the log** | Every QSO records who made it (`OPERATOR`) next to the call it was made under (`STATION_CALLSIGN`). An account can be set to transmit under its own callsign while it holds the seat; those QSOs are its own, not the club's |
+| **Scripts** | API tokens for the REST API (`Authorization: Bearer`): a script reads the station and logs, and an admin's can set the rules (TX inhibit). The radio itself is operated from the page only (over REST it is read-only), and accounts are managed from a logged-in browser only |
+
+`--shared` needs HTTPS: wfweb's own certificate, yours with `--cert` / `--key`, or a TLS-terminating proxy named with `--trust-proxy`. **Shared Station is for a club or multi-operator station reached on its local network or over a VPN** (Tailscale, WireGuard, the club's own), **not for the public internet**: no port forward, no public address. An identity-aware proxy that admits only your members (Cloudflare Access) plays the part of the VPN. **[SHARED_STATION.md](SHARED_STATION.md)** has the setup, the deployment options, the settings, the files and the REST routes; the wiki's [Shared Station](https://github.com/adecarolis/wfweb/wiki/Shared-Station) page is for the people using such a station, with pictures.
+
+The station licensee stays responsible for what the station transmits. Give `operate` to licensed people you know.
+
+---
+
 ## Logbook and remote logging
 
 Every QSO logged from FT8/FT4, JS8, CW, RTTY, SSTV or by hand goes into one ADIF logbook.
 
-- **Server build:** the log is a file on the server (`logbook.adi` in wfweb's data directory — `~/.local/share/wfweb/wfweb/` on Linux, `/data/wfweb/wfweb/` in Docker; `--logbook <file>` puts it elsewhere), shared by every browser and sized for a lifetime log. The log panel's **Log management** menu downloads the QSOs not yet exported (plain ADIF, ready for LoTW, QRZ, Club Log…), downloads the full logbook, or imports an ADIF file with duplicates skipped. Each QSO carries your station callsign (`STATION_CALLSIGN`).
+- **Server build:** the log is a file on the server (`logbook.adi` in wfweb's data directory — `~/.local/share/wfweb/wfweb/` on Linux, `/data/wfweb/wfweb/` in Docker; `--logbook <file>` puts it elsewhere), shared by every browser and sized for a lifetime log. The log panel's **Log management** menu downloads the QSOs not yet exported (plain ADIF, ready for LoTW, QRZ, Club Log…), downloads the full logbook, or imports an ADIF file with duplicates skipped. Each QSO carries your station callsign (`STATION_CALLSIGN`); under [Shared Station](#shared-station--accounts-access-levels-and-one-operators-seat) also the operator who made it (`OPERATOR`), and each account sees the club log plus its own QSOs.
 - **Standalone:** the log is kept in the browser.
 - **Remote logging (server build):** `--remote-log <host[:port]>` sends every logged QSO to GridTracker, JTAlert, Log4OM or any other program that listens for the WSJT-X UDP protocol (port 2237 if omitted); add `--remote-log-decodes` to forward FT8/FT4 decodes as well. It is set on the server only — the command line or `[RemoteLog]` in the settings file — never from a browser.
 - **Worked-before hints:** FT8/FT4 decodes show the sender's DXCC entity, a gold star for an entity never worked, a silver star for one not yet worked on this band, and dim stations already worked on this band. Both can be switched off in Station Settings.
@@ -407,6 +438,9 @@ All settings can be passed as CLI flags. Run `wfweb --help` for the full list.
 | `--lan-pass <pass>` | LAN password | (empty) |
 | `--civ <addr>` | CI-V address (hex `0x94` or decimal `148`) | auto-detect (USB only) |
 | `--manufacturer <id>` | 0=Icom, 1=Kenwood, 2=Yaesu | `0` (Icom) |
+| `--serial-port <path>` | Serial port device (`/dev/ttyUSB0`, `COM5`) | first Icom port found |
+| `--audio-system <id>` | Server audio backend: 0=Qt, 1=PortAudio, 2=RtAudio | `0` (Qt) |
+| `--audio-device <name>` | Rig audio device by name prefix or substring (`'USB Audio CODEC'`); `--audio-device list` prints the devices | a USB CODEC device if present |
 | `-l --logfile <file>` | Log to file | `/tmp/wfweb-*.log` |
 | `-b --background` | Run as daemon (Linux/macOS) | foreground |
 | `-c --clearconfig CONFIRM` | Reset all saved settings and exit | — |
@@ -422,10 +456,16 @@ All settings can be passed as CLI flags. Run `wfweb --help` for the full list.
 | `--sstv-dir <dir>` | Where the server keeps the SSTV gallery (received and loaded pictures) | `<data dir>/sstv` |
 | `--no-autoconnect` | Start without connecting to the rig (LAN only; connect via web UI Reconnect). Env: `WFWEB_NO_AUTOCONNECT=1` | autoconnect |
 | `--no-tui` | Print the plain log on an interactive terminal instead of the status page. Env: `WFWEB_NO_TUI=1` | status page on a terminal |
+| `--cert <file> --key <file>` | Serve HTTPS with your own certificate and private key (PEM, unencrypted; the certificate file may carry its chain) | generated self-signed certificate |
+| `--shared` | [Shared Station](#shared-station--accounts-access-levels-and-one-operators-seat): accounts, login and access control (not with `--no-web`) | off (no login) |
+| `--shared-dir <dir>` | Where the accounts, sessions and audit log are kept | `<data dir>/shared` |
+| `--shared-reset-admin` | Print a setup code that resets or creates an admin account | — |
+| `--trust-proxy <cidr>` | Reverse proxy address(es), comma separated, whose `X-Forwarded-For` / `X-Forwarded-Proto` are believed | none |
+| `-v --version` | Show the version; a build that is not a tagged release reads `X.Y.Z+dev.<commit>` | — |
 
 ### Terminal status page
 
-Started from an interactive terminal, wfweb shows a status page instead of the scrolling log: the URL to open for each network address, the rig and its connection, frequency and mode, connected browsers, the REST and rigctld ports, the log file and the last warning. It redraws to fit any terminal size.
+Started from an interactive terminal, wfweb shows a status page instead of the scrolling log: the URL to open for each network address, the rig and its connection, frequency and mode, connected browsers, the access mode (open, or Shared Station, with the setup code while no admin exists), a warning when a client connects from a public internet address or the host has one (wfweb belongs on a LAN or behind a VPN), the REST and rigctld ports, the log file and the last warning. It redraws to fit any terminal size.
 
 - **`l`** switches to the live log (same format as before, with the last 500 lines replayed) and back.
 - **`q`** or Ctrl-C quits.
@@ -552,7 +592,7 @@ tools/serve-static.py
 
 `serve-static.py` takes no arguments — it always serves the repo's `dist/` directory on port 8000 with `Cache-Control: no-store`. Localhost is treated as a secure context, so Web Serial works without HTTPS during local testing. Public hosting requires HTTPS — Web Serial refuses to operate on plain HTTP.
 
-The pre-built RADE, Direwolf, and JS8 WebAssembly modems are committed under `resources/web-standalone/wasm/`, so `build-static.sh` produces a working bundle out of the box. Rebuilding the WASM modules from source (only needed when their C/C++ source changes) is a separate step that requires Emscripten — see `tools/build-direwolf-wasm.sh`, `tools/build-rade-wasm.sh`, and `tools/build-js8-wasm.sh`.
+The pre-built RADE, Direwolf, JS8 and SSTV WebAssembly modules are committed under `resources/web-standalone/wasm/`, so `build-static.sh` produces a working bundle out of the box. Rebuilding them from source (only needed when that source changes) is a separate step: Emscripten for the C/C++ modems (`tools/build-direwolf-wasm.sh`, `tools/build-rade-wasm.sh`, `tools/build-js8-wasm.sh`), Rust and `wasm-opt` for SSTV (`tools/build-sstv-wasm.sh`).
 
 ---
 
@@ -607,6 +647,8 @@ Password=
 | `Logbook` | `[General]` | ADIF logbook path; relative paths resolve next to the settings file | `station.adi` |
 | `SstvDir` | `[General]` | SSTV gallery directory; relative paths resolve next to the settings file | `sstv` |
 | `Enabled` / `Target` / `Decodes` | `[RemoteLog]` | Remote logging (see [Logbook](#logbook-and-remote-logging)) | `true` / `127.0.0.1:2237` / `false` |
+| `CertFile` / `KeyFile` | `[Web]` | Your own HTTPS certificate and key (same as `--cert` / `--key`) | `/etc/wfweb/fullchain.pem` / `/etc/wfweb/privkey.pem` |
+| `Enabled`, `Dir`, `Anonymous`, `TxInhibit`, `Seat`, … | `[Shared]` | Shared Station; the full list is in [SHARED_STATION.md](SHARED_STATION.md#settings) and most of it is set from the page | `true` |
 
 > Audio streams directly between the radio and the browser — no server-side audio configuration is needed for web operation.
 
@@ -622,7 +664,9 @@ See **[BUILDING.md](BUILDING.md)** for platform-specific prerequisites and build
 
 **Squelch makes no difference to what I hear.** The GAIN panel's **SQL** slider sets the radio's squelch, and an **SQL n%** tile on the spectrum shows it whenever it is above 0. The radio squelches its own speaker, but the audio it sends over USB, which is what wfweb plays in the browser, is squelched only if the radio is set up for it: on the IC-7300 that is **MENU › SET › Connectors › ACC/USB AF SQL** ON (other Icoms have a similar USB AF SQL setting). It ships OFF (OPEN).
 
-**COMP goes off while I transmit FT8 (or JS8, RTTY, SSTV, FreeDV…).** That is on purpose. wfweb's digital modes (FT8/FT4, JS8, RTTY, SSTV, TUNE, FreeDV / RADE, packet) transmit in plain USB / LSB, where the radio keeps the speech compressor in the path and distorts the signal, so wfweb switches COMP off just before it keys for one of them and back on after; the **COMP n** tile on the spectrum disappears for that time. It never switches COMP on if it was off, and pressing FUNC › **COMP** during the transmission takes over. GAIN › **COMP** sets the level (0-10, as on the radio).
+**COMP goes off while I transmit FT8 (or JS8, RTTY, SSTV, FreeDV…).** That is on purpose. wfweb's digital modes (FT8/FT4, JS8, RTTY, SSTV, TUNE, FreeDV / RADE, packet) transmit in plain USB / LSB, where the radio keeps the speech compressor in the path and distorts the signal, so wfweb switches COMP off just before it keys for one of them and back on after; the **COMP n** tile on the spectrum disappears for that time. It never switches COMP on if it was off, and pressing FUNC › **COMP** during the transmission takes over. GAIN › **COMP** sets the level (0-10, as on the radio). On the rigs that have an SSB transmit bandwidth setting (FUNC › **TBW**: IC-7300, IC-705, IC-7610, IC-9700 and their relatives), the same transmissions hold it at WIDE and put your setting back after: on MID or NAR a tone near the edge of the passband left the radio with next to no power.
+
+**TUNE in the top bar comes and goes as I change band.** The IC-7300 keeps the antenna tuner on or off per band (SET › Function › Tuner › [TUNER] Switch = Auto, its default), and the **TUNE** tag shows what the radio has for the band you are on: grey off, red on, blinking while it tunes. Tap it to switch the tuner, hold it half a second to tune, as with the radio's own key.
 
 **The CW sidetone is late, or I hear every element twice.** The CW bar's **TONE** button (on by default) plays a sidetone made in the browser, at the radio's CW pitch and at the VOL level, in step with the text as it is keyed and with a paddle connected to wfweb. Over LAN it is the only sidetone there is. Its delay is that of the audio output: through Bluetooth headphones it is too late to send a paddle by ear, and TONE turns amber to say so. A paddle plugged into the radio's own key jack is not heard through TONE. For true full break-in with that paddle on a USB-connected radio, switch TONE off and let the radio send its own sidetone over the audio channel: on the IC-7300 and other USB-connected Icoms that is **MENU › SET › Connectors › ACC/USB AF Beep/Speech… Output** ON (it ships OFF; the radio's beeps come along too). You then hear the sidetone exactly as the radio keys it, paddle included, with the received signal between the elements, delayed only by the RX audio buffer. Keep just one of the two on, or you hear every element twice.
 

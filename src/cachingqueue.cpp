@@ -90,11 +90,27 @@ void cachingQueue::run()
             //if (it != queue.end() && it.key() == prio)
             auto it = queue.find(prio);
             if (it != queue.end()) {
+                // The oldest item of this priority is the last of its run.
+                // Among the immediate ones a command that carries a value (a
+                // set, or a read addressed by channel / register, which the
+                // caller orders itself) goes before the plain reads queued
+                // ahead of it: the status re-asks stale values at immediate
+                // priority, one a tick, and a set waited its turn behind
+                // them -- a second or more on the macOS CI runner
+                // (test_set_is_not_held_up_by_refresh_reads, 2026-11-22). A
+                // read that goes out after the set answers with the new
+                // value, which is what it was asked for. Sets keep their
+                // order among themselves.
+                auto pick = queue.end();
                 while (it != queue.end() && it.key() == prio)
                 {
+                    if (prio == priorityImmediate && it.value().param.isValid())
+                        pick = it;
                     it++;
                 }
                 it--;
+                if (pick != queue.end())
+                    it = pick;
                 auto item = it.value();
 
                 // A recurring read the rig keeps refusing sits out its retry
@@ -344,7 +360,13 @@ queuePriority cachingQueue::del(funcs func, uchar receiver)
         //auto it(queue.begin());
         if (it != queue.end()) {
             prio = it.key();
-            int count = queue.remove(it.key(),it.value());
+            // By value: QMultiMap::remove(key, value) erases the node as it
+            // walks the entries of that key and compares the rest with the
+            // value it was handed -- a reference into the first node read
+            // freed memory once another entry shared the priority (ASan,
+            // setPTT false from the browser; 2026-11-07).
+            const queueItem item = it.value();
+            int count = queue.remove(prio, item);
             if (count>0)
                 qDebug() << "cachingQueue()::del" << count << "entries from queue for" << funcString[func] << "on receiver" << receiver;
         }

@@ -1,6 +1,7 @@
 #ifndef CIVEMULATOR_H
 #define CIVEMULATOR_H
 
+#include <QHash>
 #include <QObject>
 #include <QByteArray>
 #include <QString>
@@ -78,6 +79,7 @@ private:
     quint8 dataMode = 0x00;     // no DATA
     bool ptt = false;
     quint16 gains[16] = {0};    // indexed by 0x14 subcommand (full byte)
+    QHash<quint16, QByteArray> settings1A05;    // 1A 05 xx yy registers written so far
     quint16 sMeter = 0;         // 0 = silent (S0). Updated later from mixer audio peak.
     quint16 poMeter = 0;        // 0x15 0x11 Power Meter (0..255 BCD).
     quint16 swrMeter = 0;       // 0x15 0x12 SWR Meter.
@@ -129,6 +131,7 @@ private:
     quint8 cwPitchEncoded = 128;    // encoded → 600 Hz
     quint8 keySpeedEncoded = 115;   // encoded → ~25 WPM
     quint8 breakInMode = 1;         // 0x16 0x47: 0=off, 1=semi, 2=full
+    quint8 agcMode = 2;             // 0x16 0x12: 1=FAST, 2=MID, 3=SLOW (IC-7300)
     quint16 cwPitchHz() const  { return 300 + (quint16)cwPitchEncoded * 600 / 255; }
     quint16 keySpeedWpm() const{ return 6 + (quint16)((float)keySpeedEncoded / 6.071f); }
 

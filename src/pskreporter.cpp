@@ -1,6 +1,6 @@
 #include "pskreporter.h"
 #include "logcategories.h"
-#include "wfweb_version.h"
+#include "buildinfo.h"
 
 #include <QDataStream>
 #include <QDateTime>
@@ -323,7 +323,7 @@ QByteArray PskReporter::buildPacket(bool withTemplates)
         appendU16(rset, 0);          // set length (patched)
 
         QByteArray softwareTag = QString("wfweb %1")
-            .arg(QStringLiteral(WFWEB_VERSION)).toUtf8();
+            .arg(QString(wfwebVersion())).toUtf8();
 
         rset.append(encodeVarField(callsign_.toUtf8()));
         rset.append(encodeVarField(grid_.toUtf8()));

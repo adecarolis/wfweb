@@ -10,6 +10,8 @@ on verifying the serial transport works end-to-end, so they cover the
 key operations without repeating every edge case.
 """
 
+import time
+
 import requests
 
 
@@ -122,3 +124,27 @@ def test_usb_civ_frames_logged(usb_rest_url, serial_mock):
         assert frame[:2] == b"\xfe\xfe", f"Bad preamble: {frame.hex()}"
         assert frame[-1:] == b"\xfd", f"Bad terminator: {frame.hex()}"
         assert len(frame) >= 6, f"Frame too short: {frame.hex()}"
+
+
+# ---------------------------------------------------------------------------
+# Mic level over serial
+# ---------------------------------------------------------------------------
+
+
+def test_usb_mic_gain_is_the_usb_mod_level(usb_rest_url, usb_poll, serial_mock):
+    """On a USB rig micGain is the USB mod level (IC-7610 register 0089),
+    never the LAN one (0090), which is the LAN-connected server's (#158)."""
+    r = requests.put(f"{usb_rest_url}/gains", json={"micGain": 150}, timeout=5)
+    assert r.status_code == 202
+    usb_poll("gains", lambda d: d.get("micGain") == 150)
+    # The set reaches the rig behind whatever the queue holds, and a REST poll
+    # while waiting only adds reads to it: on the macOS runner 5 s of polling
+    # was not enough, twice (2026-11-19).  So wait on the mock itself.
+    deadline = time.monotonic() + 30.0
+    while serial_mock.settings.get(0x0089) != bytes([0x01, 0x50]):
+        if time.monotonic() > deadline:
+            seen = [f.hex() for f in serial_mock.civ_log if len(f) > 5 and f[4] == 0x1A][-8:]
+            raise AssertionError(f"USB mod level never written; registers {serial_mock.settings}, "
+                                 f"last 1A frames from wfweb: {seen}")
+        time.sleep(0.1)
+    assert 0x0090 not in serial_mock.settings

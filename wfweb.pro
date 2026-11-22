@@ -17,6 +17,8 @@ win32:CONFIG += c++17
 
 # WFWEB_VERSION lives in include/wfweb_version.h so header-dep tracking
 # forces a rebuild of every consumer on bump. Do NOT add a -D for it here.
+# What a build shows is wfwebVersion(): that number, plus +dev.<commit> when
+# the build is not the tagged release (buildid.pri, tools/build-id.sh).
 
 DEFINES += BUILD_WFSERVER
 
@@ -153,8 +155,8 @@ INSTALLS += rigs
 
 !win32:DEFINES += HOST=\\\"`hostname`\\\" UNAME=\\\"`whoami`\\\"
 
-!win32:DEFINES += GITSHORT="\\\"$(shell git -C $$PWD rev-parse --short HEAD)\\\""
-win32:DEFINES += GITSHORT=\\\"$$system(git -C $$PWD rev-parse --short HEAD)\\\"
+# The commit and the +dev build id come from a generated header, not a -D.
+include($$PWD/buildid.pri)
 
 win32:DEFINES += HOST=\\\"wfweb.org\\\"
 win32:DEFINES += UNAME=\\\"build\\\"
@@ -168,6 +170,10 @@ INSTALLS += target
 unix:systemd.files = systemd/wfweb@.service
 unix:systemd.path = $$PREFIX/lib/systemd/system
 INSTALLS += systemd
+
+unix:systemduser.files = systemd/wfweb.service
+unix:systemduser.path = $$PREFIX/lib/systemd/user
+INSTALLS += systemduser
 
 linux:LIBS += -L./ -lopus
 macx:LIBS += -framework CoreAudio -framework CoreFoundation -lpthread -lopus -lssl -lcrypto
@@ -370,7 +376,8 @@ SOURCES += \
     src/webserver.cpp \
     src/wsjtxmessage.cpp \
     src/logbook.cpp \
-    src/memorystore.cpp
+    src/memorystore.cpp \
+    src/access.cpp
 
 macx:SOURCES += src/tlsproxy.cpp
 
@@ -413,6 +420,7 @@ HEADERS  += \
     include/audiotaper.h \
     include/keyboard.h \
     include/consolestatus.h \
+    include/access.h \
     include/wfwebtypes.h \
     include/pttyhandler.h \
     include/icomudpaudio.h \

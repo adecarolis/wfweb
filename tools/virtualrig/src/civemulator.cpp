@@ -312,9 +312,22 @@ void civEmulator::onCivFromClient(const QByteArray& frame)
         }
         break;
     }
-    case 0x16: { // various toggles. Only 0x47 (break-in) is meaningful here.
+    case 0x16: { // various toggles. Only 0x47 (break-in) and 0x12 (AGC) are meaningful here.
         if (body.isEmpty()) {
             emit replyFrame(ack(true));
+        } else if ((quint8)body[0] == 0x12) {
+            if (body.size() == 1) {
+                QByteArray pl;
+                pl.append((char)0x16);
+                pl.append((char)0x12);
+                pl.append((char)agcMode);
+                emit replyFrame(buildFrame(ctlCiv, pl));
+            } else if ((quint8)body[1] >= 1 && (quint8)body[1] <= 3) {
+                agcMode = (quint8)body[1];
+                emit replyFrame(ack(true));
+            } else {
+                emit replyFrame(ack(false));   // the IC-7300 takes 1-3 only
+            }
         } else if ((quint8)body[0] == 0x47) {
             if (body.size() == 1) {
                 QByteArray pl;
@@ -421,6 +434,31 @@ void civEmulator::onCivFromClient(const QByteArray& frame)
     }
     case 0x27: { // scope (waterfall)
         handleScopeCommand(body);
+        break;
+    }
+    case 0x1A: { // 1A 05 xx yy: SET-mode registers (mod levels, mod inputs...)
+        // A register keeps what was written to it and reads it back; one
+        // never written, and the rest of 0x1A, is ACKed like any command we
+        // do not model.
+        if (body.size() >= 3 && (quint8)body[0] == 0x05) {
+            const quint16 reg = (quint16)(((quint8)body[1] << 8) | (quint8)body[2]);
+            if (body.size() > 3) {
+                settings1A05[reg] = body.mid(3);
+                qInfo().noquote() << QString("  -> 1A 05 %1 set to %2")
+                    .arg(reg, 4, 16, QChar('0')).arg(QString(body.mid(3).toHex()));
+                emit replyFrame(ack(true));
+                break;
+            }
+            if (settings1A05.contains(reg)) {
+                QByteArray pl;
+                pl.append((char)0x1A);
+                pl.append(body.left(3));
+                pl.append(settings1A05.value(reg));
+                emit replyFrame(buildFrame(ctlCiv, pl));
+                break;
+            }
+        }
+        emit replyFrame(ack(true));
         break;
     }
     default:

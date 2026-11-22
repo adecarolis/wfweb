@@ -52,24 +52,27 @@ struct audioPacket {
     qreal volume = 1.0;
 };
 
+// Every field has a value: the LAN setup in servermain never set `type`,
+// and icomUdpAudio::startAudio() picked Qt, PortAudio or RtAudio from
+// whatever the heap held (a segfault on a CI runner, 2026-11-22).
 struct audioSetup {
-    audioType type;
+    audioType type = qtAudio;
     QString name;
-    quint16 latency;
-    quint8 codec;
+    quint16 latency = 150;
+    quint8 codec = 4;
     bool ulaw = false;
-    bool isinput;
-    quint32 sampleRate;
+    bool isinput = false;
+    quint32 sampleRate = 48000;
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
     QAudioDeviceInfo port;
 #else
     QAudioDevice port;
 #endif
-    int portInt;
-    quint8 resampleQuality;
-    quint8 localAFgain;
+    int portInt = 0;
+    quint8 resampleQuality = 4;
+    quint8 localAFgain = 255;
     quint16 blockSize = 20; // Each 'block' of audio is 20ms long by default.
-    quint8 guid[GUIDLEN];
+    quint8 guid[GUIDLEN] = {};
     void* tci = Q_NULLPTR;
 };
 

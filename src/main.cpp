@@ -9,7 +9,7 @@
 #include <QTranslator>
 #endif
 
-#include "wfweb_version.h"
+#include "buildinfo.h"
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -244,6 +244,16 @@ int main(int argc, char *argv[])
         "                          WFWEB_NO_TUI=1 in the environment\n"
         "  --logbook <file>        QSO logbook (ADIF; default: <data dir>/logbook.adi)\n"
         "  --sstv-dir <dir>        Received SSTV pictures (default: <data dir>/sstv)\n"
+        "  --cert <file> --key <file>  Serve HTTPS with this certificate and private key\n"
+        "                          (PEM, unencrypted; the certificate file may carry its\n"
+        "                          chain) instead of the generated self-signed one\n"
+        "  --shared                Shared Station: accounts, login and access control\n"
+        "                          (see SHARED_STATION.md; Shared/Enabled=true in settings;\n"
+        "                          not with --no-web)\n"
+        "  --shared-dir <dir>      Accounts, sessions, audit log (default: <data dir>/shared)\n"
+        "  --shared-reset-admin    Print a setup code that resets or creates an admin\n"
+        "  --trust-proxy <cidr>    Reverse proxy address(es), comma separated, whose\n"
+        "                          X-Forwarded-For / X-Forwarded-Proto headers are trusted\n"
         "  --remote-log <host[:port]>  Send every logged QSO to an external logging\n"
         "                          program (GridTracker, JTAlert, Log4OM, ...) which\n"
         "                          listens for the WSJT-X UDP protocol; port 2237 if omitted\n"
@@ -253,19 +263,18 @@ int main(int argc, char *argv[])
         "  -b --background         Run as daemon (not Windows)\n"
         "  -d --debug [file]       Enable verbose debug logging (optionally to file)\n"
         "  -c --clearconfig CONFIRM  Clear all settings\n"
-        "  --packet-self-test      Run Dire Wolf encode/decode loopback and exit\n"
         "  -v --version            Show version\n"
         "  -? --help               Show this help\n");
 #ifdef BUILD_WFSERVER
     const QString version = QString("wfweb version: %1 (Git:%2 on %3 at %4 by %5@%6)\nOperating System: %7 (%8)\nBuild Qt Version %9. Current Qt Version: %10\n")
-        .arg(QString(WFWEB_VERSION))
-        .arg(GITSHORT).arg(__DATE__).arg(__TIME__).arg(UNAME).arg(HOST)
+        .arg(QString(wfwebVersion()))
+        .arg(wfwebGitShort()).arg(__DATE__).arg(__TIME__).arg(UNAME).arg(HOST)
         .arg(QSysInfo::prettyProductName()).arg(QSysInfo::buildCpuArchitecture())
         .arg(QT_VERSION_STR).arg(qVersion());
 #else
     const QString version = QString("wfweb version: %1 (Git:%2 on %3 at %4 by %5@%6)\nOperating System: %7 (%8)\nBuild Qt Version %9. Current Qt Version: %10\n")
-        .arg(QString(WFWEB_VERSION))
-        .arg(GITSHORT).arg(__DATE__).arg(__TIME__).arg(UNAME).arg(HOST)
+        .arg(QString(wfwebVersion()))
+        .arg(wfwebGitShort()).arg(__DATE__).arg(__TIME__).arg(UNAME).arg(HOST)
         .arg(QSysInfo::prettyProductName()).arg(QSysInfo::buildCpuArchitecture())
         .arg(QT_VERSION_STR).arg(qVersion());
 
@@ -286,7 +295,7 @@ int main(int argc, char *argv[])
 
     // Early CLI short-circuit: run the packet self-test and exit, without
     // starting the web server or touching radio state.  Used by
-    // tests/test_packet.py.
+    // tests/test_packet.py; a developer check, so not listed in --help.
     for (int c = 1; c < argc; c++) {
         if (QString(argv[c]) == "--packet-self-test") {
             return DireWolfProcessor::runSelfTest();
@@ -461,6 +470,28 @@ int main(int argc, char *argv[])
             if (argc > c + 1) overrides.sstvDir = argv[++c];
             else { std::cout << "Error: --sstv-dir requires a directory\n"; return -1; }
         }
+        else if (currentArg == "--cert")
+        {
+            if (argc > c + 1) overrides.certFile = argv[++c];
+            else { std::cout << "Error: --cert requires a file\n"; return -1; }
+        }
+        else if (currentArg == "--key")
+        {
+            if (argc > c + 1) overrides.keyFile = argv[++c];
+            else { std::cout << "Error: --key requires a file\n"; return -1; }
+        }
+        else if (currentArg == "--shared") overrides.shared = true;
+        else if (currentArg == "--shared-dir")
+        {
+            if (argc > c + 1) overrides.sharedDir = argv[++c];
+            else { std::cout << "Error: --shared-dir requires a directory\n"; return -1; }
+        }
+        else if (currentArg == "--shared-reset-admin") overrides.sharedResetAdmin = true;
+        else if (currentArg == "--trust-proxy")
+        {
+            if (argc > c + 1) overrides.trustProxy = argv[++c];
+            else { std::cout << "Error: --trust-proxy requires an address or CIDR block\n"; return -1; }
+        }
         else if (currentArg == "--remote-log")
         {
             if (argc > c + 1) overrides.remoteLogTarget = argv[++c];
@@ -608,6 +639,17 @@ int main(int argc, char *argv[])
             return -1;
         }
 
+    }
+
+    // Shared Station gates the web server.  --no-web starts the wfview-style
+    // rig server instead, which has its own user list and none of the
+    // accounts, levels, seat or audit log: the two together used to start
+    // without a word, with access control the operator asked for and did
+    // not get.
+    if (overrides.shared && overrides.noWeb) {
+        std::cout << "Error: --shared needs the web server; it cannot be combined with --no-web\n"
+                     "(the rig server takes wfview's own users and is not covered by Shared Station)\n";
+        return -1;
     }
 
     // Container-friendly alternative to --no-autoconnect (issue #70)

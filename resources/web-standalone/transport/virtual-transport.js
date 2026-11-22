@@ -49,6 +49,7 @@
         setPreamp:        'preamp',
         setAttenuator:    'attenuator',
         setBreakIn:       'breakIn',
+        setAGC:           'agc',
         setCompressor:    'compressor',
         setCompLevel:     'compLevel',
         setSplit:         'split',
@@ -57,9 +58,13 @@
         setToneMode:      'toneMode',
         setToneFreq:      'toneFreq',
         setTsqlFreq:      'tsqlFreq',
-        setTuner:         'tuner',
         setSpan:          'spanIndex',
     };
+
+    // AGC settings the virtual rig offers: the IC-7300's (CI-V 0x16 0x12).
+    var VIRTUAL_AGC_MODES = [
+        { num: 1, name: 'FAST' }, { num: 2, name: 'MID' }, { num: 3, name: 'SLOW' },
+    ];
 
     // Convert a peak Int16 amplitude to the SPA's S-meter scale: dB relative
     // to S9 (0 = S9, -54 = S0). drawSMeter() expects this units.
@@ -138,10 +143,15 @@
                 attenuator: 0,
                 // CW break-in, SEMI like the C++ virtual rig (civemulator).
                 breakIn: 1,
+                // AGC MID, the IC-7300's SSB default (VIRTUAL_AGC_MODES).
+                agc: 2,
                 // Speech compressor ON at level 5, as a voice operator leaves
                 // it, so the bench shows the digital-TX hold (#147).
                 compressor: true,
                 compLevel: 128,
+                // SSB transmit filter (FUNC TBW tile): MID. _tbw below keeps
+                // one setting with COMP off and one with COMP on, like the rig.
+                txBandwidth: 1,
                 // -54 dB = S0. The drawSMeter() scale treats 0 as S9, so a
                 // default of 0 would paint a permanent full-scale signal.
                 sMeter: -54,
@@ -212,18 +222,45 @@
             if (ECHO_FIELDS.hasOwnProperty(obj.cmd)) {
                 // Mirror SerialRigTransport: the operator's COMP wins over a hold.
                 if (obj.cmd === 'setCompressor' && this._compHeld) this._compRestoreOn = false;
+                var tbwAgain = obj.cmd === 'setCompressor' && this._tbwHeld;
+                if (obj.cmd === 'setCompressor') this._releaseTxBandwidth();
                 var field = ECHO_FIELDS[obj.cmd];
                 var val = (obj.cmd === 'setCWSpeed') ? obj.wpm : obj.value;
                 if (val === undefined) return;
                 this.state[field] = val;
                 var upd = {}; upd[field] = val;
                 this._emit('update', upd);
+                if (obj.cmd === 'setCompressor') {
+                    this._syncTxBandwidth();
+                    if (tbwAgain) this._holdTxBandwidth();
+                }
+                return;
+            }
+            if (obj.cmd === 'setTxBandwidth') {
+                // The operator's word wins over a digital-TX hold.
+                this._tbwHeld = false;
+                this._tbwSlots()[this.state.compressor ? 1 : 0] = Math.max(0, Math.min(2, obj.value | 0));
+                this._syncTxBandwidth();
                 return;
             }
 
             switch (obj.cmd) {
                 case 'getStatus':
                     this._emitFullStatus();
+                    return;
+                case 'setTuner':
+                    // Like the IC-7300: 2 starts a tune, which ends with the
+                    // tuner ON a couple of seconds later.
+                    clearTimeout(this._tuneTimer);
+                    this.state.tuner = obj.value | 0;
+                    this._emit('update', { tuner: this.state.tuner });
+                    if (this.state.tuner === 2) {
+                        this._tuneTimer = setTimeout(() => {
+                            if (!this._open) return;
+                            this.state.tuner = 1;
+                            this._emit('update', { tuner: 1 });
+                        }, 2000);
+                    }
                     return;
                 case 'setFrequency':
                     if (typeof obj.value !== 'number' || obj.value <= 0) return;
@@ -607,9 +644,14 @@
                 hasTuner: true,
                 // The CW bar's BK-IN button, echoed like the rest.
                 hasBreakIn: true,
+                // FUNC AGC tile: the IC-7300's settings, echoed like the rest.
+                hasAgc: true,
+                agcModes: VIRTUAL_AGC_MODES,
                 // FUNC COMP tile and GAIN COMP row, echoed like the rest.
                 hasCompressor: true,
                 hasCompLevel: true,
+                // FUNC TBW tile, one setting per COMP state like the rig.
+                hasTxBandwidth: true,
                 // Switchable bottom meter: borrow the IC-705's meter faces so
                 // the SWR / ALC / COMP / Vd / Id cycle can be exercised off-air.
                 txMeters: virtualTxMeters(),
@@ -652,8 +694,10 @@
                 preamp: this.state.preamp,
                 attenuator: this.state.attenuator,
                 breakIn: this.state.breakIn,
+                agc: this.state.agc,
                 compressor: this.state.compressor,
                 compLevel: this.state.compLevel,
+                txBandwidth: this.state.txBandwidth,
                 duplex: this.state.duplex || 'OFF',
                 toneMode: this.state.toneMode || 'OFF',
                 toneFreq: this.state.toneFreq,
@@ -768,25 +812,59 @@
         // Same rule as SerialRigTransport._holdCompressor: SSB only, and an
         // unread state is never guessed.
         _holdCompressor() {
-            if (this._compHeld) return;
             if (this.state.mode !== 'USB' && this.state.mode !== 'LSB') return;
-            if (this.state.compressor === undefined || this.state.compressor === null) return;
-            this._compHeld = true;
-            this._compRestoreOn = !!this.state.compressor;
-            if (this._compRestoreOn) {
-                this.state.compressor = false;
-                this._emit('update', { compressor: false });
+            if (!this._compHeld && this.state.compressor !== undefined && this.state.compressor !== null) {
+                this._compHeld = true;
+                this._compRestoreOn = !!this.state.compressor;
+                if (this._compRestoreOn) {
+                    this.state.compressor = false;
+                    this._emit('update', { compressor: false });
+                    this._syncTxBandwidth();
+                }
             }
+            this._holdTxBandwidth();
         }
 
         _releaseCompressor() {
+            this._releaseTxBandwidth();
             if (!this._compHeld) return;
             this._compHeld = false;
             if (this._compRestoreOn) {
                 this.state.compressor = true;
                 this._emit('update', { compressor: true });
+                this._syncTxBandwidth();
             }
             this._compRestoreOn = false;
+        }
+
+        // The SSB transmit filter, as SerialRigTransport holds it: WIDE for
+        // the over, the setting of the current COMP state back after it.
+        _tbwSlots() {
+            if (!this._tbw) this._tbw = [1, 1];   // [COMP off, COMP on], MID
+            return this._tbw;
+        }
+
+        _syncTxBandwidth() {
+            var v = this._tbwSlots()[this.state.compressor ? 1 : 0];
+            if (v === this.state.txBandwidth) return;
+            this.state.txBandwidth = v;
+            this._emit('update', { txBandwidth: v });
+        }
+
+        _holdTxBandwidth() {
+            if (this._tbwHeld) return;
+            var slot = this.state.compressor ? 1 : 0;
+            this._tbwHeld = true;
+            this._tbwRestore = this._tbwSlots()[slot];
+            this._tbwSlots()[slot] = 0;
+            this._syncTxBandwidth();
+        }
+
+        _releaseTxBandwidth() {
+            if (!this._tbwHeld) return;
+            this._tbwHeld = false;
+            this._tbwSlots()[this.state.compressor ? 1 : 0] = this._tbwRestore;
+            this._syncTxBandwidth();
         }
     }
 

@@ -113,6 +113,9 @@ class rigCtlD : public QTcpServer
 
 public:
     explicit rigCtlD(QObject *parent=nullptr);
+    // True once cwRequested is connected to the web server; false keeps
+    // send_morse going straight to the rig.
+    bool routeCw = false;
     virtual ~rigCtlD();
 
     Q_INVOKABLE int startServer(qint16 port);
@@ -124,6 +127,8 @@ signals:
     // packet TX gating and ALC meter polling stay coherent. Connect with
     // Qt::QueuedConnection across threads.
     void pttRequested(bool on);
+    // send_morse text, for the same reason (set routeCw when connected).
+    void cwRequested(QString text);
     void onStarted();
     void onStopped();
     void sendData(QString data);

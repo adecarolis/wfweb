@@ -51,6 +51,36 @@ static struct
 };
 
 
+
+// The AGC level: hamlib's agc_level_e on the wire, the rig's own AGC Status
+// value on the radio. The values differ per rig (IC-7300 1-3 = FAST-SLOW,
+// IC-7600 0-2, Kenwood GC 0 = OFF then SLOW up), so they go through the
+// names the rig file gives them (AGC\N\Num, Name).
+static const struct { const char *name; int level; } agcHamlibLevels[] = {
+    {"OFF", 0}, {"FAST", 2}, {"SLOW", 3}, {"MID", 5},   // RIG_AGC_OFF/FAST/SLOW/MEDIUM
+};
+
+static int agcToHamlib(const rigCapabilities *caps, int rigVal)
+{
+    for (const genericType &g : caps->agcModes) {
+        if (g.num != rigVal) continue;
+        for (const auto &l : agcHamlibLevels)
+            if (g.name == QLatin1String(l.name)) return l.level;
+    }
+    return 0;
+}
+
+// -1 = the rig has no such setting (MEDIUM on a FAST / SLOW rig).
+static int agcFromHamlib(const rigCapabilities *caps, int level)
+{
+    for (const auto &l : agcHamlibLevels) {
+        if (l.level != level) continue;
+        for (const genericType &g : caps->agcModes)
+            if (g.name == QLatin1String(l.name)) return g.num;
+    }
+    return -1;
+}
+
 static const subCommandStruct levels_str[] =
 {
     {"PREAMP",funcPreamp,typeUChar},
@@ -70,7 +100,7 @@ static const subCommandStruct levels_str[] =
     {"KEYSPD",funcKeySpeed,typeUShort},
     {"NOTCHF",funcNotchFilter,typeUChar},
     {"COMP",funcCompressorLevel,typeFloat},
-    {"AGC",funcAGCTimeConstant,typeUChar},
+    {"AGC",funcAGC,typeUChar},   // FAST / MID / SLOW / OFF, mapped by name (agcToHamlib)
     {"BKINDL",funcBreakInDelay,typeFloat},
     {"BAL",funcNone,typeFloat},
     {"METER",funcNone,typeFloat},
@@ -1051,6 +1081,11 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
             // Route PTT through webserver so RADE EOO synthesis,
             // packet TX gating and ALC meter polling stay coherent.
             emit parent->pttRequested(val.toBool());
+        } else if (func == funcSendCW && parent->routeCw) {
+            // CW through the rig's keyer transmits without a key of its
+            // own: the web server refuses it under a shared station's TX
+            // inhibit and names it in the audit log, as it does a browser's.
+            emit parent->cwRequested(val.toString());
         } else if (rigCaps->commands.contains(func)) {
             queue->add(priorityImmediate, queueItem(func, val,false,state.receiver));
         }
@@ -1270,8 +1305,12 @@ int rigCtlClient::getSubCommand(QStringList& response, bool extended, const comm
                         uchar v = static_cast<uchar>(params[1].toInt());
                         if (params[0] == "FBKIN")
                             v = (v << 1) & 0x02; // BREAKIN is not bool!
-                        if (params[0] == "AGC")
-                            v = (v << 1);
+                        if (params[0] == "AGC") {
+                            int rigVal = agcFromHamlib(rigCaps, params[1].toInt());
+                            if (rigVal < 0)
+                                return -RIG_EINVAL;
+                            v = static_cast<uchar>(rigVal);
+                        }
                         val.setValue(v);
                         break;
                     }
@@ -1312,7 +1351,7 @@ int rigCtlClient::getSubCommand(QStringList& response, bool extended, const comm
                         if (params[0] == "FBKIN")
                             val = (val >> 1) & 0x01;
                         if (params[0] == "AGC")
-                            val = (val >> 1);
+                            val = item.value.isValid() ? agcToHamlib(rigCaps, val) : 0;
                         resp.append(QString::number(val));
                         break;
                     }

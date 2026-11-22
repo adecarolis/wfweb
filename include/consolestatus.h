@@ -9,9 +9,9 @@
 #include <QTimer>
 #include <functional>
 
-// Everything the terminal status page shows. servermain fills the rig and
-// web-server fields; ConsoleStatus adds version, uptime, log file and the last
-// warning before rendering.
+// Everything the terminal status page shows. servermain fills the
+// version, rig and web-server fields; ConsoleStatus adds uptime, log file and
+// the last warning before rendering.
 struct ConsoleSnapshot {
     enum WebState { WebStarting, WebListening, WebFailed, WebDisabled };
 
@@ -21,7 +21,19 @@ struct ConsoleSnapshot {
 
     WebState web = WebStarting;
     quint16 webPort = 0;
-    bool https = false;         // self-signed certificate in use
+    bool https = false;
+    bool selfSigned = true;     // wfweb's own certificate: the browser warns once
+    // Shared Station: access control on; accounts; the setup code while the
+    // first admin is still to be created (or --shared-reset-admin is on).
+    bool shared = false;
+    int sharedUsers = 0;
+    QString setupCode;
+    // Signs the server is reachable from the internet (webServer::exposure):
+    // the last client from a public address ("203.0.113.9 at 14:02"), how
+    // many such addresses, a public IPv4 address on an interface.
+    QString publicClient;
+    int publicClients = 0;
+    QString publicInterface;
     QStringList urls;           // one per reachable address, best first
     QString restUrl;            // plain-HTTP REST endpoint, empty when none
     bool restFailed = false;

@@ -1,5 +1,5 @@
 [General]
-Version=2.10
+Version=2.11
 
 [Rig]
 Manufacturer=0
@@ -537,7 +537,7 @@ Commands\57\Command29=true
 Commands\57\GetCommand=true
 Commands\57\SetCommand=true
 Commands\57\Admin=false
-Commands\58\Type=AGC Time Constant
+Commands\58\Type=AGC Status
 Commands\58\String=\\x16\\x12
 Commands\58\Min=0
 Commands\58\Max=3
@@ -1691,6 +1691,15 @@ Preamps\2\Name=PRE 1
 Preamps\3\Num=2
 Preamps\3\Name=PRE 2
 Preamps\size=3
+AGC\1\Num=0
+AGC\1\Name=OFF
+AGC\2\Num=1
+AGC\2\Name=FAST
+AGC\3\Num=2
+AGC\3\Name=MID
+AGC\4\Num=3
+AGC\4\Name=SLOW
+AGC\size=4
 Antennas\1\Num=0
 Antennas\1\Name=ANT 1
 Antennas\2\Num=1

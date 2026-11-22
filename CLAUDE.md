@@ -23,7 +23,8 @@ Both builds share the SPA frontend (see "Frontend layout — three forks" below)
 # Server build — Linux. ALWAYS use wfweb.pro, NOT wfview.pro
 qmake wfweb.pro && make -j$(nproc)
 
-# Server flags: -b (daemon), -l (logfile), -s (settings file), -n (top-bar name tag)
+# Server flags: -b (daemon), -l (logfile), -s (settings file), -n (top-bar name tag),
+#   --shared (accounts + access control, SHARED_STATION.md), --cert/--key (own TLS cert)
 
 # Windows GUI launcher (separate exe, Qt Widgets) — build.bat and the Windows
 # CI job build it after the server; standalone:  cd launcher && qmake && nmake release
@@ -92,7 +93,7 @@ other.** No Direct/Server runtime gates: each `index.html` is single-purpose.
 |-----|---------|----------|
 | `resources/web/` | C++ server build (`wfweb.pro`) | Server-only `index.html`, `transport/websocket-transport.js` |
 | `resources/web-standalone/` | Static bundle (`tools/build-static.sh`) | Standalone `index.html`, `transport/serial-transport.js`, `civ/`, `wasm/` |
-| `resources/web-shared/` | Both | `index.html`-side modules and pure assets: `favicon.svg`, `theme.css` (design tokens + `.wf-*` kit), `packet.js`, `recorder.js` (+ vendored `lamejs/`), `needle-meter.js`, `rx-jitter.js`, `cw-keyer.js`, `cw-paddle.js`, `midi.js`, `paddle-panel.js`, `transport/rig-transport.js` (base class), CW decoder JS family (+ `ort/` ONNX Runtime Web and `models/deepcw.onnx`), JS8 family (`js8.mjs`, `js8-panel.mjs`, `js8-panel.css`), `models/`, `digits/`, `digits-sprite.png` |
+| `resources/web-shared/` | Both | `index.html`-side modules and pure assets: `favicon.svg`, `theme.css` (design tokens + `.wf-*` kit), `packet.js`, `recorder.js` (+ vendored `lamejs/`), `needle-meter.js`, `rx-jitter.js`, `digi-msg.js`, `cw-keyer.js`, `cw-paddle.js`, `midi.js`, `paddle-panel.js`, `transport/rig-transport.js` (base class), CW decoder JS family (+ `ort/` ONNX Runtime Web and `models/deepcw.onnx`), JS8 family (`js8.mjs`, `js8-panel.mjs`, `js8-panel.css`), `models/`, `digits/`, `digits-sprite.png` |
 
 The CW decoder is the DeepCW neural model (`resources/web-shared/models/deepcw.onnx`
 + `.json` metadata, AGPL-3.0, from e04/deepcw-engine) run by ONNX Runtime Web
@@ -377,6 +378,373 @@ machinery replays); `tests/test_sstv_gallery.py` covers the REST store.
 Run them after any change to the worker, the shim, the vendored crate or
 the panel.
 
+### Shared Station (`--shared`): accounts and the gate
+Server build only; off by default and then nothing changes. **Scope: a club
+or multi-operator station reached on its LAN or over a VPN, never exposed
+to the public internet** (no port forward, no public address; an
+identity-aware proxy that admits only members counts as the VPN; the user's
+decision, 2026-11-22, in SHARED_STATION.md and the README). The server
+says when it is reachable anyway, open mode too: `notePublicPeer` (every
+HTTP accept and WS connection; `AccessControl::publicAddress`, the host's
+own IPv6 prefixes and `--trust-proxy` peers exempt) and
+`checkPublicInterfaces` (a public IPv4 on an interface; never IPv6, which
+every home host has) feed `webServer::exposure()` -> the console page's
+`Internet` row and a `Network:` log warning. Warning only, never refused.
+`AccessControl`
+(`include/access.h`, `src/access.cpp`) owns accounts, sessions, API tokens,
+the setup code, the lockout and `audit.log` in `<data dir>/shared`
+(`--shared-dir`); it is Qt5Core + QtNetwork only (`QPasswordDigestor`), no
+sockets, so `tests/access_test.cpp` links it alone. Passwords are
+PBKDF2-HMAC-SHA256 with the round count in the hash; the rounds run through
+libcrypto's `PKCS5_PBKDF2_HMAC` resolved at runtime with `QLibrary` (Qt
+already loads libcrypto for TLS; ten times faster than Qt's own, no build
+dependency) and fall back to Qt. **Never hash or verify on the web thread**:
+`hashPasswordAsync` / `verifyPasswordAsync` run it on a `std::thread` and
+come back by `QMetaObject::invokeMethod`, else a login stalls every
+listener's audio for the duration. Login is three steps for that reason
+(`loginPrecheck` -> verify -> `loginFinish`), with a decoy hash for unknown
+names so the timing does not say which names exist.
+`webServer` maps HTTP onto it: `requestContext()` resolves the
+`wfweb_session` cookie or `Authorization: Bearer` on every `/api/v1/`
+request, `handleAuthRequest` (`/api/v1/auth/*`) and
+`handleSharedUsersRequest` (`/api/v1/shared/users`, admins with a browser session, never a token) are the routes,
+(an account's `notes`, the admins' free text, is in `AccessUser::toJson`, which
+only those admin routes send: never put it in the principal or `userJson`),
+and `onWsNewConnection` reads the cookie off `QWebSocket::request()`: no
+session -> `{type:'authRequired'}` then close 4401 before any state is sent;
+with one -> `{type:'access', user}` first, then `sendCurrentState`.
+Roles `listen < control < operate < admin` are enforced by one table,
+`Access::commandCapability` in `access.cpp` (View / Control / Tx / Admin;
+**a command not in the table is Admin-only**, so classify every new
+WebSocket command there; `tests/test_access_table.py` checks
+`handleCommand` against it, after `setTsqlFreq` was found missing and
+refused to every member, 2026-11-17) and `Access::restCapability` (every GET is View,
+the other writes by route: the log, the SSTV gallery, station
+configuration). **Over REST the radio is read-only on a shared station**:
+`Access::restReadOnly` is true for any write under `/api/v1/radio` and the
+gate in `onHttpReadyRead` answers it 403 for every account, admins
+included, before it looks at the level: no tuning, no key, no keyer, no
+tuner, no memory recall. The radio is operated from the page by whoever
+has the seat; a token has no expiry and nobody at it, cannot be asked for
+the seat and is not in the connection list, and every rule made for a
+browser needed a second, weaker copy for it (the 2026-11-20 audit found a
+REST key with no audit or time-out, a REST tune past TX inhibit, a REST
+key left down when the seat was taken, and REST tuning in the grace /
+offer / reserved-slot windows; the user's decision, 2026-11-21). **Do not
+add a REST route that sets the radio outside `/api/v1/radio/`**, and do
+not bring per-route levels for radio writes back. rigctld (localhost) is
+the door for local programs and still keys. Open mode is unchanged.
+`handleCommand` asks it first for any browser (`client`
+non-null; nullptr is rigctld / REST, gated earlier), `onWsBinaryMessage`
+drops 0x03 frames from anyone below operate (one `denied` per stream), and
+the REST gate in `onHttpReadyRead` answers 403 `{need}`. A refused command
+gets `{type:'denied', cmd, need, reason}`; the `access` message carries
+`role`, `can`, `denied` (cmd -> level, so the page's `send()` refuses locally
+with a toast, `accessToast`) and `policy`. Policy lives in the settings file
+(`Shared/Anonymous` none|listen|control, `Shared/TxInhibit`,
+`Shared/TxTimeoutSecs` 600, `Shared/MaxClients` 20), changed by
+`PUT /api/v1/shared/policy` (`applyPolicy`, broadcast as `sharedPolicy`).
+Visitors (no session) get the anonymous role as an unauthenticated
+principal (`via: "anonymous"`), re-roled in place or cut (4401) when the
+policy changes; one past `maxClients` gets `stationFull` + 4503 (admins
+always get in). `Shared/TxInhibitBands` (policy `txInhibitBands`, rig-file
+band names) closes bands to transmitting for everyone, admins included:
+`inhibitedBand()` matches the transmit frequency (`txFrequencyHz()`: the other VFO in split) against `rigCaps->bands`,
+`txBlockedReason()` is the one text for both inhibits; refused in `setPTT`,
+for the on-air commands in the gate (`sendCW`, `packetTx`, `aprsTxBeacon`,
+`termConnect` / `termSend` / `termFileSend` / `termXferAccept`, `setTuner 2`:
+**a new command that transmits goes in that set**; the log and the mic are
+not refused; the same set gets a `tx <who> <kind> <freq mode>` audit line, written by each handler where it takes the command (`onAirAudit`),
+`auditOnAir`, one a minute per account and kind, since only `setPTT` has a
+key-down of its own; the global inhibit lets `Access::txInhibitExempt`
+through: the log and `stopCW`); `seatTick`
+releases a key held while tuning onto one. Page: `rigBandTable`,
+`txInhibitBand()`, `updateTxInhibitUi()` (the strip's `TX INHIBIT · 20m`,
+re-run as the VFO moves), band buttons in the RULES tab. The user list
+travels as a file: `AccessControl::exportUsers()` / `importUser()` (hash
+included, no ids / sessions / tokens; an import only adds, never replaces),
+`GET /api/v1/shared/users/export`, `POST .../import` (a plain `password` is
+hashed off the web thread, one entry at a time), EXPORT / IMPORT at the
+bottom of the ACCOUNTS tab. TX inhibit holds in `setPTT` for every caller and releases
+a held key (`forceUnkey`); `pttAccounting` writes key-down (freq + mode)
+and key-up (duration) to the audit log and runs the time-out timer; a
+key with no browser behind it is rigctld's. **A route that keys
+the rig calls `handleCommand(nullptr, setPTT)`**, as `onRigCtlPtt` and
+`PUT /radio/ptt` do (the latter in open mode only: under `--shared` the gate refuses it): queued straight
+to the rig, a REST key had no compressor hold and no RADE EOO, and under
+`--shared` no audit line, time-out or release under TX inhibit (2026-11-20). The page
+(`resources/web/index.html` only) shows `#loginOverlay` on `authRequired` /
+close 4401 (setup variant when `setupRequired`; a visitor opens it from the
+LOG IN button and may put it away), holds the auto-reconnect while it is up,
+and has the **station strip** (`#stationStrip`, `body.shared-on`): a 24 px
+row under the top bar, `SEAT <whose> [action]` on the left, `#txInhibitTag`
+in the middle, `YOU <name · role>` (`#userTag`) on the right, whose menu has
+SCHEDULE, CHANGE PASSWORD (`#passwordOverlay`, `POST /api/v1/auth/password`),
+STATION SETTINGS (admins) and LOG OUT. The strip shares the grid's
+first row with `#topBar` (`--station-h` added to the first track of every
+`#radio` row template; a new template must carry it), so nothing of Shared
+Station sits in the top bar: the two tiles there overflowed a phone
+(451 px on a 390 px screen, 2026-11-14) and did not say which name was the
+seat's. Body classes `access-listen` / `access-notx` / `access-admin` /
+`tx-inhibit` dim PTT etc. STATION SETTINGS opens `#sharedOverlay`
+(`renderSharedOverlay`, no FUNC tile any more), four tabs
+(`sharedView.tab`): NOW (seat card with TAKE IT / CLEAR, TX inhibit, the
+connection list with KICK, `/api/v1/shared/connections`), ACCOUNTS,
+SCHEDULE (reservations), RULES (the policy: one labelled row per knob with
+a line saying what it does, applied on change). Only NOW is redrawn by the
+seat's one-second countdown; the other tabs hold forms. `--shared` without TLS is refused unless
+`--trust-proxy <cidr>` names the proxy whose `X-Forwarded-For/-Proto` to
+believe; logins are refused on the plain REST port. The client address is
+the rightmost `X-Forwarded-For` entry not in the trusted set
+(`AccessControl::forwardedClient`, both `requestContext` and the WS
+upgrade): Cloudflare and nginx append to a list the client may start, so
+the first entry was the client's to choose, which defeated the per-address
+lockout and forged the audit log (2026-11-07; `tests/test_access_forwarded.py`). The console status page
+shows the setup code while no admin exists and "open - anyone who reaches
+this port can transmit" without `--shared`. HTTP hygiene that came with it,
+flag or not: header-read timeout 10 s, a 30 s stall cut on a request body
+(`kHttpBodyStallMs`; the 10 s used to run to the response, so any upload
+slower than that was dropped, and a whole request now waits for our answer
+however long we take), 128-connection cap, a 60 s drain
+stall cut (`sweepHttpConnections`), the `Origin`/`Host` check on the WSS
+upgrade (`hostOf`), `nosniff` / `Referrer-Policy`, HSTS only with a user
+certificate (`--cert/--key`, `Web/CertFile`; chain and EC keys accepted).
+A sanitizer fuzz pass over the parser and the WS handlers (2026-11-07,
+`tests/fuzz_webserver.py`, run short by `tests/test_fuzz_webserver.py`;
+`--duration 900` by hand) found no memory bug in the parser but four ways
+to hold the server's memory from a client before login, all fixed in
+`webserver.cpp`: one request per connection (bytes after the response are
+dropped, every response is `Connection: close`), a 128 MB cap on unsent
+response data across connections (`kHttpMaxPendingWriteBytes`, 503 past
+it), a WebSocket client with 8 MB unread is cut and spectrum / audio frames
+are skipped for one 2 MB behind (`sweepWsClients`, `kWsBinaryPendingBytes`;
+Qt's incoming frame / message limit set to 16 MB), and `serveStaticFile`
+takes the literal path only (the resource engine cleaned `..`).  **Pending
+bytes on a QSslSocket are `encryptedBytesToWrite()`**, not
+`bytesToWrite()` (which the drain-stall cut used to read, so it never fired
+on TLS): `pendingWriteBytes()`, and `wsRawSocket_` keeps the socket a
+QWebSocket was upgraded from for the same reason.  The pass also caught a
+use-after-free in `cachingQueue::del` (a reference into the node being
+erased; `setPTT false`).  Build for it: `qmake wfweb.pro CONFIG+=debug
+"QMAKE_CXXFLAGS+=-fsanitize=address,undefined,float-cast-overflow -g1 -O1"
+"QMAKE_LFLAGS+=-fsanitize=address,undefined"`, `ASAN_OPTIONS=detect_leaks=0`;
+the radio side prints UBSan "load of value ... not a valid value" for
+uninitialised enums at start-up (`rigidentities.h`, `icomudpbase.h`,
+`audioconverter.h`), not the parser's, so never set `halt_on_error`.
+**The seat** (phase 3, `Seat seat_` in webserver.h): one socket holds it;
+Control / Tx commands need it unless `Access::seatExempt` (decoder
+bookkeeping, the seat commands) -- `seatRequired` in the gate, the 0x03
+path, and the REST gate for what REST still writes at those levels, a QSO
+into the log and a picture into the gallery (409 unless the seat is free or
+held by the token's own account; rigctld is never held to it). `seatCommand` handles
+`seatTake` (free: take, or the offer / grace; held: request, `force` for
+admins), `seatRelease`, `seatHandover {accept}`, `seatCancel`,
+`seatAccept`, `seatPrivate`, `seatClear`; `seatTick` (1 s) runs grace
+expiry (`seatGraceSecs_`, a dropped holder's session gets it back in
+`seatOnConnect`), the offer down the queue (`seatOfferNext`, 30 s each),
+the unanswered-request grant (`seatRequestSecs_`, never while the holder
+keys), idle release and the max-time-while-others-wait release, with a
+`seatNotice` a minute before. `seatGive` / `seatFree` force-unkey a keyed
+previous holder and audit `seat-take` / `seat-release` / `seat-request` /
+`seat-declined` / `seat-grace` / `seat-private`. `seatHides(client)` keeps
+audio (`sendBinaryToAudioClients`) and spectrum (`sendBinaryToAll`) from
+non-holders when the holder is private or listen-in is off; admins always
+see. State goes out per socket as `seat` (`seatJson`: holder, mine, queue,
+position, request / requested / offer / grace with seconds), `seatLost`,
+`seatNotice`. Page: `seatState`, in the station strip `#seatWho` (whose
+seat, in words) and the `#seatTag` button next to it (the one action that
+applies: TAKE / ASK / WITHDRAW / LEAVE LINE / OPTIONS, hidden when there is
+none), `#seatPrompt` (above the start, power-off and login screens: a
+holder who reloaded sits on CLICK TO START with the seat back) (HAND OVER / DECLINE or TAKE
+IT / PASS), `#seatMenu` (release, private), `body.seat-watch` dimming, `body.seat-hidden` + `#seatHiddenBanner` over
+`#scopeArea` while `seatHides` keeps audio and scope from us (private
+session or listen-in off; set in `updateSeatUi` from `privateNow`),
+`send()` refuses `needsSeat` commands locally. With the seat free that
+refusal also blinks TAKE (`seatTagNudge`). A command the page sends on its
+own must not go through that path: `scopeRigAssert` (scope settings on
+connect) returns early when it would be refused, else a non-holder got the
+toast before touching anything. Policy knobs `Shared/Seat`,
+`SeatIdleSecs`, `SeatRequestSecs`, `SeatMaxSecs`, `SeatPreemptHigher`,
+`ListenIn`, `AllowPrivate` in the SHARED window's RULES tab.
+Tests: `tests/access_test.cpp` (unit, the capability table included),
+`tests/test_access.py` (the real server with `--shared`: setup, cookie on
+the WS upgrade, tokens on the plain port, account management, lockout last
+since it locks 127.0.0.1), `tests/test_access_roles.py` (its own server
+with the seat OFF: the command / 0x03 / REST gates per role, visitors, TX
+inhibit, time-out, the cap, KICK, the audit lines; `launch_shared_wfweb`
+and `SharedServer` in conftest), `tests/test_access_seat.py` (the seat:
+gate, request / decline / hand-over, queue and offers, grace, the clocks
+at 2 s, admin take and clear, TX following the seat, REST 409, private and
+listen-in, seat off), `tests/test_http_hardening.py`. Docs:
+`SHARED_STATION.md`.
+**Reservations** (phase 4): `Reservation` / `Occurrence` / `Reservations`
+in access.h (pure: `expand` steps a day or a week from the first start
+and skips straight to the window, `add` refuses an overlap on any run in
+the next year naming the other slot, `activeAt` / `nextAfter`;
+`reservations.json` in the shared dir; unit-tested with fixed dates).
+`webServer::seatTick` makes the seat follow it: at a slot's start the
+owner is given the seat if connected (`seatResKey_` marks the run so it
+happens once; never mid-transmission), else the holder is told; five
+minutes before, a non-owner holder is warned (`seatResWarnKey_`); a free
+seat waits for the owner for `kReservationHoldSecs` (15 min); the owner's
+`seatTake` while someone else holds it is immediate; the unanswered-request
+grant and the max-time release skip a holder who owns the running slot.
+`seatJson` carries `reservation` (with `mine`, `holdUntil`) and `next`.
+REST `/api/v1/shared/reservations` (GET any account, POST / DELETE admin,
+409 `{conflict}`); removing an account removes its slots. Page: the
+SCHEDULE tab of the SHARED window (datetime-local in the browser's
+zone -> ISO UTC), the SCHEDULE entry of the user menu (`#scheduleOverlay`,
+`renderSchedule`) for everyone, the strip's `reserved for name` / `TAKE`
+states and tooltip. Tests: `tests/test_access_reservations.py` (REST
+rules, owner priority with the owner away then arriving, hand-over at the
+start, the holder told when the owner is absent, a weekly slot a week old
+running now, account removal, audit).
+**Callsigns and the log** (phase 6): ADIF `STATION_CALLSIGN` is the call
+used on the air, `OPERATOR` the person. `QsoRecord` has `operatorCall`
+(`OPERATOR`, kept by `toAdif(false)`) and `userId` (`APP_WFWEB_USER`,
+dropped by it like the other `APP_WFWEB_*`; `fromJson` never reads it).
+`AccessUser.onAirOwn` (JSON `onAir`: `station` | `own`, `setOnAir`, own
+needs a callsign; both are the admin's to set) rides on `AccessPrincipal`.
+**The on-air call follows the seat**: `webServer::onAirCall()` is the
+holder's callsign while an `own` account holds the seat (`onAirHolder()`),
+else the configured station call `reporterCallsign`, which alone is
+persisted; with the seat off it is always the station call.
+`applyOnAirCall()` is the one place a change is applied (RADE
+`setTxCallsign`, the FreeDV / PSK reporters, `stationChanged`, the `onair`
+audit line), called from `seatGive`, `seatFree`, `seatOnDisconnect`,
+`applyStationCallsign`, `refreshUserClients` (an account's role, callsign
+or `onAir` edited: its sockets get a new `access`, a holder left without a
+callsign loses the seat; a role lowered below Tx releases its key, below
+Control frees its seat -- a socket used to keep the role it connected
+with, so a demoted operator kept transmitting until a reload, 2026-11-20)
+and a seat policy change. **Read `onAirCall()`,
+never `reporterCallsign`, for anything that identifies the station on the
+air**; `reporterCallsign` is the station call (what the club log is, the
+settings file, `PUT /api/v1/station`). `stationChanged` / `rigInfo` carry
+the on-air call in the old field plus, in shared mode only, `clubCallsign`,
+`onAirOwn`, `onAirOperator`. `seatEligible` refuses `seatTake` /
+`seatAccept` from an `own` account without a callsign; `onAirDenies` holds
+`aprsTxBeacon`'s `src` and `termConnect` / `termRegister`'s `ownCall` to
+the on-air call, any SSID (`denied`, need `callsign`); audio modes cannot
+be checked, the page follows the on-air call. The log: `logbookAdd` /
+`logbookUpdate` / `logbookRemove` take the principal (`wsInfo` for a
+socket, `restPrincipal_` for REST, nullptr = rigctld / internal / no
+`--shared`); `logbookAdd` stamps `stationCall` = `onAirCall()`,
+`operatorCall`, `userId` over what the client sent, `logbookUpdate` keeps
+the stored three. Three predicates decide everything: `logSees` (admins
+all; an account the club log = `isClubCall(stationCall)`, empty included,
+plus its own records; visitors nothing), `logMayChange` (admins; the
+account that logged it; ownerless = admin), `logMayExport` (admins the
+club log; an account its QSOs under its own call). Every route filters
+with them (`Logbook::Filter` on `page` / `toAdif` / `workedCalls` /
+`unexportedIds` / `markExported`; `/worked` answers for the call the
+viewer transmits as) and `logbookSend` sends `qsoAdded` / `qsoUpdated` /
+`qsoDeleted` / the summary per socket, only to those who may see the
+record, with that viewer's own counts (`logCounts`, from `Logbook::tally`:
+counts per (account, station call) kept as records change, never a scan
+per socket). Clear, ADIF import and `mergeLogbook` are Admin in the
+capability tables; `updateQso` / `deleteQso` are seat-exempt and the REST
+gate skips the seat for `/api/v1/logbook/<...>` (not for `POST
+/api/v1/logbook`, which is stamped with the call on the air).
+`wsjtxSendQso` only for station-call QSOs. Audit: `onair`, `qso-edit`,
+`qso-delete`, `log-import`, `log-clear`, `log-merge`. Page:
+`stationInfo` / `applyStationInfo`, `App.callsign.setGuard(callsignGuard)`
+(a panel's edit is refused for non-admins, and for admins while a member
+is on the air under their own call), `updateCallsignUi` (MY CALL
+read-only; for an admin it shows and edits the station call,
+`stationCallEdited`), the strip's `#seatWho` (`yours · F/K1FM`), `qsoMayChange`, the
+`has-ops` columns of the log, the callsign field and STATION / OWN button
+on the ACCOUNTS tab's rows; no `mergeLogbook` in shared mode.
+Tests: `tests/test_shared_logbook.py` (its own server with a UDP socket as
+the remote logger), the `onAir` and tally parts of `access_test.cpp` /
+`logbook_test.cpp`. Next: proxy identity (phase 5).
+**The 2026-11-21 audit** (five reviews of the gate, the seat, the accounts
+code, the auth handlers and the page, then the fixes; the rules that came
+out of it, each from a defect found):
+- *One spelling per route.* `onHttpReadyRead` takes the trailing slash off
+  an `/api/v1/` path **before** the gate; `handleRestRequest` must not
+  normalize again. The router used to chop it after the gate had read the
+  path with it, so `DELETE /api/v1/logbook/` was a QSO-level route to the
+  gate and "clear the log" to the router: an operate account cleared and
+  imported the log. `restCapability` strips slashes too.
+- *What a token may not do.* `/api/v1/shared/users*`, `/auth/password` and
+  `/auth/tokens` need `ctx.who.via == "session"`: a token has no expiry
+  and is taken on the plain port, and an admin's made itself an admin
+  account and exported the hashes. Policy, connections and the seat stay
+  open to an admin's token (the documented way for a script to set TX
+  inhibit). An admin-set password and a recovery clear the account's
+  tokens (`clearTokens`).
+- *A write with the cookie comes from our page*: in shared mode a
+  non-GET with a session cookie and an `Origin` of another host is 403
+  (a sibling host passes SameSite=Strict). The WS upgrade peeks 16 KB and
+  refuses a header block that does not end in it.
+- *Refuse before buffering*: the pre-gate in `onHttpReadyRead`
+  (`HttpConn::preGated`) resolves the caller from the headers, answers 401
+  before the body and caps `Content-Length` per route. The guard at the
+  top also tests `requestComplete`, so a connection waiting for its
+  password check takes no second request.
+- *Password hashing is a queue* (`pwJob` / `pwPump`, two threads, sixteen
+  waiting, `pwBusy()` answers 503). **Call `pwBusy(socket)` before
+  `hashPasswordAsync` / `verifyPasswordAsync`**, and count a failed guess
+  even when the socket has gone (`loginFinish` in the continuation).
+- *Lockout keys* (`access.cpp`): `name:<lower>|<addr>` and `ip:<addr>`
+  (an IPv6 /64, `ipKey()`) at five, `name:<lower>` at fifty; a login name
+  that fails `validName` is a miss for the address only and is written to
+  the audit log as `?`. `audit()` cleans its `who` (`auditField`): never
+  hand it raw request text and assume a line is a line. `failures_` is
+  pruned in `expireSessions()`.
+- *Everything that transmits asks `txBlockedReason()`*: `setPTT`, the gate's
+  on-air set, `onAprsBeaconRequested`, **`onPacketTxReady`** (the AX.25
+  link layer's own frames, which keyed the rig under TX inhibit) and
+  `onRigCtlCw` (rigctld's `send_morse` now comes through the web server:
+  `rigCtlD::cwRequested`, `routeCw`). TX inhibit switched on also calls
+  `stopCwKeyer()`.
+- *The on-air call moving ends what was set up under the old one*:
+  `applyOnAirCall` -> `termFollowOnAirCall()` disconnects AX.25 sessions
+  and unregisters listeners whose call is not `onAirCallIs()`. `packetTx`'s
+  `src` is held to the on-air call like the beacon's; `termConnect` /
+  `termRegister` take AX.25 addresses only (`ax25CallOk`).
+- *The seat is given only to who may hold it*: `seatMayHold()` before every
+  `seatGive` that is not the holder's own `seatTake` (reserved slot,
+  unanswered request, hand-over, offer, grace). *A socket the server ends
+  goes through `cutClient()`* (kick, logout, disabled, removed, password
+  reset, expiry, visitors refused): the seat frees with no grace, the
+  level drops to None at once, `abort()` follows `close()` after 2 s.
+  `seatOfferNext()` respects the reserved slot's 15-minute hold; the grace
+  keeps `sinceMs` and the pending request; seat-exempt commands do not
+  count as the holder's activity; a holder's own key-up, and the mic
+  client's own `enableMic false`, are never refused (seat or inhibit);
+  switching the seat on unkeys. A request made within a minute of a
+  decline gets its deadline counted from the end of that minute, never no
+  deadline at all (one without kept everyone behind it waiting).
+- *`onWsDisconnected` tears down TX only for the socket that owned it*
+  (`wasKeyer` / `wasMic`): the FreeDV and packet blocks ran for any socket
+  that closed, so a listener leaving stopped the drain that unkeys a
+  packet burst.
+- *Times in a text for a page are UTC and say so* (`hhmmUtc`).
+- *Input is typed*: `applyPolicy`'s caller and the users PUT answer 400 to
+  a value of the wrong type (`"true"` read as false switched TX inhibit
+  off), and the users PUT validates every field before applying any.
+- *The page*: `escapeHtml` escapes quotes (both forks, and the copies in
+  `packet.js`, `cw-decoder.js`, `rtty-panel.js`): the log's edit row puts
+  QSO fields in `value="..."` and a member's QSO ran script in an admin's
+  page. `logbook.cpp` cleans the short QSO fields as a second fence.
+  `sendQuiet()` / `sendRefused()` are for what the page sends on its own
+  (never `send()` from an automatic path: every watcher got the toast);
+  `resetSharedUi()` clears the seat state and the admin / password /
+  schedule overlays when the login sheet comes up or the socket goes;
+  `seatLost` and a denied `setPTT` drop the PTT latch and the mic.
+- *macOS*: the TLS proxy records each connection's real client
+  (`TlsProxyWorker::clientOf`, keyed by the proxy's local port) and
+  `webServer::clientAddress()` reads it; without it every client was
+  127.0.0.1 (one lockout for all, `--trust-proxy 127.0.0.1` trusting
+  everyone). Compile-checked on Linux only: the macOS runner is its test.
+- `main.cpp` refuses `--shared --no-web`; `servermain` warns about
+  `--rigctld-bind-all` under `--shared`.
+- Patching `webserver.cpp` by script: a bare `s.index()` on an anchor that
+  also matches a forward declaration duplicated 1400 lines of it. Anchors
+  must be unique and in order.
+
 ### Shared theme + component kit (`theme.css`)
 `resources/web-shared/theme.css` is the single source of UI styling for both
 builds (linked from each `index.html`, aliased in `web.qrc`, copied by
@@ -416,6 +784,91 @@ server, `queue->add()` echoes both the read and the write through
 freq 0, the write echo is flagged by `bsrWriteEchoPending` — touching the queue
 on either deadlocks the server.
 
+### FT8 / FT4 message forms (`digi-msg.js`)
+A message holds two plain calls only when both are standard (`digiStdCall`,
+WSJT-X `stdCall`); a nonstandard one (AO40EUDXF, VE3/W9XYZ) needs a hashed form,
+or `encodeFT8` falls back to 13 characters of free text without a word: "AO40EUDXF
+VA2BBW FN35" went out as "AO40EUDXF VA2" and pskreporter spotted "VA2" (#153).
+`digiQsoTexts()` / `digiCqText()` build every TX line and follow `genStdMsgs` in
+WSJT-X: Type 1 `<NONSTD> STD grid/report`, Type 4 `NONSTD <STD> RR73/73` and
+`CQ NONSTD` with no grid. **Never build a TX line by concatenating calls.** ft8ts
+matches `ft8code` bit for bit on these forms, so a fault is on the page's side.
+Decodes reach the QSO logic through `digiStdMsg` / `digiSplitMulti`, which take
+the brackets off, so the sequencer only ever compares plain calls; an unresolved
+`<...>` stays and a click on one is refused. The worker saves our call and the DX
+into its `HashCallBook` on every decode (`digiHashCalls`), as WSJT-X always
+resolves those two: `<VA2BBW> AO40EUDXF RR73` is otherwise `<...> AO40EUDXF RR73`
+and never reads as addressed to us. The module loads *ahead of* the page script,
+whose start-up builds the rows. Two nonstandard calls, or a /P or /R call next to
+a hash, cannot carry a report at all (protocol limit, same in WSJT-X). Field Day
+keeps plain calls. Tests: `tests/test_ft8_msg.py` (`ft8_msg_sim.mjs` through the
+real codec; `ft8_msg_browser.mjs`, whole FT4 QSOs on two Standalone virtual rigs,
+or on the C++ bench with `WFWEB_FT8_URLS`).
+
+### FT8 / FT4: a click while our own over is on the air
+The decode of a station answering our CQ lands at the top of our next slot,
+as the auto-CQ starts, so the operator's click on it comes a moment late. A
+click on a decode (single or double: `digiRowClick` = `digiRowSelect` +
+`digiTakeOverTx`, both forks) that arms a different message for *this* slot,
+less than `digiLateStartLimit()` into it (FT8 4 s, FT4 1 s), cuts the over
+and sends the new message at once: `executeDigiTx` drops its opening so the
+rest stays on the slot's timeline. **A late-started over decodes** (ft8ts,
+SNR in 2.5 kHz: FT8 with 4 s gone 12/12 at -15 dB, FT4 with 1 s gone 12/12
+at -15 dB); the #74 fix assumed it could not and kept the slot silent, so the
+answer went out a cycle late. The key stays down across the switch;
+`digiTxOnAir` names the over that owns the TX state, so the cut over's late
+`onDone` only closes its row. Past the limit a single click leaves the over
+on the air (it counts as no try at the new message) and a double click cuts
+it and skips the slot (`digiSwitchAbortedSlot`). Test:
+`tests/test_ft8_takeover.py` (`ft8_takeover_browser.mjs`, FT8 on two
+Standalone virtual rigs, or the C++ bench with `WFWEB_FT8_URLS`). Under
+Shared Station: `TESTRIG_SHARED=1 scripts/testrig.sh up 2` starts the bench
+servers with `--shared` (accounts in `.testrig/shared_<i>`, setup code in
+the log) and `WFWEB_FT8_LOGIN=name:password` makes each page log in, take
+the seat and work under the call the server puts on the air; it releases
+the seat at the end, since a holder that vanishes keeps it for the 30 s
+grace. Passed as admin, as a member on the station call and as one on
+their own call (2026-11-17).
+
+### FT8 / FT4: CQ: NONE / FIRST / MAX DIST
+By default a station answering our CQ is answered by the operator's click
+(WSJT-X's `CQ: None`). The `#digiCqAnswerBtn` button next to TX EVEN / CALL CQ
+steps NONE -> FIRST -> MAX DIST (`digiCqAnswer` = `none` | `first` | `dist`,
+`localStorage wfDigiCqAnswer`, none unless chosen), WSJT-X's `CQ: First` (the
+old "Call 1st") and `CQ: Max Dist`. While the message in hand is our CQ,
+`digiCqAutoAnswer()` runs at the top of `handleDigiAutoQso` over the whole
+batch of decodes: the callers are the decodes addressed to us with a grid or
+nothing after the calls (`digiCqCallerOk`), FIRST takes the first decoded,
+MAX DIST the one whose grid is farthest from ours (`digiGridKm` in
+`digi-msg.js`, square centres; a caller without a grid ranks last, the first
+decoded wins a tie). It is followed by `digiTakeOverTx()` like a click, and
+differs from a click in one thing: the TX offset stays on the CQ, only the RX
+marker moves. A station the sequencer logged within `DIGI_SAME_QSO_MS` is not
+answered again. **CQ is not called again after the QSO, on purpose**: WSJT-X
+de-activates Enable Tx at the end of each QSO ("an operator aid, not an
+operator replacement"), and a loop would run a station, a shared one
+included, with nobody at it (asked for by a Shared Station tester,
+2026-11-18). Identical in both forks. Test: the fourth part of
+`tests/test_ft8_takeover.py`.
+
+### FT8 / FT4: when a QSO is logged
+Search and pounce: when their RR73 / RRR is decoded (`EXCHANGE` / `REPORT`
+-> `LOGGED`), before our 73 goes out. **CQ side: when our RR73 has gone out**,
+as WSJT-X does, not when their 73 comes in. `executeDigiTx` notes the QSO on
+the over as it starts (`over.qso`: call, both reports, audio offset, taken in
+state `RREPORT` for a text ending in RR73 / RRR) and its `onDone` logs it when
+the over ran to its end; a cut over (Halt, take-over, double click) logs
+nothing. The note is taken at the start because a click on the next caller
+while the RR73 is on the air changes `digiQsoPartner` and the reports before
+it ends. Waiting for the 73 with that station still the partner lost every
+QSO of a pile-up run: no LOGGED row, nothing sent to the server (2026-11-16);
+many stations send no 73 after an RR73 at all. `logDigiQsoOnce` keeps it to
+one entry: the RR73 repeated for a station that did not copy it and the 73
+that answers it are the same QSO (same call, band and mode within
+`DIGI_SAME_QSO_MS`, 5 min). The LOG QSO button calls `logDigiQso` directly
+and always logs. Field Day has its own rule (`logDigiFdQso`, on the exchange).
+Identical in both forks. Test: the third part of `tests/test_ft8_takeover.py`.
+
 ### Mode panels put the VFO back
 FT8/FT4 and JS8 force USB and retune to their dial frequency on open. Both
 `index.html` snapshot frequency + mode + filter first (`saveVfoSnapshot`) and
@@ -450,6 +903,100 @@ keyed the IC-7300 with 0 W out without it, 2026-10-31).
 Tests: `tests/test_compressor.py` (server, IC-7300 mock) and
 `tests/comp_browser.mjs` (Standalone virtual rig).
 
+**The same hold puts the rig's SSB transmit filter (TBW) on WIDE.** Plain
+USB / LSB keeps that filter in the path too (FUNCTION > TBW: WIDE 100-2900,
+MID 300-2700, NAR 500-2500 Hz by default; CI-V `16 58` = 0 / 1 / 2, rig-file
+"SSB TX Bandwidth", `hasTxBandwidth` in `rig-caps.js`; nine rig files:
+IC-7300, 7300MK2, 705, 7610, 7760, 785x, 905, 9100, 9700; no other rig has
+the command). On NAR an FT8 tone below
+500 or above 2500 Hz left the IC-7300 with next to no power, and the ALC
+loop cannot make up for a filter: its gain is capped (2026-11-16). The rig
+keeps **one TBW setting with COMP on and another with COMP off**, so the
+hold reads it after the COMP switch: the reply is the setting of the state
+the over runs in and lands a few tens of ms after the key. Not WIDE:
+remembered, WIDE set; the release puts it back *before* COMP returns (unkey,
+TBW, COMP). `holdTxBandwidth` / `tbwHoldPoll` / `releaseTxBandwidth` on the
+server, called from the two COMP functions so every keying and unkey site
+has it; `_holdTxBandwidth` / `_onTxBandwidth` / `_releaseTxBandwidth` in
+`serial-transport.js`, mirrored on two slots in `virtual-transport.js`.
+**The read must be one sent after the COMP set went out.** The FUNC TBW tile
+reads the filter too, and a read queued or on the wire from before the
+switch answers for the other setting; behind a busy queue (a server just
+started) it came seconds late, the hold set WIDE from the COMP-on setting
+and wrote that one into the COMP-off slot (caught by the mock, 2026-11-17).
+So `tbwHoldPoll` waits until no COMP set is left in the queue
+(`getQueueItems`), 100 ms more, asks, and accepts the cache only when the
+read's `req` (stamped as it goes out) is at or after that and its `reply`
+after the `req`; `cacheUpdated` fires only on a changed value, hence the
+polling, for as long as the over lasts. **It waits whether or not the hold
+switched COMP itself**: an immediate set is in the cache as it is queued, so
+after the operator's own `setCompressor` the hold finds COMP "off" while the
+rig still has it on (two TBW tests on the macOS runner, behind its slower
+queue, 2026-11-17; `test_comp_switched_just_before_the_key_reads_the_right_filter`).
+Standalone does the same on its
+key queue (`_queue.indexOf('setCompressor')`, `_tbwAsked`). A
+`setCompressor` during the over puts the held filter back first and holds
+the other one. Confirmed by the operator on the IC-7300 (2026-11-17, before
+the tile): the rig takes the set while keyed and the power
+is back outside 500-2500 Hz. Tests: the TBW cases of
+`tests/test_compressor.py` (the mock keeps a setting per COMP state) and
+`tests/tbw_browser.mjs` (Web Serial transport against a fake IC-7300).
+
+**FUNC TBW tile** (after COMP, both forks, SSB only like the rig's key): the
+setting in use, WIDE / MID / NAR, a press steps to the next
+(`setTxBandwidth {value}`, `txBandwidth` in the WebSocket status / update,
+`hasTxBandwidth` in rigInfo; Control level in `access.cpp`). It shows and
+writes the setting of the current COMP state, so it changes when COMP does:
+the server re-reads `16 58` 200 ms after any COMP change (`receiveCache`,
+deferred) and the status build asks for it in SSB only (`getCache`, which is
+all the polling there is: the rig does not announce its own TBW key).
+Standalone reads it at connect, on the 5 s slow tick, on a mode change and
+after a COMP change. During a digital over the tile says WIDE; a press then
+is the operator's word: `tbwRestore` is dropped and the end of the over
+leaves it.
+
+### FUNC AGC tile
+The AGC tile (ahead of NOTCH) steps through the rig's settings like its AGC
+key, sending `setAGC {value}` (CI-V `16 12`, Kenwood `GC`; `agc` in status /
+update). **The values differ per rig**: IC-7300 and most Icoms 1 FAST /
+2 MID / 3 SLOW, IC-7600 0-2 FAST-SLOW, IC-785x and IC-7200 with 0 = OFF,
+TS-590SG / TS-890S 0 OFF then SLOW upward. So the rig file names them in an
+`AGC\N\Num` / `Name` list (after `Preamps`; `rigCaps.agcModes`, `agcModes`
++ `hasAgc` in rigInfo and in `rig-caps.js`) and its "AGC Status" command
+carries the real Min / Max (the commander refuses a value outside them; the
+IC-7300 file said 0-2, so SLOW never reached the radio). Values are from the
+CI-V references and Kenwood PC command guides; a rig without a verified
+source (IC-746, IC-746PRO, IC-706MKIIG, DEFAULT-KENWOOD) has no list and no
+tile. OFF, where the rig has it in that command, comes last in the cycle
+(the radio puts it behind a long press). The set is read back (in FM the
+Icoms keep FAST and NG the set), AGC is read on the 5 s slow tick and after
+every mode change (the rig keeps it per mode): `agcFollowMode` sits ahead of
+`receiveCache`'s no-clients shortcut because `cacheUpdated` fires only when
+a value changes, so a mode change seen with no browser connected is never
+reported again. Standalone does the same in `serial-transport.js` (connect,
+slow tick, mode reply, `setMode`). rigctld's `AGC` level maps hamlib's
+`agc_level_e` (OFF 0, FAST 2, SLOW 3, MEDIUM 5) through the same names. The
+server page's `send()` returns `false` when Shared Station refuses a command
+locally, so the tile only shows a setting that went out. Tests:
+`tests/test_agc.py` (IC-7300 mock, rigctld) and `tests/agc_browser.mjs`
+(virtual rig, and the Web Serial transport against a fake IC-7300).
+
+### TUNE tag and the TUNER tile (#156)
+The top-bar `#tuneLabel` is both the tuner's indicator and its button. It
+shows on every rig with `hasTuner` and is **never hidden by its state**:
+grey OFF, red ON (`.active`), blinking while it tunes (`.tuning`). Hiding it
+when OFF left nothing to tap. A tap toggles the tuner; a 500 ms hold sends
+`setTuner 2` (a tune, from OFF too, like the radio's TUNER key). FUNC >
+TUNER behaves the same through `bindTunerPress`, which keeps the pending
+hold outside the element because the FUNC grid is rebuilt mid-press.
+Identical in both forks. The IC-7300 keeps the tuner ON / OFF per band
+(SET > Function > Tuner > [TUNER] Switch = Auto, the default), so the tag
+changes with the band. The server reads it on the rig file's periodic poll
+(the 5 s slow tick on rigs without one). Standalone reads it every second
+while tuning, after a move of more than 1 %, and on the 5 s slow tick; the
+virtual rig ends a tune with the tuner ON after 2 s. Tests:
+`tests/tuner_browser.mjs` via `tests/test_tuner.py`.
+
 ### MODE grid: reverse modes fold into their base button
 `renderModeOverlay` (identical in both forks) shows the rig's mode list
 minus the `-R` variants whose base is also listed: CW-R and RTTY-R live
@@ -460,6 +1007,20 @@ active button names the variant you are in when the grid is reopened.
 The bars follow either variant (the CW decoder and the RTTY bar flip
 their dial direction on `-R`).
 
+### Spectrum tags (`#scopeTags`)
+The warnings and rig-state readouts over the spectrum (AUDIO OFF, MIC OFF,
+P.AMP / ATT, DUP, TONE, RFG, VOL, SQL, COMP) are one flex column in its
+top-left corner, identical in both forks. They flow: a hidden tag takes no
+room and the stack is capped at the spectrum's height (`--spect-h`, set by
+`resizeCanvases`). What does not fit is moved by `layoutScopeTags()` to
+`#scopeTagsRight`, flush right in the top-right corner (a further column
+grows leftwards); it runs on a resize and when a tag is shown or hidden, and
+leaves the overflow as a second column on the left while `#freedvIndicator`
+holds that corner. **A new tag goes inside `#scopeTags` with no `top` of its
+own**: each used to have a fixed slot down the left edge, and on a phone's
+short spectrum (or a laptop's with the CW bar open) TONE, SQL and COMP sat in
+the middle of the waterfall (2026-11-15).
+
 ### Scope click-to-tune step
 A click, tap or drag on the scope lands on `scopeTuneStep()` (identical in
 both `index.html` forks, used by `scopeFreqFromClientX`, the drag path and
@@ -469,6 +1030,50 @@ backends pass Hz through untouched (CI-V `05` is 1 Hz). The live click path
 is the no-drag branch of `scopePointerEnd`; `scopeClick` is not wired. The
 scope message carries its edges as float32 MHz, about 1 Hz at 14 MHz but
 15 Hz at 144 MHz and 30 Hz at 432 MHz, which bounds a 1 Hz click up there.
+
+### Start screen
+One card for both builds, styled in `theme.css` ("START SCREEN":
+`#startupOverlay`, `.start-card`, `#startBtn`, `.start-links`, `.start-foot`):
+logo and wordmark, the button, the ask ("by K1FM", Star on GitHub, Tell a
+friend) and a footer line with the version and the plain links as text. The
+two pages differ in what the screen is for.
+**Server** (`resources/web/index.html`): a translucent sheet over the live
+page, not a splash. The page connects at load and draws underneath, and the
+sheet is there for the one user gesture a browser needs before it plays
+audio (`dismissStartScreen`: `startAudio()`, or only the AudioContext with
+`audioStartPending` while the first status is not in yet). A click anywhere
+on it starts (links and `#startShare` excepted), and so does a key: a
+capture-phase `keydown` on `document` keeps keys from the page's shortcuts
+while it is up, because under the old opaque splash Space keyed the rig and
+the arrows tuned (2026-11-15). Escape gets through (the stop key); Tab,
+modifiers and function keys do nothing; the handler stands aside while
+`#loginOverlay` / `#powerOffOverlay` are visible and for a target in
+`#seatPrompt` or a field. Shared Station's login sheet (z 10002), seat
+prompt and toast (10003) sit above it (9999). `.gone` fades it out and drops
+pointer events at once, `display: none` follows 260 ms later: **ask
+`startScreenUp()`, not `style.display`** (`focusCwInput` does). No backdrop
+blur (it would re-blur the animating scope every frame on a Pi); the scrim
+is a radial gradient, the card is solid. `#startRig` names the station
+(`updateStartRig`, from `updateRigTag` and the transport open / close).
+**Standalone** (`.opaque`, `.start-card.wide`): the connect page. The Web
+Serial picker needs a click, it is the wfweb.k1fm.us landing page and the
+unsupported-browser notice, and nothing is live under it before a rig is
+connected, so it stays opaque, only the button acts, and it goes with a
+plain `display: none`. Its intro (`.splash-hero`, `.splash-feats`,
+`.splash-req`, `.splash-unsupported`, `.splash-server-pitch`) is styled in
+that page; `initStandaloneSplash()` sets the button's text and shows or
+hides the parts by id (the pitch and the ask are hidden on a virtual rig).
+A returning user gets the button, not the brochure: with a port already
+paired, and after a disconnect (`showStartupSplash`), the card is `.compact`
+(no intro, no server pitch, narrower; the ask stays). The card is hidden
+until that is known (`.ready`, set when `initStandaloneSplash()` settles),
+so the intro does not flash at a returning user. The intro's tiles are one
+per mode this build has: add one with a new mode.
+In both, "Tell a friend" hands out the project's GitHub address, **never
+the station's own URL** (`navigator.share`, else the clipboard, else a
+mail); the handler is the same few lines in each page. Every browser test
+presses `#startBtn`. Test: `tests/test_start_screen.py`
+(`start_screen_browser.mjs`, the server page on the IC-7300 mock).
 
 ### Touch operating controls (#144)
 Phones and touch tablets only, gated on `(pointer: coarse)` in CSS and
@@ -613,6 +1218,14 @@ modeInfo.filter = 1;
 // behind (6 s+ on the macOS runner). Not FA in the mock: five FAs in a row
 // read as "radio powered off" (consecutiveFAErrors) and polling stops.
 
+// Among immediate items, one that carries a value (a set, or a read addressed
+// by channel / register) goes out before the plain reads queued ahead of it;
+// sets keep their order among themselves. The status re-asks stale values at
+// immediate priority, one per tick, and a set used to wait behind them (a
+// second or more on the macOS runner, test_set_is_not_held_up_by_refresh_reads).
+// So never rely on a plain read queued before a set going out first: a read
+// that must see the old value has to be answered before the set is queued.
+
 // EXCEPTION: funcMemoryContents is addressed by channel, so two of them are
 // never duplicates. Use add() — addUnique() compares command+receiver only
 // and would evict a queued read/write for a *different* channel (#108).
@@ -627,10 +1240,14 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 |------|---------|
 | `wfweb.pro` | Qt project file |
 | `src/main.cpp` | Process entry / CLI parser |
+| `include/wfweb_version.h` | The release number (`WFWEB_VERSION`), single source of truth |
+| `tools/build-id.sh` / `buildid.pri` / `src/buildinfo.cpp` | Build id: `wfwebVersion()` = the release number, plus `+dev.<commit>` when the build is not the tagged release (see "Release Process") |
 | `src/servermain.cpp` | Main app, web server + rigctld init |
 | `include/servermain.h` | Main app header (contains `preferences` struct) |
 | `src/webserver.cpp` | Web server backend |
 | `include/webserver.h` | Web server header |
+| `src/access.cpp` / `include/access.h` | Shared Station accounts, sessions, API tokens, setup code, lockout, audit log (Qt5Core + QtNetwork only; `tests/access_test.cpp`) |
+| `SHARED_STATION.md` | Shared Station: setup, files, deployment behind a proxy / VPN, REST, what the hardening changed |
 | `src/rigctld.cpp` | Hamlib rigctld TCP emulation (server build) |
 | `include/rigctld.h` | rigctld header (signals: `pttRequested`) |
 | `src/consolestatus.cpp` | Terminal status page: ANSI rendering, raw-mode keys, log ring buffer |
@@ -647,6 +1264,7 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 | `resources/web-shared/recorder.js` | Audio (MP3) / video recorder behind the top-bar REC button (both builds) |
 | `resources/web-shared/needle-meter.js` | IC-7610-style needle meter face + needle ballistics; alternative to the tile-bar meter in `index.html` (both builds) |
 | `resources/web-shared/rx-jitter.js` | Adaptive RX jitter buffer (worklet + ScriptProcessor fallback, both builds); simulated by `tests/rx_jitter_sim.mjs` |
+| `resources/web-shared/digi-msg.js` | FT8/FT4 message forms: standard vs hashed calls, reading decodes (both builds); `tests/ft8_msg_sim.mjs` |
 | `resources/web-shared/rtty.js` | ITA2 tables, AFSK synthesizer, RX frequency translator for the RTTY decoder (both builds) |
 | `resources/web-shared/rtty-panel.js` | RTTY bar: DeepRTTY decoder control, tuning strip, text, log, AFSK macros (both builds) |
 | `resources/web-shared/rtty-decoder-worker.js` | DeepRTTY on ONNX Runtime Web + classic FSK fallback (module worker, both builds); `tests/rtty_decoder_sim.mjs` |
@@ -719,6 +1337,39 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 
 ---
 
+## systemd units and sharing the rig's audio
+
+- Two units in `systemd/`, one to enable. `wfweb.service` is a **user** unit
+  (`systemctl --user`, `lib/systemd/user`, starts at login): wfweb runs in the
+  session, picks the CODEC's PipeWire entry and other programs can use the
+  rig's audio at the same time. `wfweb@.service` is the system unit (boot,
+  `User=%i`): no `XDG_RUNTIME_DIR`, so Qt lists no PipeWire devices, wfweb
+  opens `hw:CARD=CODEC` and that device has one owner — PipeWire's CODEC
+  source then fails for everyone else ("capture open failed: Device or
+  resource busy", xara-monitor "no audio", 2026-11-06).
+- `waitForServerCodec()` in `audiodevices.cpp` is what makes the user unit
+  safe at boot. PipeWire's probe of the CODEC waits when the capture PCM is
+  busy and lists the source within a second of it coming free (measured with
+  `arecord` holding it 3 / 6 / 9 s while WirePlumber starts); the input is
+  lost for good only when somebody keeps the raw device. That somebody was
+  wfweb: started with the session, it enumerated ~100 ms after WirePlumber,
+  found the CODEC's sink but not yet its source, fell back to `hw:` and held
+  it (first boot with linger, 2026-11-06). Now, when a sound server socket
+  exists and the CODEC is in the ALSA list, the enumeration waits up to 10 s
+  for the server's entry. **Do not blame the login screen's PipeWire**
+  (`gdm-greeter` runs its own WirePlumber with an ACL on `/dev/snd/*`): a
+  second prober only delays the listing. Bench recipe, no reboot needed: stop
+  `wireplumber`, hold the capture with `arecord -D hw:CARD=CODEC,DEV=0` for a
+  few seconds, start `wireplumber` and wfweb together; the log must say
+  "listed by the sound server after ... ms" and `fuser /dev/snd/pcmC1D0c`
+  must name pipewire, not wfweb.
+- **Lifetime.** A user unit lives with the user manager: without
+  `loginctl enable-linger` it stops when the last session (desktop or SSH)
+  closes, so a machine driven over SSH needs linger. Check
+  `loginctl list-sessions` before assuming a desktop login.
+
+---
+
 ## FreeDV / RADE Architecture
 
 ### Processing Threads
@@ -734,11 +1385,101 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
   `BlockingQueuedConnection`. `sendEoo` calls `generateEooAudio()` and emits `txReady`,
   which is routed by `onRadeTxReady` through the same TX path as voice frames —
   USB-attached rigs (`freedvTxBuffer` → ALSA drain) and LAN-attached rigs
-  (`emit sendToTxConverter` → audio converter → LAN UDP) both work. Radio unkey
-  is delayed 300ms so the frame plays out.
+  (`modemLanTxQueue` → the LAN pacer below) both work. Radio unkey is delayed
+  so the frame plays out: 300 ms on USB; on LAN what the pacer still holds +
+  its cushion + the frame (`RADE_EOO_MS`, 144) + 150 ms for the rig's buffer.
+  The EOO frame has a quiet 60 ms of its own (pilots, data slots, pilots): a
+  hole there in a capture is not a dropout.
 - **RX**: `rade_rx()` detects EOO → `rade_text_rx()` decodes → `rxCallsign` signal → webserver → browser
 - **Important**: The callsign arrives AFTER sync is lost (EOO is the last frame). Do not gate
   reporter or UI updates on `freedvSync`.
+
+### Modem audio to a LAN rig is paced (#158)
+- The encoders emit a whole modem frame at a time (RADE 120 ms, 700D 160 ms).
+  Sent on as it came, that is a burst of nine UDP packets every 120 ms, and
+  the IC-705 and IC-9700 keyed on it with **no modulation at all** while FT8,
+  JS8 and TUNE worked on the same link (2026-11-19; reproduced on the
+  operator's IC-705). Every LAN path that works sends 20 ms slices
+  (1920 bytes at 48 kHz = 1364 + 556): wfview's mic, our mic path (#72,
+  coalesced), the packet modem (`drainPacketLanTxBuffer`) and now the voice
+  modems: `modemLanTxQueue` / `modemLanTxDrain` in
+  `webserver.cpp`, a 10 ms timer that sends what the **wall clock** says is
+  due (at most two slices a tick), starting `MODEM_LAN_CUSHION_MS` (60)
+  behind so the next frame is in before the last slice has gone, dropping
+  the oldest audio past `MODEM_LAN_MAX_MS`. **A new TX source on the LAN
+  path must reach the rig as 20 ms slices**, never as whole computed frames.
+  **What the rig objected to is not known.** It was taken for the burst, but
+  the IC-705 made full power on a tone delivered as six 20 ms slices at once
+  every 120 ms (keyed test, 2026-11-19): the timing of the slices is not
+  it. What is left is the shape of the packets, one 120 ms block cut into
+  1364-byte UDP packets against 20 ms blocks cut 1364 + 556; untested.
+  The log says so once per mic session ("LAN modem TX - first frame from the
+  encoder ... pacing in 1920 byte slices") and sums up at its end ("15.0 s
+  sent in 751 slices, encoder ran dry 0 time(s)").
+- `tests/rade_lan_bench.py` (two-rig bench, by hand): a RADE over with real
+  speech as the mic, the modem signal whole at the other rig, the EOO
+  callsign decoded. The virtual rig takes TX audio in any shape, so the
+  bench shows the paced audio is intact, not what a real rig does with a
+  burst. With the pacer the operator's IC-705 makes power in RADE over
+  LAN, at every setting of the MIC slider (2026-11-19, same evening; the
+  pacer was the only change on the LAN path, the slider being the USB mod
+  level, which a LAN rig does not use). The IC-9700 of the report is not
+  confirmed.
+
+### Mod level in FreeDV / RADE (#158)
+- RADE goes out at a fixed level (`RADE_TX_SCALE` x `RADE_TX_GAIN` on USB)
+  with no ALC loop, so the power depends on the rig's mod level; that used
+  to be wherever the voice MIC slider was, and at a low one the IC-7300
+  keyed with next to no power. `toggleFreeDV` now holds it at
+  `DIGI_MOD_LEVEL` like FT8, SSTV and RTTY (`freedvHoldModLevel`) and puts
+  the voice level back when the mode goes (`freedvRestoreModLevel`: on the
+  toggle itself, because a panel opening over FreeDV saves the level it
+  finds in that same task, and on a `freedvStatus` that switches it off
+  from elsewhere). Both forks. **The hold is only where the slider starts**:
+  the USB mod level is the IC-7300's input gain, so RADE's power still
+  follows the slider when the operator moves it, and at zero there is none
+  (operator's IC-7300, 2026-11-19). Whether 75 % is the right level for
+  RADE on that rig has not been measured.
+- **The MIC slider is the level of the input our TX audio goes in by**
+  (`setMicGain`, REST and status `micGain`): `micLevelFunc()` in
+  `webserver.cpp` is `funcLANModLevel` when the server is LAN-connected and
+  the rig file has "LAN Mod Level" (IC-705, 7610, 785x, 7760, 905, 9700,
+  7300MK2), else `funcUSBModLevel`. Status carries `micInput` (`LAN` | `USB`)
+  and the slider's label follows it (`updateMicInput`: LAN MIC / USB MIC;
+  Standalone is always USB). It used to be the USB level on every rig, which
+  a LAN rig does not use: the slider and every `DIGI_MOD_LEVEL` hold did
+  nothing there, and the level in force was whatever the rig's own menu had
+  (operator's question, 2026-11-19). **Use `micLevelFunc()`, never
+  `funcUSBModLevel`, for the mic level.** The IC-9700 file had `Max=0` on
+  its three mod levels, so every set was refused, USB included (2.12).
+- So on a LAN rig FT8 / JS8 / SSTV / RTTY / FreeDV now put the LAN level at
+  75 % while they are open and give the operator's back after. RADE goes
+  to a LAN rig at the same fixed level as on USB (`RADE_TX_GAIN` in the LAN
+  branch of `onRadeTxReady`); it used to go 8 dB hotter. RTTY over LAN has
+  no ALC loop and has not been measured.
+- **IC-705 LAN input, measured** (operator's rig keyed over the WebSocket
+  with his word, 1 kHz tone, RF power at 21 % = 2 W, 2026-11-19). LAN level
+  99 %: -22 dBFS 1.8 W / ALC 0.1, -10 dBFS 2.0 W / 0.9, -3 dBFS 2.0 W / 1.0.
+  LAN level 75 %: -9.6 dBFS (RADE without the gain) 2.0 W / 0.8, -17.6 dBFS
+  (with it) 1.9 W / 0.3. The set and the read-back of the LAN level work on
+  the rig. The test was a tagged 0x03 stream + `setPTT` + the `powerMeter`
+  / `alcMeter` of the status messages; a keying script must check the
+  frequency before every key (one run went out where the VFO had been
+  moved to).
+- Voice over LAN works on that rig with the mic captured raw
+  (`micConstraints`: no browser AGC, no gain stage). One evening of "no
+  power in SSB" there was the one browser session, not wfweb: another
+  browser on the same server made power at once, and a replay of the page's
+  own frame shape (untagged, 128 samples) keyed 1.8 W at -22 dBFS. **Try a
+  second browser before reading a level problem into a voice report**: a
+  speech-shaped test tone peaking at -20 dBFS read 0.0 W and sent the
+  diagnosis after a make-up gain nobody needed.
+- Bench: the default virtual rig is an IC-7300, which has no LAN mod level
+  and falls back to USB; `scripts/testrig.sh up 2 0 --civ a4` gives two
+  virtual IC-705. The virtual rig and the test mock keep the `1A 05 xx yy`
+  registers written to them and read them back (one never written is still
+  ACKed). Tests: `test_gains.py` (LAN mock: register 0090, read back) and
+  `test_usb.py` (0089, never 0090).
 
 ### FreeDV Reporter
 - Socket.IO Engine.IO v4 client over QWebSocket → qso.freedv.org
@@ -1019,6 +1760,13 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
 ### Shared station callsign
 - One callsign in the gear dialog feeds CW, FT8/FT4, JS8, FreeDV Reporter, APRS, and
   the AX.25 link. Do not add per-mode callsigns — the shared one is intentional.
+- `App.callsign.normalize()` keeps `/` (both forks): `F/K1FM` and `W1ABC/P`
+  are callsigns. Only the export file name strips it.
+- Shared Station exception: under `--shared` that one callsign is the
+  *on-air* call, which follows the seat (the holder's own callsign when
+  their account is set to `own`, else the station call). The pages adopt
+  it from `stationChanged` / `rigInfo` and only an admin edits the station
+  call. See "Callsigns and the log" in the Shared Station section.
 
 ---
 
@@ -1086,6 +1834,26 @@ child. The contract it relies on, all verified against the server source:
   tested on Linux CI through `tests/test_cpp_units.py`. Dialog-showing paths
   must run inside the event loop (`--start` is deferred with a 0 ms timer).
 
+## Tests: WebSocket clients are capped at TLS 1.2
+
+Every test that opens a WebSocket with the `websockets` sync client takes its
+TLS context from `ws_tls_context()` in `tests/conftest.py` (`_WS_TLS` in the
+standalone `fuzz_webserver.py`). That client reads on its own thread while
+the caller writes; under TLS 1.3 the server's session tickets put the reader
+inside the SSL object as the upgrade request is written, and the request is
+lost: "WSS upgrade unanswered for 10 s" or "did not receive a valid HTTP
+response" with a server that never saw it (36 of 2000 connects on Linux, 0
+capped; about one test per run on the macOS runner, 2026-11-16, first chased
+in `tlsproxy.cpp`). **A context of your own brings the flake back.** The REST
+tests (`requests`) still cover TLS 1.3. `wfweb_diagnosis()` in conftest adds
+the server's state to a stall that is the server's (thread stacks on macOS).
+
+`servermain::receiveRigCaps` starts polling once per connection on
+`RIGCONFIG::pollingStarted`, **not** `rigAvailable`: the rig server's
+`receiveRigCaps` sets that one from the same signal on its own thread, and
+when it ran first a `--no-web` server never polled its rig
+(`test_rig_server_meters.py`, twice in some thirty CI job runs).
+
 ## Workflow Rules
 
 ### 1. Plan First
@@ -1131,3 +1899,25 @@ child. The contract it relies on, all verified against the server source:
 - The version is set in `include/wfweb_version.h` (look for `#define WFWEB_VERSION "X.Y.Z"`).
   It moved out of `wfweb.pro` so Make's header-dependency tracking rebuilds every
   object that bakes in the version string (see the v0.7.1 reporter-version bug).
+- **A build that is not the tagged release says so.** `wfwebVersion()`
+  (`include/buildinfo.h`) is `0.9.5` only when HEAD is the commit tagged
+  `v0.9.5` (or CI runs on a `v*` tag); any other build is
+  `0.9.5+dev.<short sha>` locally and `0.9.5+dev.<date>.<sha>` from GitHub,
+  the string the package file is named with. It is what `--version`, the
+  console page, the page footer (`rigInfo.version`), the reporters and the
+  launcher title show. `WFWEB_VERSION` stays the bare number for the `/models`
+  ETag (else every dev commit re-downloads the CW model) and the WSJT-X
+  heartbeat (the commit goes in its `revision` field). The rules are in
+  `tools/build-id.sh`: `WFWEB_BUILD_ID` in the environment (`release`, or an
+  id) overrides the detection, which is how `build.yml`, `docker.yml` (the
+  context has no `.git`) and `pages.yml` (master = release: Pages publishes
+  before the tag exists) name their builds; no git at all = the bare version.
+  `buildid.pri` (included by `wfweb.pro` and `launcher.pro`) writes
+  `wfweb_build.h` into the build directory at qmake time and refreshes it on
+  every `make`, touching it only when the id changed; `src/buildinfo.cpp`
+  alone includes it, so a commit recompiles one file. Windows has no shell
+  under nmake: the same rules in qmake, at qmake time only.
+  `tools/build-static.sh` puts the same string in the Standalone footer.
+  **Do not bring back a `-D` for the commit or the id** (the old `GITSHORT`
+  went stale until `main.cpp` happened to recompile). Test:
+  `tests/test_build_id.py`.

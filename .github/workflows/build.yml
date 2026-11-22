@@ -15,7 +15,9 @@ jobs:
   # cut from and below the next one, so apt installs each dev build over the
   # previous and the next release still replaces it. Computed once so the
   # .deb Version, every file name and the release page agree even when the
-  # run straddles midnight UTC.
+  # run straddles midnight UTC. The build jobs hand it to the build as
+  # WFWEB_BUILD_ID, so the binary reports the same string (wfweb --version,
+  # the page footer).
   meta:
     name: Build id
     runs-on: ubuntu-24.04
@@ -51,6 +53,10 @@ jobs:
 
   build-linux-ubuntu2404:
     needs: meta
+    env:
+      # What the binary calls itself (tools/build-id.sh, buildid.pri): the
+      # same id as the package it ships in.
+      WFWEB_BUILD_ID: ${{ needs.meta.outputs.dev_id || 'release' }}
     strategy:
       fail-fast: false
       matrix:
@@ -150,8 +156,10 @@ jobs:
           printf '#!/bin/sh\nset -e\nldconfig || true\n' > ${DEB_ROOT}/DEBIAN/postinst
           printf 'if command -v systemctl >/dev/null 2>&1 && systemctl is-system-running --quiet 2>/dev/null; then\n' >> ${DEB_ROOT}/DEBIAN/postinst
           printf '    systemctl daemon-reload || true\nfi\n' >> ${DEB_ROOT}/DEBIAN/postinst
-          printf 'echo "wfweb installed. To start automatically at boot, run:"\n' >> ${DEB_ROOT}/DEBIAN/postinst
-          printf 'echo "  systemctl enable --now wfweb@\$USER"\n' >> ${DEB_ROOT}/DEBIAN/postinst
+          printf 'echo "wfweb installed. To run it as a service, as your own user, not root:"\n' >> ${DEB_ROOT}/DEBIAN/postinst
+          printf 'echo "  systemctl --user enable --now wfweb"\n' >> ${DEB_ROOT}/DEBIAN/postinst
+          printf 'echo "  sudo loginctl enable-linger \$USER   (start at boot, keep running after logout)"\n' >> ${DEB_ROOT}/DEBIAN/postinst
+          printf 'echo "Or the system unit (rig audio not shared with other programs): sudo systemctl enable --now wfweb@\$USER"\n' >> ${DEB_ROOT}/DEBIAN/postinst
           chmod 755 ${DEB_ROOT}/DEBIAN/postinst
 
           dpkg-deb --build --root-owner-group ${DEB_ROOT}
@@ -168,6 +176,10 @@ jobs:
 
   build-linux-debian12:
     needs: meta
+    env:
+      # What the binary calls itself (tools/build-id.sh, buildid.pri): the
+      # same id as the package it ships in.
+      WFWEB_BUILD_ID: ${{ needs.meta.outputs.dev_id || 'release' }}
     strategy:
       fail-fast: false
       matrix:
@@ -271,8 +283,10 @@ jobs:
           printf '#!/bin/sh\nset -e\nldconfig || true\n' > ${DEB_ROOT}/DEBIAN/postinst
           printf 'if command -v systemctl >/dev/null 2>&1 && systemctl is-system-running --quiet 2>/dev/null; then\n' >> ${DEB_ROOT}/DEBIAN/postinst
           printf '    systemctl daemon-reload || true\nfi\n' >> ${DEB_ROOT}/DEBIAN/postinst
-          printf 'echo "wfweb installed. To start automatically at boot, run:"\n' >> ${DEB_ROOT}/DEBIAN/postinst
-          printf 'echo "  systemctl enable --now wfweb@\$USER"\n' >> ${DEB_ROOT}/DEBIAN/postinst
+          printf 'echo "wfweb installed. To run it as a service, as your own user, not root:"\n' >> ${DEB_ROOT}/DEBIAN/postinst
+          printf 'echo "  systemctl --user enable --now wfweb"\n' >> ${DEB_ROOT}/DEBIAN/postinst
+          printf 'echo "  sudo loginctl enable-linger \$USER   (start at boot, keep running after logout)"\n' >> ${DEB_ROOT}/DEBIAN/postinst
+          printf 'echo "Or the system unit (rig audio not shared with other programs): sudo systemctl enable --now wfweb@\$USER"\n' >> ${DEB_ROOT}/DEBIAN/postinst
           chmod 755 ${DEB_ROOT}/DEBIAN/postinst
 
           dpkg-deb --build --root-owner-group ${DEB_ROOT}
@@ -289,6 +303,10 @@ jobs:
 
   build-linux-debian13:
     needs: meta
+    env:
+      # What the binary calls itself (tools/build-id.sh, buildid.pri): the
+      # same id as the package it ships in.
+      WFWEB_BUILD_ID: ${{ needs.meta.outputs.dev_id || 'release' }}
     strategy:
       fail-fast: false
       matrix:
@@ -392,8 +410,10 @@ jobs:
           printf '#!/bin/sh\nset -e\nldconfig || true\n' > ${DEB_ROOT}/DEBIAN/postinst
           printf 'if command -v systemctl >/dev/null 2>&1 && systemctl is-system-running --quiet 2>/dev/null; then\n' >> ${DEB_ROOT}/DEBIAN/postinst
           printf '    systemctl daemon-reload || true\nfi\n' >> ${DEB_ROOT}/DEBIAN/postinst
-          printf 'echo "wfweb installed. To start automatically at boot, run:"\n' >> ${DEB_ROOT}/DEBIAN/postinst
-          printf 'echo "  systemctl enable --now wfweb@\$USER"\n' >> ${DEB_ROOT}/DEBIAN/postinst
+          printf 'echo "wfweb installed. To run it as a service, as your own user, not root:"\n' >> ${DEB_ROOT}/DEBIAN/postinst
+          printf 'echo "  systemctl --user enable --now wfweb"\n' >> ${DEB_ROOT}/DEBIAN/postinst
+          printf 'echo "  sudo loginctl enable-linger \$USER   (start at boot, keep running after logout)"\n' >> ${DEB_ROOT}/DEBIAN/postinst
+          printf 'echo "Or the system unit (rig audio not shared with other programs): sudo systemctl enable --now wfweb@\$USER"\n' >> ${DEB_ROOT}/DEBIAN/postinst
           chmod 755 ${DEB_ROOT}/DEBIAN/postinst
 
           dpkg-deb --build --root-owner-group ${DEB_ROOT}
@@ -410,6 +430,10 @@ jobs:
 
   build-linux-appimage:
     needs: meta
+    env:
+      # What the binary calls itself (tools/build-id.sh, buildid.pri): the
+      # same id as the package it ships in.
+      WFWEB_BUILD_ID: ${{ needs.meta.outputs.dev_id || 'release' }}
     strategy:
       fail-fast: false
       matrix:
@@ -577,6 +601,10 @@ jobs:
 
   build-macos:
     needs: meta
+    env:
+      # What the binary calls itself (tools/build-id.sh, buildid.pri): the
+      # same id as the package it ships in.
+      WFWEB_BUILD_ID: ${{ needs.meta.outputs.dev_id || 'release' }}
     name: macOS (Apple Silicon)
     runs-on: macos-15
 
@@ -631,6 +659,10 @@ jobs:
 
   build-windows:
     needs: meta
+    env:
+      # What the binary calls itself (tools/build-id.sh, buildid.pri): the
+      # same id as the package it ships in.
+      WFWEB_BUILD_ID: ${{ needs.meta.outputs.dev_id || 'release' }}
     name: Windows x86_64
     runs-on: windows-latest
 
@@ -695,7 +727,8 @@ jobs:
       - name: Build codec2 (FreeDV) via MSYS2 MinGW
         shell: C:\msys64\usr\bin\bash.exe -l {0}
         run: |
-          pacman -S --noconfirm --needed mingw-w64-x86_64-cmake mingw-w64-x86_64-gcc mingw-w64-x86_64-make mingw-w64-x86_64-tools-git
+          # gendef comes from ucrt64: MSYS2 no longer ships the tools package for mingw64.
+          pacman -S --noconfirm --needed mingw-w64-x86_64-cmake mingw-w64-x86_64-gcc mingw-w64-x86_64-make mingw-w64-ucrt-x86_64-tools
           export PATH="/mingw64/bin:$PATH"
           CODEC2="$(cygpath "$GITHUB_WORKSPACE")/codec2"
           cd "$CODEC2"
@@ -718,7 +751,7 @@ jobs:
           Copy-Item "codec2\build_mingw\src\libcodec2.dll" "$vcpkg\bin\" -Force
 
           # Generate MSVC import lib from MinGW DLL
-          & C:\msys64\mingw64\bin\gendef.exe codec2\build_mingw\src\libcodec2.dll
+          & C:\msys64\ucrt64\bin\gendef.exe codec2\build_mingw\src\libcodec2.dll
           lib /def:libcodec2.def /out:"$vcpkg\lib\codec2.lib" /machine:x64
 
           # Headers

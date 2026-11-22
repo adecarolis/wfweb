@@ -6,6 +6,107 @@ a built-in web interface. See https://gitlab.com/eliggett/wfview for the
 upstream wfview history.
 
 
+v0.9.6 (2026-11-22)
+--------------------
+
+Shared Station (server build, new, off by default):
+- `--shared` turns a server into a club or multi-operator station:
+  accounts with roles (listen / control / operate / admin), a first
+  admin created with a one-time setup code shown on the console, login
+  sheet, API tokens for scripts, lockout after failed logins and an
+  audit log. Without the flag nothing changes. Meant for a station
+  reached on its LAN or over a VPN, never exposed to the internet; see
+  SHARED_STATION.md. Thanks to Austin WY4RC of the Young Amateurs
+  Radio Club for beta testing it.
+- The seat: one browser operates the radio at a time. Others watch,
+  ask for it, line up for it, or are handed it; it is released when
+  idle, kept for a short grace across a reload, and admins can take or
+  clear it. A private session and listen-in off keep audio and scope
+  from the others.
+- Reservations: admins book the station for an account, once or weekly;
+  the seat goes to the owner when the slot starts.
+- TX inhibit for the whole station or per band, a transmit time-out,
+  a client cap and an anonymous (visitor) level, all in the RULES tab.
+- Callsigns and the log follow the operator: an account can go on the
+  air under its own callsign while it holds the seat, and each QSO
+  records the station call and the operator. Members see the club log
+  and their own QSOs; export, import and clear are the admins'.
+- A station strip under the top bar says whose seat it is, what you can
+  do about it and who you are; STATION SETTINGS has four tabs (NOW,
+  ACCOUNTS, SCHEDULE, RULES). Change your own password, admin-only notes
+  per account, user list export / import.
+- A press refused for want of the seat or a role is said in the middle
+  of the screen, in red; TAKE blinks when the seat is free.
+- Over REST the radio is read-only on a shared station; rigctld
+  (localhost) still keys.
+- The server warns (console status page and log) when it is reached
+  from, or has, a public internet address, with or without `--shared`.
+
+FT8 / FT4:
+- CQ: NONE / FIRST / MAX DIST, as in WSJT-X: while calling CQ, answer
+  the first station that calls, or the most distant one. CQ is not
+  called again after the QSO.
+- A click on a station answering our CQ, while our CQ is on the air,
+  cuts the CQ and sends the report in the same slot (up to 4 s into an
+  FT8 slot, 1 s in FT4).
+- The CQ side logs a QSO when its RR73 has gone out, as WSJT-X does;
+  pile-up runs no longer lose QSOs waiting for a 73.
+- A station just worked is no longer answered with our grid when it
+  calls CQ again.
+- Nonstandard callsigns (AO40EUDXF, VE3/W9XYZ) go out in the hashed
+  message forms instead of being cut to 13 characters of free text
+  (#153).
+
+Transmit:
+- Digital overs (FT8/FT4, JS8, RTTY, SSTV, TUNE) put the rig's SSB
+  transmit filter (TBW) on WIDE and back afterwards: on NAR, tones below
+  500 or above 2500 Hz left the IC-7300 with next to no power.
+- FUNC TBW tile: WIDE / MID / NAR on the rigs that have it.
+- FreeDV / RADE to a LAN rig (IC-705, IC-9700): the modem audio is sent
+  in real time, in 20 ms slices; the rigs used to key with no modulation
+  (#158). RADE goes to a LAN rig at the same level as over USB.
+- On a LAN rig the MIC slider is the rig's LAN mod level (labelled LAN
+  MIC); it was the USB level, which a LAN rig does not use. FreeDV /
+  RADE hold the mod level at 75 % like FT8, and give it back after.
+- IC-9700: the mod levels could not be set (rig file).
+
+Web UI:
+- FUNC AGC tile, stepping through each rig's own AGC settings (rig
+  files now name them; SLOW was out of reach on the IC-7300).
+- The TUNE tag stays in the top bar on every band (grey when the tuner
+  is off) so there is always something to tap; a hold tunes, from the
+  FUNC tile too (#156).
+- Start screen: one card for both builds; on the server build it is a
+  sheet over the live page, and a key or click anywhere starts.
+- The spectrum's warning and state tags flow in the corner instead of
+  sitting in fixed slots over the waterfall.
+- The radio fills the window width (no black bands beside it on a 16:9
+  screen).
+- The P.AMP / ATT button no longer looks dead when the page loads with
+  the attenuator already on.
+- QSO log: on a narrow screen the row being edited keeps band, mode and
+  reports.
+- The bar meter no longer draws its "ALC n%" text during digital TX.
+
+Server:
+- New systemd user unit (`systemctl --user enable wfweb`) so other
+  programs can use the rig's audio through PipeWire at the same time;
+  at login wfweb waits for the sound server to list the rig's CODEC.
+- `--no-web` rig server: no TX meter polling (sq8bwm, #154), and a race
+  that could leave it never polling its rig is fixed.
+- HTTP / WebSocket hardening from a fuzz pass: memory caps on pending
+  responses and slow clients, one request per connection, a TLS write
+  backlog that was never cut, and a use-after-free in the command queue.
+- A set command goes out before routine status reads queued ahead of it.
+- LAN rigs: the audio backend is chosen as configured (it was left
+  uninitialised and could crash on arm64).
+- macOS: the TLS proxy relays without blocking; `--shared` no longer
+  aborts at start-up.
+- A build that is not the tagged release says so in its version
+  (`0.9.6+dev.<commit>`), on the console, the page footer and
+  `--version`.
+
+
 v0.9.5 (2026-11-01)
 --------------------
 

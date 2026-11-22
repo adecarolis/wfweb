@@ -1,11 +1,24 @@
+Two units, pick one. Enabling both makes them fight over the web port and the
+rig's serial port.
 
+wfweb.service -- user unit (systemctl --user). It runs inside your session,
+next to PipeWire, so wfweb and other programs share the rig's USB CODEC.
+Installed to lib/systemd/user:
 
-in order to be able to autostart wfweb, this simple unitfile made by
-Mick VK3ADD, will help you.
+    systemctl --user enable --now wfweb
+    sudo loginctl enable-linger $USER
 
-path and suggested name of the file:
+Without linger the unit lives only while you are logged in: it starts at your
+first login (desktop or SSH) and stops when the last session closes. With
+linger it starts at boot and stays up.
 
+At boot wfweb and PipeWire start together. wfweb waits (up to 10 s) for
+PipeWire to list the rig's CODEC instead of taking the raw device, so the
+order they come up in does not matter.
 
-/etc/systemd/system/wfweb.service
+wfweb@.service -- system unit, starts at boot, for a machine where wfweb is
+the only program using the rig. The instance name is the account to run as;
+do not use root. It has no session, so wfweb opens the raw hw: device and no
+other program can use the rig's audio. Installed to lib/systemd/system:
 
-
+    sudo systemctl enable --now wfweb@$USER

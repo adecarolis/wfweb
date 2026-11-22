@@ -68,7 +68,7 @@ public:
     static QString modeToName(quint8 icomMode);
 
 public slots:
-    void onRxAudioFromMixer(int dstRig, const audioPacket& pkt) override;
+    void onRxAudioFromMixer(int dstRig, int srcRig, const audioPacket& pkt) override;
 
 private slots:
     void onPaTxChunk(const QByteArray& pcm); // from ExtAudio (queued, main thread)

@@ -39,17 +39,35 @@ qmake wfweb.pro
 make -j$(nproc)
 ```
 
+A build from a checkout that is not the commit tagged for a release says so:
+`./wfweb --version`, the terminal status page and the page footer read
+`X.Y.Z+dev.<commit>` instead of the bare `X.Y.Z`. Quote that string in a bug
+report.
+
 ### Install
 
 ```bash
 sudo make install
 ```
 
-This installs the binary, rig files, and a systemd service unit. To start at boot:
+This installs the binary, rig files, and two systemd units. Enable one of them,
+not both. The user unit, as your own user:
+
+```bash
+systemctl --user enable --now wfweb
+sudo loginctl enable-linger $USER
+```
+
+wfweb then shares the rig's USB CODEC with other programs through PipeWire.
+Linger makes it start at boot and stay up after you log out; without it the
+unit runs only while you are logged in. The system unit starts at boot too:
 
 ```bash
 sudo systemctl enable --now wfweb@$USER
 ```
+
+but there wfweb has no PipeWire session, opens the CODEC as a raw `hw:` device
+and no other program can use the rig's audio. See `systemd/README`.
 
 ### Build a .deb package
 

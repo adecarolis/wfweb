@@ -1,6 +1,6 @@
 #include "freedvreporter.h"
 #include "logcategories.h"
-#include "wfweb_version.h"
+#include "buildinfo.h"
 
 #include <QJsonDocument>
 #include <QJsonArray>
@@ -188,7 +188,7 @@ void FreeDVReporter::onWsTextMessage(const QString &message)
         auth["callsign"] = callsign_;
         auth["grid_square"] = grid_;
         auth["version"] = QString("wfweb %1").arg(
-            QStringLiteral(WFWEB_VERSION));
+            QString(wfwebVersion()));
         auth["rx_only"] = false;
 #ifdef Q_OS_LINUX
         auth["os"] = "linux";

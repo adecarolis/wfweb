@@ -25,6 +25,8 @@ wfweb
 tools/virtualrig/virtualrig
 # qmake writes the Windows icon/version resource next to launcher.pro (RC_ICONS).
 launcher/*_resource.rc
+# Generated on every build (buildid.pri, tools/build-id.sh).
+wfweb_build.h
 .testrig/
 /dist/
 # Emscripten Opus + RADE build cache (rebuilt by build-rade-wasm.sh).

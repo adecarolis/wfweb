@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 import subprocess
 import sys
 import time
@@ -82,26 +83,90 @@ def wfweb_output_tail(proc, lines: int = 60) -> str:
         return "".join(f.readlines()[-lines:])
 
 
+def wfweb_diagnosis(proc, port=None) -> str:
+    """What a server that is not answering is doing, for a failure message:
+    whether it is still running, how it set up TLS, who listens on its port
+    and, on macOS, the stack of every thread (`sample`). The stalls seen on
+    the macOS runner only (a WSS upgrade unanswered for 10 s, a start-up that
+    never polls) were not reproducible anywhere else, and a log tail does not
+    say where a thread is stuck."""
+    out = []
+    rc = proc.poll()
+    out.append(f"wfweb pid {proc.pid}: " + ("running" if rc is None else f"EXITED, return code {rc}"))
+    path = getattr(proc, "output_path", None)
+    if path and os.path.exists(path):
+        with open(path, errors="replace") as f:
+            setup = [l.rstrip() for l in f if re.search(r"TLS proxy|SSL|HTTPS|listening on|Internal HTTP", l)]
+        out.append("--- TLS / listen lines of the log ---")
+        out += setup[:12] + setup[-8:] if len(setup) > 20 else setup
+
+    def run(cmd, limit):
+        try:
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=40)
+            lines = (r.stdout + r.stderr).splitlines()
+        except Exception as e:  # a missing tool must not hide the failure itself
+            lines = [f"{cmd[0]}: {e}"]
+        out.append("--- " + " ".join(cmd) + " ---")
+        out.extend(lines[:limit])
+
+    if rc is None and sys.platform == "darwin":
+        if port:
+            run(["lsof", "-nP", f"-iTCP:{port}"], 20)
+        run(["sample", str(proc.pid), "2", "-mayDie"], 450)
+    return "\n".join(out)
+
+
+def ws_tls_context():
+    """TLS settings for every WebSocket a test opens with the `websockets`
+    sync client: no certificate check (the server's is self-signed) and
+    **TLS 1.2 at most**.
+
+    That client reads on a thread of its own while the caller writes. Under
+    TLS 1.3 the server's session tickets arrive right after the handshake and
+    OpenSSL handles them inside the reader's SSL_read(), at the moment the
+    caller's SSL_write() sends the upgrade request: two threads inside one SSL
+    object, which OpenSSL does not allow. The request is lost, or the
+    connection dies, and the test fails with "WSS upgrade unanswered for
+    10 s" or "did not receive a valid HTTP response" while the server never
+    saw a request. It took down about one test per run on the macOS runner
+    (the only one with the package) and was chased in the server's TLS proxy
+    first. Measured 2026-11-16 on Linux: 36 of 2000 connects to a local wfweb
+    failed with TLS 1.3 and 0 of 2000 capped at 1.2; a bare Python TLS client
+    with a reader thread against a bare Python server lost 1.3 % of 12 000
+    requests, and none with TLS 1.2 or with the server's tickets switched off.
+
+    TLS 1.2 has no messages after the handshake, so there is nothing for the
+    reader to trip over. Browsers do not work this way, and the REST tests
+    (`requests`, one thread) still go through TLS 1.3. **Use this for any new
+    WebSocket in a test**; a context of your own brings the flake back."""
+    import ssl
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    ctx.maximum_version = ssl.TLSVersion.TLSv1_2
+    return ctx
+
+
 def ws_connect(web_port, proc=None, timeout=10.0):
     """A browser-style WebSocket to a test server: WSS on the web port (TLS
     is on by default), plain WS on the next port only where the server runs
     without TLS. An upgrade the server leaves unanswered fails here with the
     server's log tail: it used to fall through to the plain port, whose HTTP
     200 signpost page said nothing about what the WSS path did (macOS CI,
-    2026-10-27). Needs the websockets package; skips without it."""
+    2026-10-27; that stall was the client's own, see ws_tls_context). Needs
+    the websockets package; skips without it."""
     import ssl
     pytest.importorskip("websockets")
     from websockets.sync.client import connect
 
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
+    ctx = ws_tls_context()
     try:
         return connect(f"wss://127.0.0.1:{web_port}", ssl=ctx, open_timeout=timeout)
     except TimeoutError as e:
         tail = wfweb_output_tail(proc) if proc is not None else "(no server handle)"
+        diag = wfweb_diagnosis(proc, web_port) if proc is not None else ""
         pytest.fail(f"WSS upgrade on port {web_port} unanswered for {timeout} s: {e}\n"
-                    f"--- wfweb output (tail) ---\n{tail}")
+                    f"--- wfweb output (tail) ---\n{tail}\n{diag}")
     except (ssl.SSLError, OSError):
         return connect(f"ws://127.0.0.1:{web_port + 1}", open_timeout=timeout)
 
@@ -262,9 +327,10 @@ def _launch_wfweb(mock, event_loop, rigctld_port, civ, home):
     # failures quote.
     output_path = os.path.join(home, "wfweb.log")
     cmd += ["-l", output_path]
+    capture = os.environ.get("WFWEB_TEST_CAPTURE")   # see launch_shared_wfweb
     proc = subprocess.Popen(
         cmd,
-        stdout=subprocess.DEVNULL,
+        stdout=open(os.path.join(home, "wfweb.stderr"), "wb") if capture else subprocess.DEVNULL,
         stderr=subprocess.STDOUT,
         env=env,
     )
@@ -448,3 +514,118 @@ def usb_poll(usb_rest_url):
             time.sleep(0.2)
         pytest.fail(f"usb_poll({endpoint}) timed out. Last: {last_data}")
     return _poll
+
+
+# ---------------------------------------------------------------------------
+# Shared Station (--shared) server, for test_access.py and test_access_roles.py
+# ---------------------------------------------------------------------------
+
+SETUP_CODE_RE = re.compile(r"setup code ([A-Z2-9]{4}-[A-Z2-9]{4})")
+SESSION_COOKIE = "wfweb_session"
+
+
+class SharedServer:
+    """A --shared wfweb: URLs, the setup code from its log, request helpers."""
+
+    def __init__(self, proc, web_port, shared_dir, log_path):
+        self.proc = proc
+        self.web_port = web_port
+        self.https = f"https://127.0.0.1:{web_port}"
+        self.http = f"http://127.0.0.1:{web_port + 1}"
+        self.shared_dir = shared_dir
+        self.log_path = log_path
+        self.admin_cookie = None       # set once the admin exists, used by the rest
+        self.admin_password = "club-admin-pw-2026"
+
+    def setup_code(self):
+        with open(self.log_path, errors="replace") as f:
+            codes = SETUP_CODE_RE.findall(f.read())
+        assert codes, f"no setup code in the log:\n{wfweb_output_tail(self.proc)}"
+        return codes[-1]
+
+    def req(self, method, path, *, cookie=None, token=None, plain=False, **kw):
+        base = self.http if plain else self.https
+        headers = dict(kw.pop("headers", {}) or {})
+        if token:
+            headers["Authorization"] = f"Bearer {token}"
+        cookies = {SESSION_COOKIE: cookie} if cookie else None
+        return requests.request(method, base + path, headers=headers, cookies=cookies,
+                                verify=False, timeout=10, **kw)
+
+    def get(self, path, **kw):
+        return self.req("GET", path, **kw)
+
+    def post(self, path, body=None, **kw):
+        return self.req("POST", path, json=body or {}, **kw)
+
+    def ws(self, cookie=None, timeout=10.0):
+        """A browser-style WSS socket, with the session cookie when given."""
+        pytest.importorskip("websockets")
+        import ssl
+        from websockets.sync.client import connect
+        ctx = ws_tls_context()
+        headers = {"Cookie": f"{SESSION_COOKIE}={cookie}"} if cookie else None
+        try:
+            return connect(f"wss://127.0.0.1:{self.web_port}", ssl=ctx, open_timeout=timeout,
+                           additional_headers=headers)
+        except TimeoutError as e:
+            # The stall that used to land here was the client's own (see
+            # ws_tls_context). One that still does is the server's: say what
+            # it was doing.
+            pytest.fail(f"WSS upgrade on port {self.web_port} unanswered for {timeout} s: {e}\n"
+                        f"--- wfweb output (tail) ---\n{wfweb_output_tail(self.proc)}\n"
+                        f"{wfweb_diagnosis(self.proc, self.web_port)}")
+
+
+def set_cookie(resp):
+    """The session cookie a response sets, with its attributes."""
+    header = resp.headers.get("Set-Cookie", "")
+    m = re.match(rf"{SESSION_COOKIE}=([^;]*);(.*)", header)
+    assert m, f"no session cookie in {header!r}"
+    return m.group(1), m.group(2)
+
+
+def launch_shared_wfweb(mock, event_loop, home, extra_args=(), output=None):
+    """Start wfweb --shared against mock, its accounts under home/station,
+    and wait until the auth routes answer (the rig may still be connecting).
+    Stop it with _stop_wfweb(server.proc).  output: a path for the
+    process's stdout / stderr (sanitizer reports); dropped by default."""
+    if not WFWEB_BIN.exists():
+        pytest.skip(f"wfweb binary not found at {WFWEB_BIN}")
+    home = Path(home)
+    shared_dir = home / "station"
+    web_port = _find_free_port()
+    log_path = home / "wfweb.log"
+    cmd = [
+        str(WFWEB_BIN), "-p", str(web_port),
+        "--lan", "127.0.0.1", "--lan-control", str(mock.control_port),
+        "--lan-user", "testuser", "--lan-pass", "testpass", "--civ", "0x98",
+        "--shared", "--shared-dir", str(shared_dir),
+        "-l", str(log_path), *extra_args,
+    ]
+    # The settings file follows XDG_CONFIG_HOME when it is set (GitHub's
+    # runners set it), not HOME: without this every --shared test server
+    # shared one file and one module's policy was the next one's start.
+    env = dict(os.environ, HOME=str(home), XDG_CONFIG_HOME=str(home / ".config"))
+    # WFWEB_TEST_CAPTURE=1 keeps every test server's stdout / stderr (a
+    # sanitizer report, a qFatal) in <home>/wfweb.stderr for a post-mortem.
+    if output is None and os.environ.get("WFWEB_TEST_CAPTURE"):
+        output = home / "wfweb.stderr"
+    out = open(output, "wb") if output else subprocess.DEVNULL
+    proc = subprocess.Popen(cmd, stdout=out, stderr=subprocess.STDOUT, env=env)
+    proc.output_path = str(log_path)
+    _ensure_loop_thread(event_loop)
+    srv = SharedServer(proc, web_port, shared_dir, str(log_path))
+
+    deadline = time.monotonic() + 20
+    while time.monotonic() < deadline:
+        try:
+            if srv.get("/api/v1/auth/me").status_code == 200:
+                return srv
+        except requests.ConnectionError:
+            pass
+        if proc.poll() is not None:
+            pytest.fail(f"wfweb exited with {proc.returncode}:\n{wfweb_output_tail(proc)}")
+        time.sleep(0.3)
+    _stop_wfweb(proc)
+    pytest.fail(f"--shared wfweb not answering:\n{wfweb_output_tail(proc)}")

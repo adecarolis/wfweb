@@ -324,7 +324,9 @@
         // AFSK is the way to transmit, so it is on by default: the rig goes
         // to LSB as the bar opens.  The AFSK button turns it off and that
         // choice is remembered.
-        if (S.afskDefault && !S.afsk && isRttyMode(mode())) startAfsk();
+        // (Not for somebody only watching a shared station: engaging AFSK
+        // sets the mode and the mic level, which is the seat holder's to do.)
+        if (S.afskDefault && !S.afsk && isRttyMode(mode()) && !(window.sendRefused && window.sendRefused('setMode'))) startAfsk();
     }
 
     // opts.restore: put the rig back where AFSK found it (the bar's own
@@ -584,7 +586,10 @@
         if (word.length < 4 || word.length > 8) return false;
         return /^[A-Z0-9]{1,3}[0-9][A-Z]{1,4}$/.test(word);
     }
-    function escapeHtml(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+    function escapeHtml(s) {
+        return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
     function renderRx(text) {
         var mine = myCall();
         return text.split(/([A-Z0-9]+)/).map(function (part) {

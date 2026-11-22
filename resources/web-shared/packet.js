@@ -399,8 +399,8 @@
         var style = document.createElement('style');
         style.id = 'packetStyles';
         style.textContent =
-            /* absolute (not fixed) so it letterboxes with #scopeArea (max-width 16:9):
-               fixed bars peek past the overlays on viewports wider than 16:9 — issue #39 */
+            /* absolute (not fixed) so it stays inside #scopeArea:
+               fixed bars peeked past the overlays when #radio was letterboxed — issue #39 */
             '.packet-bar { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 200; padding: 6px 8px; font-size: 12px; display: flex; flex-direction: column; min-height: 0; box-sizing: border-box; }' +
             'body.packet-open #spectrumCanvas, body.packet-open #waterfallCanvas { display: none !important; }' +
             '.packet-scope { width: 100%; height: 13%; min-height: 40px; background: var(--bg); border: 1px solid var(--mode-accent-dim); border-radius: 3px; margin-bottom: 6px; display: block; }' +
@@ -1649,10 +1649,14 @@
     }
 
     function escapeHtml(s) {
+        // Quotes too: the result goes into title="..." and download="..."
+        // attributes, with text that came off the air (an APRS comment).
         return String(s == null ? '' : s)
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 
     // Real amateur callsigns always contain at least one digit (ITU rule).

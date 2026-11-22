@@ -1,5 +1,4 @@
 #include "consolestatus.h"
-#include "wfweb_version.h"
 
 #include <QDateTime>
 #include <QMutexLocker>
@@ -129,8 +128,8 @@ QStringList ConsoleStatus::render(const ConsoleSnapshot &snap, int cols, int row
         return QStringList();
 
     // In drop order: when the terminal is too short, the earliest kinds go first.
-    enum Kind { Blank, CertNote, Warning, LogFile, RigCtl, Rest, Browsers,
-                Frequency, ExtraUrl, Rig, Heading, Keys, Title, FirstUrl };
+    enum Kind { Blank, CertNote, Warning, LogFile, RigCtl, Rest, ExposedNote, AccessRow, Browsers,
+                Frequency, ExtraUrl, Rig, Exposed, Heading, Keys, Title, FirstUrl };
     struct Row { Kind kind; QString text; };
     QList<Row> page;
 
@@ -159,7 +158,7 @@ QStringList ConsoleStatus::render(const ConsoleSnapshot &snap, int cols, int row
         add(Heading, "Open in a browser:");
         for (int i = 0; i < snap.urls.size(); i++)
             page.append({i == 0 ? FirstUrl : ExtraUrl, indent + snap.urls.at(i)});
-        if (snap.https)
+        if (snap.https && snap.selfSigned)
             page.append({CertNote, indent + "(self-signed certificate: accept the browser warning once)"});
         break;
     case ConsoleSnapshot::WebStarting:
@@ -182,6 +181,37 @@ QStringList ConsoleStatus::render(const ConsoleSnapshot &snap, int cols, int row
         field(Frequency, "Frequency", snap.frequency + " " + snap.mode + (snap.transmitting ? "  TX" : "  RX"));
     if (snap.web == ConsoleSnapshot::WebListening)
         field(Browsers, "Browsers", snap.browsers > 0 ? QString("%1 connected").arg(snap.browsers) : "none connected");
+    if (snap.web == ConsoleSnapshot::WebListening) {
+        // Who may do what from a browser.  Without --shared that is anyone
+        // who can reach the port, and the page says so in as many words.
+        QString access;
+        if (!snap.shared)
+            access = "open - anyone who reaches this port can transmit (--shared adds accounts)";
+        else if (!snap.setupCode.isEmpty())
+            access = QString("shared station - SETUP CODE %1 (enter it in the browser)").arg(snap.setupCode);
+        else
+            access = QString("shared station, %1 account%2").arg(snap.sharedUsers).arg(snap.sharedUsers == 1 ? "" : "s");
+        field(AccessRow, "Access", access);
+
+        // wfweb is for a LAN or a VPN: say so when the internet can reach it.
+        const QString cont = QString(11, QLatin1Char(' '));
+        bool exposed = false;
+        if (!snap.publicClient.isEmpty()) {
+            QString text = "PUBLIC CLIENT " + snap.publicClient;
+            if (snap.publicClients > 1)
+                text += QString(" (%1 addresses so far)").arg(snap.publicClients);
+            field(Exposed, "Internet", text);
+            exposed = true;
+        }
+        if (!snap.publicInterface.isEmpty()) {
+            const QString text = "this host has the public address " + snap.publicInterface;
+            if (exposed) add(Exposed, cont + text);
+            else field(Exposed, "Internet", text);
+            exposed = true;
+        }
+        if (exposed)
+            add(ExposedNote, cont + "wfweb is meant for a LAN or a VPN, not the internet");
+    }
     if (!snap.restUrl.isEmpty())
         field(Rest, "REST API", snap.restFailed ? "FAILED to listen (" + snap.restUrl + ")" : snap.restUrl);
     if (!snap.rigctld.isEmpty())
@@ -324,7 +354,6 @@ void ConsoleStatus::paint()
     // The provider may log, which takes mutex_ through logLine(): call it
     // before locking.
     ConsoleSnapshot snap = provider_ ? provider_() : ConsoleSnapshot();
-    snap.version = QString(WFWEB_VERSION);
     snap.uptimeSecs = uptime_.elapsed() / 1000;
     snap.logFile = logFile_;
     {

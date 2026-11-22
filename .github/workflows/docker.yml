@@ -35,6 +35,16 @@ jobs:
         id: branch
         run: echo "safe=$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9-]/-/g')" >> "$GITHUB_OUTPUT"
 
+      # The build context has no .git (.dockerignore), so the image cannot
+      # tell on its own whether it is a release: same id as build.yml's.
+      - name: Build id
+        id: buildid
+        run: |
+          case "${{ github.ref }}" in
+            refs/tags/v*) echo "id=release" >> "$GITHUB_OUTPUT" ;;
+            *) echo "id=dev.$(date -u +%Y%m%d).$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT" ;;
+          esac
+
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
@@ -62,5 +72,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            WFWEB_BUILD_ID=${{ steps.buildid.outputs.id }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

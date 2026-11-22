@@ -76,6 +76,14 @@ struct cmdLineOverrides {
     QString remoteLogTarget;
     bool noRemoteLog = false;
     bool remoteLogDecodes = false;
+    // --cert/--key: serve a real certificate instead of the generated one
+    QString certFile;
+    QString keyFile;
+    // Shared Station (see SHARED_STATION.md): accounts and access control
+    bool shared = false;          // --shared
+    QString sharedDir;            // --shared-dir
+    bool sharedResetAdmin = false; // --shared-reset-admin
+    QString trustProxy;           // --trust-proxy <cidr>[,<cidr>...]
 };
 
 class servermain : public QObject

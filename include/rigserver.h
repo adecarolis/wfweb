@@ -41,6 +41,10 @@ struct RIGCONFIG {
 	};
 #pragma pack(pop)
 	bool rigAvailable=false;
+	// servermain has taken this rig's capabilities and started polling it.
+	// Not rigAvailable: rigServer::receiveRigCaps sets that one too, on its own
+	// thread, and whichever ran first used to decide whether polling started.
+	bool pollingStarted=false;
     rigCapabilities* rigCaps = Q_NULLPTR;
 	rigCommander* rig = Q_NULLPTR;
 	QThread* rigThread = Q_NULLPTR;

@@ -26,6 +26,7 @@ CMD_FREQ_READ = 0x03
 CMD_MODE_READ = 0x04
 CMD_FREQ_SET = 0x05
 CMD_MODE_SET = 0x06
+CMD_ATTENUATOR = 0x11
 CMD_LEVEL = 0x14
 CMD_FUNC = 0x16
 CMD_METER = 0x15
@@ -45,6 +46,8 @@ SUB_RF_POWER = 0x0A
 SUB_MIC_GAIN = 0x0B
 SUB_COMP_LEVEL = 0x0E
 SUB_COMPRESSOR = 0x44  # under CMD_FUNC
+SUB_AGC = 0x12  # under CMD_FUNC
+SUB_TBW = 0x58  # under CMD_FUNC: SSB transmit filter, 0 WIDE / 1 MID / 2 NAR
 SUB_S_METER = 0x02
 SUB_SWR_METER = 0x12
 SUB_ALC_METER = 0x13
@@ -105,6 +108,7 @@ class CivRadioBase:
 
     def __init__(self, radio_addr: int = RADIO_IC7610_ADDR) -> None:
         self._radio_addr = radio_addr
+        self.settings = {}      # 1A 05 register (xxyy) -> bytes written
 
         # Radio state
         self._frequency: int = 14_074_000
@@ -118,6 +122,15 @@ class CivRadioBase:
         self._mic_gain: int = 128
         # Speech compressor ON at level 5 (128 of 255), as a voice operator leaves it.
         self.compressor: int = 1
+        # SSB transmit filter (TBW). The rig keeps one setting with COMP off
+        # and one with COMP on: index = self.compressor. MID is the default.
+        self.tbw: list[int] = [1, 1]
+        # AGC as the IC-7300 numbers it: 1 FAST, 2 MID, 3 SLOW. In FM the rig
+        # keeps FAST and refuses a set (agc_fm_fixed), like the real one.
+        self.agc: int = 2
+        self.agc_fm_fixed: bool = True
+        # Attenuator byte as the rig sends it: BCD dB, 0x20 = 20 dB, 0 = off
+        self.attenuator: int = 0
         self._comp_level: int = 128
         self._s_meter: int = 120
         self._swr: int = 10
@@ -229,12 +242,52 @@ class CivRadioBase:
                 return self.civ_ack(to, frm)
             return self._handle_meter(to, frm, payload[0])
 
+        if cmd == CMD_ATTENUATOR:
+            if payload:
+                self.attenuator = payload[0]
+                return self.civ_ack(to, frm)
+            return self.civ_frame(to, frm, CMD_ATTENUATOR,
+                                  data=bytes([self.attenuator]))
+
         if cmd == CMD_FUNC and payload and payload[0] == SUB_COMPRESSOR:
             if len(payload) > 1:
                 self.compressor = payload[1]
                 return self.civ_ack(to, frm)
             return self.civ_frame(to, frm, CMD_FUNC, sub=SUB_COMPRESSOR,
                                   data=bytes([self.compressor]))
+
+        if cmd == CMD_FUNC and payload and payload[0] == SUB_TBW:
+            slot = 1 if self.compressor else 0
+            if len(payload) > 1:
+                if payload[1] > 2:
+                    return self.civ_nak(to, frm)
+                self.tbw[slot] = payload[1]
+                return self.civ_ack(to, frm)
+            return self.civ_frame(to, frm, CMD_FUNC, sub=SUB_TBW,
+                                  data=bytes([self.tbw[slot]]))
+
+        if cmd == CMD_FUNC and payload and payload[0] == SUB_AGC:
+            in_fm = self._mode == 0x05 and self.agc_fm_fixed
+            if len(payload) > 1:
+                if in_fm or not 1 <= payload[1] <= 3:
+                    return self.civ_nak(to, frm)
+                self.agc = payload[1]
+                return self.civ_ack(to, frm)
+            return self.civ_frame(to, frm, CMD_FUNC, sub=SUB_AGC,
+                                  data=bytes([1 if in_fm else self.agc]))
+
+        # 1A 05 xx yy: the SET-mode registers (mod levels, mod inputs...).
+        # A register keeps what was written to it and reads it back; one
+        # never written is ACKed like any command the mock does not model.
+        if cmd == 0x1A and len(payload) >= 3 and payload[0] == 0x05:
+            reg = (payload[1] << 8) | payload[2]
+            if len(payload) > 3:
+                self.settings[reg] = bytes(payload[3:])
+                return self.civ_ack(to, frm)
+            if reg in self.settings:
+                return self.civ_frame(to, frm, 0x1A,
+                                      data=bytes(payload[:3]) + self.settings[reg])
+            return self.civ_ack(to, frm)
 
         if cmd == CMD_POWER_CTRL:
             return self.civ_ack(to, frm)

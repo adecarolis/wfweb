@@ -1,10 +1,15 @@
 #include "webserver.h"
+#include <QNetworkInterface>
 #include "freedvprocessor.h"
 #include <QtMath>
 #include <codec2/freedv_api.h>
 #include "logcategories.h"
 #include "wfweb_version.h"
+#include "buildinfo.h"
 #include "wsjtxmessage.h"
+#include <cmath>
+
+static quint64 jsonHz(const QJsonValue &v);   // a Hz field from JSON, bounded; defined above handleCommand
 
 #include <QStandardPaths>
 #include <QDir>
@@ -19,6 +24,9 @@
 #include <QSaveFile>
 #include <QRandomGenerator>
 #include <QHostInfo>
+#include <QNetworkRequest>
+#include <QCoreApplication>
+#include <thread>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -38,11 +46,21 @@
 #endif
 
 // Fixed TX gain applied to RADE modem output (and the EOO frame) in the
-// webserver before writing to the USB CODEC. Combined with RADE_TX_SCALE
+// webserver before it goes to the USB CODEC or to a LAN rig. Combined with RADE_TX_SCALE
 // in radeprocessor.cpp, this gives a stable drive level that hits ~100%
 // power on a full-duty signal. Kept separate from freedvTxGain so the
 // classic-FreeDV ALC loop can't affect RADE.
 static constexpr float RADE_TX_GAIN = 0.4f;
+
+// The RADE end-of-over frame: rade_n_tx_eoo_out() = 1152 samples at the
+// modem's 8 kHz.
+static constexpr int RADE_EOO_MS = 144;
+
+// LAN pacer for the voice modems (modemLanTxQueue): how much is held back
+// before the first slice goes out, and how much may pile up behind a stalled
+// mic stream before the oldest audio is dropped.
+static constexpr int MODEM_LAN_CUSHION_MS = 60;
+static constexpr int MODEM_LAN_MAX_MS = 1000;
 
 // Repeater duplex direction on the wire. The browser and the REST clients
 // speak these three names; the parser only ever caches simplex / DUP- / DUP+,
@@ -310,8 +328,23 @@ bool webServer::setupSsl()
     QString certPath = dataDir + "/wfweb-web.crt";
     QString keyPath = dataDir + "/wfweb-web.key";
 
+    // --cert/--key: a certificate of the operator's own (Let's Encrypt, a
+    // club CA).  A missing file is a configuration error, not a reason to
+    // fall back to the generated one: the browser would warn and the
+    // operator would blame the certificate they just installed.
+    if (!tlsCertFile_.isEmpty() || !tlsKeyFile_.isEmpty()) {
+        if (!QFile::exists(tlsCertFile_) || !QFile::exists(tlsKeyFile_)) {
+            fatalConfig(QString("Web: certificate or key file not found (--cert %1 --key %2)")
+                        .arg(tlsCertFile_, tlsKeyFile_));
+            return false;
+        }
+        certPath = tlsCertFile_;
+        keyPath = tlsKeyFile_;
+        selfSigned_ = false;
+    }
+
     // Generate self-signed cert if not present
-    if (!QFile::exists(certPath) || !QFile::exists(keyPath)) {
+    if (selfSigned_ && (!QFile::exists(certPath) || !QFile::exists(keyPath))) {
         qInfo() << "Web: Generating self-signed SSL certificate...";
 #if defined(Q_OS_WIN) || defined(Q_OS_MACOS)
         // Use OpenSSL C API directly (openssl CLI not available on Windows,
@@ -348,34 +381,57 @@ bool webServer::setupSsl()
     }
 #endif
 
-    // Load certificate into Qt types (non-proxy path)
+    // Load certificate into Qt types (non-proxy path).  The file may carry
+    // the chain (Let's Encrypt's fullchain.pem): the first certificate is
+    // ours, the rest go out with it so browsers can build the path.
     QFile certFile(certPath);
     if (!certFile.open(QIODevice::ReadOnly)) {
-        qWarning() << "Web: Cannot read SSL certificate";
+        if (!selfSigned_) fatalConfig("Web: cannot read certificate " + certPath);
+        else qWarning() << "Web: Cannot read SSL certificate";
         return false;
     }
-    sslCert = QSslCertificate(&certFile, QSsl::Pem);
+    sslChain = QSslCertificate::fromDevice(&certFile, QSsl::Pem);
     certFile.close();
+    sslCert = sslChain.isEmpty() ? QSslCertificate() : sslChain.first();
     if (sslCert.isNull()) {
-        qWarning() << "Web: Invalid SSL certificate";
+        if (!selfSigned_) fatalConfig("Web: no certificate in " + certPath);
+        else qWarning() << "Web: Invalid SSL certificate";
         return false;
     }
 
-    // Load private key
+    // Load private key: RSA, or the EC keys Let's Encrypt issues by default.
     QFile keyFile(keyPath);
     if (!keyFile.open(QIODevice::ReadOnly)) {
-        qWarning() << "Web: Cannot read SSL private key";
+        if (!selfSigned_) fatalConfig("Web: cannot read private key " + keyPath);
+        else qWarning() << "Web: Cannot read SSL private key";
         return false;
     }
-    sslKey = QSslKey(&keyFile, QSsl::Rsa, QSsl::Pem);
+    const QByteArray keyPem = keyFile.readAll();
     keyFile.close();
+    sslKey = QSslKey(keyPem, QSsl::Rsa, QSsl::Pem);
+    if (sslKey.isNull()) sslKey = QSslKey(keyPem, QSsl::Ec, QSsl::Pem);
     if (sslKey.isNull()) {
-        qWarning() << "Web: Invalid SSL private key";
+        if (!selfSigned_) fatalConfig("Web: unreadable private key " + keyPath + " (PEM, RSA or EC, unencrypted)");
+        else qWarning() << "Web: Invalid SSL private key";
         return false;
     }
 
-    qInfo() << "Web: SSL certificate loaded successfully";
+    if (selfSigned_)
+        qInfo() << "Web: SSL certificate loaded successfully";
+    else
+        qInfo().noquote() << "Web: using certificate" << certPath
+                          << QString("(%1 in chain, expires %2)").arg(sslChain.size())
+                             .arg(sslCert.expiryDate().toString(Qt::ISODate));
     return true;
+}
+
+void webServer::fatalConfig(const QString &message)
+{
+    qCritical().noquote() << message;
+    // This runs on the web thread before the main loop may even have
+    // started; a queued call reaches exit() once it has.
+    QMetaObject::invokeMethod(QCoreApplication::instance(), [] { QCoreApplication::exit(2); },
+                              Qt::QueuedConnection);
 }
 
 void webServer::init(quint16 httpPort, quint16 wsPort)
@@ -436,6 +492,7 @@ void webServer::init(quint16 httpPort, quint16 wsPort)
             // HTTPS + WSS on a single port (Linux/Windows: QSslSocket with OpenSSL backend)
             SslTcpServer *sslServer = new SslTcpServer(this);
             sslServer->cert = sslCert;
+            sslServer->chain = sslChain;
             sslServer->key = sslKey;
             httpServer = sslServer;
 
@@ -485,6 +542,40 @@ void webServer::init(quint16 httpPort, quint16 wsPort)
         }
     }
 
+    // --shared needs a channel the session cookie cannot be read off: TLS
+    // here, or a trusted proxy in front that terminates it.
+    if (sharedMode_ && !sslEnabled && trustedProxies_.isEmpty())
+        fatalConfig("Shared: --shared needs HTTPS (no TLS available on this host) or --trust-proxy "
+                    "naming a TLS-terminating proxy in front of wfweb");
+    if (sharedMode_ && restServer && restListen_.load() == ListenOk)
+        qWarning() << "Shared: the plain-HTTP REST port" << wsPort
+                   << "carries bearer tokens in clear text; keep it off the internet";
+    if (webListen_.load() == ListenOk)
+        checkPublicInterfaces(httpPort);
+
+    // Connection hygiene for the hand-rolled HTTP side: see sweepHttpConnections().
+    httpSweepTimer = new QTimer(this);
+    connect(httpSweepTimer, &QTimer::timeout, this, &webServer::sweepHttpConnections);
+    httpSweepTimer->start(1000);
+
+    if (sharedMode_) {
+        sharedTimer = new QTimer(this);
+        connect(sharedTimer, &QTimer::timeout, this, &webServer::sharedHousekeeping);
+        sharedTimer->start(60 * 1000);
+        // A key held longer than the policy allows is released by us: the
+        // backstop behind an operator asleep on the mic or a page that
+        // never sent its key-up.
+        txTimeoutTimer = new QTimer(this);
+        txTimeoutTimer->setSingleShot(true);
+        connect(txTimeoutTimer, &QTimer::timeout, this, [this] {
+            forceUnkey(QString("TX time-out after %1 s").arg(txTimeoutSecs_));
+        });
+        // The seat's clocks: grace, offers, requests, idleness, time's up.
+        seatTimer = new QTimer(this);
+        connect(seatTimer, &QTimer::timeout, this, &webServer::seatTick);
+        seatTimer->start(1000);
+    }
+
     // Periodic status updates (meters, etc.) every 200ms
     statusTimer = new QTimer(this);
     connect(statusTimer, &QTimer::timeout, this, &webServer::sendPeriodicStatus);
@@ -530,6 +621,7 @@ void webServer::receiveRigCaps(rigCapabilities *caps)
 {
     rigCaps = caps;
     tunerRejected = false;   // new rig, new evidence
+    agcModeSeen = -1;
     // Each rig keeps its own local channel list, so swapping radios doesn't
     // hand an IC-718's memories to an IC-706.
     memStore.setRig(rigCaps ? rigCaps->modelName : QString());
@@ -553,8 +645,11 @@ void webServer::receiveRigCaps(rigCapabilities *caps)
         // Speech compressor: the FUNC COMP tile and the GAIN COMP level row.
         obj["hasCompressor"] = rigCaps->commands.contains(funcCompressor);
         obj["hasCompLevel"] = rigCaps->commands.contains(funcCompressorLevel);
+        // SSB transmit filter (WIDE / MID / NAR): the FUNC TBW tile.
+        obj["hasTxBandwidth"] = rigCaps->commands.contains(funcSSBTXBandwidth);
         obj["hasPowerControl"] = rigCaps->commands.contains(funcPowerControl);
         obj["powerOnNeedsRemoteJack"] = powerOnNeedsRemoteJack(rigCaps);
+        addAgcCaps(obj);
         addToneCaps(obj);
         addBandCaps(obj);
         addTxMeterCaps(obj);
@@ -696,6 +791,19 @@ void webServer::onHttpConnection()
     QTcpServer *srv = qobject_cast<QTcpServer *>(sender());
     if (!srv) return;
     QTcpSocket *socket = srv->nextPendingConnection();
+    if (!socket) return;
+    // Bounded: a flood of connections that never speak must not take every
+    // file descriptor from the radio and the browsers already here.
+    if (httpConns.size() >= kHttpMaxConnections) {
+        qWarning() << "Web: too many HTTP connections, refusing" << socket->peerAddress().toString();
+        socket->abort();
+        socket->deleteLater();
+        return;
+    }
+    HttpConn conn;
+    conn.openedMs = conn.lastProgressMs = QDateTime::currentMSecsSinceEpoch();
+    httpConns.insert(socket, conn);
+    notePublicPeer(clientAddress(socket->peerAddress(), socket->peerPort(), socket->localPort()));
     // Tag connections arriving on the plain-HTTP REST port so onHttpReadyRead
     // can serve them the signpost page instead of the SPA (#69).
     if (srv == restServer)
@@ -704,22 +812,228 @@ void webServer::onHttpConnection()
     connect(socket, &QTcpSocket::disconnected, this, &webServer::onHttpDisconnected);
 }
 
+// Once a second: cut connections that are going nowhere.  A request whose
+// headers have not arrived in kHttpHeaderTimeoutMs (a slowloris, a TLS
+// client that never finishes its handshake), and a response the client has
+// not drained for kHttpDrainStallMs (a 27 MB model to a reader that
+// stopped).  A slow but moving download is left alone.
+void webServer::sweepHttpConnections()
+{
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    QList<QTcpSocket *> dead;
+    for (auto it = httpConns.begin(); it != httpConns.end(); ++it) {
+        QTcpSocket *s = it.key();
+        HttpConn &c = it.value();
+        if (!c.requestDone) {
+            // Headers: all of them within the time-out, from accept.  The
+            // body after them: as long as it keeps arriving (the time-out
+            // used to run to the response, so an upload slower than 10 s
+            // was cut -- a log import over a weak link).  A whole request
+            // waits for our answer, however long that takes us.
+            if (!c.headersDone) {
+                if (now - c.openedMs > kHttpHeaderTimeoutMs) dead.append(s);
+            } else if (!c.requestComplete) {
+                if (now - c.lastRxMs > kHttpBodyStallMs) dead.append(s);
+            }
+            continue;
+        }
+        const qint64 pending = pendingWriteBytes(s);
+        if (pending < c.lastBytesToWrite) {
+            c.lastBytesToWrite = pending;
+            c.lastProgressMs = now;
+        }
+        if (pending > 0 && now - c.lastProgressMs > kHttpDrainStallMs) dead.append(s);
+    }
+    sweepWsClients();
+    for (QTcpSocket *s : dead) {
+        qInfo() << "Web: dropping stalled HTTP connection from" << s->peerAddress().toString();
+        httpConns.remove(s);
+        socketBuffers.remove(s);
+        s->abort();
+        s->deleteLater();
+    }
+}
+
+qint64 webServer::httpPendingWriteBytes() const
+{
+    qint64 total = 0;
+    for (auto it = httpConns.constBegin(); it != httpConns.constEnd(); ++it)
+        if (it->requestDone) total += pendingWriteBytes(it.key());
+    return total;
+}
+
+void webServer::httpRequestDone(QTcpSocket *socket)
+{
+    auto it = httpConns.find(socket);
+    if (it == httpConns.end()) return;
+    it->requestDone = true;
+    it->lastProgressMs = QDateTime::currentMSecsSinceEpoch();
+    it->lastBytesToWrite = pendingWriteBytes(socket);
+}
+
+qint64 webServer::pendingWriteBytes(QTcpSocket *socket)
+{
+    qint64 n = socket->bytesToWrite();
+    if (QSslSocket *ssl = qobject_cast<QSslSocket *>(socket)) n += ssl->encryptedBytesToWrite();
+    return n;
+}
+
+qint64 webServer::wsPendingBytes(QWebSocket *client) const
+{
+    const QPointer<QTcpSocket> raw = wsRawSocket_.value(client);
+    return raw ? pendingWriteBytes(raw) : client->bytesToWrite();
+}
+
+QByteArray webServer::headerValue(const QByteArray &headerSection, const QByteArray &name)
+{
+    const QByteArray lower = headerSection.toLower();
+    const QByteArray key = "\r\n" + name.toLower() + ":";
+    int at = lower.indexOf(key);
+    if (at < 0) {
+        // The first header line has no CRLF in front of it.
+        if (lower.startsWith(name.toLower() + ":")) at = -2;
+        else return QByteArray();
+    }
+    const int start = at + key.size();
+    int end = headerSection.indexOf("\r\n", start);
+    if (end < 0) end = headerSection.size();
+    return headerSection.mid(start, end - start).trimmed();
+}
+
+// Every line of a header, joined with commas as RFC 9110 reads them.  A
+// proxy that adds its own X-Forwarded-For line instead of extending the
+// client's (HAProxy's option forwardfor) puts it AFTER the client's: read
+// alone, the first line is the client's to write.
+QByteArray webServer::headerValues(const QByteArray &headerSection, const QByteArray &name)
+{
+    const QByteArray key = name.toLower() + ":";
+    QByteArray out;
+    const QList<QByteArray> lines = headerSection.split('\n');
+    for (const QByteArray &raw : lines) {
+        const QByteArray line = raw.trimmed();
+        if (!line.toLower().startsWith(key)) continue;
+        const QByteArray v = line.mid(key.size()).trimmed();
+        if (v.isEmpty()) continue;
+        if (!out.isEmpty()) out += ", ";
+        out += v;
+    }
+    return out;
+}
+
+QByteArray webServer::redactedHeaders(const QByteArray &headerSection)
+{
+    QByteArray out;
+    const QList<QByteArray> lines = headerSection.split('\n');
+    for (const QByteArray &raw : lines) {
+        const QByteArray lower = raw.toLower();
+        if (lower.startsWith("cookie:") || lower.startsWith("authorization:"))
+            out += raw.left(raw.indexOf(':') + 1) + " <redacted>\r";
+        else
+            out += raw;
+        out += '\n';
+    }
+    return out;
+}
+
+// Host name of "host:port" or "scheme://host:port/..." (IPv6 brackets kept).
+QString webServer::hostOf(const QString &hostOrOrigin)
+{
+    const QString s = hostOrOrigin.trimmed();
+    const QUrl url(s.contains("://") ? s : "http://" + s);
+    return url.host().toLower();
+}
+
+bool webServer::connectionIsSecure(QTcpSocket *socket) const
+{
+    if (qobject_cast<QSslSocket *>(socket)) return true;
+#ifdef Q_OS_MACOS
+    if (useOpenSslProxy && socket->localPort() == internalHttpPort) return true;
+#endif
+    return false;
+}
+
+// The address of whoever is at the other end.  On macOS the TLS proxy in
+// front of the internal server makes that 127.0.0.1 for every browser; the
+// proxy knows the real one (TlsProxyWorker::clientOf).
+QHostAddress webServer::clientAddress(const QHostAddress &peer, quint16 peerPort, quint16 localPort) const
+{
+#ifdef Q_OS_MACOS
+    if (useOpenSslProxy && localPort == internalHttpPort && peer.isLoopback()) {
+        QHostAddress real;
+        if (TlsProxyWorker::clientOf(peerPort, &real)) return real;
+        // The proxy has already forgotten this connection (its client hung
+        // up): an unknown address, and above all not 127.0.0.1, which
+        // --trust-proxy may name as a proxy whose headers are believed.
+        return QHostAddress();
+    }
+#else
+    Q_UNUSED(peerPort)
+    Q_UNUSED(localPort)
+#endif
+    return peer;
+}
+
+QString webServer::peerIp(const QHostAddress &addr)
+{
+    bool v4 = false;
+    const quint32 ip4 = addr.toIPv4Address(&v4);
+    if (v4) return QHostAddress(ip4).toString();   // "::ffff:1.2.3.4" -> "1.2.3.4"
+    return addr.toString();
+}
+
 void webServer::onHttpReadyRead()
 {
     QTcpSocket *socket = qobject_cast<QTcpSocket *>(sender());
     if (!socket) return;
 
+    // One request per connection: every response says Connection: close
+    // and the socket is on its way out once it is written.  Bytes that
+    // arrive after that are not a second request -- without this, 200
+    // requests for the page in one segment, never read, were 200 copies of
+    // it (130 MB) in this socket's write buffer until the drain-stall cut.
+    {
+        auto it = httpConns.constFind(socket);
+        // (requestComplete: a request whose answer is still being worked
+        // out, a login waiting for its password check, is not followed by
+        // a second one either -- each was a PBKDF2 thread of its own.)
+        if (it != httpConns.constEnd() && (it->requestDone || it->requestComplete)) {
+            socket->readAll();
+            return;
+        }
+    }
+
     // WebSocket upgrade applies to SSL sockets or connections through the TLS proxy
-    bool isSslConnection = qobject_cast<QSslSocket *>(socket);
-#ifdef Q_OS_MACOS
-    if (!isSslConnection && useOpenSslProxy)
-        isSslConnection = (socket->localPort() == internalHttpPort);
-#endif
-    if (isSslConnection) {
-        QByteArray peek = socket->peek(4096);
+    if (connectionIsSecure(socket)) {
+        const QByteArray peek = socket->peek(kWsUpgradePeekBytes);
         if (peek.contains("Upgrade: websocket") || peek.contains("Upgrade: WebSocket")) {
+            // The whole header block first, so the Origin check sees it.  A
+            // block with no end in 16 KB is refused: a 4 KB one used to be
+            // handed over unchecked, and a page chooses how long its
+            // request line is, so it could push Origin out of what was read.
+            const int end = peek.indexOf("\r\n\r\n");
+            if (end < 0) {
+                if (peek.size() < kWsUpgradePeekBytes) return;
+                sendHttpResponse(socket, 431, "Request Header Fields Too Large", "text/plain", "Request header too large");
+                return;
+            }
+            // A page on another site can open a WebSocket here with this
+            // browser's cookies attached.  Browsers always send Origin on an
+            // upgrade; one naming another host is refused.  Scripts send no
+            // Origin and pass.
+            const QByteArray headers = peek.left(end);
+            const QString origin = QString::fromLatin1(headerValue(headers, "Origin"));
+            const QString host = QString::fromLatin1(headerValue(headers, "Host"));
+            if (!origin.isEmpty() && !host.isEmpty() && hostOf(origin) != hostOf(host)) {
+                qWarning() << "Web: WebSocket upgrade from origin" << origin << "refused (host" << host << ")";
+                sendHttpResponse(socket, 403, "Forbidden", "text/plain", "Forbidden: cross-site WebSocket");
+                return;
+            }
             disconnect(socket, &QTcpSocket::readyRead, this, &webServer::onHttpReadyRead);
             disconnect(socket, &QTcpSocket::disconnected, this, &webServer::onHttpDisconnected);
+            httpConns.remove(socket);
+            wsHandover_.insert(peerKey(socket->peerAddress(), socket->peerPort()), QPointer<QTcpSocket>(socket));
+            // Every X-Forwarded-For line of the upgrade, for onWsNewConnection.
+            wsHandoverXff_.insert(peerKey(socket->peerAddress(), socket->peerPort()), headerValues(headers, "X-Forwarded-For"));
             wsServer->handleConnection(socket);
             return;
         }
@@ -742,11 +1056,58 @@ void webServer::onHttpReadyRead()
     // Wait until we have the complete headers
     int sepIdx = request.indexOf("\r\n\r\n");
     if (sepIdx < 0) return;
-
-    qDebug() << "REST headers:" << request.left(sepIdx);
+    const auto httpConn = httpConns.find(socket);
+    if (httpConn != httpConns.end()) {
+        httpConn->headersDone = true;
+        httpConn->lastRxMs = QDateTime::currentMSecsSinceEpoch();
+    }
 
     QByteArray headerSection = request.left(sepIdx);
     QByteArray lowerHeaders = headerSection.toLower();
+    // (Cookie and Authorization are a session and an API token: a debug log
+    // gets mailed with a bug report.)
+    qDebug() << "REST headers:" << redactedHeaders(headerSection);
+
+    // Shared Station: who is asking is in the headers, so whoever is going
+    // to be refused is refused before a body is taken from them, and a body
+    // is no bigger than its route needs.  Everything used to be buffered
+    // first, 16 MB a connection, with or without an account.
+    if (sharedMode_ && httpConn != httpConns.end() && !httpConn->preGated) {
+        httpConn->preGated = true;
+        const int lineEnd = headerSection.indexOf("\r\n");
+        const QList<QByteArray> first = (lineEnd >= 0 ? headerSection.left(lineEnd) : headerSection).split(' ');
+        QString p = first.size() >= 2 ? QString::fromUtf8(first[1]) : QString();
+        if (p.indexOf('?') >= 0) p = p.left(p.indexOf('?'));
+        if (p.startsWith("/api/v1/") && first[0] != "OPTIONS") {
+            const bool authRoute = p.startsWith("/api/v1/auth/") || p == "/api/v1/auth";
+            const RequestContext ctx = requestContext(socket, headerSection);
+            const Access::Role role = ctx.who.authenticated ? ctx.who.role : sharedAnonymous_;
+            if (!authRoute && role == Access::Role::None) {
+                socketBuffers.remove(socket);
+                httpConn->requestComplete = true;
+                sendRestResponse(socket, 401, QJsonObject{{"error", "authentication required"}},
+                                 "WWW-Authenticate: Bearer realm=\"wfweb\"\r\n");
+                return;
+            }
+            int limit = 64 * 1024;
+            if (!authRoute) {
+                if (p.startsWith("/api/v1/logbook/adif")) limit = 16 * 1024 * 1024;        // a lifetime log
+                else if (p.startsWith("/api/v1/logbook")) limit = 4 * 1024 * 1024;        // /exported: its ids
+                else if (p.startsWith("/api/v1/sstv/images")) limit = 6 * 1024 * 1024;    // a 4 MB picture, in base64
+                else if (p.startsWith("/api/v1/shared/users/import")) limit = 2 * 1024 * 1024;
+            }
+            const int cl = lowerHeaders.indexOf("content-length:");
+            if (cl >= 0) {
+                const int clEnd = lowerHeaders.indexOf("\r\n", cl);
+                if (headerSection.mid(cl + 15, (clEnd < 0 ? headerSection.size() : clEnd) - cl - 15).trimmed().toLongLong() > limit) {
+                    socketBuffers.remove(socket);
+                    httpConn->requestComplete = true;
+                    sendRestResponse(socket, 413, QJsonObject{{"error", "Request too large"}});
+                    return;
+                }
+            }
+        }
+    }
 
     // If there's a Content-Length, wait until the full body has arrived
     int clIdx = lowerHeaders.indexOf("content-length:");
@@ -763,6 +1124,7 @@ void webServer::onHttpReadyRead()
     }
 
     // Full request received — extract body then release the buffer
+    if (httpConn != httpConns.end()) httpConn->requestComplete = true;
     QByteArray body;
     if (clIdx >= 0) {
         int clEnd = lowerHeaders.indexOf("\r\n", clIdx);
@@ -772,11 +1134,28 @@ void webServer::onHttpReadyRead()
     }
     socketBuffers.remove(socket);
 
+    // Every response is buffered whole in its socket.  What the connections
+    // already answered are still holding is bounded here: past the cap a
+    // request is turned away (the browser's model fetch retries on its own)
+    // rather than adding another 15 MB a client may never read.
+    if (httpPendingWriteBytes() > kHttpMaxPendingWriteBytes) {
+        qWarning() << "Web: refusing request from" << socket->peerAddress().toString()
+                   << "- too much unsent response data pending";
+        sendRestResponse(socket, 503, QJsonObject{{"error", "Server busy, try again"}}, "Retry-After: 5\r\n");
+        return;
+    }
+
     // Parse first line: METHOD /path HTTP/1.1
     int firstLineEnd = headerSection.indexOf("\r\n");
     QByteArray firstLine = (firstLineEnd >= 0) ? headerSection.left(firstLineEnd) : headerSection;
     QList<QByteArray> parts = firstLine.split(' ');
-    if (parts.size() < 2) return;
+    if (parts.size() < 2) {
+        // Not a request line.  Left unanswered it was never swept (the
+        // request counted as complete, the answer as ours to give): 128 of
+        // them held every connection slot.
+        sendHttpResponse(socket, 400, "Bad Request", "text/plain", "Bad Request");
+        return;
+    }
 
     QString method = QString::fromUtf8(parts[0]);
     QString path = QString::fromUtf8(parts[1]);
@@ -795,9 +1174,102 @@ void webServer::onHttpReadyRead()
         return;
     }
 
-    // REST API routing
+    // REST API routing.  Who is asking comes from the session cookie or a
+    // bearer token; with --shared everything under /api/v1/ but the login
+    // routes themselves needs an account.  Static files stay public: the
+    // page has to load to show its login sheet.
     if (path.startsWith("/api/v1/")) {
+        // One spelling per route, before anything is decided about it.  The
+        // router used to drop a trailing slash after the gate had read the
+        // path with it: "DELETE /api/v1/logbook/" was not the admin's
+        // "DELETE /api/v1/logbook" to the gate and was to the router, so an
+        // operate account cleared the log, and imported into it the same
+        // way (2026-11-21).
+        if (path.length() > 1 && path.endsWith('/')) path.chop(1);
+        const RequestContext ctx = requestContext(socket, headerSection);
+        // A write made with the session cookie comes from this station's
+        // own page.  SameSite=Strict keeps other sites' requests from
+        // carrying the cookie, but not a page on a sibling host of the same
+        // site (www.club.org and radio.club.org): its plain-text POST needs
+        // no preflight, and with the admin's cookie on it it made an admin
+        // account.  Browsers name the page in Origin on every write; one
+        // from another host is refused.  A script with a token sends none.
+        if (sharedMode_ && ctx.who.authenticated && ctx.who.via == QLatin1String("session")
+                && method.toUpper() != QLatin1String("GET") && method.toUpper() != QLatin1String("HEAD")) {
+            const QString origin = QString::fromLatin1(headerValue(headerSection, "Origin"));
+            const QString host = QString::fromLatin1(headerValue(headerSection, "Host"));
+            if (!origin.isEmpty() && hostOf(origin) != hostOf(host)) {
+                qWarning() << "Web: request from origin" << origin << "refused (host" << host << ")";
+                sendRestResponse(socket, 403, QJsonObject{{"error", "cross-site request refused"}});
+                return;
+            }
+        }
+        if (path.startsWith("/api/v1/auth/") || path == "/api/v1/auth") {
+            handleAuthRequest(socket, method, path, body, ctx);
+            return;
+        }
+        if (sharedMode_) {
+            // No session and no token: a visitor, with what the policy gives
+            // visitors -- or nothing.
+            const Access::Role role = ctx.who.authenticated ? ctx.who.role : sharedAnonymous_;
+            if (role == Access::Role::None) {
+                sendRestResponse(socket, 401, QJsonObject{{"error", "authentication required"}},
+                                 "WWW-Authenticate: Bearer realm=\"wfweb\"\r\n");
+                return;
+            }
+            // A shared station is operated from the page, by whoever has the
+            // seat: over REST the radio is read, never set.  Not by a member,
+            // not by an admin.  A token has no expiry and nobody at it, cannot
+            // be asked for the seat and is not in the connection list, and
+            // every rule made for a browser (level, seat, TX inhibit, audit)
+            // needed a second, weaker copy for it.  (rigctld, the station's
+            // own software on localhost, is the door for local programs.)
+            if (Access::restReadOnly(method, path)) {
+                sendRestResponse(socket, 403, QJsonObject{{"error", "a shared station is operated from the page: over REST the radio is read-only"}});
+                return;
+            }
+            const Access::Cap cap = Access::restCapability(method, path);
+            if (!Access::roleAllows(role, cap)) {
+                const QString need = Access::roleName(Access::capRole(cap));
+                sendRestResponse(socket, 403, QJsonObject{{"error", QString("needs %1 access").arg(need)}, {"need", need}});
+                return;
+            }
+            // What is left of Control / Tx level here is the SSTV gallery and
+            // logging a QSO, which is stamped with the call on the air: both
+            // are the seat's while a browser of another account holds it.
+            // Correcting the log (an edit, a delete, the export stamp) is not.
+            const bool logEdit = path.startsWith("/api/v1/logbook/");
+            if (seatEnabled_ && seat_.holder && (cap == Access::Cap::Control || cap == Access::Cap::Tx) && !logEdit
+                && !seatHolderIs(ctx.who.authenticated ? ctx.who.userId : QString())) {
+                sendRestResponse(socket, 409, QJsonObject{{"error", seatLabel(seat_.holder) + " has the seat"}, {"need", "seat"}});
+                return;
+            }
+            if (path == "/api/v1/shared/seat") {
+                handleSharedSeatRequest(socket, method, ctx);
+                return;
+            }
+            if (path.startsWith("/api/v1/shared/reservations")) {
+                handleSharedReservationsRequest(socket, method, path, body, ctx);
+                return;
+            }
+            if (path.startsWith("/api/v1/shared/users")) {
+                handleSharedUsersRequest(socket, method, path, body, ctx);
+                return;
+            }
+            if (path == "/api/v1/shared/policy") {
+                handleSharedPolicyRequest(socket, method, body, ctx);
+                return;
+            }
+            if (path.startsWith("/api/v1/shared/connections")) {
+                handleSharedConnectionsRequest(socket, method, path, ctx);
+                return;
+            }
+            restPrincipal_ = &ctx.who;
+            restIp_ = ctx.ip;
+        }
         handleRestRequest(socket, method, path, query, body);
+        restPrincipal_ = nullptr;
+        restIp_.clear();
         return;
     }
 
@@ -828,12 +1300,23 @@ void webServer::onHttpDisconnected()
     QTcpSocket *socket = qobject_cast<QTcpSocket *>(sender());
     if (socket) {
         socketBuffers.remove(socket);
+        httpConns.remove(socket);
         socket->deleteLater();
     }
 }
 
 void webServer::serveStaticFile(QTcpSocket *socket, const QString &path, const QByteArray &headerSection)
 {
+    // The resource engine cleans the path (".." and "." segments, doubled
+    // slashes), so "/models/../index.html" was the page under the model's
+    // caching policy and "/.." reached the rest of the resource tree.  Only
+    // the literal path of a file under :/web is served.
+    if (path.contains(QLatin1String("..")) || path.contains(QLatin1String("//"))
+            || path.contains(QLatin1String("/./")) || path.endsWith(QLatin1String("/."))) {
+        sendHttpResponse(socket, 404, "Not Found", "text/plain", "Not Found");
+        return;
+    }
+
     // Serve from Qt resource system
     QString resourcePath = ":/web" + path;
     QFile file(resourcePath);
@@ -953,6 +1436,12 @@ void webServer::sendHttpResponse(QTcpSocket *socket, int statusCode, const QStri
     response.append(QString("Content-Length: %1\r\n").arg(body.size()).toUtf8());
     response.append("Connection: close\r\n");
     response.append("Access-Control-Allow-Origin: *\r\n");
+    response.append("X-Content-Type-Options: nosniff\r\n");
+    response.append("Referrer-Policy: no-referrer\r\n");
+    // HSTS only behind a certificate the browser trusts: pinned to the
+    // self-signed one it would also take away the user's "proceed anyway".
+    if (!selfSigned_.load() && connectionIsSecure(socket))
+        response.append("Strict-Transport-Security: max-age=15552000\r\n");
     // The resources are embedded in the binary and change every build;
     // there's no CDN in front.  Tell browsers not to cache so a wfweb
     // rebuild never serves stale JS/CSS to a reloaded page.  A caller that
@@ -966,12 +1455,14 @@ void webServer::sendHttpResponse(QTcpSocket *socket, int statusCode, const QStri
     response.append("\r\n");
     response.append(body);
 
+    httpRequestDone(socket);
     socket->write(response);
     socket->flush();
     socket->disconnectFromHost();
 }
 
-void webServer::sendRestResponse(QTcpSocket *socket, int statusCode, const QJsonObject &json)
+void webServer::sendRestResponse(QTcpSocket *socket, int statusCode, const QJsonObject &json,
+                                 const QByteArray &extraHeaders)
 {
     QByteArray body;
     if (!json.isEmpty())
@@ -983,9 +1474,13 @@ void webServer::sendRestResponse(QTcpSocket *socket, int statusCode, const QJson
     case 201: statusText = "Created"; break;
     case 202: statusText = "Accepted"; break;
     case 400: statusText = "Bad Request"; break;
+    case 401: statusText = "Unauthorized"; break;
+    case 403: statusText = "Forbidden"; break;
     case 404: statusText = "Not Found"; break;
     case 405: statusText = "Method Not Allowed"; break;
+    case 409: statusText = "Conflict"; break;
     case 413: statusText = "Payload Too Large"; break;
+    case 429: statusText = "Too Many Requests"; break;
     case 500: statusText = "Internal Server Error"; break;
     case 503: statusText = "Service Unavailable"; break;
     default:  statusText = statusCode >= 500 ? "Error" : statusCode >= 400 ? "Error" : "OK"; break;
@@ -996,12 +1491,20 @@ void webServer::sendRestResponse(QTcpSocket *socket, int statusCode, const QJson
     response.append("Content-Type: application/json\r\n");
     response.append(QString("Content-Length: %1\r\n").arg(body.size()).toUtf8());
     response.append("Connection: close\r\n");
+    response.append("Cache-Control: no-store\r\n");
+    response.append("X-Content-Type-Options: nosniff\r\n");
+    response.append("Referrer-Policy: no-referrer\r\n");
+    // Wide-open CORS is safe here because the API never acts on the cookie
+    // across sites: a cross-origin caller carries no credentials (no
+    // Allow-Credentials), and the cookie is SameSite=Strict besides.
     response.append("Access-Control-Allow-Origin: *\r\n");
     response.append("Access-Control-Allow-Methods: GET, PUT, POST, DELETE, OPTIONS\r\n");
-    response.append("Access-Control-Allow-Headers: Content-Type\r\n");
+    response.append("Access-Control-Allow-Headers: Content-Type, Authorization\r\n");
+    response.append(extraHeaders);
     response.append("\r\n");
     response.append(body);
 
+    httpRequestDone(socket);
     socket->write(response);
     socket->flush();
     socket->disconnectFromHost();
@@ -1011,9 +1514,10 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
                                    const QString &path, const QUrlQuery &query,
                                    const QByteArray &body)
 {
-    // Normalize path: strip trailing slash
-    QString p = path;
-    if (p.length() > 1 && p.endsWith('/')) p.chop(1);
+    // The path comes without its trailing slash: onHttpReadyRead takes it
+    // off before the Shared Station gate reads the route, so the gate and
+    // this router always see the same one.  Do not normalize here again.
+    const QString &p = path;
 
     // Helper: parse JSON body; returns empty object on empty/invalid input
     auto parseBody = [&]() -> QJsonObject {
@@ -1031,12 +1535,25 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
 
     // --- Station identity: one callsign + grid for the whole server ---
     if (p == "/api/v1/station") {
+        // callsign is the configured station call; with --shared, onAir is
+        // the call in use right now (a guest holding the seat under their own).
+        const auto stationOut = [this]() {
+            QJsonObject o{{"callsign", reporterCallsign}, {"grid", reporterGrid}};
+            if (sharedMode_) {
+                o["onAir"] = onAirCall();
+                addOnAirInfo(o);
+            }
+            return o;
+        };
         if (method == "GET") {
-            sendRestResponse(socket, 200, QJsonObject{{"callsign", reporterCallsign}, {"grid", reporterGrid}});
+            sendRestResponse(socket, 200, stationOut());
         } else if (method == "PUT" || method == "POST") {
+            // A field left out keeps what is stored: a grid alone used to
+            // clear the callsign.  An empty callsign still clears it.
             const QJsonObject in = parseBody();
-            applyStationCallsign(in.value("callsign").toString(), in.value("grid").toString(), true);
-            sendRestResponse(socket, 200, QJsonObject{{"callsign", reporterCallsign}, {"grid", reporterGrid}});
+            applyStationCallsign(in.contains("callsign") ? in.value("callsign").toString() : reporterCallsign,
+                                 in.value("grid").toString(), true);
+            sendRestResponse(socket, 200, stationOut());
         } else {
             sendRestResponse(socket, 405, QJsonObject{{"error", "Method not allowed"}});
         }
@@ -1060,6 +1577,13 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
     // --- Station logbook (see logbook.h) ---
     // The log is never returned whole: GET pages newest-first with a cursor
     // so a lifetime log stays cheap for the browser and the Pi alike.
+    // Shared Station: who is asking decides what of the log they get (see
+    // logSees / logMayChange / logMayExport); `who` is nullptr without
+    // --shared and every filter is then empty.
+    const AccessPrincipal *who = restPrincipal_;
+    const auto forbidden = [&](const QString &why) {
+        sendRestResponse(socket, 403, QJsonObject{{"error", why}});
+    };
     if (p == "/api/v1/logbook/adif") {
         if (method == "GET") {
             // ?new=1: only records without an export stamp, as plain ADIF
@@ -1067,7 +1591,14 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
             // client that wants to confirm the export uses /export instead,
             // which also returns the ids.
             if (query.queryItemValue("new") == "1") {
-                sendHttpResponse(socket, 200, "OK", "application/x-adif; charset=utf-8", logbook_.toAdif(true, false));
+                sendHttpResponse(socket, 200, "OK", "application/x-adif; charset=utf-8",
+                                 logbook_.toAdif(true, false, logExportFilter(who, query.queryItemValue("own") == "1")));
+                return;
+            }
+            // Anyone but an admin gets the records they may see, not the file.
+            if (who && who->role != Access::Role::Admin) {
+                sendHttpResponse(socket, 200, "OK", "application/x-adif; charset=utf-8",
+                                 logbook_.toAdif(false, true, logFilter(who)));
                 return;
             }
             QFile file(logbook_.path());
@@ -1081,7 +1612,7 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
             // Import: merge every record of the posted ADIF document.  An
             // imported file normally comes from a log that already handled
             // its own uploads, so its records count as exported unless the
-            // caller says ?new=1.
+            // caller says ?new=1.  (Admins only with --shared: restCapability.)
             QList<QsoRecord> incoming = Logbook::parseAdif(body);
             if (query.queryItemValue("new") != "1") {
                 const QString stamp = Logbook::exportStamp();
@@ -1091,8 +1622,11 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
             const int added = logbook_.merge(incoming);
             qInfo() << "Logbook: imported" << added << "of" << incoming.size() << "QSOs over REST";
             if (added) logbookReset();
+            if (who && access_) access_->audit("log-import", logWho(who), QString("%1 added of %2").arg(added).arg(incoming.size()));
+            int count = 0, unexported = 0;
+            logCounts(who, &count, &unexported);
             sendRestResponse(socket, 202, QJsonObject{{"added", added}, {"skipped", incoming.size() - added},
-                                                     {"total", logbook_.count()}, {"unexported", logbook_.unexportedCount()}});
+                                                     {"total", count}, {"unexported", unexported}});
         } else {
             sendRestResponse(socket, 405, QJsonObject{{"error", "Method not allowed"}});
         }
@@ -1100,7 +1634,21 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
     }
     if (p == "/api/v1/logbook/worked") {
         if (method != "GET") { sendRestResponse(socket, 405, QJsonObject{{"error", "Method not allowed"}}); return; }
-        sendRestResponse(socket, 200, QJsonObject{{"calls", logbook_.workedCalls()}, {"total", logbook_.count()}});
+        if (!who) {
+            sendRestResponse(socket, 200, QJsonObject{{"calls", logbook_.workedCalls()}, {"total", logbook_.count()}});
+            return;
+        }
+        // Worked-before is per callsign: the answer is for the call this
+        // viewer would transmit as -- their own if the account is set to
+        // it (and the seat is in use), else the station's.
+        const bool own = who->authenticated && who->onAirOwn && !who->callsign.isEmpty() && seatEnabled_;
+        const QString myCall = own ? who->callsign : reporterCallsign;
+        const bool club = isClubCall(myCall);
+        int considered = 0;
+        const QJsonObject calls = logbook_.workedCalls([&](const QsoRecord &r) {
+            return logSees(who, r) && (club ? isClubCall(r.stationCall) : r.stationCall == myCall);
+        }, &considered);
+        sendRestResponse(socket, 200, QJsonObject{{"calls", calls}, {"total", considered}, {"callsign", myCall}});
         return;
     }
     if (p == "/api/v1/logbook/export") {
@@ -1110,14 +1658,16 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
             sendRestResponse(socket, 405, QJsonObject{{"error", "Method not allowed"}});
             return;
         }
-        const QStringList ids = logbook_.unexportedIds();
+        const Logbook::Filter filter = logExportFilter(who, query.queryItemValue("own") == "1");
+        const QStringList ids = logbook_.unexportedIds(filter);
         sendRestResponse(socket, 200, QJsonObject{{"count", ids.size()},
                                                  {"ids", QJsonArray::fromStringList(ids)},
-                                                 {"adif", QString::fromUtf8(logbook_.toAdif(true, false))}});
+                                                 {"adif", QString::fromUtf8(logbook_.toAdif(true, false, filter))}});
         return;
     }
     if (p == "/api/v1/logbook/exported") {
         // The client that saved a "new" download reports the ids it got.
+        // Only records the caller may export are stamped.
         if (method != "POST") {
             sendRestResponse(socket, 405, QJsonObject{{"error", "Method not allowed"}});
             return;
@@ -1125,36 +1675,45 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
         QStringList ids;
         const QJsonArray arr = parseBody().value("ids").toArray();
         for (const QJsonValue &v : arr) ids.append(v.toString());
-        const int marked = logbook_.markExported(ids);
+        Logbook::Filter filter;
+        if (who) filter = [this, who](const QsoRecord &r) { return logMayExport(who, r, false) || logMayExport(who, r, true); };
+        const int marked = logbook_.markExported(ids, filter);
         if (marked) {
             qInfo() << "Logbook:" << marked << "QSOs marked as exported";
             logbookReset();
         }
-        sendRestResponse(socket, 200, QJsonObject{{"marked", marked}, {"unexported", logbook_.unexportedCount()}});
+        int count = 0, unexported = 0;
+        logCounts(who, &count, &unexported);
+        sendRestResponse(socket, 200, QJsonObject{{"marked", marked}, {"unexported", unexported}});
         return;
     }
     if (p == "/api/v1/logbook") {
         if (method == "GET") {
             const Logbook::Page pg = logbook_.page(query.queryItemValue("limit").toInt(),
                                                    query.queryItemValue("before"),
-                                                   query.queryItemValue("call"));
+                                                   query.queryItemValue("call"), logFilter(who));
             QJsonArray entries;
-            for (const QsoRecord &r : pg.entries) entries.append(r.toJson());
-            QJsonObject out{{"entries", entries}, {"total", logbook_.count()},
-                            {"unexported", logbook_.unexportedCount()}};
+            for (const QsoRecord &r : pg.entries) entries.append(qsoJson(r));
+            int count = 0, unexported = 0;
+            logCounts(who, &count, &unexported);
+            QJsonObject out{{"entries", entries}, {"total", count}, {"unexported", unexported}};
             if (!pg.next.isEmpty()) out["next"] = pg.next;
             sendRestResponse(socket, 200, out);
         } else if (method == "POST") {
             QsoRecord r = QsoRecord::fromJson(parseBody());
             if (!r.isValid()) {
                 sendRestResponse(socket, 400, QJsonObject{{"error", "A valid call is required"}});
-            } else if (!logbookAdd(r)) {
+            } else if (!logbookAdd(r, who)) {
                 sendRestResponse(socket, 500, QJsonObject{{"error", "Logbook is not writable"}});
             } else {
-                sendRestResponse(socket, 202, r.toJson());
+                sendRestResponse(socket, 202, qsoJson(r));
             }
         } else if (method == "DELETE") {
-            if (logbookClear("REST")) sendRestResponse(socket, 202, QJsonObject{{"status", "cleared"}});
+            // Admins only with --shared (restCapability).
+            if (logbookClear("REST")) {
+                if (who && access_) access_->audit("log-clear", logWho(who));
+                sendRestResponse(socket, 202, QJsonObject{{"status", "cleared"}});
+            }
             else sendRestResponse(socket, 500, QJsonObject{{"error", "Logbook is not writable"}});
         } else {
             sendRestResponse(socket, 405, QJsonObject{{"error", "Method not allowed"}});
@@ -1163,19 +1722,26 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
     }
     if (p.startsWith("/api/v1/logbook/")) {
         const QString id = p.mid(QStringLiteral("/api/v1/logbook/").size());
-        if (!logbook_.find(id)) {
+        const QsoRecord *stored = logbook_.find(id);
+        // A record the caller may not see does not exist for them.
+        if (!stored || !logSees(who, *stored)) {
             sendRestResponse(socket, 404, QJsonObject{{"error", "QSO not found"}});
+        } else if (method == "GET") {
+            sendRestResponse(socket, 200, qsoJson(*stored));
+        } else if ((method == "PUT" || method == "DELETE") && !logMayChange(who, *stored)) {
+            forbidden(stored->userId.isEmpty() ? QStringLiteral("only an admin changes a QSO nobody is recorded as having logged")
+                                               : QStringLiteral("only the operator who logged this QSO, or an admin, changes it"));
         } else if (method == "PUT") {
             const QsoRecord r = QsoRecord::fromJson(parseBody(), id);
             if (!r.isValid()) {
                 sendRestResponse(socket, 400, QJsonObject{{"error", "A valid call is required"}});
-            } else if (!logbookUpdate(id, r)) {
+            } else if (!logbookUpdate(id, r, who)) {
                 sendRestResponse(socket, 500, QJsonObject{{"error", "Logbook is not writable"}});
             } else {
-                sendRestResponse(socket, 200, logbook_.find(id)->toJson());
+                sendRestResponse(socket, 200, qsoJson(*logbook_.find(id)));
             }
         } else if (method == "DELETE") {
-            logbookRemove(id);
+            logbookRemove(id, who);
             sendRestResponse(socket, 202, QJsonObject{{"status", "deleted"}});
         } else {
             sendRestResponse(socket, 405, QJsonObject{{"error", "Method not allowed"}});
@@ -1190,7 +1756,7 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
             sendRestResponse(socket, 405, e); return;
         }
         QJsonObject resp;
-        resp["info"] = buildInfoJson();
+        resp["info"] = restInfoJson();
         if (queue && rigCaps) {
             QJsonObject status = buildStatusJson();
             status.remove("type");
@@ -1206,7 +1772,7 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
             QJsonObject e; e["error"] = "Method not allowed";
             sendRestResponse(socket, 405, e); return;
         }
-        sendRestResponse(socket, 200, buildInfoJson());
+        sendRestResponse(socket, 200, restInfoJson());
         return;
     }
 
@@ -1258,7 +1824,7 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
                 QJsonObject e; e["error"] = "Missing field: hz";
                 sendRestResponse(socket, 400, e); return;
             }
-            quint64 hz = obj["hz"].toVariant().toULongLong();
+            quint64 hz = jsonHz(obj["hz"]);
             if (hz == 0) {
                 QJsonObject e; e["error"] = "Invalid frequency";
                 sendRestResponse(socket, 400, e); return;
@@ -1432,8 +1998,10 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
                 QJsonObject e; e["error"] = "Missing field: transmitting";
                 sendRestResponse(socket, 400, e); return;
             }
-            bool on = obj["transmitting"].toBool();
-            queue->add(priorityImmediate, queueItem(funcTransceiverStatus, QVariant::fromValue<bool>(on), false, uchar(0)));
+            // Through the setPTT branch, as rigctld does: queued straight to
+            // the rig, a REST key had no audit line, no time-out, and TX
+            // inhibit did not release it; RADE got no EOO on its unkey.
+            handleCommand(nullptr, QJsonObject{{"cmd", "setPTT"}, {"value", obj["transmitting"].toBool()}});
             QJsonObject resp; resp["status"] = "accepted";
             sendRestResponse(socket, 202, resp);
         } else {
@@ -1483,7 +2051,7 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
             if (rfPower.value.isValid()) resp["rfPower"] = rfPower.value.toInt();
             cacheItem squelch = queue->getCache(funcSquelch, 0);
             if (squelch.value.isValid()) resp["squelch"] = squelch.value.toInt();
-            cacheItem micGain = queue->getCache(funcUSBModLevel, 0);
+            cacheItem micGain = queue->getCache(micLevelFunc(), 0);
             if (micGain.value.isValid()) resp["micGain"] = micGain.value.toInt();
             sendRestResponse(socket, 200, resp);
         } else if (method == "PUT") {
@@ -1514,7 +2082,7 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
             }
             if (obj.contains("micGain")) {
                 ushort val = static_cast<ushort>(qBound(0, obj["micGain"].toInt(), 255));
-                queue->addUnique(priorityImmediate, queueItem(funcUSBModLevel, QVariant::fromValue<ushort>(val), false, 0));
+                queue->addUnique(priorityImmediate, queueItem(micLevelFunc(), QVariant::fromValue<ushort>(val), false, 0));
             }
             QJsonObject resp; resp["status"] = "accepted";
             sendRestResponse(socket, 202, resp);
@@ -1576,7 +2144,7 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
             }
             if (obj.contains("agc")) {
                 uchar val = static_cast<uchar>(qBound(0, obj["agc"].toInt(), 255));
-                queue->add(priorityImmediate, queueItem(funcAGC, QVariant::fromValue<uchar>(val), false, 0));
+                queue->addUnique(priorityImmediate, queueItem(funcAGC, QVariant::fromValue<uchar>(val), false, 0));
             }
             if (obj.contains("autoNotch")) {
                 uchar val = obj["autoNotch"].toBool() ? 1 : 0;
@@ -1804,15 +2372,92 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
 void webServer::onWsNewConnection()
 {
     QWebSocket *pSocket = wsServer->nextPendingConnection();
+    if (!pSocket) return;
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
+    // Qt's own limit is 2 GB per frame and per message, all of it buffered
+    // before the handler sees a byte.
+    pSocket->setMaxAllowedIncomingFrameSize(kWsMaxIncomingBytes);
+    pSocket->setMaxAllowedIncomingMessageSize(kWsMaxIncomingBytes);
+#endif
+    // The socket this QWebSocket was upgraded from (see wsPendingBytes);
+    // kept in wsRawSocket_ only for a client that is let in, below.
+    // Hand-overs whose handshake never completed are dropped here too.
+    const QPointer<QTcpSocket> rawSocket = wsHandover_.take(peerKey(pSocket->peerAddress(), pSocket->peerPort()));
+    const bool haveXff = wsHandoverXff_.contains(peerKey(pSocket->peerAddress(), pSocket->peerPort()));
+    const QByteArray handoverXff = wsHandoverXff_.take(peerKey(pSocket->peerAddress(), pSocket->peerPort()));
+    for (auto it = wsHandover_.begin(); it != wsHandover_.end();) {
+        if (it.value().isNull()) { wsHandoverXff_.remove(it.key()); it = wsHandover_.erase(it); }
+        else ++it;
+    }
+
+    // Shared Station: the browser's session cookie rides on the upgrade
+    // request.  Without a live session the socket gets one message saying
+    // so (the page shows its login sheet on it) and is closed with 4401
+    // before any state goes out.
+    AccessPrincipal who;
+    const QHostAddress wsPeer = clientAddress(pSocket->peerAddress(), pSocket->peerPort(), pSocket->localPort());
+    QString ip = peerIp(wsPeer);
+    notePublicPeer(wsPeer);
+    if (sharedMode_ && access_) {
+        const QNetworkRequest req = pSocket->request();
+        if (trustedProxy(wsPeer))
+            ip = peerIp(AccessControl::forwardedClient(wsPeer,
+                                                       haveXff ? handoverXff : req.rawHeader("X-Forwarded-For"),
+                                                       trustedProxies_));
+        who = access_->resolveSession(AccessControl::cookieValue(req.rawHeader("Cookie"), "wfweb_session"));
+        if (!who.authenticated) {
+            if (sharedAnonymous_ == Access::Role::None) {
+                connect(pSocket, &QWebSocket::disconnected, pSocket, &QObject::deleteLater);
+                pSocket->sendTextMessage(QString::fromUtf8(QJsonDocument(QJsonObject{
+                    {"type", "authRequired"}, {"setupRequired", access_->setupRequired()},
+                    {"recovery", access_->recoveryMode()}}).toJson(QJsonDocument::Compact)));
+                pSocket->close(static_cast<QWebSocketProtocol::CloseCode>(4401), "authentication required");
+                qInfo() << "Web client refused (no session):" << ip;
+                return;
+            }
+            // A visitor: what the policy gives visitors, under no name.
+            who.role = sharedAnonymous_;
+            who.via = QStringLiteral("anonymous");
+        }
+        // The room has a size; admins always get in.
+        if (who.role != Access::Role::Admin && wsClients.size() >= maxClients_) {
+            connect(pSocket, &QWebSocket::disconnected, pSocket, &QObject::deleteLater);
+            pSocket->sendTextMessage(QString::fromUtf8(QJsonDocument(QJsonObject{
+                {"type", "stationFull"}, {"max", maxClients_}}).toJson(QJsonDocument::Compact)));
+            pSocket->close(static_cast<QWebSocketProtocol::CloseCode>(4503), "station full");
+            qInfo() << "Web client refused (station full):" << ip;
+            return;
+        }
+        WsClient info;
+        info.who = who;
+        info.id = AccessControl::randomId(4);
+        info.ip = ip;
+        info.sinceMs = QDateTime::currentMSecsSinceEpoch();
+        wsInfo.insert(pSocket, info);
+        access_->audit("connect", AccessControl::who(who.authenticated ? who.name : QStringLiteral("anonymous"), ip),
+                       Access::roleName(who.role));
+    }
 
     connect(pSocket, &QWebSocket::textMessageReceived, this, &webServer::onWsTextMessage);
     connect(pSocket, &QWebSocket::binaryMessageReceived, this, &webServer::onWsBinaryMessage);
     connect(pSocket, &QWebSocket::disconnected, this, &webServer::onWsDisconnected);
 
+    wsRawSocket_.insert(pSocket, rawSocket);
     wsClients.append(pSocket);
     browserCount_ = wsClients.size();
-    qInfo() << "Web client connected:" << pSocket->peerAddress().toString();
+    if (who.authenticated)
+        qInfo().noquote() << "Web client connected:" << ip << QString("(%1, %2)").arg(who.name, Access::roleName(who.role));
+    else if (sharedMode_)
+        qInfo().noquote() << "Web client connected:" << ip << QString("(visitor, %1)").arg(Access::roleName(who.role));
+    else
+        qInfo() << "Web client connected:" << ip;
 
+    // A holder coming back within the grace period gets the seat again.
+    seatOnConnect(pSocket);
+
+    // Who the page is comes first: it decides what the page shows.
+    sendJsonTo(pSocket, accessJson(who));
+    if (sharedMode_) sendJsonTo(pSocket, seatJson(pSocket));
     // Send current state to new client
     sendCurrentState(pSocket);
 }
@@ -1841,29 +2486,40 @@ void webServer::onWsDisconnected()
         // A browser that keyed the rig and vanished (phone lost the network,
         // tab killed) must not leave it transmitting until the rig's own
         // time-out timer, if any, fires.
-        if (pClient == pttClient) {
+        const bool wasKeyer = pClient == pttClient;
+        const bool wasMic = pClient == micActiveClient;
+        if (wasKeyer) {
             pttClient = nullptr;
             if (queue) {
                 queue->add(priorityImmediate, queueItem(funcTransceiverStatus, QVariant::fromValue<bool>(false), false, uchar(0)));
                 queue->del(funcALCMeter, 0);
                 releaseCompressorHold();
             }
+            pttAccounting(false, pClient);
             qInfo() << "Web: PTT released (keying client disconnected)";
         }
-        if (pClient == micActiveClient) {
+        if (wasMic) {
             micStatsLog("client disconnected");
             micDeviceLabel.clear();
             usbTxReset();
-        }
-        // Restore DATA MOD OFF if this client had mic active
-        if (pClient == micActiveClient && dataOffModSaved && queue) {
-            queue->addUnique(priorityImmediate, queueItem(funcDATAOffMod, QVariant::fromValue<rigInput>(savedDataOffMod), false, 0));
-            dataOffModSaved = false;
+            modemLanTxReset();
+            // Restore DATA MOD OFF if this client had mic active
+            if (dataOffModSaved && queue) {
+                queue->addUnique(priorityImmediate, queueItem(funcDATAOffMod, QVariant::fromValue<rigInput>(savedDataOffMod), false, 0));
+                dataOffModSaved = false;
+                qInfo() << "Web: Restored DATA MOD OFF setting (client disconnected)";
+            }
             micActiveClient = nullptr;
-            qInfo() << "Web: Restored DATA MOD OFF setting (client disconnected)";
         }
-        // Stop FreeDV/RADE TX drain to prevent ALSA underruns
-        if (freedvTxActive) {
+        // Stop FreeDV/RADE TX drain to prevent ALSA underruns -- when the
+        // browser that left is the one whose voice it was.  This block, and
+        // one that stopped the packet drain, used to run for ANY socket that
+        // closed: with a room of listeners, one of them shutting a tab put a
+        // hole in the operator's RADE over, and in the middle of a packet
+        // burst it stopped the drain that unkeys, leaving the rig keyed on a
+        // dead carrier with packetTxBusy set (2026-11-21).  A packet burst
+        // is the server's own and ends by itself, whoever leaves.
+        if (freedvTxActive && (wasKeyer || wasMic)) {
             freedvTxBuffer.clear();
             freedvTxActive = false;
             if (freedvTxDrainTimer) freedvTxDrainTimer->stop();
@@ -1873,17 +2529,20 @@ void webServer::onWsDisconnected()
                 usbAudioOutputDevice = nullptr;
             }
         }
-        // Cancel any pending PKT idle-driven unkey.  Clear the flag
-        // before any forced ALSA stop so a stray IdleState transition
-        // can't re-enter onUsbAudioOutputStateChanged.
-        packetTxAwaitingIdle = false;
-        if (packetTxIdleWatchdog) packetTxIdleWatchdog->stop();
-        if (packetUsbTxDrainTimer) packetUsbTxDrainTimer->stop();
-        packetUsbTxBuffer.clear();
-        packetUsbTxActive = false;
         audioClients.remove(pClient);
+        AccessPrincipal gone;
+        if (wsInfo.contains(pClient)) {
+            const WsClient info = wsInfo.take(pClient);
+            gone = info.who;
+            if (access_) access_->audit("disconnect", AccessControl::who(
+                info.who.authenticated ? info.who.name : QStringLiteral("anonymous"), info.ip));
+        }
         wsClients.removeAll(pClient);
+        wsRawSocket_.remove(pClient);
         browserCount_ = wsClients.size();
+        // After the removal: the seat must not be offered to a socket on
+        // its way out.
+        seatOnDisconnect(pClient, gone);
         pClient->deleteLater();
     }
 }
@@ -1895,6 +2554,29 @@ void webServer::onWsBinaryMessage(QByteArray message)
     quint8 msgType = static_cast<quint8>(message[0]);
 
     if (msgType != 0x03) return; // Only handle TX audio (0x03)
+
+    // Shared Station: TX audio is an operator's.  One 'denied' per stream,
+    // not one per 20 ms frame.
+    if (sharedMode_) {
+        QWebSocket *pClient = qobject_cast<QWebSocket *>(sender());
+        auto it = pClient ? wsInfo.find(pClient) : wsInfo.end();
+        const Access::Role role = it != wsInfo.end() ? it->who.role : Access::Role::None;
+        if (!Access::roleAllows(role, Access::Cap::Tx) || txInhibit_) {
+            if (it != wsInfo.end() && !it->warnedTxAudio) {
+                it->warnedTxAudio = true;
+                deny(pClient, "txAudio", Access::Cap::Tx,
+                     txInhibit_ ? QStringLiteral("transmitting is inhibited by the admin") : QString());
+            }
+            return;
+        }
+        if (seatEnabled_ && pClient != seat_.holder) {
+            if (it != wsInfo.end() && !it->warnedTxAudio) {
+                it->warnedTxAudio = true;
+                denySeat(pClient, "txAudio");
+            }
+            return;
+        }
+    }
 
     if (!txAudioConfigured) return;
 
@@ -2073,6 +2755,7 @@ void webServer::disableFreeDV()
     freedvTxBuffer.clear();
     freedvTxActive = false;
     if (freedvTxDrainTimer) freedvTxDrainTimer->stop();
+    modemLanTxReset();
     if (freedvProcessor)
         QMetaObject::invokeMethod(freedvProcessor, "cleanup", Qt::QueuedConnection);
     freedvFreqOffset = 0.0f;
@@ -2103,26 +2786,123 @@ static bool labelIsRigCapture(const QString &label, const QString &rigName)
     return label.contains(codec, Qt::CaseInsensitive) && rigName.contains(codec, Qt::CaseInsensitive);
 }
 
+// A frequency in Hz from a JSON number: 0 for anything that is not a
+// finite non-negative number below 1 THz.  A double straight into a
+// quint64 is undefined past 2^64 (UBSan, "lower": 1e30 from a fuzzed
+// client) and QVariant's own conversion rounds through qint64 first.
+static quint64 jsonHz(const QJsonValue &v)
+{
+    const double d = v.toDouble();
+    return (std::isfinite(d) && d >= 0.0 && d < 1.0e12) ? static_cast<quint64>(d) : 0;
+}
+
+// An AX.25 address as text: one to six letters and digits, and an SSID of
+// 0 to 15.  The terminal's calls are shown in every page (a tab's title)
+// and handed to the link layer: anything else is refused at the door.
+static bool ax25CallOk(const QString &call)
+{
+    static const QRegularExpression re(QStringLiteral("\\A[A-Z0-9]{1,6}(-(1[0-5]|[0-9]))?\\z"));
+    return re.match(call).hasMatch();
+}
+
 void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
 {
     QString type = cmd["cmd"].toString();
 
+    // Shared Station: the gate.  A browser is checked against its role on
+    // every command; nullptr is rigctld (local) or REST, checked before it
+    // got here.  Nothing below this line runs for a command the role lacks.
+    if (client && sharedMode_) {
+        const Access::Cap cap = Access::commandCapability(type);
+        if (!Access::roleAllows(clientRole(client), cap)) {
+            deny(client, type, cap);
+            return;
+        }
+        // Switching one's own microphone off is always taken, like one's own
+        // key-up: refused (the seat gone, TX inhibit on), the page went on
+        // streaming and DATA MOD OFF was never put back.
+        const bool ownMicOff = type == "enableMic" && !cmd["value"].toBool() && client == micActiveClient;
+        if (cap == Access::Cap::Tx && txInhibit_ && type != "setPTT" && !ownMicOff && !Access::txInhibitExempt(type)) {
+            // setPTT answers for itself below, for rigctld and REST too.
+            // The log and the keyer's STOP put nothing on the air.
+            deny(client, type, cap, QStringLiteral("transmitting is inhibited by the admin"));
+            return;
+        }
+        // A band nobody transmits on: what puts a signal on the air is
+        // refused there, the rest of an operator's commands (the log, the
+        // mic, STOP, the tuner's ON / OFF) is not.
+        static const QSet<QString> onAir{"sendCW", "packetTx", "aprsTxBeacon", "termConnect", "termSend",
+                                         "termFileSend", "termXferAccept"};
+        // (setTuner clamps its value to 0..2: anything from 2 up is a tune.)
+        const bool tunes = type == "setTuner" && cmd["value"].toInt() >= 2;
+        if (onAir.contains(type) || tunes) {
+            if (!inhibitedBand().isEmpty()) {
+                deny(client, type, cap, txBlockedReason());
+                return;
+            }
+        }
+        // The seat: asked for, given up, handed over here; needed for
+        // everything that acts on the radio.
+        if (type.startsWith("seat")) {
+            seatCommand(client, type, cmd);
+            return;
+        }
+        // A key-up from the browser that holds the key is never refused: the
+        // seat switched on, or passed on, under a latched PTT left a key its
+        // owner could not release.
+        const bool ownKeyUp = type == "setPTT" && !cmd["value"].toBool() && client == pttClient;
+        if (!ownKeyUp && !ownMicOff && seatRequired(client, type, cap)) {
+            denySeat(client, type);
+            return;
+        }
+        // What the page sends on its own (a spot per FT8 decode, the TX
+        // meter it shows) is not the holder touching the radio: it kept an
+        // unattended FT8 panel in the seat for good.
+        if (client == seat_.holder && (cap == Access::Cap::Control || cap == Access::Cap::Tx) && !Access::seatExempt(type)) {
+            seat_.lastActivityMs = QDateTime::currentMSecsSinceEpoch();
+            seat_.warnedIdle = false;   // the next idle spell gets its own warning
+        }
+    }
+
+    // On the air with no key of its own to account for (CW through the
+    // rig's keyer, packet and APRS frames, a tune): a 'tx' line in the audit
+    // log, written by each handler below where it takes the command.  It
+    // used to be written here, before the handler had a say, so a beacon
+    // refused for its callsign or a frame the modem never sent was in the
+    // log as a transmission, and the one-a-minute throttle then left the
+    // real one out (2026-11-21).
+    const auto onAirAudit = [this, client](const char *kind) {
+        if (client && sharedMode_) auditOnAir(QString::fromLatin1(kind), wsWho(client));
+    };
+
+    // The account behind a browser's log command (shared mode only).
+    const AccessPrincipal *logWhoPtr = nullptr;
+    if (client && sharedMode_) {
+        const auto it = wsInfo.constFind(client);
+        if (it != wsInfo.constEnd()) logWhoPtr = &it->who;
+    }
     if (type == "qsoLogged") {
         QsoRecord r = QsoRecord::fromJson(cmd["qso"].toObject());
-        if (!logbookAdd(r))
+        if (!logbookAdd(r, logWhoPtr))
             qWarning() << "Web: qsoLogged ignored (invalid record or logbook not writable)";
     }
-    else if (type == "updateQso") {
+    else if (type == "updateQso" || type == "deleteQso") {
         const QString id = cmd["id"].toString();
-        logbookUpdate(id, QsoRecord::fromJson(cmd["qso"].toObject(), id));
-    }
-    else if (type == "deleteQso") {
-        logbookRemove(cmd["id"].toString());
+        const QsoRecord *stored = logbook_.find(id);
+        if (stored && logWhoPtr && (!logSees(logWhoPtr, *stored) || !logMayChange(logWhoPtr, *stored))) {
+            sendJsonTo(client, QJsonObject{{"type", "denied"}, {"cmd", type}, {"need", "owner"},
+                {"reason", "only the operator who logged this QSO, or an admin, changes it"}});
+            return;
+        }
+        if (type == "updateQso") logbookUpdate(id, QsoRecord::fromJson(cmd["qso"].toObject(), id), logWhoPtr);
+        else logbookRemove(id, logWhoPtr);
     }
     else if (type == "mergeLogbook") {
         // Migration of a browser-local (localStorage) log.  The browser drops
         // its copy only when this reply says the merge is on persistent
         // storage; otherwise it keeps it and re-sends on every connect.
+        // (Admins only with --shared, by the capability table: the records
+        // have no account behind them.)
         QList<QsoRecord> incoming;
         const QJsonArray entries = cmd["entries"].toArray();
         for (const QJsonValue &v : entries) {
@@ -2135,12 +2915,15 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             qInfo() << "Logbook: merged" << added << "of" << incoming.size() << "browser-local QSOs";
             logbookReset();
         }
+        if (logWhoPtr && access_) access_->audit("log-merge", logWho(logWhoPtr), QString("%1 added of %2").arg(added).arg(incoming.size()));
+        int count = 0, unexported = 0;
+        logCounts(logWhoPtr, &count, &unexported);
         sendJsonTo(client, QJsonObject{{"type", "logbookMerged"}, {"added", added},
-                                       {"total", logbook_.count()}, {"persistent", logbookPersistent_},
-                                       {"unexported", logbook_.unexportedCount()}});
+                                       {"total", count}, {"persistent", logbookPersistent_},
+                                       {"unexported", unexported}});
     }
     else if (type == "setFrequency") {
-        quint64 hz = cmd["value"].toVariant().toULongLong();
+        quint64 hz = jsonHz(cmd["value"]);
         if (hz > 0) {
             freqt f;
             f.Hz = hz;
@@ -2292,6 +3075,15 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
     }
     else if (type == "setPTT") {
         bool on = cmd["value"].toBool();
+        // TX inhibit holds for every path, rigctld and REST included.
+        const QString blocked = on ? txBlockedReason() : QString();
+        if (!blocked.isEmpty()) {
+            qInfo().noquote() << "Web: PTT refused," << blocked;
+            if (client) deny(client, type, Access::Cap::Tx, blocked);
+            return;
+        }
+        // Who keyed, when, for how long: the audit log and the time-out.
+        pttAccounting(on, client);
         // What wfweb modulates itself is a digital signal: the page flags
         // FT8/FT4, JS8 and TUNE, and FreeDV / RADE voice is a modem too.
         // The compressor goes out before the key, in queue order.
@@ -2305,9 +3097,16 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         bool radeUnkey = !on && freedvEnabled && freedvModeName == "RADE" && radeProcessor;
         bool hasTxOut  = (usbAudioOutput && txAudioConfigured) || txConverter;
         if (radeUnkey && hasTxOut) {
+            // USB: 300 ms plays the frame out.  LAN: the frame is paced out
+            // in real time behind what the pacer still holds, and the rig
+            // buffers what it gets (150 ms by our TX latency setting).
+            int unkeyMs = 300;
+            if (!(usbAudioOutput && txAudioConfigured))
+                unkeyMs = qMax(300, modemLanTxPendingMs() + MODEM_LAN_CUSHION_MS + RADE_EOO_MS + 150);
             QMetaObject::invokeMethod(radeProcessor, "sendEoo", Qt::BlockingQueuedConnection);
-            qInfo() << "Web: queued RADE EOO frame, delaying unkey 300ms";
-            QTimer::singleShot(300, this, [this]() {
+            pttClient = nullptr;   // the key is on its way up: nobody's to release any more
+            qInfo() << "Web: queued RADE EOO frame, delaying unkey" << unkeyMs << "ms";
+            QTimer::singleShot(unkeyMs, this, [this]() {
                 queue->add(priorityImmediate, queueItem(funcTransceiverStatus, QVariant::fromValue<bool>(false), false, uchar(0)));
                 queue->del(funcALCMeter, 0);
                 releaseCompressorHold();
@@ -2320,7 +3119,11 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         // Remember who keyed the rig so onWsDisconnected can unkey it if that
         // browser drops mid-over (a latched touch PTT can hold an over for
         // minutes, #144). nullptr for rigctld, which has its own lifetime.
-        pttClient = on ? client : nullptr;
+        // rigctld's key-down (client == nullptr) during a browser's over does
+        // not take the key from it: its disconnect and a seat change must
+        // still find it.
+        if (!on) pttClient = nullptr;
+        else if (client || !pttClient) pttClient = client;
         // Start/stop ALC meter polling for web clients
         if (on) {
             queue->addUnique(priorityHighest, queueItem(funcALCMeter, true, 0));
@@ -2346,7 +3149,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
     }
     else if (type == "setMicGain") {
         ushort val = static_cast<ushort>(qBound(0, cmd["value"].toInt(), 255));
-        queue->addUnique(priorityImmediate, queueItem(funcUSBModLevel, QVariant::fromValue<ushort>(val), false, 0));
+        queue->addUnique(priorityImmediate, queueItem(micLevelFunc(), QVariant::fromValue<ushort>(val), false, 0));
     }
     else if (type == "setAttenuator") {
         uchar val = static_cast<uchar>(qBound(0, cmd["value"].toInt(), 255));
@@ -2388,15 +3191,38 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         });
     }
     else if (type == "setAGC") {
+        // value = one of the rig's agcModes nums (rigInfo). Read back: in FM
+        // the rig keeps FAST and refuses the set, and the tile must say so.
         uchar val = static_cast<uchar>(qBound(0, cmd["value"].toInt(), 255));
-        queue->add(priorityImmediate, queueItem(funcAGC, QVariant::fromValue<uchar>(val), false, 0));
+        queue->addUnique(priorityImmediate, queueItem(funcAGC, QVariant::fromValue<uchar>(val), false, 0));
+        QTimer::singleShot(200, this, [this]() {
+            if (queue) queue->add(priorityImmediate, funcAGC, false, 0);
+        });
     }
     else if (type == "setCompressor") {
         bool on = cmd["value"].toBool();
         // The operator's word wins over a digital-TX hold: the end of the
         // over must not put the old state back on top of it.
         if (compHeld) compRestoreOn = false;
+        // The rig keeps one TBW setting with COMP on and one with it off: a
+        // held one goes back where it came from before COMP changes, and the
+        // other is held in its place.
+        const bool tbwAgain = tbwHeld && !tbwAwait;
+        releaseTxBandwidth();
         queue->add(priorityImmediate, queueItem(funcCompressor, QVariant::fromValue<uchar>(on ? 1 : 0), false, 0));
+        if (tbwAgain) holdTxBandwidth("digital");
+    }
+    else if (type == "setTxBandwidth") {
+        // FUNC TBW tile: 0 WIDE / 1 MID / 2 NAR, the setting of the current
+        // COMP state. The operator's word wins over a digital-TX hold: the
+        // end of the over leaves it. Read back like AGC.
+        if (!rigCaps || !rigCaps->commands.contains(funcSSBTXBandwidth)) return;
+        uchar val = static_cast<uchar>(qBound(0, cmd["value"].toInt(), 2));
+        if (tbwHeld) { tbwAwait = false; tbwRestore = -1; }
+        queue->addUnique(priorityImmediate, queueItem(funcSSBTXBandwidth, QVariant::fromValue<uchar>(val), false, 0));
+        QTimer::singleShot(200, this, [this]() {
+            if (queue) queue->add(priorityImmediate, funcSSBTXBandwidth, false, 0);
+        });
     }
     else if (type == "setCompLevel") {
         ushort val = static_cast<ushort>(qBound(0, cmd["value"].toInt(), 255));
@@ -2414,6 +3240,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         // value: 0=off, 1=on, 2=start tuning
         uchar val = static_cast<uchar>(qBound(0, cmd["value"].toInt(), 2));
         queue->addUnique(priorityImmediate, queueItem(funcTunerStatus, QVariant::fromValue<uchar>(val), false, 0));
+        if (val == 2) onAirAudit("tune");
         // Query status to trigger cache update
         QTimer::singleShot(200, this, [this]() {
             if (queue) queue->add(priorityImmediate, funcTunerStatus, false, 0);
@@ -2590,8 +3417,8 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         // 1 and 2 as the operator set them on the rig, then that set is
         // selected (0x27 0x16). Rigs without a range table in their rig file
         // don't get here: rigInfo reports scopeFixedEdges=false.
-        quint64 lower = static_cast<quint64>(cmd["lower"].toDouble());
-        quint64 upper = static_cast<quint64>(cmd["upper"].toDouble());
+        quint64 lower = jsonHz(cmd["lower"]);
+        quint64 upper = jsonHz(cmd["upper"]);
         if (rigCaps && upper > lower && rigCaps->commands.contains(funcScopeFixedEdgeFreq) && rigCaps->commands.contains(funcScopeEdge)) {
             scopeEdgeSetting e;
             for (const genericType &r : rigCaps->scopeEdgeRanges) {
@@ -2659,6 +3486,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             // logs afresh.
             micLanTxLogged = false;
             micLanTxBuffer.clear();
+            modemLanTxLogged = false;
             // Pick the mod input from rig capabilities: LAN when LAN-connected,
             // otherwise USB (shared with the packet TX path).
             rigInput modInput;
@@ -2725,6 +3553,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             freedvTxBuffer.clear();
             freedvTxActive = false;
             if (freedvTxDrainTimer) freedvTxDrainTimer->stop();
+            modemLanTxReset();
             txAudioActive = false;
             micLanTxBuffer.clear();
             usbTxReset();
@@ -2741,6 +3570,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         QString text = cmd["text"].toString();
         if (!text.isEmpty()) {
             queue->add(priorityImmediate, queueItem(funcSendCW, QVariant::fromValue<QString>(text)));
+            onAirAudit("cw");
             qCDebug(logWebServer) << "sendCW:" << text;
         }
     }
@@ -3106,10 +3936,10 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
                     QMetaObject::invokeMethod(freedvProcessor, "cleanup", Qt::QueuedConnection);
                 emit setupRade(rigSampleRate);
                 // Send cached callsign to RADE processor for EOO encoding
-                if (!reporterCallsign.isEmpty()) {
+                if (!onAirCall().isEmpty()) {
                     QMetaObject::invokeMethod(radeProcessor, "setTxCallsign",
                                               Qt::QueuedConnection,
-                                              Q_ARG(QString, reporterCallsign));
+                                              Q_ARG(QString, onAirCall()));
                 }
                 qInfo() << "Web: RADE enabled";
             } else if (freedvProcessor) {
@@ -3227,6 +4057,9 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
                 if (!p.isEmpty()) pathList.append(p);
             }
         }
+        // The source call of a frame the server builds is the call on the
+        // air, like a beacon's and the terminal's.
+        if (!src.isEmpty() && onAirDenies(client, type, src)) return;
 
         QString failReason;
         if (!packetEnabled || !dwProc) {
@@ -3268,6 +4101,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
 
             QMetaObject::invokeMethod(dwProc, "transmitFrame", Qt::QueuedConnection,
                                       Q_ARG(QString, monitor));
+            onAirAudit("packet");
 
             QJsonObject notify;
             notify["type"] = "packetTxStarted";
@@ -3290,8 +4124,9 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
     }
     else if (type == "aprsTxBeacon") {
         // {src, lat, lon, symTable, symCode, comment, path?: ["WIDE1-1",...]}
-        if (!aprsProc) return;
         QString src      = cmd["src"].toString().trimmed().toUpper();
+        if (!src.isEmpty() && onAirDenies(client, type, src)) return;
+        if (!aprsProc) return;
         double  lat      = cmd["lat"].toDouble();
         double  lon      = cmd["lon"].toDouble();
         QString symTable = cmd.value("symTable").toString();
@@ -3314,6 +4149,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         }
         QChar st = symTable.isEmpty() ? QChar('/') : symTable.at(0);
         QChar sc = symCode.isEmpty()  ? QChar('.') : symCode.at(0);
+        onAirAudit("aprs");
         QMetaObject::invokeMethod(aprsProc, "txBeaconNow", Qt::QueuedConnection,
                                   Q_ARG(QString, src),
                                   Q_ARG(double, lat),
@@ -3393,10 +4229,14 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
                 if (!d.isEmpty()) digis.append(d);
             }
         }
+        if (!own.isEmpty() && onAirDenies(client, type, own)) return;
         QString failReason;
         TerminalSession *existing = termFindByEndpoints(chan, own, peer);
+        bool callsOk = ax25CallOk(own) && ax25CallOk(peer) && digis.size() <= 8;
+        for (const QString &d : qAsConst(digis)) callsOk = callsOk && ax25CallOk(d);
         if (!packetEnabled || !dwProc || !axProc) failReason = "packet modem not enabled";
         else if (own.isEmpty() || peer.isEmpty()) failReason = "ownCall and peerCall are required";
+        else if (!callsOk) failReason = "not an AX.25 callsign (letters and digits, six at most, SSID 0-15)";
         else if (existing && existing->state != TerminalSession::Disconnected)
             failReason = "session already in progress";
 
@@ -3434,6 +4274,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
                                       Q_ARG(QString, own),
                                       Q_ARG(QString, peer),
                                       Q_ARG(QStringList, digis));
+            onAirAudit("packet");
             qInfo().noquote() << "Web: termConnect" << s->sid << own << "->" << peer;
         }
     }
@@ -3479,6 +4320,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
                                       Q_ARG(QStringList, s->digis),
                                       Q_ARG(int, 0xF0),
                                       Q_ARG(QByteArray, data));
+            onAirAudit("packet");
             QJsonObject entry = termScrollbackEntry(QStringLiteral("tx"), data);
             termAppendScrollback(s, entry);
             termBroadcastData(s->sid, entry);
@@ -3511,7 +4353,11 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         // connections without the operator first making an outbound call.
         QString own = cmd["ownCall"].toString().trimmed().toUpper();
         int chan = cmd.value("chan").toInt(0);
-        if (!own.isEmpty()) termEnsureRegistered(chan, own);
+        if (!own.isEmpty() && onAirDenies(client, type, own)) return;
+        if (!own.isEmpty() && ax25CallOk(own)) termEnsureRegistered(chan, own);
+        else if (!own.isEmpty() && client)
+            sendJsonTo(client, QJsonObject{{"type", "termError"},
+                {"reason", "not an AX.25 callsign (letters and digits, six at most, SSID 0-15)"}});
     }
     else if (type == "termUnregister") {
         QString own = cmd["ownCall"].toString().trimmed().toUpper();
@@ -3532,6 +4378,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
             && s->state == TerminalSession::Connected
             && !s->xfer.active) {
             yappSendFile(s, name, data);
+            onAirAudit("packet");
         } else {
             QJsonObject notify;
             notify["type"] = "termError";
@@ -3552,6 +4399,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         if (s && s->xfer.active && s->xfer.phase == "awaiting_accept") {
             yappSendRR(s);
             s->xfer.phase = QStringLiteral("active");
+            onAirAudit("packet");
             qInfo().noquote() << "Web: YAPP accept → RR sent" << s->sid;
         }
     }
@@ -3587,7 +4435,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
                 connect(freedvReporter, &FreeDVReporter::stateChanged,
                         this, &webServer::onReporterStateChanged);
             }
-            freedvReporter->setStation(reporterCallsign, reporterGrid);
+            freedvReporter->setStation(onAirCall(), reporterGrid);
 
             // Seed reporter with current frequency from cache
             if (queue) {
@@ -3617,7 +4465,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
                 connect(pskReporter, &PskReporter::stateChanged,
                         this, &webServer::onPskReporterStateChanged);
             }
-            pskReporter->setStation(reporterCallsign, reporterGrid);
+            pskReporter->setStation(onAirCall(), reporterGrid);
 
             if (queue) {
                 vfoCommandType t = queue->getVfoCommand(vfoA, 0, false);
@@ -3639,10 +4487,10 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         }
 
         // Pass callsign to RADE processor for EOO encoding
-        if (radeProcessor && !reporterCallsign.isEmpty()) {
+        if (radeProcessor && !onAirCall().isEmpty()) {
             QMetaObject::invokeMethod(radeProcessor, "setTxCallsign",
                                       Qt::QueuedConnection,
-                                      Q_ARG(QString, reporterCallsign));
+                                      Q_ARG(QString, onAirCall()));
         }
 
         notifyFreedvReporterStatus();
@@ -3684,13 +4532,17 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
         // Browser-side FT8/FT4 decode → forward to PSK Reporter.  The browser
         // computes the on-air RF frequency (rig dial + audio offset) so the
         // backend doesn't need to know the rig's USB/LSB sense.
+        // Shared Station: a spot goes out under the station's name, so it
+        // is taken from an account, not from a visitor without a login
+        // (dropped without a word: the page sends one per decode).
+        if (client && sharedMode_ && !wsInfo.value(client).who.authenticated) return;
         if (pskReporter && pskReporterEnabled && digiActive) {
             QString call = cmd["callsign"].toString().toUpper().trimmed();
             QString grid = cmd["grid"].toString().toUpper().trimmed();
             QString mode = cmd["mode"].toString().toUpper().trimmed();
             if (mode != "FT8" && mode != "FT4") mode = digiMode;
             int snr = cmd["snr"].toInt();
-            quint64 freqHz = cmd["freq"].toVariant().toULongLong();
+            quint64 freqHz = jsonHz(cmd["freq"]);
             if (freqHz > 0) pskReporter->updateFrequency(freqHz);
             pskReporter->updateRxSpotWithGrid(call, grid, mode, snr);
         }
@@ -3705,6 +4557,15 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
     }
 }
 
+// buildInfoJson() for a REST caller: on a shared station the path of the
+// logbook file is for an admin.
+QJsonObject webServer::restInfoJson() const
+{
+    QJsonObject info = buildInfoJson();
+    if (sharedMode_ && !(restPrincipal_ && restPrincipal_->role == Access::Role::Admin)) info.remove("logbookPath");
+    return info;
+}
+
 QJsonObject webServer::buildInfoJson() const
 {
     QJsonObject info;
@@ -3712,10 +4573,11 @@ QJsonObject webServer::buildInfoJson() const
     // platform) can find the file without guessing the data directory.
     info["logbookPath"] = logbook_.path();
     info["logbookPersistent"] = logbookPersistent_;
-    info["stationCallsign"] = reporterCallsign;
+    info["stationCallsign"] = onAirCall();
     info["stationGrid"] = reporterGrid;
+    addOnAirInfo(info);
     info["cwMacros"] = cwMacrosJson();
-    info["version"] = QString(WFWEB_VERSION);
+    info["version"] = QString(wfwebVersion());
     // Instance tag from --name; empty means "show the rig model".
     info["name"] = instanceName_;
 
@@ -3767,6 +4629,8 @@ QJsonObject webServer::buildInfoJson() const
         info["hasBreakIn"] = rigCaps->commands.contains(funcBreakIn);
         info["hasCompressor"] = rigCaps->commands.contains(funcCompressor);
         info["hasCompLevel"] = rigCaps->commands.contains(funcCompressorLevel);
+        info["hasTxBandwidth"] = rigCaps->commands.contains(funcSSBTXBandwidth);
+        addAgcCaps(info);
         addToneCaps(info);
         addBandCaps(info);
         addTxMeterCaps(info);
@@ -3870,6 +4734,24 @@ void webServer::onRigCtlPtt(bool on)
     handleCommand(nullptr, cmd);
 }
 
+// rigctld's send_morse.  The rig's keyer transmits it with no key for
+// setPTT to refuse: under a shared station's TX inhibit (or on a band
+// nobody transmits on) it is dropped here, and what goes out is a 'tx'
+// line in the audit log, one a minute.  An empty text is stop_morse.
+void webServer::onRigCtlCw(QString text)
+{
+    if (!queue || !rigCaps || !rigCaps->commands.contains(funcSendCW)) return;
+    if (!text.isEmpty()) {
+        const QString blocked = txBlockedReason();   // empty without --shared
+        if (!blocked.isEmpty()) {
+            qInfo().noquote() << "Web: rigctld CW refused," << blocked;
+            return;
+        }
+        auditOnAir(QStringLiteral("cw"), QStringLiteral("rigctld@127.0.0.1"));
+    }
+    queue->add(priorityImmediate, queueItem(funcSendCW, QVariant::fromValue<QString>(text)));
+}
+
 void webServer::sendCurrentState(QWebSocket *client)
 {
     QJsonObject info = buildInfoJson();
@@ -3881,14 +4763,27 @@ void webServer::sendCurrentState(QWebSocket *client)
     info["remoteLogTarget"] = wsjtxTarget_;
     info["remoteLogDecodes"] = wsjtxDecodes_;
     info["logbookPath"] = logbook_.path();
-    info["logbookCount"] = logbook_.count();
+    // Where the server keeps its files and where it sends its log is the
+    // admin's to know, not every visitor's.
+    if (sharedMode_ && clientRole(client) != Access::Role::Admin) {
+        info.remove("logbookPath");
+        info.remove("remoteLogTarget");
+    }
+    const AccessPrincipal *viewer = nullptr;
+    if (sharedMode_) {
+        const auto wi = wsInfo.constFind(client);
+        if (wi != wsInfo.constEnd()) viewer = &wi->who;
+    }
+    const QJsonObject summary = logbookSummary(viewer);
+    info["logbookCount"] = summary.value("count");
     info["logbookPersistent"] = logbookPersistent_;
     // The browser adopts these on connect instead of pushing its own copy.
-    info["stationCallsign"] = reporterCallsign;
+    info["stationCallsign"] = onAirCall();
     info["stationGrid"] = reporterGrid;
+    addOnAirInfo(info);
     sendJsonTo(client, info);
     // The log itself is paged over REST; this only tells the browser to fetch page 1.
-    sendJsonTo(client, logbookSummary());
+    sendJsonTo(client, summary);
 
     // Send current status
     if (rigCaps) {
@@ -4085,10 +4980,11 @@ QJsonObject webServer::buildStatusJson()
     }
 
     // Mic Gain
-    cacheItem micGain = queue->getCache(funcUSBModLevel, 0);
+    cacheItem micGain = queue->getCache(micLevelFunc(), 0);
     if (micGain.value.isValid()) {
         status["micGain"] = micGain.value.toInt();
     }
+    status["micInput"] = micLevelFunc() == funcLANModLevel ? "LAN" : "USB";
 
     // Split
     cacheItem split = queue->getCache(funcSplitStatus, 0);
@@ -4130,6 +5026,25 @@ QJsonObject webServer::buildStatusJson()
         if (compLevel.value.isValid()) status["compLevel"] = compLevel.value.toInt();
     }
 
+    // AGC (FUNC AGC tile): the rig's value, named by rigInfo's agcModes.
+    if (hasAgc()) {
+        cacheItem agc = queue->getCache(funcAGC, 0);
+        if (agc.value.isValid()) status["agc"] = agc.value.toInt();
+    }
+
+    // SSB transmit filter (FUNC TBW tile): 0 WIDE / 1 MID / 2 NAR. The rig
+    // only has it in SSB, so it is only asked for there; getCache() is what
+    // keeps it fresh (the rig's own TBW key is not announced).
+    if (rigCaps && rigCaps->commands.contains(funcSSBTXBandwidth)) {
+        rigMode_t mk = modeUnknown;
+        cacheItem m = operatingModeCache(queue->getVfoCommand(vfoA, 0, false));
+        if (m.value.isValid()) mk = m.value.value<modeInfo>().mk;
+        if (mk == modeUSB || mk == modeLSB) {
+            cacheItem tbw = queue->getCache(funcSSBTXBandwidth, 0);
+            if (tbw.value.isValid()) status["txBandwidth"] = tbw.value.toInt();
+        }
+    }
+
     // Tuner (0=off, 1=on, 2=tuning)
     cacheItem tuner = queue->getCache(funcTunerStatus, 0);
     if (tuner.value.isValid()) status["tuner"] = tuner.value.toInt();
@@ -4137,6 +5052,12 @@ QJsonObject webServer::buildStatusJson()
     // Preamp
     cacheItem preamp = queue->getCache(funcPreamp, 0);
     if (preamp.value.isValid()) status["preamp"] = preamp.value.toInt();
+
+    // Attenuator. Without it a page that connects with ATT already on reads
+    // OFF, and its P.AMP/ATT button keeps asking for the ATT the rig already
+    // has: nothing changes, no update comes back, the button looks dead.
+    cacheItem att = queue->getCache(funcAttenuator, 0);
+    if (att.value.isValid()) status["attenuator"] = att.value.toInt();
 
     // Antenna selector (+ RX antenna flag) — only cached on rigs that have one
     cacheItem antCache = queue->getCache(funcAntenna, 0);
@@ -4217,6 +5138,23 @@ void webServer::receiveCache(cacheItem item)
     case funcRepeaterTSQL: toneFlagTsql = item.value.toBool(); break;
     case funcRepeaterDTCS: toneFlagDtcs = item.value.toBool(); break;
     case funcTunerStatus: tunerRejected = false; break;   // the rig answered: it has a tuner
+    // AGC follows the mode whether or not a browser watches: the queue
+    // reports a mode once, when it changes, and REST and rigctld read AGC too.
+    case funcMode: case funcModeGet: case funcModeSet: case funcModeTR: case funcSelectedMode:
+        agcFollowMode(item);
+        break;
+    // The rig keeps one transmit filter setting with COMP on and one with it
+    // off, so the cached one goes stale with COMP: read it again. Deferred,
+    // like the AGC read (this can run inside queue->add()).
+    case funcCompressor:
+        if (rigCaps && rigCaps->commands.contains(funcSSBTXBandwidth)) {
+            QTimer::singleShot(200, this, [this]() {
+                // Not while a digital over waits for its own read of it.
+                if (queue && !tbwAwait && rigCaps && rigCaps->commands.contains(funcSSBTXBandwidth))
+                    queue->add(priorityImmediate, funcSSBTXBandwidth, false, 0);
+            });
+        }
+        break;
     // The tone scan reads the squelch, not the browser, so it too is serviced
     // before that shortcut — otherwise a sweep whose last client walked away
     // would run to exhaustion without noticing it had found the tone. Only the
@@ -4401,7 +5339,11 @@ void webServer::receiveCache(cacheItem item)
         update["squelch"] = item.value.toInt();
         break;
     case funcUSBModLevel:
-        update["micGain"] = item.value.toInt();
+    case funcLANModLevel:
+        // Only the level of the input our TX audio goes in by is the page's
+        // MIC slider; the other one is the rig's own business.
+        if (item.command == micLevelFunc())
+            update["micGain"] = item.value.toInt();
         break;
     case funcScopeWaveData:
     {
@@ -4495,6 +5437,12 @@ void webServer::receiveCache(cacheItem item)
         break;
     case funcBreakIn:
         update["breakIn"] = item.value.toInt();   // 0 = OFF, 1 = SEMI, 2 = FULL
+        break;
+    case funcAGC:
+        update["agc"] = item.value.toInt();       // one of rigInfo's agcModes nums
+        break;
+    case funcSSBTXBandwidth:
+        update["txBandwidth"] = item.value.toInt();   // 0 WIDE / 1 MID / 2 NAR
         break;
     case funcNoiseReduction:
         update["nr"] = item.value.toBool();
@@ -4649,6 +5597,9 @@ void webServer::sendPeriodicStatus()
             queue->getCache(funcReadFreqOffset, 0);
         if (rigCaps->commands.contains(funcTunerStatus))
             queue->getCache(funcTunerStatus, 0);
+        // AGC is a front-panel key too, and no rig file polls it.
+        if (hasAgc())
+            queue->getCache(funcAGC, 0);
     }
 
     // Request meter updates by querying current cache values
@@ -4707,9 +5658,13 @@ void webServer::sendJsonTo(QWebSocket *client, const QJsonObject &obj)
     client->sendTextMessage(QString::fromUtf8(data));
 }
 
+// Spectrum and audio skip whoever the seat keeps in the dark (private
+// operation, or no listen-in while someone has the seat): seatHides().
 void webServer::sendBinaryToAll(const QByteArray &data)
 {
     for (QWebSocket *client : wsClients) {
+        if (seatHides(client)) continue;
+        if (wsPendingBytes(client) > kWsBinaryPendingBytes) continue;   // not keeping up: skip this frame
         client->sendBinaryMessage(data);
     }
 }
@@ -4717,7 +5672,25 @@ void webServer::sendBinaryToAll(const QByteArray &data)
 void webServer::sendBinaryToAudioClients(const QByteArray &data)
 {
     for (QWebSocket *client : audioClients) {
+        if (seatHides(client)) continue;
+        if (wsPendingBytes(client) > kWsBinaryPendingBytes) continue;
         client->sendBinaryMessage(data);
+    }
+}
+
+// Once a second (from the HTTP sweep's timer): a WebSocket client that has
+// let kWsMaxPendingBytes pile up unsent is not reading -- a tab the OS
+// froze, or a connection opened to hold our memory -- and is cut.  abort(),
+// not close(): a close frame would wait behind the backlog for good.
+void webServer::sweepWsClients()
+{
+    const QList<QWebSocket *> clients = wsClients;
+    for (QWebSocket *c : clients) {
+        const qint64 pending = wsPendingBytes(c);
+        if (pending <= kWsMaxPendingBytes) continue;
+        qWarning() << "Web: client" << c->peerAddress().toString() << "is not reading,"
+                   << pending << "bytes pending - disconnecting";
+        c->abort();
     }
 }
 
@@ -5270,6 +6243,42 @@ bool webServer::recallMemoryOnRig(int channel, int group, QString *error)
         if (rigCaps->commands.contains(f)) queue->addUnique(priorityImmediate, f, false, 0);
     }
     return true;
+}
+
+// AGC: the FUNC AGC tile cycles the settings the rig's AGC Status command
+// takes. The values differ per rig, so the rig file names them (AGC\N\Num,
+// Name); a rig without that list has no tile, as nothing says what to send.
+bool webServer::hasAgc() const
+{
+    return rigCaps && rigCaps->commands.contains(funcAGC) && !rigCaps->agcModes.empty();
+}
+
+// The rig keeps an AGC setting per mode, so the cached one goes stale with
+// the mode: read it again. Deferred, as receiveCache can run inside
+// queue->add() with the queue's mutex held (a set's echo).
+void webServer::agcFollowMode(const cacheItem &item)
+{
+    if (item.receiver != 0 || !hasAgc()) return;
+    modeInfo m = item.value.value<modeInfo>();
+    if (m.mk == modeUnknown || int(m.mk) == agcModeSeen) return;
+    agcModeSeen = int(m.mk);
+    QTimer::singleShot(100, this, [this]() {
+        if (queue && hasAgc()) queue->add(priorityImmediate, funcAGC, false, 0);
+    });
+}
+
+void webServer::addAgcCaps(QJsonObject &o) const
+{
+    o["hasAgc"] = hasAgc();
+    if (!hasAgc()) return;
+    QJsonArray modes;
+    for (const genericType &g : rigCaps->agcModes) {
+        QJsonObject m;
+        m["num"] = g.num;
+        m["name"] = g.name;
+        modes.append(m);
+    }
+    o["agcModes"] = modes;
 }
 
 // --- Repeater access tone ---
@@ -5873,7 +6882,7 @@ void webServer::onFreeDVTxReady(audioPacket audio)
             }
         }
     } else if (txConverter) {
-        emit sendToTxConverter(audio);
+        modemLanTxQueue(audio.data);
     }
 }
 
@@ -6094,7 +7103,120 @@ void webServer::onRadeTxReady(audioPacket audio)
             }
         }
     } else if (txConverter) {
-        emit sendToTxConverter(audio);
+        // The same fixed level as on USB.  Without it RADE went to the rig
+        // 8 dB hotter: on the IC-705 at 75 % LAN mod level a tone at that
+        // level made full power with the ALC at 0.8, and one at this level
+        // 1.9 W of 2.0 with the ALC at 0.3 (keyed measurement, 2026-11-19).
+        QByteArray scaled = audio.data;
+        qint16 *samples = reinterpret_cast<qint16 *>(scaled.data());
+        const int count = scaled.size() / (int)sizeof(qint16);
+        for (int i = 0; i < count; i++)
+            samples[i] = (qint16)qBound(-32768, (int)(samples[i] * RADE_TX_GAIN), 32767);
+        modemLanTxQueue(scaled);
+    }
+}
+
+// 20 ms of mono 16-bit PCM at the rig's rate: the slice a LAN rig takes
+// its TX audio in (1920 bytes at 48 kHz, two UDP packets of 1364 + 556).
+int webServer::lanTxChunkBytes() const
+{
+    const quint32 rate = rigSampleRate ? rigSampleRate : 48000;
+    return (int)(rate / 50) * (int)sizeof(qint16);
+}
+
+int webServer::modemLanTxPendingMs() const
+{
+    return modemLanTxBuffer.size() * 20 / lanTxChunkBytes();
+}
+
+void webServer::modemLanTxReset()
+{
+    if (modemLanTxTimer) modemLanTxTimer->stop();
+    if (modemLanTxSlices > 0)
+        qInfo().noquote() << QStringLiteral("Web: LAN modem TX - %1 s sent in %2 slices, encoder ran dry %3 time(s)")
+                                 .arg(modemLanTxSlices * 0.02, 0, 'f', 1).arg(modemLanTxSlices)
+                                 .arg(qMax(0, modemLanTxStarts - 1));
+    modemLanTxBuffer.clear();
+    modemLanTxSent = 0;
+    modemLanTxSlices = 0;
+    modemLanTxStarts = 0;
+    modemLanTxLogged = false;
+}
+
+// FreeDV / RADE modem audio for a LAN rig.  The encoder emits a whole modem
+// frame at once (RADE 120 ms, 700D 160 ms); sent on as it came, in one
+// block, the IC-705 and IC-9700 keyed in RADE with no modulation at all
+// while FT8 worked on the same link (#158); the IC-7610 did the same on the
+// browser's 2.7 ms mic frames (#72).  What those rigs take is what wfview's
+// mic, our mic path and the packet modem send: 20 ms slices.  So the frames
+// queue here and modemLanTxDrain() sends them, a slice at a time on the
+// wall clock.  The steady clock is a choice, not a proven need: the IC-705
+// also took a tone as six slices at once every 120 ms (keyed, 2026-11-19).
+void webServer::modemLanTxQueue(const QByteArray &pcm)
+{
+    if (pcm.isEmpty()) return;
+    const int chunk = lanTxChunkBytes();
+    modemLanTxBuffer.append(pcm);
+
+    // A mic stream that stalled and then caught up leaves its backlog here
+    // for good, the drain being real time.  Past a second, drop the oldest.
+    const int maxBytes = chunk * (MODEM_LAN_MAX_MS / 20);
+    if (modemLanTxBuffer.size() > maxBytes) {
+        const int keep = chunk * ((MODEM_LAN_CUSHION_MS + 120) / 20);
+        qInfo() << "Web: LAN modem TX backlog" << modemLanTxPendingMs()
+                << "ms, dropping the oldest audio";
+        modemLanTxBuffer.remove(0, modemLanTxBuffer.size() - keep);
+    }
+
+    if (!modemLanTxTimer) {
+        modemLanTxTimer = new QTimer(this);
+        modemLanTxTimer->setTimerType(Qt::PreciseTimer);
+        connect(modemLanTxTimer, &QTimer::timeout, this, &webServer::modemLanTxDrain);
+    }
+    if (!modemLanTxTimer->isActive()) {
+        // Start the clock a cushion behind, so the next frame is here
+        // before this one has gone out.
+        modemLanTxClock.start();
+        modemLanTxSent = (qint64)chunk * MODEM_LAN_CUSHION_MS / 20;
+        modemLanTxStarts++;
+        modemLanTxTimer->start(10);
+        if (!modemLanTxLogged) {
+            modemLanTxLogged = true;
+            qInfo() << "Web: LAN modem TX - first frame from the encoder," << pcm.size()
+                    << "bytes, pacing in" << chunk << "byte slices";
+        }
+    }
+}
+
+void webServer::modemLanTxDrain()
+{
+    const int chunk = lanTxChunkBytes();
+    // Bytes due by the wall clock, not one slice per tick: a timer that
+    // fires late must not stretch the audio.
+    if (modemLanTxClock.elapsed() * chunk / 20 - modemLanTxSent < chunk) return;
+
+    if (modemLanTxBuffer.isEmpty()) {
+        // The encoder stopped (mic off, or its input stalled).  The next
+        // frame starts the clock again, cushion included.
+        modemLanTxTimer->stop();
+        return;
+    }
+
+    // At most two slices a tick: enough to catch up after a late timer,
+    // not enough to be a burst.  A buffer shorter than a slice is the tail
+    // of what the encoder gave and goes out as it is.
+    for (int n = 0; n < 2 && !modemLanTxBuffer.isEmpty()
+                    && modemLanTxClock.elapsed() * chunk / 20 - modemLanTxSent >= chunk; n++) {
+        const int take = qMin(chunk, modemLanTxBuffer.size());
+        audioPacket pkt;
+        pkt.data = modemLanTxBuffer.left(take);
+        pkt.time = QTime::currentTime();
+        pkt.sent = 0;
+        pkt.volume = 1.0;
+        modemLanTxBuffer.remove(0, take);
+        modemLanTxSent += chunk;
+        modemLanTxSlices++;
+        emit sendToTxConverter(pkt);
     }
 }
 
@@ -6203,6 +7325,18 @@ void webServer::onAprsStationsCleared()
     sendJsonToAll(msg);
 }
 
+// The mod level the page's MIC slider stands for, and the one the digital
+// modes hold at DIGI_MOD_LEVEL: that of the input our TX audio goes in by.
+// A LAN rig takes it on its LAN / WLAN input, which has a level of its own
+// in the rig's menu; the USB level the slider used to write there did
+// nothing at all (#158).
+funcs webServer::micLevelFunc() const
+{
+    if (lanMode && rigCaps && rigCaps->commands.contains(funcLANModLevel))
+        return funcLANModLevel;
+    return funcUSBModLevel;
+}
+
 // Pick the DATA MOD OFF input matching our audio transport: LAN when
 // LAN-connected, otherwise USB. The LAN input is matched by name
 // ("LAN"/"WLAN") — its numeric type is inconsistent across rig files
@@ -6258,30 +7392,35 @@ void webServer::queuePacketModInput()
 // SSB only: COMP does nothing in the other modes.
 void webServer::holdCompressorForDigitalTx(const char *why)
 {
-    if (compHeld || !queue || !rigCaps || !rigCaps->commands.contains(funcCompressor))
-        return;
+    if (!queue || !rigCaps) return;
     cacheItem mode = operatingModeCache(queue->getVfoCommand(vfoA, 0, false));
     rigMode_t mk = mode.value.isValid() ? mode.value.value<modeInfo>().mk : modeUnknown;
     if (mk != modeUSB && mk != modeLSB)
         return;
-    cacheItem comp = queue->getCache(funcCompressor, 0);
-    if (!comp.value.isValid()) {
-        // Not read yet (getCache() has just asked): leave it alone rather
-        // than guess; a guess could leave the operator's COMP off for good.
-        qInfo() << "Web: compressor state unknown, left as is for" << why << "TX";
-        return;
+    if (!compHeld && rigCaps->commands.contains(funcCompressor)) {
+        cacheItem comp = queue->getCache(funcCompressor, 0);
+        if (!comp.value.isValid()) {
+            // Not read yet (getCache() has just asked): leave it alone rather
+            // than guess; a guess could leave the operator's COMP off for good.
+            qInfo() << "Web: compressor state unknown, left as is for" << why << "TX";
+        } else {
+            compHeld = true;
+            compRestoreOn = comp.value.toBool();
+            if (compRestoreOn) {
+                queue->addUnique(priorityImmediate, queueItem(funcCompressor, QVariant::fromValue<uchar>(0), false, 0));
+                qInfo() << "Web: speech compressor OFF for" << why << "TX";
+            }
+        }
     }
-    compHeld = true;
-    compRestoreOn = comp.value.toBool();
-    if (compRestoreOn) {
-        queue->addUnique(priorityImmediate, queueItem(funcCompressor, QVariant::fromValue<uchar>(0), false, 0));
-        qInfo() << "Web: speech compressor OFF for" << why << "TX";
-    }
+    // After COMP: the transmit filter read is the one of that state.
+    holdTxBandwidth(why);
 }
 
 // Queued after the unkey, so the rig is back on receive when COMP returns.
 void webServer::releaseCompressorHold()
 {
+    // First, while COMP is still off: the filter goes back where it was read.
+    releaseTxBandwidth();
     if (!compHeld) return;
     compHeld = false;
     if (compRestoreOn && queue) {
@@ -6291,12 +7430,115 @@ void webServer::releaseCompressorHold()
     compRestoreOn = false;
 }
 
+// Plain USB / LSB also keeps the rig's SSB transmit filter in the path (TBW:
+// WIDE / MID / NAR, CI-V 16 58 = 0 / 1 / 2). On NAR, 500-2500 Hz by default,
+// an FT8 tone below 500 or above 2500 Hz left the IC-7300 with next to no
+// power, and the ALC loop cannot make up for a filter (2026-11-16). WIDE for
+// the over (100-2900 Hz by default), the operator's setting back after it.
+// The rig keeps one setting with COMP on and another with COMP off, so it is
+// read here, after the COMP switch: the reply is the setting of the state the
+// over runs in, and it comes a few tens of ms after the key (tbwHoldPoll).
+static const char *tbwName(int v)
+{
+    return v == 0 ? "WIDE" : v == 1 ? "MID" : v == 2 ? "NAR" : "?";
+}
+
+void webServer::holdTxBandwidth(const char *why)
+{
+    if (tbwHeld || !queue || !rigCaps || !rigCaps->commands.contains(funcSSBTXBandwidth))
+        return;
+    tbwHeld = true;
+    tbwAwait = true;
+    tbwRestore = -1;
+    // Always from step 0, COMP switched for this over or not: a COMP set of
+    // the operator's may still be waiting in the queue. A set is in the cache
+    // as it is queued, so the COMP state read here can be seconds ahead of the
+    // rig, and a filter read sent meanwhile is the other state's (the macOS
+    // runner, 2026-11-17: the hold took NAR from the COMP-on setting, put it
+    // "back" on a filter that was WIDE, and wrote MID into the COMP-off slot).
+    tbwPhase = 0;
+    tbwHoldPoll(why, 0);
+}
+
+// The read of the filter for a held over, in three steps. The FUNC TBW tile
+// reads the filter too (the status, and after every COMP change), and with
+// COMP switched for this over such a read may be queued or on the wire from
+// before the switch: its reply is the other setting, and behind a busy queue
+// it can be seconds late (a server just started; the hold then set WIDE from
+// the COMP-on setting and put that one back in the COMP-off slot).
+//   0  a COMP set is still in the queue (the hold's, or the operator's from
+//      just before the key): wait until it has gone out;
+//   1  100 ms for a reply already on its way to land;
+//   2  ask (a read still pending goes out after the switch now, add() keeps
+//      it), then wait for a read *sent* from here on to be answered: the
+//      queue stamps a read's req as it goes out, the reply after it.
+// cacheUpdated only fires on a changed value, hence the polling: every 40 ms
+// for the first second, then four times a second, as long as the over lasts.
+void webServer::tbwHoldPoll(const char *why, int tries)
+{
+    if (!tbwHeld || !tbwAwait || !queue) return;
+    auto again = [this, why, tries](int ms) {
+        QTimer::singleShot(ms, this, [this, why, tries]() { tbwHoldPoll(why, tries + 1); });
+    };
+    const int pace = tries < 25 ? 40 : 250;
+    if (tbwPhase == 0) {
+        bool pending = false;
+        auto *items = queue->getQueueItems();
+        for (auto it = items->cbegin(); it != items->cend(); ++it) {
+            if (it->command == funcCompressor && it->param.isValid()) { pending = true; break; }
+        }
+        queue->unlockMutex();
+        if (pending) { again(pace); return; }
+        tbwPhase = 1;
+        again(100);
+        return;
+    }
+    if (tbwPhase == 1) {
+        tbwPhase = 3;
+        tbwAskedAt = QDateTime::currentDateTime();
+        queue->add(priorityImmediate, funcSSBTXBandwidth, false, 0);
+        again(40);
+        return;
+    }
+    cacheItem t = queue->getCache(funcSSBTXBandwidth, 0);
+    if (!t.value.isValid() || !t.req.isValid() || !t.reply.isValid()
+        || t.req < tbwAskedAt || t.reply < t.req) {
+        again(pace);
+        return;
+    }
+    tbwAwait = false;
+    const int v = t.value.toInt();
+    if (v == 0) return;   // WIDE already: nothing to do, nothing to undo
+    tbwRestore = v;
+    queue->addUnique(priorityImmediate, queueItem(funcSSBTXBandwidth, QVariant::fromValue<uchar>(0), false, 0));
+    qInfo() << "Web: SSB TX bandwidth" << tbwName(v) << "-> WIDE for" << why << "TX";
+}
+
+void webServer::releaseTxBandwidth()
+{
+    if (!tbwHeld) return;
+    tbwHeld = false;
+    tbwAwait = false;
+    if (tbwRestore > 0 && queue) {
+        queue->addUnique(priorityImmediate, queueItem(funcSSBTXBandwidth, QVariant::fromValue<uchar>(uchar(tbwRestore)), false, 0));
+        qInfo() << "Web: SSB TX bandwidth restored to" << tbwName(tbwRestore);
+    }
+    tbwRestore = -1;
+}
+
 // Beacon TX: AprsProcessor asked us to transmit a UI frame.  Mirror the
 // packetTx command path so PTT / draining / status messages stay
 // consistent with operator-initiated TX.
 void webServer::onAprsBeaconRequested(QString src, QString dst,
                                       QStringList path, QString info)
 {
+    // A scheduled beacon has no operator to refuse: TX inhibit, or a band
+    // nobody transmits on, drops it here.
+    const QString blocked = txBlockedReason();
+    if (!blocked.isEmpty()) {
+        qInfo().noquote() << "Web: APRS beacon dropped," << blocked;
+        return;
+    }
     if (!packetEnabled || !dwProc) {
         qWarning() << "Web: APRS beacon dropped — packet modem not enabled";
         return;
@@ -6342,6 +7584,41 @@ void webServer::onAprsBeaconRequested(QString src, QString dst,
 // packetTxBusy is held high across both paths until the radio is unkeyed.
 void webServer::onPacketTxReady(audioPacket audio)
 {
+    // TX inhibit, or a band nobody transmits on.  The commands that start a
+    // packet transmission are refused at the gate; what arrives here with
+    // nobody behind it is the link layer's own (the answer to an inbound
+    // connect on a registered call, acknowledgements, retries, the next
+    // frame of a file transfer), which used to key the rig all the same
+    // (2026-11-21).  The frame is dropped: the far end retries and the link
+    // times out, which is what an inhibited station looks like on the air.
+    if (sharedMode_) {
+        const QString blocked = txBlockedReason();
+        if (!blocked.isEmpty()) {
+            const qint64 now = QDateTime::currentMSecsSinceEpoch();
+            if (now - packetInhibitLoggedMs_ > 60000) {
+                packetInhibitLoggedMs_ = now;
+                qInfo().noquote() << "Web: packet frame dropped," << blocked;
+            }
+            // A burst on its way out ends by itself in a second or two.  A
+            // key raised for this very frame (packetTx, a beacon) has no
+            // audio coming any more: release it.
+            const bool draining = packetUsbTxActive || !packetUsbTxBuffer.isEmpty() || !packetLanTxBuffer.isEmpty()
+                                  || (packetLanTxTimer && packetLanTxTimer->isActive());
+            if (packetTxBusy && !draining) onPacketTxFailed(blocked);
+            // A file being sent is pumped a frame at a time from this very
+            // function: with its frame dropped it would wait for ever.
+            if (TerminalSession *x = yappFindActiveTxXfer()) {
+                const QJsonObject e = termScrollbackEntry(QStringLiteral("info"),
+                    QString("*** Transfer stopped: %1").arg(blocked).toUtf8());
+                termAppendScrollback(x, e);
+                termBroadcastData(x->sid, e);
+                xferBroadcastEnd(x, /*aborted=*/true);
+                x->xfer = XferState{};
+            }
+            return;
+        }
+    }
+
     // Tee the TX PCM to audio clients for waterfall visualisation.  Radios
     // mute their RX path while keyed, so the browser otherwise sees pure
     // silence during TX — the web UI feeds this back into the same analyser
@@ -6776,13 +8053,207 @@ void webServer::applyStationCallsign(const QString &callIn, const QString &gridI
     }
     qInfo().noquote() << "Station:" << (reporterCallsign.isEmpty() ? QStringLiteral("<no callsign>") : reporterCallsign)
                       << reporterGrid << (persist ? "(saved)" : "(from settings)");
+    applyOnAirCall(changed);
+    // What counts as the club log follows the station call: every viewer's
+    // counts may have moved.
+    if (changed && sharedMode_) logbookReset();
+}
+
+// ---------------------------------------------------------------------------
+// The on-air call (Shared Station, phase 6)
+// ---------------------------------------------------------------------------
+
+QWebSocket *webServer::onAirHolder() const
+{
+    if (!sharedMode_ || !seatEnabled_ || !seat_.holder) return nullptr;
+    const auto it = wsInfo.constFind(seat_.holder);
+    if (it == wsInfo.constEnd()) return nullptr;
+    const AccessPrincipal &who = it->who;
+    return (who.authenticated && who.onAirOwn && !who.callsign.isEmpty()) ? seat_.holder : nullptr;
+}
+
+QString webServer::onAirCall() const
+{
+    const QWebSocket *own = onAirHolder();
+    return own ? wsInfo.value(const_cast<QWebSocket *>(own)).who.callsign : reporterCallsign;
+}
+
+void webServer::addOnAirInfo(QJsonObject &o) const
+{
+    if (!sharedMode_) return;   // without --shared the messages keep their old shape
+    QWebSocket *own = onAirHolder();
+    o["clubCallsign"] = reporterCallsign;
+    o["onAirOwn"] = own != nullptr;
+    o["onAirOperator"] = own ? seatLabel(own) : QString();
+}
+
+QJsonObject webServer::stationJson() const
+{
+    QJsonObject o{{"type", "stationChanged"}, {"callsign", onAirCall()}, {"grid", reporterGrid}};
+    addOnAirInfo(o);
+    return o;
+}
+
+// The one place a change of the on-air call is applied.  Called when the
+// station call is set, when the seat changes hands or frees, when the
+// holder's account is edited and when the seat policy changes.
+void webServer::applyOnAirCall(bool stationChanged)
+{
+    const QString call = onAirCall();
+    QWebSocket *own = onAirHolder();
+    const QString by = own ? seatLabel(own) : QString();
+    const bool moved = call != onAirApplied_ || by != onAirAppliedBy_;
+    onAirApplied_ = call;
+    onAirAppliedBy_ = by;
     if (radeProcessor)
         QMetaObject::invokeMethod(radeProcessor, "setTxCallsign", Qt::QueuedConnection,
-                                  Q_ARG(QString, reporterCallsign));
-    if (freedvReporter) freedvReporter->setStation(reporterCallsign, reporterGrid);
-    if (pskReporter)    pskReporter->setStation(reporterCallsign, reporterGrid);
-    if (changed)
-        sendJsonToAll(QJsonObject{{"type", "stationChanged"}, {"callsign", reporterCallsign}, {"grid", reporterGrid}});
+                                  Q_ARG(QString, call));
+    if (freedvReporter) freedvReporter->setStation(call, reporterGrid);
+    if (pskReporter)    pskReporter->setStation(call, reporterGrid);
+    if (stationChanged || moved)
+        sendJsonToAll(stationJson());
+    if (moved) termFollowOnAirCall();
+    if (moved && sharedMode_ && access_) {
+        access_->audit("onair", own ? AccessControl::who(by, wsInfo.value(own).ip) : QStringLiteral("-"),
+                       (call.isEmpty() ? QStringLiteral("<no callsign>") : call)
+                       + (own ? QStringLiteral(" (own call)") : QStringLiteral(" (station call)")));
+        qInfo().noquote() << "Station: on the air as" << (call.isEmpty() ? QStringLiteral("<no callsign>") : call)
+                          << (own ? "(" + by + ", own call)" : QStringLiteral("(station call)"));
+    }
+}
+
+// Is this the call on the air?  An AX.25 SSID (-0 to -15) is the
+// operator's to choose.
+bool webServer::onAirCallIs(const QString &call) const
+{
+    QString base = call;
+    static const QRegularExpression ssid(QStringLiteral("-(\\d{1,2})$"));
+    const QRegularExpressionMatch m = ssid.match(base);
+    if (m.hasMatch() && m.captured(1).toInt() <= 15) base.chop(m.capturedLength());
+    return base == onAirCall();
+}
+
+bool webServer::onAirDenies(QWebSocket *client, const QString &cmd, const QString &call)
+{
+    if (!client || !sharedMode_) return false;
+    const QString onAir = onAirCall();
+    if (onAir.isEmpty()) return false;      // a station without a callsign has nothing to hold anyone to
+    if (onAirCallIs(call)) return false;
+    sendJsonTo(client, QJsonObject{{"type", "denied"}, {"cmd", cmd}, {"need", "callsign"},
+        {"reason", QString("the station is on the air as %1, not %2").arg(onAir, call)}});
+    return true;
+}
+
+// The call on the air changed (a guest on their own call took the seat or
+// left it, the station call was edited).  The AX.25 terminal's sessions and
+// the calls the station answers connects on were set up under the old one
+// and lived on: the next holder typed into a link made under the guest's
+// call, and the station went on answering to it with the guest gone
+// (2026-11-21).  Sessions under another call are disconnected (one DISC
+// frame, under the call the link was made with), and those calls are no
+// longer answered once their links are down.
+void webServer::termFollowOnAirCall()
+{
+    if (!sharedMode_ || !axProc || onAirCall().isEmpty()) return;
+    // A call this took out of service and that is on the air again (the
+    // guest left, the station call is back) is answered again: the page
+    // only registers it when the terminal tab is opened.
+    {
+        const QStringList parked = termParkedOwnCalls_.values();
+        for (const QString &own : parked) {
+            if (!onAirCallIs(own)) continue;
+            termParkedOwnCalls_.remove(own);
+            termEnsureRegistered(0, own);
+            qInfo().noquote() << "Web: AX.25 answering as" << own << "again";
+        }
+    }
+    bool any = false;
+    for (TerminalSession *s : qAsConst(termSessions)) {
+        if (onAirCallIs(s->ownCall)) continue;
+        any = true;
+        if (s->state == TerminalSession::Disconnected || s->state == TerminalSession::Disconnecting) continue;
+        s->state = TerminalSession::Disconnecting;
+        const QJsonObject e = termScrollbackEntry(QStringLiteral("info"),
+            QString("*** Disconnecting: the station is now on the air as %1").arg(onAirCall()).toUtf8());
+        termAppendScrollback(s, e);
+        termBroadcastSession(s);
+        termBroadcastData(s->sid, e);
+        QMetaObject::invokeMethod(axProc, "disconnectRequest", Qt::QueuedConnection,
+                                  Q_ARG(int, TERM_FIXED_CLIENT), Q_ARG(int, s->chan),
+                                  Q_ARG(QString, s->ownCall), Q_ARG(QString, s->peerCall),
+                                  Q_ARG(QStringList, s->digis));
+        qInfo().noquote() << "Web: AX.25 session" << s->sid << "under" << s->ownCall
+                          << "disconnected: on the air as" << onAirCall();
+    }
+    for (const QString &own : termRegisteredOwnCalls.values()) {
+        if (!onAirCallIs(own)) { any = true; break; }
+    }
+    if (!any) return;
+    // The registrations go once the DISC has had its answer (or its retries).
+    QTimer::singleShot(8000, this, [this]() {
+        if (!axProc) return;
+        const QStringList calls = termRegisteredOwnCalls.values();
+        for (const QString &own : calls) {
+            if (onAirCallIs(own)) continue;
+            termRegisteredOwnCalls.remove(own);
+            termParkedOwnCalls_.insert(own);
+            QMetaObject::invokeMethod(axProc, "unregisterCallsign", Qt::QueuedConnection,
+                                      Q_ARG(int, TERM_FIXED_CLIENT), Q_ARG(int, 0), Q_ARG(QString, own));
+            qInfo().noquote() << "Web: AX.25 no longer answering as" << own;
+        }
+    });
+}
+
+bool webServer::seatEligible(QWebSocket *client, const QString &cmd)
+{
+    const AccessPrincipal who = wsInfo.value(client).who;
+    if (!who.authenticated || !who.onAirOwn || !who.callsign.isEmpty()) return true;
+    sendJsonTo(client, QJsonObject{{"type", "denied"}, {"cmd", cmd}, {"need", "callsign"},
+        {"reason", "your account transmits under its own callsign but has none: ask an admin to set it"}});
+    return false;
+}
+
+void webServer::refreshUserClients(const QString &userId)
+{
+    if (!access_) return;
+    bool found = false;
+    const AccessUser u = access_->user(userId, &found);
+    if (!found) return;
+    bool seatChanged = false;
+    const QList<QWebSocket *> clients = wsClients;
+    for (QWebSocket *c : clients) {
+        auto it = wsInfo.find(c);
+        if (it == wsInfo.end() || !it->who.authenticated || it->who.userId != userId) continue;
+        const bool roleChanged = it->who.role != u.role;
+        if (it->who.callsign == u.callsign && it->who.onAirOwn == u.onAirOwn && !roleChanged) continue;
+        it->who.callsign = u.callsign;
+        it->who.onAirOwn = u.onAirOwn;
+        it->who.role = u.role;
+        it->warnedTxAudio = false;
+        sendJsonTo(c, accessJson(it->who));
+        // A level taken away ends what the page was doing with it, now: the
+        // socket's level used to be the one it connected with, so a demoted
+        // operator kept the key until they reloaded.
+        if (roleChanged) {
+            if (c == pttClient && !Access::roleAllows(u.role, Access::Cap::Tx))
+                forceUnkey(QStringLiteral("the account's access level was changed"));
+            if (!Access::roleAllows(u.role, Access::Cap::Control)) {
+                if (c == seat_.holder) seatFree(QStringLiteral("the account's access level was changed"));
+                else { seatLeaveQueue(c); seatOfferNext(); }
+            }
+            seatChanged = true;
+        }
+        // Own call, no callsign: off the seat and out of the line.
+        if (u.onAirOwn && u.callsign.isEmpty()) {
+            if (c == seat_.holder) seatFree(QStringLiteral("the account has no callsign to transmit under"));
+            else { seatLeaveQueue(c); seatOfferNext(); broadcastSeat(); }
+        }
+    }
+    // The seat message names the holder's level, and what the others hear
+    // and see while it is held depends on theirs (admins always do).
+    if (seatChanged) broadcastSeat();
+    applyOnAirCall();
+    logbookReset();     // /worked and the export set follow the account's call
 }
 
 // The CW bar has ten macro keys (slot 5 is the EDIT key, so it never holds
@@ -7071,41 +8542,192 @@ void webServer::handleSstvRequest(QTcpSocket *socket, const QString &method, con
 // Every browser applies the delta to whatever page it has loaded; nobody
 // ever receives the whole log.
 
-QJsonObject webServer::logbookSummary() const
+// --- who sees, changes and exports what (declared with the rules) ---
+
+bool webServer::isClubCall(const QString &stationCall) const
 {
-    return QJsonObject{{"type", "logbook"}, {"count", logbook_.count()},
-                       {"unexported", logbook_.unexportedCount()}, {"persistent", logbookPersistent_}};
+    // A record without STATION_CALLSIGN was made at this station before the
+    // field was filled in: it is the station's.
+    return stationCall.isEmpty() || stationCall == reporterCallsign;
 }
 
-bool webServer::logbookAdd(QsoRecord &r)
+bool webServer::logSees(const AccessPrincipal *who, const QsoRecord &r) const
 {
-    if (r.isValid() && r.stationCall.isEmpty()) r.stationCall = reporterCallsign;
+    if (!sharedMode_ || !who) return true;
+    if (who->role == Access::Role::Admin) return true;
+    if (!who->authenticated) return false;                  // visitors see no log
+    if (!r.userId.isEmpty() && r.userId == who->userId) return true;
+    return isClubCall(r.stationCall);
+}
+
+bool webServer::logMayChange(const AccessPrincipal *who, const QsoRecord &r) const
+{
+    if (!sharedMode_ || !who) return true;
+    if (who->role == Access::Role::Admin) return true;
+    return who->authenticated && Access::roleAllows(who->role, Access::Cap::Tx)
+           && !r.userId.isEmpty() && r.userId == who->userId;
+}
+
+bool webServer::logMayExport(const AccessPrincipal *who, const QsoRecord &r, bool own) const
+{
+    if (!sharedMode_ || !who) return true;
+    if (who->role == Access::Role::Admin && !own) return isClubCall(r.stationCall);
+    // An upload to LoTW and the like is per callsign: a member's export is
+    // the QSOs they made on their own call.
+    return who->authenticated && !who->callsign.isEmpty() && !r.userId.isEmpty() && r.userId == who->userId
+           && r.stationCall == who->callsign && !isClubCall(r.stationCall);
+}
+
+Logbook::Filter webServer::logFilter(const AccessPrincipal *who) const
+{
+    if (!sharedMode_ || !who || who->role == Access::Role::Admin) return Logbook::Filter();
+    return [this, who](const QsoRecord &r) { return logSees(who, r); };
+}
+
+Logbook::Filter webServer::logExportFilter(const AccessPrincipal *who, bool own) const
+{
+    if (!sharedMode_ || !who) return Logbook::Filter();
+    return [this, who, own](const QsoRecord &r) { return logMayExport(who, r, own); };
+}
+
+// The viewer's own numbers: how many records they see, how many of what
+// they may export are not exported yet.  From the per-(account, call)
+// tallies, so a broadcast costs a handful of additions per socket.
+void webServer::logCounts(const AccessPrincipal *who, int *count, int *unexported) const
+{
+    const bool admin = who && who->role == Access::Role::Admin;
+    if (!sharedMode_ || !who) {
+        const Logbook::Tally all = logbook_.tally([](const QString &, const QString &) { return true; });
+        *count = logbook_.count();
+        *unexported = all.unexported;
+    } else if (admin) {
+        *count = logbook_.count();
+        *unexported = logbook_.tally([this](const QString &, const QString &call) { return isClubCall(call); }).unexported;
+    } else if (who->authenticated) {
+        const QString me = who->userId, mine = who->callsign;
+        *count = logbook_.tally([&](const QString &user, const QString &call) {
+            return isClubCall(call) || (!user.isEmpty() && user == me); }).count;
+        *unexported = mine.isEmpty() ? 0 : logbook_.tally([&](const QString &user, const QString &call) {
+            return !user.isEmpty() && user == me && call == mine && !isClubCall(call); }).unexported;
+    } else {
+        *count = 0;
+        *unexported = 0;
+    }
+}
+
+QJsonObject webServer::qsoJson(const QsoRecord &r) const
+{
+    QJsonObject o = r.toJson();
+    if (sharedMode_ && access_ && !r.userId.isEmpty()) {
+        bool found = false;
+        const AccessUser u = access_->user(r.userId, &found);
+        o["operatorName"] = found ? u.name : QStringLiteral("deleted account");
+    }
+    return o;
+}
+
+QString webServer::logWho(const AccessPrincipal *who) const
+{
+    if (!who) return QStringLiteral("-");
+    QString ip = restIp_;
+    if (restPrincipal_ != who) {
+        for (auto it = wsInfo.constBegin(); it != wsInfo.constEnd(); ++it)
+            if (&it.value().who == who) { ip = it.value().ip; break; }
+    }
+    return AccessControl::who(who->authenticated ? who->name : QStringLiteral("anonymous"), ip);
+}
+
+void webServer::logbookSend(const QsoRecord *about, const std::function<QJsonObject(const AccessPrincipal *)> &make)
+{
+    if (!sharedMode_) {
+        sendJsonToAll(make(nullptr));
+        return;
+    }
+    for (QWebSocket *c : wsClients) {
+        const auto it = wsInfo.constFind(c);
+        if (it == wsInfo.constEnd()) continue;
+        if (about && !logSees(&it->who, *about)) continue;
+        sendJsonTo(c, make(&it->who));
+    }
+}
+
+QJsonObject webServer::logbookSummary(const AccessPrincipal *who) const
+{
+    int count = 0, unexported = 0;
+    logCounts(who, &count, &unexported);
+    return QJsonObject{{"type", "logbook"}, {"count", count},
+                       {"unexported", unexported}, {"persistent", logbookPersistent_}};
+}
+
+bool webServer::logbookAdd(QsoRecord &r, const AccessPrincipal *who)
+{
+    if (sharedMode_ && who) {
+        // The server says who and under which call, whatever the client sent:
+        // the call on the air right now, the account's own callsign, the account.
+        if (r.isValid()) {
+            r.stationCall = onAirCall();
+            r.operatorCall = who->authenticated ? who->callsign : QString();
+            r.userId = who->authenticated ? who->userId : QString();
+        }
+    } else if (r.isValid() && r.stationCall.isEmpty()) {
+        r.stationCall = onAirCall();
+    }
     if (!r.isValid() || !logbook_.add(r)) return false;
-    sendJsonToAll(QJsonObject{{"type", "qsoAdded"}, {"qso", r.toJson()}, {"count", logbook_.count()},
-                              {"unexported", logbook_.unexportedCount()}});
-    wsjtxSendQso(r);
+    const QJsonObject qso = qsoJson(r);
+    logbookSend(&r, [&](const AccessPrincipal *viewer) {
+        int count = 0, unexported = 0;
+        logCounts(viewer, &count, &unexported);
+        return QJsonObject{{"type", "qsoAdded"}, {"qso", qso}, {"count", count}, {"unexported", unexported}};
+    });
+    // The remote logger is the station's: a guest's QSOs under their own
+    // call are not forwarded to it.
+    if (!sharedMode_ || isClubCall(r.stationCall)) wsjtxSendQso(r);
     return true;
 }
 
-bool webServer::logbookUpdate(const QString &id, const QsoRecord &r)
+bool webServer::logbookUpdate(const QString &id, QsoRecord r, const AccessPrincipal *who)
 {
+    const QsoRecord *stored = logbook_.find(id);
+    if (!stored) return false;
+    // An edit never moves a record to another account; with --shared it
+    // does not change the call it was made under or its operator either.
+    r.userId = stored->userId;
+    if (sharedMode_) {
+        r.stationCall = stored->stationCall;
+        r.operatorCall = stored->operatorCall;
+    }
     if (!logbook_.update(id, r)) return false;
-    sendJsonToAll(QJsonObject{{"type", "qsoUpdated"}, {"qso", logbook_.find(id)->toJson()}});
+    const QsoRecord now = *logbook_.find(id);
+    const QJsonObject qso = qsoJson(now);
+    logbookSend(&now, [&](const AccessPrincipal *) {
+        return QJsonObject{{"type", "qsoUpdated"}, {"qso", qso}};
+    });
+    if (sharedMode_ && who && access_)
+        access_->audit("qso-edit", logWho(who), id + " " + now.call);
     return true;
 }
 
-bool webServer::logbookRemove(const QString &id)
+bool webServer::logbookRemove(const QString &id, const AccessPrincipal *who)
 {
+    const QsoRecord *stored = logbook_.find(id);
+    if (!stored) return false;
+    const QsoRecord gone = *stored;
     if (!logbook_.remove(id)) return false;
-    sendJsonToAll(QJsonObject{{"type", "qsoDeleted"}, {"id", id}, {"count", logbook_.count()},
-                              {"unexported", logbook_.unexportedCount()}});
+    logbookSend(&gone, [&](const AccessPrincipal *viewer) {
+        int count = 0, unexported = 0;
+        logCounts(viewer, &count, &unexported);
+        return QJsonObject{{"type", "qsoDeleted"}, {"id", id}, {"count", count}, {"unexported", unexported}};
+    });
+    if (sharedMode_ && who && access_)
+        access_->audit("qso-delete", logWho(who), id + " " + gone.call);
     return true;
 }
 
-// Whole-log change (clear, merge, import): browsers reload their first page.
+// Tell every client the log changed wholesale (import, merge, clear): they
+// drop what they have and re-fetch page 1.
 void webServer::logbookReset()
 {
-    sendJsonToAll(logbookSummary());
+    logbookSend(nullptr, [this](const AccessPrincipal *viewer) { return logbookSummary(viewer); });
 }
 
 bool webServer::logbookClear(const char *who)
@@ -7166,7 +8788,8 @@ void webServer::wsjtxSendDatagram(const QByteArray &packet)
 void webServer::wsjtxSendHeartbeat()
 {
     wsjtxSendDatagram(WsjtxMessage::heartbeat(wsjtxId_, WsjtxMessage::Schema,
-                                              QString(WFWEB_VERSION), QString()));
+                                              QString(WFWEB_VERSION),
+                                              QString(wfwebGitShort())));
     wsjtxSendStatus();
 }
 
@@ -7183,7 +8806,7 @@ void webServer::wsjtxSendStatus()
     if (digiActive && (digiMode == QLatin1String("FT8") || digiMode == QLatin1String("FT4")))
         status.mode = digiMode;
     status.txMode = status.mode;
-    status.deCall = reporterCallsign;
+    status.deCall = onAirCall();
     status.deGrid = reporterGrid;
     wsjtxSendDatagram(WsjtxMessage::status(wsjtxId_, status));
 }
@@ -7211,7 +8834,7 @@ void webServer::wsjtxSendQso(const QsoRecord &q)
     f.reportReceived = q.rstRcvd;
     f.comments = q.comment;
     f.name = q.name;
-    f.myCall = q.stationCall.isEmpty() ? reporterCallsign : q.stationCall;
+    f.myCall = q.stationCall.isEmpty() ? onAirCall() : q.stationCall;
     f.myGrid = q.grid.isEmpty() ? reporterGrid : q.grid;
     // Both messages, exactly as WSJT-X does: loggers pick whichever they parse.
     wsjtxSendDatagram(WsjtxMessage::qsoLogged(wsjtxId_, f));
@@ -7382,6 +9005,14 @@ void webServer::onAxLinkEstablished(int client, int chan,
         s->createdMs = QDateTime::currentMSecsSinceEpoch();
         s->lastActivityMs = s->createdMs;
         termSessions.insert(s->sid, s);
+    }
+    // The station answered a connect on its own: nobody's command, so
+    // nobody's 'tx' line.  Named here, with the far end's call (letters,
+    // digits and the SSID dash only: it came off the air).
+    if (incoming && sharedMode_ && access_) {
+        static const QRegularExpression notCall(QStringLiteral("[^A-Za-z0-9-]"));
+        access_->audit("tx", QStringLiteral("-@-"), QString("packet link from %1 to %2 %3")
+                       .arg(QString(peerCall).remove(notCall).left(12), QString(ownCall).remove(notCall).left(12), operatingText()));
     }
     s->state = TerminalSession::Connected;
     // Session first, data second: a brand-new (inbound) sid must reach the
@@ -8660,4 +10291,2230 @@ void webServer::readUsbAudio()
     memcpy(msg.data() + headerSize, data.constData(), data.size());
 
     sendBinaryToAudioClients(msg);
+}
+
+// ===========================================================================
+// Shared Station (--shared): accounts, sessions and the routes that mint them
+// ===========================================================================
+// AccessControl (include/access.h) owns the accounts; this layer maps HTTP
+// onto it.  A browser logs in at POST /api/v1/auth/login and gets a
+// session cookie (HttpOnly, SameSite=Strict, Secure on TLS) that rides on
+// every later request, the WebSocket upgrade included; a script uses an
+// API token as "Authorization: Bearer".  With --shared, every /api/v1/
+// route but these needs one or the other, and a WebSocket without a live
+// session is closed with 4401 after one authRequired message.
+
+static QJsonObject jsonBody(const QByteArray &body);
+
+QString webServer::sharedSetupCode() const
+{
+    QMutexLocker lock(&sharedMutex_);
+    return sharedSetupCode_;
+}
+
+void webServer::updateSharedStats()
+{
+    if (!access_) return;
+    sharedUsers_ = access_->userCount();
+    QMutexLocker lock(&sharedMutex_);
+    sharedSetupCode_ = access_->setupCode();
+}
+
+void webServer::configureTls(const QString &certFile, const QString &keyFile)
+{
+    auto settings = openSettings();
+    tlsCertFile_ = certFile.isEmpty() ? settings->value("Web/CertFile").toString() : certFile;
+    tlsKeyFile_ = keyFile.isEmpty() ? settings->value("Web/KeyFile").toString() : keyFile;
+    if (tlsCertFile_.isEmpty() != tlsKeyFile_.isEmpty())
+        fatalConfig("Web: --cert and --key (Web/CertFile, Web/KeyFile) go together");
+}
+
+void webServer::configureShared(bool enableOverride, const QString &dirOverride,
+                                bool resetAdmin, const QString &trustProxyOverride)
+{
+    auto settings = openSettings();
+
+    // Trusted proxies count with or without --shared: the client address in
+    // the log is then the one in X-Forwarded-For, and X-Forwarded-Proto
+    // https makes a plain-HTTP hop count as secure (cookie flags, --shared).
+    const QString proxies = trustProxyOverride.isEmpty()
+            ? settings->value("Shared/TrustProxy").toString() : trustProxyOverride;
+    trustedProxies_.clear();
+    const QStringList items = proxies.split(',', Qt::SkipEmptyParts);
+    for (const QString &item : items) {
+        const QPair<QHostAddress, int> subnet = QHostAddress::parseSubnet(item.trimmed());
+        if (subnet.first.isNull() || subnet.second < 0) {
+            fatalConfig("Shared: --trust-proxy: not an address or CIDR block: " + item.trimmed());
+            return;
+        }
+        trustedProxies_.append(subnet);
+    }
+
+    const bool enabled = enableOverride || settings->value("Shared/Enabled", false).toBool();
+    if (!enabled) {
+        if (resetAdmin) qWarning() << "Shared: --shared-reset-admin does nothing without --shared";
+        return;
+    }
+
+    QString dir = dirOverride.isEmpty() ? settings->value("Shared/Dir").toString() : dirOverride;
+    if (dir.isEmpty())
+        dir = QDir(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)).filePath("shared");
+    access_.reset(new AccessControl(dir));
+    const int iterations = settings->value("Shared/PasswordIterations", 0).toInt();
+    if (iterations >= 10000) access_->setIterations(iterations);
+    else if (iterations != 0) qWarning() << "Shared: PasswordIterations" << iterations << "ignored (10000 at least)";
+    QString err;
+    if (!access_->load(&err)) {
+        access_.reset();
+        fatalConfig("Shared: " + err);
+        return;
+    }
+    access_->ensureDecoy();   // here, not on the first login for a name that does not exist
+    if (resetAdmin) access_->enableRecovery();
+    reservations_.reset(new Reservations(dir));
+    if (!reservations_->load(&err)) {
+        // Kept aside: the next slot added would write a new file over it.
+        const QString file = QDir(dir).filePath("reservations.json");
+        const QString aside = file + ".unreadable-" + QDateTime::currentDateTimeUtc().toString("yyyyMMdd-HHmmss");
+        const bool moved = QFile::rename(file, aside);
+        qWarning().noquote() << "Shared: reservations not loaded:" << err
+                             << (moved ? "- the file is kept as " + aside + ", the schedule starts empty" : QString());
+        reservations_.reset(new Reservations(dir));
+    }
+    sharedMode_ = true;
+    updateSharedStats();
+
+    // The policy the admin sets from the page, remembered across restarts.
+    // A visitor is never more than control without logging in.
+    sharedAnonymous_ = Access::roleFromName(settings->value("Shared/Anonymous", "none").toString());
+    if (sharedAnonymous_ > Access::Role::Control) sharedAnonymous_ = Access::Role::Control;
+    txInhibit_ = settings->value("Shared/TxInhibit", false).toBool();
+    txInhibitBands_ = settings->value("Shared/TxInhibitBands").toStringList();
+    txTimeoutSecs_ = qBound(0, settings->value("Shared/TxTimeoutSecs", 600).toInt(), 3600);
+    maxClients_ = qBound(1, settings->value("Shared/MaxClients", 20).toInt(), 500);
+    seatEnabled_ = settings->value("Shared/Seat", true).toBool();
+    seatIdleSecs_ = qBound(0, settings->value("Shared/SeatIdleSecs", 600).toInt(), 86400);
+    seatRequestSecs_ = qBound(0, settings->value("Shared/SeatRequestSecs", 60).toInt(), 3600);
+    seatMaxSecs_ = qBound(0, settings->value("Shared/SeatMaxSecs", 0).toInt(), 86400);
+    seatPreemptHigher_ = settings->value("Shared/SeatPreemptHigher", false).toBool();
+    listenIn_ = settings->value("Shared/ListenIn", true).toBool();
+    allowPrivate_ = settings->value("Shared/AllowPrivate", false).toBool();
+    qInfo().noquote() << "Shared: visitors without a login:"
+                      << (sharedAnonymous_ == Access::Role::None ? "refused" : Access::roleName(sharedAnonymous_))
+                      << "| TX inhibit" << (txInhibit_ ? "ON" : "off")
+                      << (txInhibitBands_.isEmpty() ? QString() : "(never on " + txInhibitBands_.join(' ') + ")")
+                      << "| TX time-out" << txTimeoutSecs_ << "s | at most" << maxClients_ << "connections";
+
+    qInfo().noquote() << "Shared: access control on," << access_->userCount() << "accounts in" << dir
+                      << (AccessControl::nativePbkdf2Available() ? "(PBKDF2 via libcrypto," : "(PBKDF2 via Qt,")
+                      << access_->iterations() << "rounds)";
+    if (!trustedProxies_.isEmpty())
+        qInfo().noquote() << "Shared: trusting X-Forwarded-For / X-Forwarded-Proto from" << proxies;
+    const QString code = access_->setupCode();
+    if (access_->recoveryMode())
+        qWarning().noquote() << "Shared: ADMIN RECOVERY - open the web page and enter setup code" << code
+                             << "with the account to reset (or a new admin name)";
+    else if (!code.isEmpty())
+        qWarning().noquote() << "Shared: no admin account yet - open the web page and enter setup code" << code;
+}
+
+bool webServer::trustedProxy(const QHostAddress &peer) const
+{
+    return AccessControl::inSubnets(peer, trustedProxies_);
+}
+
+// wfweb, open or shared, is meant for a local network or a VPN.  A client
+// from a public address means a port forward, a public host or a VPN that
+// routes the internet in: say so on the console page and in the log, once
+// per address (the first few: a scanner brings hundreds).  Never refused --
+// a wrong guess must not lock anyone out of their station.  A client handed
+// on by a --trust-proxy proxy is the identity-aware proxy's to vet.
+void webServer::notePublicPeer(const QHostAddress &peer)
+{
+    if (!AccessControl::publicAddress(peer) || trustedProxy(peer) || onOwnIpv6Prefix(peer)) return;
+    static const int kLoggedAddresses = 10;
+    const QString ip = peerIp(peer);
+    int seen;
+    bool fresh;
+    {
+        QMutexLocker lock(&exposureMutex_);
+        exposure_.client = ip + " at " + QDateTime::currentDateTime().toString("hh:mm");
+        fresh = !publicPeers_.contains(ip) && publicPeers_.size() < 4096;
+        if (fresh) publicPeers_.insert(ip);
+        exposure_.clients = publicPeers_.size();
+        seen = exposure_.clients;
+    }
+    if (!fresh || seen > kLoggedAddresses) return;
+    qWarning().noquote() << "Network: a connection from the public address" << ip
+                         << "- this server is reachable from the internet. wfweb is meant for a local"
+                            " network or a VPN, never the open internet (SHARED_STATION.md, Deployment)";
+    if (seen == kLoggedAddresses)
+        qWarning() << "Network: further public addresses are counted on the status page, not logged";
+}
+
+// A LAN client that reaches us by our global IPv6 address (the router's DNS
+// or mDNS hands it out) comes from a global address of its own, on our
+// prefix: the same network, not the internet.  So is this host itself.
+bool webServer::onOwnIpv6Prefix(const QHostAddress &peer)
+{
+    bool v4 = false;
+    peer.toIPv4Address(&v4);
+    if (v4 || peer.protocol() != QAbstractSocket::IPv6Protocol) return false;
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    if (now - ownIpv6PrefixesMs_ > 60000) {   // prefixes move (ISP renumbering), slowly
+        ownIpv6PrefixesMs_ = now;
+        ownIpv6Prefixes_.clear();
+        for (const QNetworkInterface &iface : QNetworkInterface::allInterfaces())
+            for (const QNetworkAddressEntry &entry : iface.addressEntries())
+                if (entry.ip().protocol() == QAbstractSocket::IPv6Protocol && entry.prefixLength() > 0)
+                    ownIpv6Prefixes_.append({entry.ip(), qBound(48, entry.prefixLength(), 64)});
+    }
+    return AccessControl::inSubnets(peer, ownIpv6Prefixes_);
+}
+
+// A public IPv4 address on an interface (a VPS, a host in the DMZ): the
+// server is likely reachable from anywhere unless a firewall says otherwise.
+// IPv6 is left out: nearly every home host has a global IPv6 address, kept
+// out of reach by the router's firewall.
+void webServer::checkPublicInterfaces(quint16 port)
+{
+    for (const QNetworkInterface &iface : QNetworkInterface::allInterfaces()) {
+        const QNetworkInterface::InterfaceFlags flags = iface.flags();
+        if (!(flags & QNetworkInterface::IsUp) || (flags & QNetworkInterface::IsLoopBack)) continue;
+        for (const QNetworkAddressEntry &entry : iface.addressEntries()) {
+            const QHostAddress ip = entry.ip();
+            if (ip.protocol() != QAbstractSocket::IPv4Protocol || !AccessControl::publicAddress(ip)) continue;
+            {
+                QMutexLocker lock(&exposureMutex_);
+                exposure_.iface = ip.toString();
+            }
+            qWarning().noquote() << QString("Network: this host has the public address %1 on %2 - unless a "
+                                            "firewall lets only your LAN or VPN reach port %3, the internet can. "
+                                            "wfweb is meant for a local network or a VPN (SHARED_STATION.md, "
+                                            "Deployment)").arg(ip.toString(), iface.name()).arg(port);
+            return;
+        }
+    }
+}
+
+webServer::Exposure webServer::exposure() const
+{
+    QMutexLocker lock(&exposureMutex_);
+    return exposure_;
+}
+
+webServer::RequestContext webServer::requestContext(QTcpSocket *socket, const QByteArray &headerSection)
+{
+    RequestContext ctx;
+    const QHostAddress peer = clientAddress(socket->peerAddress(), socket->peerPort(), socket->localPort());
+    ctx.ip = peerIp(peer);
+    ctx.secure = connectionIsSecure(socket);
+    ctx.restPort = socket->property("isRestPort").toBool();
+    ctx.userAgent = QString::fromLatin1(headerValue(headerSection, "User-Agent")).left(200);
+    if (trustedProxy(peer)) {
+        // The rightmost address that is not a proxy of ours: the first entry
+        // is whatever the client put there (Cloudflare and nginx append).
+        ctx.ip = peerIp(AccessControl::forwardedClient(peer,
+                                                       headerValues(headerSection, "X-Forwarded-For"), trustedProxies_));
+        // What the proxy says the browser's side of it was, either way: a
+        // proxy that also serves port 80 and speaks TLS to us made a login
+        // over plain HTTP look secure.
+        const QByteArray proto = headerValue(headerSection, "X-Forwarded-Proto").toLower();
+        if (!proto.isEmpty()) ctx.secure = proto == "https";
+    }
+    if (sharedMode_ && access_) {
+        ctx.who = access_->resolveSession(AccessControl::cookieValue(headerValue(headerSection, "Cookie"), "wfweb_session"));
+        if (!ctx.who.authenticated)
+            ctx.who = access_->resolveToken(AccessControl::bearerToken(headerValue(headerSection, "Authorization")));
+    }
+    return ctx;
+}
+
+QJsonObject webServer::userJson(const AccessPrincipal &who)
+{
+    return QJsonObject{{"id", who.userId}, {"name", who.name}, {"callsign", who.callsign},
+                       {"onAir", who.onAirOwn ? QStringLiteral("own") : QStringLiteral("station")},
+                       {"role", Access::roleName(who.role)}};
+}
+
+// What the page is told about itself: who, what it may do (so it refuses
+// locally what the server would refuse anyway), and the policy in force.
+QJsonObject webServer::accessJson(const AccessPrincipal &who) const
+{
+    QJsonObject o{{"type", "access"}, {"shared", sharedMode_.load()}};
+    if (!sharedMode_) return o;
+    o["user"] = who.authenticated ? QJsonValue(userJson(who)) : QJsonValue(QJsonValue::Null);
+    o["anonymous"] = !who.authenticated;
+    o["role"] = Access::roleName(who.role);
+    // A visitor's LOG IN opens the setup form while there is no admin yet,
+    // or while --shared-reset-admin is on: the page must know which.
+    if (!who.authenticated && access_) {
+        if (access_->setupRequired()) o["setupRequired"] = true;
+        if (access_->recoveryMode()) o["recovery"] = true;
+    }
+    o["can"] = QJsonObject{{"control", Access::roleAllows(who.role, Access::Cap::Control)},
+                           {"tx", Access::roleAllows(who.role, Access::Cap::Tx)},
+                           {"admin", Access::roleAllows(who.role, Access::Cap::Admin)}};
+    // command -> the role it needs, so the page can say why in its toast.
+    QJsonObject denied;
+    const QStringList list = Access::commandsDeniedTo(who.role);
+    for (const QString &cmd : list)
+        denied[cmd] = Access::roleName(Access::capRole(Access::commandCapability(cmd)));
+    o["denied"] = denied;
+    // What needs the seat, so the page refuses that locally too.
+    QJsonObject needsSeat;
+    const QStringList seatList = Access::commandsNeedingSeat();
+    for (const QString &cmd : seatList) needsSeat[cmd] = true;
+    o["needsSeat"] = needsSeat;
+    o["policy"] = policyJson();
+    return o;
+}
+
+QJsonObject webServer::policyJson() const
+{
+    return QJsonObject{
+        {"anonymous", sharedAnonymous_ == Access::Role::None ? QStringLiteral("none") : Access::roleName(sharedAnonymous_)},
+        {"txInhibit", txInhibit_},
+        {"txInhibitBands", QJsonArray::fromStringList(txInhibitBands_)},
+        {"txTimeoutSecs", txTimeoutSecs_},
+        {"maxClients", maxClients_},
+        {"seat", seatEnabled_},
+        {"seatIdleSecs", seatIdleSecs_},
+        {"seatRequestSecs", seatRequestSecs_},
+        {"seatMaxSecs", seatMaxSecs_},
+        {"seatPreemptHigher", seatPreemptHigher_},
+        {"listenIn", listenIn_},
+        {"allowPrivate", allowPrivate_},
+    };
+}
+
+void webServer::broadcastPolicy()
+{
+    sendJsonToAll(QJsonObject{{"type", "sharedPolicy"}, {"policy", policyJson()}});
+}
+
+// A policy change from the page or REST: validated field by field, written
+// to the settings file, applied to whoever it touches at once.
+void webServer::applyPolicy(const QJsonObject &in, const QString &by)
+{
+    QStringList changes;
+    if (in.contains("anonymous")) {
+        const QString name = in.value("anonymous").toString().trimmed().toLower();
+        Access::Role r = name == "none" ? Access::Role::None : Access::roleFromName(name);
+        if (r > Access::Role::Control) r = Access::Role::Control;
+        if (r != sharedAnonymous_) {
+            sharedAnonymous_ = r;
+            changes << "anonymous=" + (r == Access::Role::None ? QStringLiteral("none") : Access::roleName(r));
+            reroleAnonymousClients();
+        }
+    }
+    if (in.contains("txInhibit")) {
+        const bool v = in.value("txInhibit").toBool();
+        if (v != txInhibit_) {
+            txInhibit_ = v;
+            changes << (v ? "tx-inhibit=on" : "tx-inhibit=off");
+            if (v && pttSinceMs) forceUnkey(QStringLiteral("transmitting inhibited by the admin"));
+            if (v) stopCwKeyer();
+        }
+    }
+    if (in.contains("txInhibitBands")) {
+        // Band names as the rig file has them ("20m"); "Gen" is every
+        // frequency, which is what TX inhibit itself is for.
+        QStringList v;
+        const QJsonArray arr = in.value("txInhibitBands").toArray();
+        for (const QJsonValue &b : arr) {
+            const QString name = b.toString().trimmed().left(16);
+            if (name.isEmpty() || name.contains(' ') || name.startsWith("gen", Qt::CaseInsensitive)) continue;
+            if (!v.contains(name, Qt::CaseInsensitive) && v.size() < 64) v << name;
+        }
+        // Not QStringList's operator!=: Qt 5.15.2's QList compares through
+        // stdext::make_checked_array_iterator, which MSVC 14.51 no longer has.
+        if (v.join(',') != txInhibitBands_.join(',')) {
+            txInhibitBands_ = v;
+            changes << "tx-inhibit-bands=" + (v.isEmpty() ? QStringLiteral("none") : v.join(','));
+            const QString band = inhibitedBand();
+            if (!band.isEmpty() && pttSinceMs) forceUnkey(txBlockedReason());
+            if (!band.isEmpty()) stopCwKeyer();
+        }
+    }
+    if (in.contains("txTimeoutSecs")) {
+        const int v = qBound(0, in.value("txTimeoutSecs").toInt(), 3600);
+        if (v != txTimeoutSecs_) {
+            txTimeoutSecs_ = v;
+            changes << QString("tx-timeout=%1").arg(v);
+            if (txTimeoutTimer && pttSinceMs) {
+                if (v > 0) txTimeoutTimer->start(v * 1000);
+                else txTimeoutTimer->stop();
+            }
+        }
+    }
+    if (in.contains("maxClients")) {
+        const int v = qBound(1, in.value("maxClients").toInt(), 500);
+        if (v != maxClients_) {
+            maxClients_ = v;
+            changes << QString("max-clients=%1").arg(v);
+        }
+    }
+    bool seatChanged = false;
+    if (in.contains("seat")) {
+        const bool v = in.value("seat").toBool();
+        if (v != seatEnabled_) {
+            if (!v) {
+                // Off first: freeing the seat must not offer it to the line.
+                seatEnabled_ = false;
+                seatFree(QStringLiteral("the seat is off"));
+                // No line and no offer for a seat that is not there.
+                seat_.queue.clear();
+                seat_.offerTo = nullptr;
+                seat_.offerUntilMs = 0;
+                seat_.requester = nullptr;
+                seat_.requestDeadlineMs = 0;
+            } else if (pttSinceMs) {
+                // Whoever is keyed has no seat: with it on they could not
+                // even send their own key-up.
+                forceUnkey(QStringLiteral("the seat was switched on"));
+            }
+            seatEnabled_ = v;
+            changes << (v ? "seat=on" : "seat=off");
+            seatChanged = true;
+        }
+    }
+    auto intKnob = [&](const char *key, int &var, int lo, int hi, const char *label) {
+        if (!in.contains(key)) return;
+        const int v = qBound(lo, in.value(key).toInt(), hi);
+        if (v == var) return;
+        var = v;
+        changes << QString("%1=%2").arg(label).arg(v);
+        seat_.warnedIdle = seat_.warnedMax = false;
+        seatChanged = true;
+    };
+    intKnob("seatIdleSecs", seatIdleSecs_, 0, 86400, "seat-idle");
+    intKnob("seatRequestSecs", seatRequestSecs_, 0, 3600, "seat-request");
+    intKnob("seatMaxSecs", seatMaxSecs_, 0, 86400, "seat-max");
+    if (in.contains("seatPreemptHigher")) {
+        const bool v = in.value("seatPreemptHigher").toBool();
+        if (v != seatPreemptHigher_) { seatPreemptHigher_ = v; changes << (v ? "seat-preempt=higher" : "seat-preempt=admin"); seatChanged = true; }
+    }
+    if (in.contains("listenIn")) {
+        const bool v = in.value("listenIn").toBool();
+        if (v != listenIn_) { listenIn_ = v; changes << (v ? "listen-in=on" : "listen-in=off"); seatChanged = true; }
+    }
+    if (in.contains("allowPrivate")) {
+        const bool v = in.value("allowPrivate").toBool();
+        if (v != allowPrivate_) {
+            allowPrivate_ = v;
+            if (!v) seat_.privateMode = false;
+            changes << (v ? "private=allowed" : "private=off");
+            seatChanged = true;
+        }
+    }
+    if (changes.isEmpty()) return;
+    auto settings = openSettings();
+    settings->setValue("Shared/Anonymous", sharedAnonymous_ == Access::Role::None ? "none" : Access::roleName(sharedAnonymous_));
+    settings->setValue("Shared/TxInhibit", txInhibit_);
+    settings->setValue("Shared/TxInhibitBands", txInhibitBands_);
+    settings->setValue("Shared/TxTimeoutSecs", txTimeoutSecs_);
+    settings->setValue("Shared/MaxClients", maxClients_);
+    settings->setValue("Shared/Seat", seatEnabled_);
+    settings->setValue("Shared/SeatIdleSecs", seatIdleSecs_);
+    settings->setValue("Shared/SeatRequestSecs", seatRequestSecs_);
+    settings->setValue("Shared/SeatMaxSecs", seatMaxSecs_);
+    settings->setValue("Shared/SeatPreemptHigher", seatPreemptHigher_);
+    settings->setValue("Shared/ListenIn", listenIn_);
+    settings->setValue("Shared/AllowPrivate", allowPrivate_);
+    if (access_) access_->audit("policy", by, changes.join(' '));
+    qInfo().noquote() << "Shared: policy changed by" << by << ":" << changes.join(' ');
+    broadcastPolicy();
+    if (seatChanged) broadcastSeat();
+    if (seatChanged) applyOnAirCall();   // the seat off: everyone is on the station call
+}
+
+// Visitors follow the anonymous policy as it changes: a lower level is
+// applied in place (the page learns its new denied list), none ends them.
+void webServer::reroleAnonymousClients()
+{
+    const QList<QWebSocket *> clients = wsClients;
+    for (QWebSocket *c : clients) {
+        auto it = wsInfo.find(c);
+        if (it == wsInfo.end() || it->who.authenticated) continue;
+        if (sharedAnonymous_ == Access::Role::None) {
+            cutClient(c, QStringLiteral("visitors are no longer admitted"));
+            continue;
+        }
+        it->who.role = sharedAnonymous_;
+        it->warnedTxAudio = false;
+        sendJsonTo(c, accessJson(it->who));
+        // A visitor who may no longer tune leaves the seat and the line: it
+        // could not even give them up (seatRelease needs the level).
+        if (!seatMayHold(c)) {
+            if (c == seat_.holder) seatFree(QStringLiteral("visitors may no longer control the radio"));
+            else seatLeaveQueue(c);
+        }
+    }
+    seatOfferNext();
+    broadcastSeat();
+}
+
+// A connection the server ends: a kick, a logout, an account disabled or
+// removed, a password reset, a session that expired, visitors no longer
+// admitted.  It is not a holder who dropped off and may come back: the seat
+// frees now, with no grace (a kicked holder used to have it back by
+// reloading within 30 s, and "kept for X" stood for an account that was
+// gone, 2026-11-21).  close() waits behind whatever the peer has not read,
+// so the socket loses its level at once and is cut for good two seconds on.
+void webServer::cutClient(QWebSocket *c, const QString &reason)
+{
+    if (!c) return;
+    if (c == seat_.holder) seatFree(reason);
+    else if (seat_.queue.contains(c) || seat_.requester == c || seat_.offerTo == c) {
+        const bool hadOffer = seat_.offerTo == c;
+        seatLeaveQueue(c);
+        if (hadOffer) seatOfferNext();
+        broadcastSeat();
+    }
+    if (c == pttClient && pttSinceMs) forceUnkey(reason);
+    auto it = wsInfo.find(c);
+    if (it != wsInfo.end()) it->who.role = Access::Role::None;
+    sendJsonTo(c, QJsonObject{{"type", "authRequired"}, {"reason", reason}});
+    c->close(static_cast<QWebSocketProtocol::CloseCode>(4401), reason);
+    QTimer::singleShot(2000, c, [c]() { c->abort(); });
+}
+
+QJsonArray webServer::connectionsJson() const
+{
+    QJsonArray arr;
+    for (QWebSocket *c : wsClients) {
+        const WsClient info = wsInfo.value(c);
+        arr.append(QJsonObject{
+            {"id", info.id}, {"name", info.who.authenticated ? info.who.name : QString()},
+            {"anonymous", !info.who.authenticated}, {"role", Access::roleName(info.who.role)},
+            {"callsign", info.who.callsign}, {"ip", info.ip},
+            {"since", QDateTime::fromMSecsSinceEpoch(info.sinceMs, Qt::UTC).toString(Qt::ISODate)},
+            {"keying", c == pttClient},
+            {"seat", c == seat_.holder},
+        });
+    }
+    return arr;
+}
+
+void webServer::handleSharedPolicyRequest(QTcpSocket *socket, const QString &method, const QByteArray &body,
+                                          const RequestContext &ctx)
+{
+    if (ctx.who.role != Access::Role::Admin) {
+        sendRestResponse(socket, 403, QJsonObject{{"error", "admin only"}});
+        return;
+    }
+    if (method == "GET") {
+        sendRestResponse(socket, 200, QJsonObject{{"policy", policyJson()}});
+        return;
+    }
+    if (method == "PUT" || method == "POST" || method == "PATCH") {
+        const QJsonObject in = jsonBody(body);
+        if (in.contains("anonymous")) {
+            const QString a = in.value("anonymous").toString().trimmed().toLower();
+            if (a != "none" && a != "listen" && a != "control") {
+                sendRestResponse(socket, 400, QJsonObject{{"error", "anonymous: none, listen or control"}});
+                return;
+            }
+        }
+        // A value of the wrong type is refused.  Read leniently it was
+        // false or zero: {"txInhibit":"true"} from a script switched TX
+        // inhibit OFF, {"txTimeoutSecs":"600"} set no time-out at all.
+        for (const char *key : {"txInhibit", "seat", "seatPreemptHigher", "listenIn", "allowPrivate"}) {
+            if (in.contains(key) && !in.value(key).isBool()) {
+                sendRestResponse(socket, 400, QJsonObject{{"error", QString("%1: true or false").arg(key)}});
+                return;
+            }
+        }
+        for (const char *key : {"txTimeoutSecs", "maxClients", "seatIdleSecs", "seatRequestSecs", "seatMaxSecs"}) {
+            if (!in.contains(key)) continue;
+            const QJsonValue v = in.value(key);
+            if (!v.isDouble() || v.toDouble() != double(v.toInt()) || v.toInt() < 0) {
+                sendRestResponse(socket, 400, QJsonObject{{"error", QString("%1: a whole number").arg(key)}});
+                return;
+            }
+        }
+        if (in.contains("txInhibitBands") && !in.value("txInhibitBands").isArray()) {
+            sendRestResponse(socket, 400, QJsonObject{{"error", "txInhibitBands: a list of band names"}});
+            return;
+        }
+        applyPolicy(in, AccessControl::who(ctx.who.name, ctx.ip));
+        sendRestResponse(socket, 200, QJsonObject{{"policy", policyJson()}});
+        return;
+    }
+    sendRestResponse(socket, 405, QJsonObject{{"error", "Method not allowed"}});
+}
+
+// Who is connected right now, and a way to drop one of them.  A dropped
+// browser sees the login sheet; the account is untouched (disable it to
+// keep them out).
+void webServer::handleSharedConnectionsRequest(QTcpSocket *socket, const QString &method, const QString &path,
+                                               const RequestContext &ctx)
+{
+    if (ctx.who.role != Access::Role::Admin) {
+        sendRestResponse(socket, 403, QJsonObject{{"error", "admin only"}});
+        return;
+    }
+    const QString sub = path.mid(int(strlen("/api/v1/shared/connections")));
+    if (sub.isEmpty() && method == "GET") {
+        sendRestResponse(socket, 200, QJsonObject{{"connections", connectionsJson()}, {"max", maxClients_}});
+        return;
+    }
+    if (sub.startsWith('/') && method == "DELETE") {
+        const QString id = sub.mid(1);
+        const QList<QWebSocket *> clients = wsClients;
+        for (QWebSocket *c : clients) {
+            const WsClient info = wsInfo.value(c);
+            if (info.id != id) continue;
+            if (info.who.authenticated && info.who.userId == ctx.who.userId && info.who.sessionHash == ctx.who.sessionHash) {
+                sendRestResponse(socket, 409, QJsonObject{{"error", "that is your own connection"}});
+                return;
+            }
+            cutClient(c, QStringLiteral("disconnected by an admin"));
+            if (access_) access_->audit("kick", AccessControl::who(ctx.who.name, ctx.ip),
+                                        AccessControl::who(info.who.authenticated ? info.who.name : QStringLiteral("anonymous"), info.ip));
+            sendRestResponse(socket, 200, QJsonObject{{"ok", true}});
+            return;
+        }
+        sendRestResponse(socket, 404, QJsonObject{{"error", "no such connection"}});
+        return;
+    }
+    sendRestResponse(socket, 405, QJsonObject{{"error", "Method not allowed"}});
+}
+
+Access::Role webServer::clientRole(QWebSocket *client) const
+{
+    if (!sharedMode_) return Access::Role::Admin;
+    return wsInfo.value(client).who.role;
+}
+
+void webServer::deny(QWebSocket *client, const QString &cmd, Access::Cap cap, const QString &reason)
+{
+    if (!client) return;
+    const QString need = Access::roleName(Access::capRole(cap));
+    sendJsonTo(client, QJsonObject{{"type", "denied"}, {"cmd", cmd}, {"need", need},
+                                   {"reason", reason.isEmpty() ? QString("needs %1 access").arg(need) : reason}});
+}
+
+// Where a key lands.  In split the rig transmits on the VFO that is not
+// the operating one: Main / Sub on a dual-receiver rig, the unselected VFO
+// on an A / B rig.  The band inhibit read the operating VFO alone, so with
+// split on a closed band was one VFO B away, and the audit log named the
+// receive frequency (2026-11-21).  0 = not known.
+quint64 webServer::txFrequencyHz(bool *splitOut)
+{
+    if (splitOut) *splitOut = false;
+    if (!rigCaps || !queue) return 0;
+    const vfoCommandType t = queue->getVfoCommand(vfoA, 0, false);
+    const cacheItem f = operatingFreqCache(t);
+    const quint64 operating = f.value.isValid() ? f.value.value<freqt>().Hz : 0;
+    if (!rigCaps->commands.contains(funcSplitStatus)) return operating;
+    const cacheItem split = queue->getCache(funcSplitStatus, 0);
+    if (!split.value.isValid() || !split.value.toBool()) return operating;
+    cacheItem other;
+    if (rigCaps->hasCommand29) {
+        // Main and Sub are receivers 0 and 1 of the same command.
+        const uchar rx = queue->getState().vfo == vfoSub ? 0 : 1;
+        const vfoCommandType o = queue->getVfoCommand(rx ? vfoB : vfoA, rx, false);
+        if (o.freqFunc != funcNone) other = queue->getCache(o.freqFunc, rx);
+    } else if (rigCaps->commands.contains(funcUnselectedFreq)) {
+        other = queue->getCache(funcUnselectedFreq, 0);
+    }
+    if (!other.value.isValid()) return operating;   // not read yet: the dial is the best we have
+    const quint64 hz = other.value.value<freqt>().Hz;
+    if (!hz) return operating;
+    if (splitOut) *splitOut = true;
+    return hz;
+}
+
+// The band the admin closed to transmitting that a key would land on now.
+// Names are the rig file's; a band listed there in several pieces (40m per
+// region) matches on any of them.
+QString webServer::inhibitedBand()
+{
+    if (txInhibitBands_.isEmpty() || !rigCaps || !queue) return QString();
+    const quint64 hz = txFrequencyHz();
+    if (!hz) return QString();
+    for (const bandType &b : rigCaps->bands) {
+        if (b.band == bandUnknown || hz < b.lowFreq || hz > b.highFreq) continue;
+        if (txInhibitBands_.contains(b.name, Qt::CaseInsensitive)) return b.name;
+    }
+    return QString();
+}
+
+QString webServer::txBlockedReason()
+{
+    if (!sharedMode_) return QString();
+    if (txInhibit_) return QStringLiteral("transmitting is inhibited by the admin");
+    const QString band = inhibitedBand();
+    if (!band.isEmpty()) return QString("transmitting on %1 is inhibited by the admin").arg(band);
+    return QString();
+}
+
+QString webServer::operatingText()
+{
+    if (!queue) return QString();
+    const vfoCommandType t = queue->getVfoCommand(vfoA, 0, false);
+    const cacheItem m = operatingModeCache(t);
+    // The frequency the signal is on: in split, not the one being listened to.
+    bool split = false;
+    const quint64 hz = txFrequencyHz(&split);
+    QString s;
+    if (hz)
+        s = QString("%1.%2.%3").arg(hz / 1000000).arg((hz / 1000) % 1000, 3, 10, QChar('0')).arg(hz % 1000, 3, 10, QChar('0'));
+    if (m.value.isValid()) s += (s.isEmpty() ? QString() : QStringLiteral(" ")) + m.value.value<modeInfo>().name;
+    if (split) s += QStringLiteral(" split");
+    return s;
+}
+
+// Called on every setPTT, whoever sent it: the audit log gets a key-down
+// with the frequency and mode and a key-up with the duration, and the
+// time-out timer runs between the two.  Open mode: nothing to write, no
+// time-out -- the behaviour without --shared does not change.
+void webServer::pttAccounting(bool on, QWebSocket *client)
+{
+    if (!sharedMode_) return;
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    if (on) {
+        if (pttSinceMs) return;   // a repeat from a latched key
+        pttSinceMs = now;
+        if (client) {
+            pttWho = wsWho(client);
+        } else {
+            // Not a browser: rigctld.  REST does not key a shared station
+            // (the gate in onHttpReadyRead).
+            pttWho = QStringLiteral("rigctld@127.0.0.1");
+        }
+        if (access_) access_->audit("key-down", pttWho, operatingText());
+        if (txTimeoutSecs_ > 0 && txTimeoutTimer) txTimeoutTimer->start(txTimeoutSecs_ * 1000);
+    } else {
+        if (txTimeoutTimer) txTimeoutTimer->stop();
+        if (!pttSinceMs) return;
+        if (access_) access_->audit("key-up", pttWho, QString("%1 s").arg((now - pttSinceMs) / 1000.0, 0, 'f', 1));
+        pttSinceMs = 0;
+        pttWho.clear();
+    }
+}
+
+QString webServer::wsWho(QWebSocket *client) const
+{
+    const WsClient c = wsInfo.value(client);
+    return AccessControl::who(c.who.authenticated ? c.who.name : QStringLiteral("anonymous"),
+                              c.ip.isEmpty() ? peerIp(client->peerAddress()) : c.ip);
+}
+
+// One line a minute at most per account and kind: a CW over typed a
+// character at a time is one sendCW per character, a terminal session one
+// termSend per line.  Open mode: no audit log, nothing to write.
+void webServer::auditOnAir(const QString &kind, const QString &who)
+{
+    if (!sharedMode_ || !access_ || who.isEmpty()) return;
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    const QString key = who + ' ' + kind;
+    const qint64 last = onAirAudited_.value(key, 0);
+    if (last && now - last < 60000) return;
+    if (onAirAudited_.size() > 512) onAirAudited_.clear();
+    onAirAudited_.insert(key, now);
+    access_->audit("tx", who, kind + ' ' + operatingText());
+}
+
+void webServer::forceUnkey(const QString &reason)
+{
+    if (!queue) return;
+    queue->add(priorityImmediate, queueItem(funcTransceiverStatus, QVariant::fromValue<bool>(false), false, uchar(0)));
+    queue->del(funcALCMeter, 0);
+    releaseCompressorHold();
+    qWarning().noquote() << "Web: PTT released:" << reason;
+    if (access_) access_->audit("unkey", pttWho.isEmpty() ? QStringLiteral("-@-") : pttWho, reason);
+    QWebSocket *keyer = pttClient;
+    pttClient = nullptr;
+    pttAccounting(false, nullptr);
+    const QJsonObject note{{"type", "denied"}, {"cmd", "setPTT"}, {"need", "operate"}, {"reason", reason}};
+    if (keyer && wsClients.contains(keyer)) sendJsonTo(keyer, note);
+    else sendJsonToAll(note);
+}
+
+// TX inhibit switched on while the rig's keyer still holds text (up to
+// some thirty characters, a quarter of a minute at 20 WPM): it has no key
+// of ours to release, so it is told to stop.
+void webServer::stopCwKeyer()
+{
+    if (!queue || !rigCaps || !rigCaps->commands.contains(funcSendCW)) return;
+    queue->add(priorityImmediate, queueItem(funcSendCW, QVariant::fromValue<QString>(QString())));
+}
+
+// ===========================================================================
+// The seat
+// ===========================================================================
+
+// A time of day in a text the server writes for a page (a notice, a
+// refusal).  The server's own zone meant nothing to a member elsewhere, and
+// in Docker it was UTC without saying so: UTC, and said.
+static QString hhmmUtc(const QDateTime &t)
+{
+    return t.toUTC().toString(QStringLiteral("HH:mm")) + QStringLiteral(" UTC");
+}
+
+// May this socket have the seat at all?  Asked wherever the seat is GIVEN
+// (a reserved slot starting, an unanswered request, a hand-over, an offer,
+// the grace period): seatTake asks at the door, but a level lowered or a
+// callsign removed since then went unnoticed, and a listener given the seat
+// could not even release it.
+bool webServer::seatMayHold(QWebSocket *client) const
+{
+    if (!client || !wsClients.contains(client)) return false;
+    const AccessPrincipal who = wsInfo.value(client).who;
+    if (!Access::roleAllows(who.role, Access::Cap::Control)) return false;
+    return !(who.authenticated && who.onAirOwn && who.callsign.isEmpty());
+}
+
+QString webServer::seatLabel(QWebSocket *client) const
+{
+    const WsClient c = wsInfo.value(client);
+    return c.who.authenticated ? c.who.name : QStringLiteral("visitor");
+}
+
+bool webServer::seatHolderIs(const QString &userId) const
+{
+    if (!seat_.holder || userId.isEmpty()) return false;
+    const AccessPrincipal who = wsInfo.value(seat_.holder).who;
+    return who.authenticated && who.userId == userId;
+}
+
+bool webServer::seatRequired(QWebSocket *client, const QString &cmd, Access::Cap cap) const
+{
+    if (!sharedMode_ || !seatEnabled_) return false;
+    if (cap != Access::Cap::Control && cap != Access::Cap::Tx) return false;
+    if (Access::seatExempt(cmd)) return false;
+    return client != seat_.holder;
+}
+
+bool webServer::seatHides(QWebSocket *client) const
+{
+    if (!sharedMode_ || !seatEnabled_ || !seat_.holder || client == seat_.holder) return false;
+    if (listenIn_ && !seat_.privateMode) return false;
+    return wsInfo.value(client).who.role != Access::Role::Admin;
+}
+
+void webServer::denySeat(QWebSocket *client, const QString &cmd)
+{
+    if (!client) return;
+    QString reason;
+    if (seat_.holder) reason = seatLabel(seat_.holder) + " has the seat";
+    else if (seat_.graceUntilMs > QDateTime::currentMSecsSinceEpoch()) reason = "the seat is kept for " + seat_.graceName + " for a moment";
+    else reason = QStringLiteral("take the seat first");
+    sendJsonTo(client, QJsonObject{{"type", "denied"}, {"cmd", cmd}, {"need", "seat"}, {"reason", reason}});
+}
+
+void webServer::seatLeaveQueue(QWebSocket *client)
+{
+    seat_.queue.removeAll(client);
+    if (seat_.requester == client) { seat_.requester = nullptr; seat_.requestDeadlineMs = 0; }
+    if (seat_.offerTo == client) { seat_.offerTo = nullptr; seat_.offerUntilMs = 0; }
+}
+
+void webServer::seatGive(QWebSocket *client, const QString &how)
+{
+    QWebSocket *prev = seat_.holder;
+    if (prev && prev != client) {
+        if (pttClient == prev && pttSinceMs) forceUnkey(QStringLiteral("the seat changed hands"));
+        sendJsonTo(prev, QJsonObject{{"type", "seatLost"}, {"reason", how}, {"to", seatLabel(client)}});
+    }
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    seat_.holder = client;
+    seat_.sinceMs = now;
+    seat_.lastActivityMs = now;
+    seat_.privateMode = false;
+    seat_.graceSession.clear();
+    seat_.graceName.clear();
+    seat_.graceUntilMs = 0;
+    seat_.requester = nullptr;
+    seat_.requestDeadlineMs = 0;
+    seat_.offerTo = nullptr;
+    seat_.offerUntilMs = 0;
+    seat_.warnedIdle = seat_.warnedMax = false;
+    seat_.warnedMaxMs = 0;
+    seat_.graceSinceMs = 0;
+    seat_.queue.removeAll(client);
+    if (access_) access_->audit("seat-take", AccessControl::who(seatLabel(client), wsInfo.value(client).ip), how);
+    qInfo().noquote() << "Seat:" << seatLabel(client) << how;
+    broadcastSeat();
+    applyOnAirCall();
+}
+
+void webServer::seatFree(const QString &why, bool tellHolder)
+{
+    QWebSocket *prev = seat_.holder;
+    if (!prev && !seat_.graceUntilMs) return;
+    if (prev) {
+        if (pttClient == prev && pttSinceMs) forceUnkey(QStringLiteral("the seat was released"));
+        if (access_) access_->audit("seat-release", AccessControl::who(seatLabel(prev), wsInfo.value(prev).ip), why);
+        if (tellHolder) sendJsonTo(prev, QJsonObject{{"type", "seatLost"}, {"reason", why}});
+        qInfo().noquote() << "Seat: released by" << seatLabel(prev) << "-" << why;
+    } else if (access_) {
+        access_->audit("seat-release", AccessControl::who(seat_.graceName, QString()), why);
+    }
+    seat_.holder = nullptr;
+    seat_.privateMode = false;
+    seat_.graceSession.clear();
+    seat_.graceName.clear();
+    seat_.graceUntilMs = 0;
+    seat_.graceSinceMs = 0;
+    seat_.requester = nullptr;
+    seat_.requestDeadlineMs = 0;
+    seat_.warnedIdle = seat_.warnedMax = false;
+    seat_.warnedMaxMs = 0;
+    seatOfferNext();
+    broadcastSeat();
+    applyOnAirCall();
+}
+
+// The seat is free and somebody is waiting: the first in line has
+// seatOfferSecs_ to take it, then the next.  Sockets gone meanwhile fall
+// out of the line here.
+void webServer::seatOfferNext()
+{
+    if (seat_.holder || seat_.offerTo || !seatEnabled_) return;
+    if (seat_.graceUntilMs > QDateTime::currentMSecsSinceEpoch()) return;   // kept for a holder who dropped off
+    // Sockets gone meanwhile, and those who may no longer hold the seat.
+    for (auto it = seat_.queue.begin(); it != seat_.queue.end();)
+        it = seatMayHold(*it) ? it + 1 : seat_.queue.erase(it);
+    if (seat_.queue.isEmpty()) return;
+    // The first part of a reserved slot waits for its owner: the line is
+    // not a way round what TAKE refuses.  Its owner, if in line, is first.
+    QWebSocket *next = seat_.queue.first();
+    const Occurrence slot = activeReservation();
+    if (slot.valid() && QDateTime::currentMSecsSinceEpoch() < slot.start.toMSecsSinceEpoch() + qint64(kReservationHoldSecs) * 1000) {
+        next = nullptr;
+        for (QWebSocket *c : qAsConst(seat_.queue))
+            if (ownsSlot(c, slot)) { next = c; break; }
+        if (!next) return;       // seatTick offers the seat when the hold is over
+        seat_.queue.removeAll(next);
+        seat_.queue.prepend(next);
+    }
+    seat_.offerTo = next;
+    seat_.offerUntilMs = QDateTime::currentMSecsSinceEpoch() + qint64(seatOfferSecs_) * 1000;
+}
+
+void webServer::seatOnDisconnect(QWebSocket *client, const AccessPrincipal &who)
+{
+    if (!sharedMode_) return;
+    const QString label = who.authenticated ? who.name : QStringLiteral("visitor");
+    if (client == seat_.holder) {
+        seat_.holder = nullptr;
+        seat_.privateMode = false;
+        seat_.warnedIdle = false;
+        if (who.authenticated && seatGraceSecs_ > 0) {
+            // A reload, a phone off the network for a moment: the seat waits.
+            // So do the clock it has been held on and a request not yet
+            // answered: a reload used to start the max time afresh and
+            // throw the request away, as often as the holder liked.
+            seat_.graceSinceMs = seat_.sinceMs;
+            seat_.graceSession = who.sessionHash;
+            seat_.graceName = who.name;
+            seat_.graceUntilMs = QDateTime::currentMSecsSinceEpoch() + qint64(seatGraceSecs_) * 1000;
+            if (access_) access_->audit("seat-grace", AccessControl::who(who.name, QString()),
+                                        QString("%1 s to come back").arg(seatGraceSecs_));
+        } else {
+            seat_.requester = nullptr;
+            seat_.requestDeadlineMs = 0;
+            seat_.warnedMax = false;
+            seat_.warnedMaxMs = 0;
+            if (access_) access_->audit("seat-release", AccessControl::who(label, QString()), QStringLiteral("disconnected"));
+        }
+    }
+    const bool hadOffer = seat_.offerTo == client;
+    seatLeaveQueue(client);
+    if (hadOffer || (!seat_.holder && !seat_.graceUntilMs)) seatOfferNext();
+    broadcastSeat();
+    applyOnAirCall();   // a holder on their own call left: back to the station call
+}
+
+// The holder the seat was kept for is back (the same browser session, on a
+// reconnect or by pressing TAKE in another tab): the seat they never left,
+// with the same clock and the same request waiting.
+void webServer::seatResume(QWebSocket *client)
+{
+    const qint64 since = seat_.graceSinceMs;
+    QWebSocket *requester = seat_.requester;
+    const qint64 deadline = seat_.requestDeadlineMs;
+    const bool warnedMax = seat_.warnedMax;
+    const qint64 warnedMaxMs = seat_.warnedMaxMs;
+    seatGive(client, QStringLiteral("back within the grace period"));
+    if (since) seat_.sinceMs = since;
+    seat_.warnedMax = warnedMax;
+    seat_.warnedMaxMs = warnedMaxMs;
+    if (requester && requester != client && wsClients.contains(requester) && seat_.queue.contains(requester)) {
+        seat_.requester = requester;
+        // The holder gets a fair look at the prompt again, no more.
+        const qint64 now = QDateTime::currentMSecsSinceEpoch();
+        seat_.requestDeadlineMs = deadline ? qMax(deadline, now + 15000) : 0;
+    }
+    broadcastSeat();
+}
+
+void webServer::seatOnConnect(QWebSocket *client)
+{
+    if (!sharedMode_ || !seatEnabled_ || seat_.holder) return;
+    if (seat_.graceUntilMs <= QDateTime::currentMSecsSinceEpoch() || seat_.graceSession.isEmpty()) return;
+    const AccessPrincipal who = wsInfo.value(client).who;
+    if (!who.authenticated || who.sessionHash != seat_.graceSession) return;
+    if (!seatMayHold(client)) return;      // the level or the callsign went meanwhile: the grace runs out
+    seatResume(client);
+}
+
+void webServer::seatCommand(QWebSocket *client, const QString &type, const QJsonObject &cmd)
+{
+    if (!seatEnabled_) {
+        sendJsonTo(client, QJsonObject{{"type", "denied"}, {"cmd", type}, {"need", "seat"},
+                                       {"reason", "the seat is off: everyone with the role controls the radio"}});
+        return;
+    }
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    const WsClient me = wsInfo.value(client);
+    const QString label = seatLabel(client);
+    const bool admin = me.who.role == Access::Role::Admin;
+
+    if ((type == "seatTake" || type == "seatAccept") && !seatEligible(client, type)) return;
+    if (type == "seatTake") {
+        if (seat_.holder == client) { sendJsonTo(client, seatJson(client)); return; }
+        if (!seatMayHold(client)) { deny(client, type, Access::Cap::Control); return; }
+        if (seat_.offerTo == client) { seatGive(client, QStringLiteral("took the seat offered")); return; }
+        const Occurrence slot = activeReservation();
+        if (!seat_.holder) {
+            const bool mineToResume = me.who.authenticated && me.who.sessionHash == seat_.graceSession;
+            if (seat_.graceUntilMs > now && !mineToResume && !admin) { denySeat(client, type); return; }
+            if (seat_.graceUntilMs > now && mineToResume) { seatResume(client); return; }
+            // The first part of a reserved slot waits for its owner.
+            if (slot.valid() && !ownsSlot(client, slot) && !admin
+                && now < slot.start.toMSecsSinceEpoch() + qint64(kReservationHoldSecs) * 1000) {
+                const QString owner = access_ ? access_->user(slot.res.userId).name : QString();
+                sendJsonTo(client, QJsonObject{{"type", "denied"}, {"cmd", type}, {"need", "seat"},
+                    {"reason", QString("the seat is reserved for %1 until %2").arg(owner,
+                        hhmmUtc(slot.start.addSecs(kReservationHoldSecs)))}});
+                return;
+            }
+            if (seat_.offerTo && seat_.offerTo != client && !admin) {
+                if (!seat_.queue.contains(client)) seat_.queue.append(client);
+                sendJsonTo(client, QJsonObject{{"type", "seatNotice"},
+                           {"text", "the seat is being offered to " + seatLabel(seat_.offerTo) + "; you are in line"}});
+                broadcastSeat();
+                return;
+            }
+            seatGive(client, QStringLiteral("took the free seat"));
+            return;
+        }
+        // Held by somebody else.
+        if (admin && cmd.value("force").toBool()) { seatGive(client, QStringLiteral("taken by an admin")); return; }
+        if (slot.valid() && ownsSlot(client, slot) && !ownsSlot(seat_.holder, slot)) {
+            seatGive(client, QString("reserved slot until %1").arg(hhmmUtc(slot.end)));
+            return;
+        }
+        if (!seat_.queue.contains(client)) seat_.queue.append(client);
+        if (seat_.requester == client) { sendJsonTo(client, seatJson(client)); return; }
+        if (seat_.requester) {
+            sendJsonTo(client, QJsonObject{{"type", "seatNotice"},
+                       {"text", seatLabel(seat_.requester) + " asked first; you are in line"}});
+            broadcastSeat();
+            return;
+        }
+        seat_.requester = client;
+        const Access::Role theirs = wsInfo.value(seat_.holder).who.role;
+        // Declined a moment ago and asking again: the holder sees it and may
+        // hand over, but the time after which silence is consent starts
+        // only when a minute has passed since the decline.  (One prompt
+        // missed is the seat lost; asked again at once, as often as the
+        // asker liked, a decline meant nothing.  The request still has a
+        // deadline: one without would keep everyone behind it waiting.)
+        const qint64 coolMs = qint64(qMax(60, seatRequestSecs_)) * 1000;
+        const bool declinedJustNow = !admin && me.seatDeclinedMs && now - me.seatDeclinedMs < coolMs;
+        if (declinedJustNow)
+            seat_.requestDeadlineMs = seatRequestSecs_ > 0 ? me.seatDeclinedMs + coolMs + qint64(seatRequestSecs_) * 1000 : 0;
+        else if (seatPreemptHigher_ && me.who.role > theirs)
+            // a higher role waits half a minute, not forever, and never longer than anyone else
+            seat_.requestDeadlineMs = now + qint64(seatRequestSecs_ > 0 ? qMin(30, seatRequestSecs_) : 30) * 1000;
+        else
+            seat_.requestDeadlineMs = seatRequestSecs_ > 0 ? now + qint64(seatRequestSecs_) * 1000 : 0;
+        if (access_) access_->audit("seat-request", AccessControl::who(label, me.ip), "to " + seatLabel(seat_.holder));
+        broadcastSeat();
+        return;
+    }
+    if (type == "seatRelease") {
+        if (seat_.holder == client) {
+            seatFree(QStringLiteral("released"), false);
+        } else {
+            const bool hadOffer = seat_.offerTo == client;
+            seatLeaveQueue(client);
+            if (hadOffer) seatOfferNext();
+            broadcastSeat();
+        }
+        return;
+    }
+    if (type == "seatHandover") {
+        if (seat_.holder != client || !seat_.requester) { sendJsonTo(client, seatJson(client)); return; }
+        QWebSocket *req = seat_.requester;
+        if (cmd.value("accept").toBool()) {
+            if (seatMayHold(req)) {
+                seatGive(req, "handed over by " + label);
+            } else {
+                seatLeaveQueue(req);
+                sendJsonTo(client, QJsonObject{{"type", "seatNotice"}, {"text", seatLabel(req) + " may no longer take the seat"}});
+                broadcastSeat();
+            }
+        } else {
+            seat_.requester = nullptr;
+            seat_.requestDeadlineMs = 0;
+            { auto it = wsInfo.find(req); if (it != wsInfo.end()) it->seatDeclinedMs = now; }
+            if (access_) access_->audit("seat-declined", AccessControl::who(label, me.ip), "to " + seatLabel(req));
+            sendJsonTo(req, QJsonObject{{"type", "seatNotice"},
+                       {"text", label + " declined; you are in line for when the seat frees"}});
+            broadcastSeat();
+        }
+        return;
+    }
+    if (type == "seatCancel") {
+        const bool hadOffer = seat_.offerTo == client;
+        seatLeaveQueue(client);
+        if (hadOffer) seatOfferNext();
+        broadcastSeat();
+        return;
+    }
+    if (type == "seatAccept") {
+        if (seat_.offerTo == client && seatMayHold(client)) seatGive(client, QStringLiteral("took the seat offered"));
+        else sendJsonTo(client, QJsonObject{{"type", "seatNotice"}, {"text", "no seat is on offer to you"}});
+        return;
+    }
+    if (type == "seatPrivate") {
+        if (seat_.holder != client) { denySeat(client, type); return; }
+        if (!allowPrivate_) {
+            sendJsonTo(client, QJsonObject{{"type", "denied"}, {"cmd", type}, {"need", "seat"},
+                                           {"reason", "private operation is not allowed on this station"}});
+            return;
+        }
+        const bool v = cmd.value("value").toBool();
+        if (v != seat_.privateMode) {
+            seat_.privateMode = v;
+            if (access_) access_->audit("seat-private", AccessControl::who(label, me.ip), v ? "on" : "off");
+            broadcastSeat();
+        }
+        return;
+    }
+    if (type == "seatClear") {
+        seatFree("cleared by " + label);
+        broadcastSeat();
+        return;
+    }
+    deny(client, type, Access::Cap::Control, QStringLiteral("unknown seat command"));
+}
+
+// Once a second.
+void webServer::seatTick()
+{
+    // A key held while the VFO moves onto a band nobody transmits on.
+    if (sharedMode_ && pttSinceMs && !txInhibit_ && !inhibitedBand().isEmpty())
+        forceUnkey(txBlockedReason());
+    if (!sharedMode_ || !seatEnabled_) return;
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    bool changed = false;
+
+    if (!seat_.holder && seat_.graceUntilMs && now >= seat_.graceUntilMs) {
+        if (access_) access_->audit("seat-release", AccessControl::who(seat_.graceName, QString()), QStringLiteral("did not come back"));
+        seat_.graceSession.clear();
+        seat_.graceName.clear();
+        seat_.graceUntilMs = 0;
+        seat_.graceSinceMs = 0;
+        seat_.requester = nullptr;      // whoever asked is in line, and first
+        seat_.requestDeadlineMs = 0;
+        seat_.warnedMax = false;
+        seat_.warnedMaxMs = 0;
+        seatOfferNext();
+        changed = true;
+    }
+    // A free seat with a line and no offer: the 15 minutes a reserved slot
+    // waits for its owner are over (or the owner joined the line).
+    if (!seat_.holder && !seat_.offerTo && !seat_.graceUntilMs && !seat_.queue.isEmpty()) {
+        seatOfferNext();
+        if (seat_.offerTo) changed = true;
+    }
+    if (seat_.offerTo && now >= seat_.offerUntilMs) {
+        QWebSocket *passed = seat_.offerTo;
+        seat_.queue.removeAll(passed);
+        seat_.offerTo = nullptr;
+        seat_.offerUntilMs = 0;
+        if (wsClients.contains(passed))
+            sendJsonTo(passed, QJsonObject{{"type", "seatNotice"}, {"text", "the offer of the seat expired"}});
+        seatOfferNext();
+        changed = true;
+    }
+
+    // The schedule.  A slot that just began: the owner gets the seat if they
+    // are here (never mid-transmission; the next tick tries again), or the
+    // holder is told they may be asked for it.  Five minutes before a slot,
+    // a holder who is not its owner hears it is coming.
+    const Occurrence slot = activeReservation();
+    const bool holderTransmitting = seat_.holder && pttSinceMs > 0 && pttClient == seat_.holder;
+    if (slot.valid()) {
+        if (seatResKey_ != slot.key()) {
+            const QString owner = access_ ? access_->user(slot.res.userId).name : QString();
+            const QString when = hhmmUtc(slot.start);
+            QWebSocket *ownerSocket = socketOfUser(slot.res.userId);
+            // An owner who may not hold the seat (level lowered since the
+            // slot was made, no callsign for an own-call account) is as
+            // good as absent.
+            if (ownerSocket && !seatMayHold(ownerSocket)) ownerSocket = nullptr;
+            if (seat_.holder && ownsSlot(seat_.holder, slot)) {
+                seatResKey_ = slot.key();
+            } else if (ownerSocket && !holderTransmitting) {
+                seatResKey_ = slot.key();
+                if (access_) access_->audit("seat-reserved", AccessControl::who(owner, QString()), "slot from " + when);
+                seatGive(ownerSocket, QString("reserved by %1 from %2").arg(owner, when));
+                return;
+            } else if (!ownerSocket) {
+                seatResKey_ = slot.key();
+                if (seat_.holder)
+                    sendJsonTo(seat_.holder, QJsonObject{{"type", "seatNotice"},
+                               {"text", QString("%1 has the seat reserved from %2 and may take it on arriving").arg(owner, when)}});
+                changed = true;
+            }
+        }
+    } else if (!seatResKey_.isEmpty()) {
+        seatResKey_.clear();
+        changed = true;
+    }
+    // The 15 minutes are over: every page hears it once, or the strip went
+    // on reading "reserved for X" with no TAKE until something else moved.
+    {
+        const QString holdKey = slot.valid() && now >= slot.start.toMSecsSinceEpoch() + qint64(kReservationHoldSecs) * 1000
+                                ? slot.key() : QString();
+        if (holdKey != seatResHoldOverKey_) {
+            seatResHoldOverKey_ = holdKey;
+            if (!holdKey.isEmpty()) changed = true;
+        }
+    }
+    if (seat_.holder && reservations_) {
+        const Occurrence next = reservations_->nextAfter(QDateTime::currentDateTimeUtc(), 300);
+        if (next.valid() && !ownsSlot(seat_.holder, next) && seatResWarnKey_ != next.key()) {
+            seatResWarnKey_ = next.key();
+            const QString owner = access_ ? access_->user(next.res.userId).name : QString();
+            sendJsonTo(seat_.holder, QJsonObject{{"type", "seatNotice"},
+                       {"text", QString("%1 has the seat reserved from %2").arg(owner, hhmmUtc(next.start))}});
+        }
+    }
+    const bool holderOwnsSlot = seat_.holder && slot.valid() && ownsSlot(seat_.holder, slot);
+
+    if (seat_.holder) {
+        const bool transmitting = holderTransmitting;
+        const qint64 idleMs = now - seat_.lastActivityMs;
+        if (seatIdleSecs_ > 0 && !transmitting) {
+            if (!seat_.warnedIdle && seatIdleSecs_ > 60 && idleMs >= qint64(seatIdleSecs_ - 60) * 1000) {
+                seat_.warnedIdle = true;
+                sendJsonTo(seat_.holder, QJsonObject{{"type", "seatNotice"},
+                           {"text", "the seat is released in a minute unless you touch the radio"}});
+            }
+            if (idleMs >= qint64(seatIdleSecs_) * 1000) {
+                seatFree(QString("idle for %1").arg(seatIdleSecs_ >= 120 ? QString("%1 min").arg(seatIdleSecs_ / 60)
+                                                                           : QString("%1 s").arg(seatIdleSecs_)));
+                return;
+            }
+        }
+        // During their own slot the owner's seat is never handed on unasked.
+        if (seat_.requester && seat_.requestDeadlineMs && now >= seat_.requestDeadlineMs && !transmitting && !holderOwnsSlot) {
+            if (seatMayHold(seat_.requester)) {
+                seatGive(seat_.requester, QStringLiteral("request unanswered, granted"));
+                return;
+            }
+            seatLeaveQueue(seat_.requester);    // lost the level while waiting
+            changed = true;
+        }
+        if (seatMaxSecs_ > 0 && !seat_.queue.isEmpty() && !holderOwnsSlot) {
+            const qint64 heldMs = now - seat_.sinceMs;
+            if (!seat_.warnedMax && seatMaxSecs_ > 60 && heldMs >= qint64(seatMaxSecs_ - 60) * 1000) {
+                seat_.warnedMax = true;
+                seat_.warnedMaxMs = now;
+                sendJsonTo(seat_.holder, QJsonObject{{"type", "seatNotice"},
+                           {"text", "others are waiting: the seat passes on in a minute"}});
+            }
+            // The minute's notice is a minute: a holder alone past the limit
+            // used to get the warning and lose the seat in the same second,
+            // the moment somebody asked.
+            const bool noticeServed = seatMaxSecs_ <= 60 || (seat_.warnedMax && now - seat_.warnedMaxMs >= 60000);
+            if (heldMs >= qint64(seatMaxSecs_) * 1000 && noticeServed && !transmitting) {
+                seatFree(QStringLiteral("time is up, others are waiting"));
+                return;
+            }
+        } else if (seat_.warnedMax && seat_.queue.isEmpty()) {
+            seat_.warnedMax = false;            // nobody waits any more: the next one gets a notice of their own
+            seat_.warnedMaxMs = 0;
+        }
+    }
+    if (changed) broadcastSeat();
+}
+
+QJsonObject webServer::seatJson(QWebSocket *client, bool viewerHasAccount) const
+{
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    auto secsLeft = [now](qint64 deadline) { return deadline > now ? int((deadline - now + 999) / 1000) : 0; };
+    QJsonObject o{{"type", "seat"}, {"enabled", seatEnabled_}};
+    if (seat_.holder) {
+        const WsClient h = wsInfo.value(seat_.holder);
+        o["holder"] = QJsonObject{{"name", seatLabel(seat_.holder)}, {"id", h.id}, {"role", Access::roleName(h.who.role)},
+                                  {"since", QDateTime::fromMSecsSinceEpoch(seat_.sinceMs, Qt::UTC).toString(Qt::ISODate)},
+                                  {"private", seat_.privateMode},
+                                  {"keying", pttClient == seat_.holder && pttSinceMs > 0}};
+    } else {
+        o["holder"] = QJsonValue(QJsonValue::Null);
+    }
+    o["mine"] = client != nullptr && client == seat_.holder;
+    if (!seat_.holder && seat_.graceUntilMs > now)
+        o["grace"] = QJsonObject{{"name", seat_.graceName}, {"secs", secsLeft(seat_.graceUntilMs)}};
+    QJsonArray q;
+    int pos = 0;
+    for (int i = 0; i < seat_.queue.size(); i++) {
+        QWebSocket *c = seat_.queue.at(i);
+        q.append(QJsonObject{{"name", seatLabel(c)}, {"id", wsInfo.value(c).id}});
+        if (c == client) pos = i + 1;
+    }
+    o["queue"] = q;
+    o["position"] = pos;
+    if (client && client == seat_.holder && seat_.requester)
+        o["request"] = QJsonObject{{"name", seatLabel(seat_.requester)}, {"secs", secsLeft(seat_.requestDeadlineMs)}};
+    if (client && client == seat_.requester)
+        o["requested"] = QJsonObject{{"secs", secsLeft(seat_.requestDeadlineMs)}};
+    if (client && client == seat_.offerTo)
+        o["offer"] = QJsonObject{{"secs", secsLeft(seat_.offerUntilMs)}};
+    o["privateNow"] = seat_.holder != nullptr && (!listenIn_ || seat_.privateMode);
+    o["listenIn"] = listenIn_;
+    o["allowPrivate"] = allowPrivate_;
+    // The schedule: the slot running now, and the next one within the hour.
+    // A visitor gets what the strip shows (whose, when), not the account
+    // behind it: the schedule itself is for those with an account.
+    const bool account = client ? wsInfo.value(client).who.authenticated : viewerHasAccount;
+    const auto forViewer = [account](QJsonObject r) {
+        if (!account) { r.remove("userId"); r.remove("callsign"); r.remove("title"); }
+        return r;
+    };
+    const Occurrence slot = activeReservation();
+    if (slot.valid()) {
+        QJsonObject r = forViewer(occurrenceJson(slot));
+        r["mine"] = client != nullptr && ownsSlot(client, slot);
+        r["holdUntil"] = slot.start.addSecs(kReservationHoldSecs).toUTC().toString(Qt::ISODate);
+        o["reservation"] = r;
+    }
+    if (reservations_) {
+        const Occurrence next = reservations_->nextAfter(QDateTime::currentDateTimeUtc(), 3600);
+        if (next.valid()) {
+            QJsonObject r = forViewer(occurrenceJson(next));
+            r["mine"] = client != nullptr && ownsSlot(client, next);
+            o["next"] = r;
+        }
+    }
+    return o;
+}
+
+Occurrence webServer::activeReservation() const
+{
+    if (!reservations_) return Occurrence();
+    return reservations_->activeAt(QDateTime::currentDateTimeUtc());
+}
+
+bool webServer::ownsSlot(QWebSocket *client, const Occurrence &occ) const
+{
+    if (!client || !occ.valid()) return false;
+    const AccessPrincipal who = wsInfo.value(client).who;
+    return who.authenticated && who.userId == occ.res.userId;
+}
+
+// The account's connection to hand the seat to: the one that has the seat
+// or asked for it if any, else the most recent.
+QWebSocket *webServer::socketOfUser(const QString &userId) const
+{
+    QWebSocket *best = nullptr;
+    qint64 bestSince = -1;
+    for (QWebSocket *c : wsClients) {
+        const WsClient info = wsInfo.value(c);
+        if (!info.who.authenticated || info.who.userId != userId) continue;
+        if (c == seat_.holder || c == seat_.requester || seat_.queue.contains(c)) return c;
+        if (info.sinceMs > bestSince) { best = c; bestSince = info.sinceMs; }
+    }
+    return best;
+}
+
+QJsonObject webServer::occurrenceJson(const Occurrence &occ) const
+{
+    const AccessUser u = access_ ? access_->user(occ.res.userId) : AccessUser();
+    return QJsonObject{{"id", occ.res.id}, {"userId", occ.res.userId}, {"name", u.name}, {"callsign", u.callsign},
+                       {"title", occ.res.title}, {"start", occ.start.toUTC().toString(Qt::ISODate)},
+                       {"end", occ.end.toUTC().toString(Qt::ISODate)}, {"minutes", occ.res.minutes},
+                       {"repeat", Reservation::repeatName(occ.res.repeat)}};
+}
+
+// /api/v1/shared/reservations: everyone with an account reads the schedule,
+// admins write it.  Overlaps are refused with the one in the way.
+void webServer::handleSharedReservationsRequest(QTcpSocket *socket, const QString &method, const QString &path,
+                                                const QByteArray &body, const RequestContext &ctx)
+{
+    if (!reservations_ || !access_) {
+        sendRestResponse(socket, 404, QJsonObject{{"error", "shared station mode is off"}});
+        return;
+    }
+    const QString sub = path.mid(int(strlen("/api/v1/shared/reservations")));
+    // The schedule names accounts and their callsigns: for those who have
+    // one, not for a visitor the station lets in to listen.
+    if (!ctx.who.authenticated) {
+        sendRestResponse(socket, 401, QJsonObject{{"error", "authentication required"}},
+                         "WWW-Authenticate: Bearer realm=\"wfweb\"\r\n");
+        return;
+    }
+    if (sub.isEmpty() && method == "GET") {
+        QJsonArray defs;
+        const QList<Reservation> all = reservations_->list();
+        for (const Reservation &r : all) {
+            QJsonObject o = r.toJson();
+            const AccessUser u = access_->user(r.userId);
+            o["name"] = u.name;
+            o["callsign"] = u.callsign;
+            defs.append(o);
+        }
+        const QDateTime now = QDateTime::currentDateTimeUtc();
+        QJsonArray upcoming;
+        const QList<Occurrence> occ = reservations_->occurrences(now, now.addDays(14));
+        for (const Occurrence &o : occ) {
+            if (upcoming.size() >= 60) break;
+            upcoming.append(occurrenceJson(o));
+        }
+        QJsonObject out{{"reservations", defs}, {"upcoming", upcoming}};
+        const Occurrence active = reservations_->activeAt(now);
+        out["active"] = active.valid() ? QJsonValue(occurrenceJson(active)) : QJsonValue(QJsonValue::Null);
+        sendRestResponse(socket, 200, out);
+        return;
+    }
+    if (ctx.who.role != Access::Role::Admin) {
+        sendRestResponse(socket, 403, QJsonObject{{"error", "admin only"}});
+        return;
+    }
+    if (sub.isEmpty() && method == "POST") {
+        const QJsonObject in = jsonBody(body);
+        Reservation r;
+        bool found = false;
+        AccessUser u = access_->user(in.value("userId").toString(), &found);
+        if (!found) u = access_->userByName(in.value("username").toString(), &found);
+        if (!found) {
+            sendRestResponse(socket, 400, QJsonObject{{"error", "no such account"}});
+            return;
+        }
+        if (u.role < Access::Role::Control) {
+            sendRestResponse(socket, 400, QJsonObject{{"error", "a listener cannot hold the seat"}});
+            return;
+        }
+        if (u.disabled) {
+            sendRestResponse(socket, 400, QJsonObject{{"error", "that account is disabled"}});
+            return;
+        }
+        // A time without a zone is UTC, as the reply gives it back; read as
+        // the server's local time it moved the slot by the server's offset.
+        const auto isoUtc = [](const QString &text) {
+            QDateTime t = QDateTime::fromString(text, Qt::ISODate);
+            if (t.isValid() && t.timeSpec() == Qt::LocalTime) t.setTimeSpec(Qt::UTC);
+            return t;
+        };
+        r.userId = u.id;
+        r.title = in.value("title").toString().simplified().left(80);
+        r.start = isoUtc(in.value("start").toString());
+        // A length that is not a whole number of minutes was 60 without a word.
+        if (in.contains("minutes") && (!in.value("minutes").isDouble() || in.value("minutes").toDouble() != in.value("minutes").toInt())) {
+            sendRestResponse(socket, 400, QJsonObject{{"error", "minutes: a whole number, 5 to 1440"}});
+            return;
+        }
+        r.minutes = in.value("minutes").toInt(60);
+        bool ok = true;
+        r.repeat = Reservation::repeatFromName(in.value("repeat").toString(), &ok);
+        if (!ok) {
+            sendRestResponse(socket, 400, QJsonObject{{"error", "repeat: once, daily or weekly"}});
+            return;
+        }
+        if (in.contains("until") && !in.value("until").toString().isEmpty()) {
+            r.until = isoUtc(in.value("until").toString());
+            if (!r.until.isValid()) {
+                sendRestResponse(socket, 400, QJsonObject{{"error", "until: not a date"}});
+                return;
+            }
+        }
+        r.createdBy = ctx.who.name;
+        QString err, conflict;
+        const QString id = reservations_->add(r, &err, &conflict, QDateTime::currentDateTimeUtc());
+        if (id.isEmpty()) {
+            QJsonObject e{{"error", err}};
+            if (!conflict.isEmpty()) e["conflict"] = conflict;
+            sendRestResponse(socket, conflict.isEmpty() ? 400 : 409, e);
+            return;
+        }
+        access_->audit("reservation-add", AccessControl::who(ctx.who.name, ctx.ip),
+                       QString("%1 %2 %3 min %4").arg(u.name, r.start.toUTC().toString(Qt::ISODate)).arg(r.minutes).arg(Reservation::repeatName(r.repeat)));
+        QJsonObject o = reservations_->get(id).toJson();
+        o["name"] = u.name;
+        broadcastSeat();
+        sendRestResponse(socket, 201, QJsonObject{{"reservation", o}});
+        return;
+    }
+    if (sub.startsWith('/') && method == "DELETE") {
+        const QString id = sub.mid(1);
+        bool found = false;
+        const Reservation r = reservations_->get(id, &found);
+        if (!found || !reservations_->remove(id)) {
+            sendRestResponse(socket, 404, QJsonObject{{"error", "no such reservation"}});
+            return;
+        }
+        access_->audit("reservation-remove", AccessControl::who(ctx.who.name, ctx.ip),
+                       QString("%1 %2").arg(access_->user(r.userId).name, r.start.toUTC().toString(Qt::ISODate)));
+        if (seatResKey_.startsWith(id + '@')) seatResKey_.clear();
+        broadcastSeat();
+        sendRestResponse(socket, 200, QJsonObject{{"ok", true}});
+        return;
+    }
+    sendRestResponse(socket, 405, QJsonObject{{"error", "Method not allowed"}});
+}
+
+void webServer::broadcastSeat()
+{
+    if (!sharedMode_) return;
+    for (QWebSocket *c : wsClients) {
+        auto it = wsInfo.find(c);
+        if (it != wsInfo.end()) it->warnedTxAudio = false;   // a new holder's stream gets through
+        sendJsonTo(c, seatJson(c));
+    }
+}
+
+void webServer::handleSharedSeatRequest(QTcpSocket *socket, const QString &method, const RequestContext &ctx)
+{
+    if (method == "GET") {
+        QJsonObject o = seatJson(nullptr, ctx.who.authenticated);
+        o.remove("type");
+        sendRestResponse(socket, 200, QJsonObject{{"seat", o}});
+        return;
+    }
+    if (method == "DELETE") {
+        if (ctx.who.role != Access::Role::Admin) {
+            sendRestResponse(socket, 403, QJsonObject{{"error", "admin only"}});
+            return;
+        }
+        seatFree("cleared by " + ctx.who.name + " over REST");
+        sendRestResponse(socket, 200, QJsonObject{{"ok", true}});
+        return;
+    }
+    sendRestResponse(socket, 405, QJsonObject{{"error", "Method not allowed"}});
+}
+
+QJsonObject webServer::authMeJson(const RequestContext &ctx) const
+{
+    QJsonObject o{{"shared", sharedMode_.load()}};
+    if (!sharedMode_ || !access_) return o;
+    o["authenticated"] = ctx.who.authenticated;
+    o["user"] = ctx.who.authenticated ? QJsonValue(userJson(ctx.who)) : QJsonValue(QJsonValue::Null);
+    o["setupRequired"] = access_->setupRequired();
+    o["recovery"] = access_->recoveryMode();
+    o["secure"] = ctx.secure;
+    o["anonymousAccess"] = sharedAnonymous_ == Access::Role::None ? QStringLiteral("none") : Access::roleName(sharedAnonymous_);
+    return o;
+}
+
+QByteArray webServer::sessionCookieHeader(const QByteArray &token, bool secure) const
+{
+    QByteArray h = "Set-Cookie: wfweb_session=" + token + "; Path=/; HttpOnly; SameSite=Strict";
+    h += token.isEmpty() ? QByteArray("; Max-Age=0")
+                         : "; Max-Age=" + QByteArray::number(AccessControl::kSessionIdleDays * 86400);
+    if (secure) h += "; Secure";
+    return h + "\r\n";
+}
+
+void webServer::closeSessionClients(const QByteArray &sessionHash, const QString &reason)
+{
+    const QList<QWebSocket *> clients = wsClients;
+    for (QWebSocket *c : clients) {
+        if (wsInfo.value(c).who.sessionHash != sessionHash) continue;
+        cutClient(c, reason);
+    }
+}
+
+void webServer::closeUserClients(const QString &userId, const QString &reason)
+{
+    const QList<QWebSocket *> clients = wsClients;
+    for (QWebSocket *c : clients) {
+        const AccessPrincipal who = wsInfo.value(c).who;
+        if (!who.authenticated || who.userId != userId) continue;
+        cutClient(c, reason);
+    }
+}
+
+// Once a minute: idle sessions expire, and a browser whose session went
+// (logged out elsewhere, account disabled, expired) is cut.
+void webServer::sharedHousekeeping()
+{
+    if (!access_) return;
+    access_->expireSessions();
+    const QList<QWebSocket *> clients = wsClients;
+    for (QWebSocket *c : clients) {
+        const AccessPrincipal who = wsInfo.value(c).who;
+        if (who.via == "session" && !access_->sessionAlive(who.sessionHash))
+            cutClient(c, QStringLiteral("session expired"));
+    }
+    updateSharedStats();
+}
+
+// PBKDF2 on a worker thread; the continuation runs back on this thread,
+// where the socket lives.  QPointer: the server may be gone by then.
+//
+// Two at a time, the rest in line, and a line that is full answers 503
+// (pwBusy): every login used to be a thread of its own at once, so a client
+// that sent logins and hung up (the lockout never saw those, its count was
+// taken in the continuation, behind "is the socket still there") starved
+// the audio thread of the CPU, and a thread the system would not give was
+// an exception in a slot with nobody to catch it (2026-11-21).
+void webServer::pwJob(std::function<QVariant()> work, std::function<void(QVariant)> done)
+{
+    pwQueue_.append(PwJob{std::move(work), std::move(done)});
+    pwPump();
+}
+
+void webServer::pwPump()
+{
+    while (pwRunning_ < kPwMaxRunning && !pwQueue_.isEmpty()) {
+        const PwJob job = pwQueue_.takeFirst();
+        pwRunning_++;
+        QPointer<webServer> self(this);
+        try {
+            std::thread([self, job]() {
+                const QVariant result = job.work();
+                if (!self) return;
+                QMetaObject::invokeMethod(self.data(), [self, job, result] {
+                    if (!self) return;
+                    self->pwRunning_--;
+                    job.done(result);
+                    self->pwPump();
+                }, Qt::QueuedConnection);
+            }).detach();
+        } catch (const std::system_error &e) {
+            pwRunning_--;
+            qWarning() << "Shared: no thread for a password check:" << e.what();
+            job.done(QVariant());   // an empty hash / a failed check: the caller answers for it
+        }
+    }
+}
+
+// True (and the request answered 503) when the line of password checks is
+// full.  Asked before anything is queued.
+bool webServer::pwBusy(QTcpSocket *socket)
+{
+    if (pwQueue_.size() < kPwMaxQueued) return false;
+    sendRestResponse(socket, 503, QJsonObject{{"error", "busy, try again in a moment"}}, "Retry-After: 3\r\n");
+    return true;
+}
+
+void webServer::hashPasswordAsync(const QString &password, std::function<void(QString)> done)
+{
+    const int iterations = access_ ? access_->iterations() : AccessControl::defaultIterations();
+    pwJob([password, iterations]() { return QVariant(AccessControl::hashPassword(password, iterations)); },
+          [done](const QVariant &r) { done(r.toString()); });
+}
+
+// done(1) right, done(0) wrong, done(-1) not checked at all (no thread to
+// be had): that one is "try again", never a miss on anybody's count.
+void webServer::verifyPasswordAsync(const QString &password, const QString &hash, std::function<void(int)> done)
+{
+    pwJob([password, hash]() { return QVariant(AccessControl::verifyPassword(password, hash)); },
+          [done](const QVariant &r) { done(r.isValid() ? (r.toBool() ? 1 : 0) : -1); });
+}
+
+static QJsonObject jsonBody(const QByteArray &body)
+{
+    if (body.isEmpty()) return QJsonObject();
+    QJsonParseError err;
+    const QJsonDocument doc = QJsonDocument::fromJson(body, &err);
+    return (err.error == QJsonParseError::NoError && doc.isObject()) ? doc.object() : QJsonObject();
+}
+
+void webServer::handleAuthRequest(QTcpSocket *socket, const QString &method, const QString &path,
+                                  const QByteArray &body, const RequestContext &ctx)
+{
+    const QString sub = path.mid(int(strlen("/api/v1/auth")));   // "", "/me", "/login", ...
+
+    // Without --shared the only answer is that there is nothing to log in to.
+    if (!sharedMode_ || !access_) {
+        if (sub == "/me" && method == "GET") sendRestResponse(socket, 200, authMeJson(ctx));
+        else sendRestResponse(socket, 404, QJsonObject{{"error", "shared station mode is off"}});
+        return;
+    }
+
+    const QJsonObject in = jsonBody(body);
+    const QPointer<QTcpSocket> sock(socket);
+    const QString ip = ctx.ip, ua = ctx.userAgent;
+    const bool secure = ctx.secure;
+
+    if (sub == "/me" && method == "GET") {
+        sendRestResponse(socket, 200, authMeJson(ctx));
+        return;
+    }
+
+    if (sub == "/login" && method == "POST") {
+        // A password on a plain-HTTP hop is a password for everyone on the
+        // way: the plain REST port, or no TLS at all.
+        if (!secure) {
+            sendRestResponse(socket, 403, QJsonObject{{"error", "log in over HTTPS"}});
+            return;
+        }
+        // Cut to a size no real one exceeds (a user name is 32 characters
+        // at most, a password 256): a name of megabytes was kept as a key
+        // and written to the audit log.  One character over is still wrong.
+        const QString name = in.value("username").toString().trimmed().left(64);
+        const QString password = in.value("password").toString().left(257);
+        if (name.isEmpty() || password.isEmpty()) {
+            sendRestResponse(socket, 400, QJsonObject{{"error", "username and password required"}});
+            return;
+        }
+        if (pwBusy(socket)) return;
+        const AccessControl::LoginCheck check = access_->loginPrecheck(name, ip);
+        if (check.locked) {
+            sendRestResponse(socket, 429, QJsonObject{{"error", "too many attempts"}, {"retryAfter", check.retryAfterSecs}},
+                             "Retry-After: " + QByteArray::number(check.retryAfterSecs) + "\r\n");
+            return;
+        }
+        verifyPasswordAsync(password, check.hash, [this, sock, name, ip, ua, secure](int checked) {
+            if (!access_) return;
+            if (checked < 0) {
+                if (sock) sendRestResponse(sock, 503, QJsonObject{{"error", "busy, try again in a moment"}}, "Retry-After: 3\r\n");
+                return;
+            }
+            const bool ok = checked == 1;
+            // A client that hung up still made its guess: it is counted.
+            // (A right password with nobody left to hand the cookie to
+            // makes no session.)
+            if (!sock) {
+                if (!ok) access_->loginFinish(name, false, ip, ua, nullptr, nullptr);
+                return;
+            }
+            QByteArray token;
+            int retry = 0;
+            switch (access_->loginFinish(name, ok, ip, ua, &token, &retry)) {
+            case AccessControl::LoginResult::Ok: {
+                const AccessPrincipal who = access_->resolveSession(token);
+                updateSharedStats();
+                sendRestResponse(sock, 200, QJsonObject{{"authenticated", true}, {"user", userJson(who)}},
+                                 sessionCookieHeader(token, secure));
+                break;
+            }
+            case AccessControl::LoginResult::Disabled:
+                sendRestResponse(sock, 403, QJsonObject{{"error", "this account is disabled"}});
+                break;
+            case AccessControl::LoginResult::Locked:
+                sendRestResponse(sock, 429, QJsonObject{{"error", "too many attempts"}, {"retryAfter", retry}},
+                                 "Retry-After: " + QByteArray::number(retry) + "\r\n");
+                break;
+            case AccessControl::LoginResult::BadCredentials:
+            default:
+                sendRestResponse(sock, 401, QJsonObject{{"error", "wrong user name or password"}});
+                break;
+            }
+        });
+        return;
+    }
+
+    if (sub == "/logout" && method == "POST") {
+        if (ctx.who.authenticated && ctx.who.via == "session") {
+            closeSessionClients(ctx.who.sessionHash, "logged out");
+            access_->logoutSession(ctx.who.sessionHash);
+        }
+        sendRestResponse(socket, 200, QJsonObject{{"authenticated", false}}, sessionCookieHeader(QByteArray(), secure));
+        return;
+    }
+
+    if (sub == "/setup" && method == "POST") {
+        if (!secure) {
+            sendRestResponse(socket, 403, QJsonObject{{"error", "set up over HTTPS"}});
+            return;
+        }
+        if (!access_->setupRequired() && !access_->recoveryMode()) {
+            sendRestResponse(socket, 403, QJsonObject{{"error", "setup is already done"}});
+            return;
+        }
+        int retry = 0;
+        if (access_->setupLocked(ip, &retry)) {
+            sendRestResponse(socket, 429, QJsonObject{{"error", "too many attempts"}, {"retryAfter", retry}},
+                             "Retry-After: " + QByteArray::number(retry) + "\r\n");
+            return;
+        }
+        if (!access_->setupCodeMatches(in.value("code").toString())) {
+            access_->setupFailed(ip);
+            sendRestResponse(socket, 403, QJsonObject{{"error", "wrong setup code"}});
+            return;
+        }
+        const QString name = in.value("username").toString().trimmed();
+        const QString password = in.value("password").toString();
+        const QString callsign = in.value("callsign").toString();
+        QString err;
+        if (!AccessControl::validName(name, &err) || !AccessControl::validPassword(password, &err)) {
+            sendRestResponse(socket, 400, QJsonObject{{"error", err}});
+            return;
+        }
+        if (!AccessControl::validCallsign(callsign)) {
+            sendRestResponse(socket, 400, QJsonObject{{"error", "callsign: letters, digits and '/' only"}});
+            return;
+        }
+        if (pwBusy(socket)) return;
+        hashPasswordAsync(password, [this, sock, name, callsign, ip, ua, secure](const QString &hash) {
+            if (!sock || !access_) return;
+            if (hash.isEmpty()) {
+                sendRestResponse(sock, 503, QJsonObject{{"error", "busy, try again in a moment"}}, "Retry-After: 3\r\n");
+                return;
+            }
+            QString err;
+            const QString id = access_->setupAdmin(name, hash, callsign, ip, &err);
+            if (id.isEmpty()) {
+                sendRestResponse(sock, 400, QJsonObject{{"error", err}});
+                return;
+            }
+            // The new admin is logged in on the spot.
+            QByteArray token;
+            const AccessControl::LoginResult logged = access_->loginFinish(name, true, ip, ua, &token);
+            updateSharedStats();
+            qInfo().noquote() << "Shared: admin account" << name << "created from" << ip;
+            if (logged != AccessControl::LoginResult::Ok || token.isEmpty()) {
+                // The account is made; the page logs in with it.
+                sendRestResponse(sock, 200, QJsonObject{{"authenticated", false}, {"created", true}});
+                return;
+            }
+            const AccessPrincipal who = access_->resolveSession(token);
+            sendRestResponse(sock, 200, QJsonObject{{"authenticated", true}, {"user", userJson(who)}},
+                             sessionCookieHeader(token, secure));
+        });
+        return;
+    }
+
+    // Everything below is for a logged-in user.
+    if (!ctx.who.authenticated) {
+        sendRestResponse(socket, 401, QJsonObject{{"error", "authentication required"}},
+                         "WWW-Authenticate: Bearer realm=\"wfweb\"\r\n");
+        return;
+    }
+    const AccessPrincipal who = ctx.who;
+
+    if (sub == "/password" && method == "POST") {
+        if (!secure) {
+            sendRestResponse(socket, 403, QJsonObject{{"error", "change the password over HTTPS"}});
+            return;
+        }
+        // From a browser somebody logged in on, like tokens: a leaked API
+        // token (no expiry) could otherwise try passwords here for good.
+        if (who.via != QLatin1String("session")) {
+            sendRestResponse(socket, 403, QJsonObject{{"error", "change the password from a logged-in browser"}});
+            return;
+        }
+        const QString current = in.value("current").toString().left(257);
+        const QString next = in.value("password").toString();
+        QString err;
+        if (!AccessControl::validPassword(next, &err)) {
+            sendRestResponse(socket, 400, QJsonObject{{"error", err}});
+            return;
+        }
+        bool found = false;
+        const AccessUser u = access_->user(who.userId, &found);
+        if (!found) {
+            sendRestResponse(socket, 404, QJsonObject{{"error", "no such user"}});
+            return;
+        }
+        // The current password is a guess like any other: counted, locked
+        // after five, in the audit log.  (A stolen session used to try as
+        // many as it liked here, without a line anywhere.)
+        int retry = 0;
+        if (access_->passwordChangeLocked(who.userId, &retry)) {
+            sendRestResponse(socket, 429, QJsonObject{{"error", "too many attempts"}, {"retryAfter", retry}},
+                             "Retry-After: " + QByteArray::number(retry) + "\r\n");
+            return;
+        }
+        if (pwBusy(socket)) return;
+        const QString verified = u.passwordHash;
+        verifyPasswordAsync(current, verified, [this, sock, who, next, ip, verified](int checked) {
+            if (!access_) return;
+            if (checked < 0) {
+                if (sock) sendRestResponse(sock, 503, QJsonObject{{"error", "busy, try again in a moment"}}, "Retry-After: 3\r\n");
+                return;
+            }
+            const bool ok = checked == 1;
+            if (!ok) {
+                access_->passwordChangeFailed(who.userId, who.name, ip);
+                if (sock) sendRestResponse(sock, 403, QJsonObject{{"error", "current password is wrong"}});
+                return;
+            }
+            if (!sock) return;
+            hashPasswordAsync(next, [this, sock, who, ip, verified](const QString &hash) {
+                if (!access_) return;
+                // The account as it is now: gone, disabled, logged out or
+                // given another password by an admin while this was being
+                // worked out, it is not changed on the strength of what was
+                // true before.
+                bool still = false;
+                const AccessUser now = access_->user(who.userId, &still);
+                if (hash.isEmpty() || !still || now.disabled || now.passwordHash != verified
+                        || !access_->sessionAlive(who.sessionHash)) {
+                    if (sock) sendRestResponse(sock, 409, QJsonObject{{"error", "the account changed meanwhile: log in again"}});
+                    return;
+                }
+                access_->setPasswordHash(who.userId, hash);
+                access_->passwordChangeOk(who.userId);
+                // This browser stays logged in; the account's other
+                // sessions end.  Whoever changes a password because
+                // somebody else got in is not left with them still in.
+                access_->logoutOtherSessions(who.userId, who.sessionHash);
+                const QList<QWebSocket *> clients = wsClients;
+                for (QWebSocket *c : clients) {
+                    const AccessPrincipal p = wsInfo.value(c).who;
+                    if (p.authenticated && p.userId == who.userId && p.sessionHash != who.sessionHash)
+                        cutClient(c, QStringLiteral("password changed"));
+                }
+                access_->audit("password-changed", AccessControl::who(who.name, ip));
+                updateSharedStats();
+                if (sock) sendRestResponse(sock, 200, QJsonObject{{"ok", true}});
+            });
+        });
+        return;
+    }
+
+    if (sub == "/tokens" || sub.startsWith("/tokens/")) {
+        // Tokens are made and revoked from a browser session only: a leaked
+        // token must not be able to mint more.
+        if (who.via != "session") {
+            sendRestResponse(socket, 403, QJsonObject{{"error", "manage tokens from a logged-in browser"}});
+            return;
+        }
+        if (sub == "/tokens" && method == "GET") {
+            QJsonArray arr;
+            const QJsonArray toks = access_->user(who.userId).toJson(false).value("tokens").toArray();
+            for (const QJsonValue &v : toks) arr.append(v);
+            sendRestResponse(socket, 200, QJsonObject{{"tokens", arr}});
+            return;
+        }
+        if (sub == "/tokens" && method == "POST") {
+            QByteArray token;
+            QString err;
+            const QString id = access_->createToken(who.userId, in.value("name").toString(), &token, &err);
+            if (id.isEmpty()) {
+                sendRestResponse(socket, 400, QJsonObject{{"error", err}});
+                return;
+            }
+            // The token itself is shown once; only its hash is kept.
+            sendRestResponse(socket, 201, QJsonObject{{"id", id}, {"name", in.value("name").toString()},
+                                                      {"token", QString::fromLatin1(token)}});
+            return;
+        }
+        if (sub.startsWith("/tokens/") && method == "DELETE") {
+            const QString id = sub.mid(int(strlen("/tokens/")));
+            if (access_->revokeToken(who.userId, id)) sendRestResponse(socket, 200, QJsonObject{{"ok", true}});
+            else sendRestResponse(socket, 404, QJsonObject{{"error", "no such token"}});
+            return;
+        }
+    }
+
+    sendRestResponse(socket, 404, QJsonObject{{"error", "unknown auth route"}});
+}
+
+// Account management, admins only: /api/v1/shared/users[/<id>].
+void webServer::handleSharedUsersRequest(QTcpSocket *socket, const QString &method, const QString &path,
+                                         const QByteArray &body, const RequestContext &ctx)
+{
+    if (!sharedMode_ || !access_) {
+        sendRestResponse(socket, 404, QJsonObject{{"error", "shared station mode is off"}});
+        return;
+    }
+    if (ctx.who.role != Access::Role::Admin) {
+        sendRestResponse(socket, 403, QJsonObject{{"error", "admin only"}});
+        return;
+    }
+    // Accounts are made, changed and exported by an admin who logged in,
+    // like API tokens: a token has no expiry, outlives a password change
+    // and is taken on the plain-HTTP port, so one that leaked made itself
+    // an admin account of its own and took the password hashes with it
+    // (2026-11-21).  A token still reads and sets the policy.
+    if (ctx.who.via != QLatin1String("session")) {
+        sendRestResponse(socket, 403, QJsonObject{{"error", "manage accounts from a logged-in browser"}});
+        return;
+    }
+    const QString sub = path.mid(int(strlen("/api/v1/shared/users")));   // "" or "/<id>"
+    const QString targetId = sub.startsWith('/') ? sub.mid(1) : QString();
+    const QJsonObject in = jsonBody(body);
+    const QPointer<QTcpSocket> sock(socket);
+    const AccessPrincipal admin = ctx.who;
+    const QString ip = ctx.ip;
+
+    auto listJson = [this]() {
+        QJsonArray arr;
+        const QList<AccessUser> all = access_->users();
+        for (const AccessUser &u : all) arr.append(u.toJson(false));
+        return QJsonObject{{"users", arr}};
+    };
+    // The last enabled admin cannot be demoted, disabled or removed: that
+    // would leave the station with nobody to let anyone in but the console.
+    auto lastAdmin = [this](const QString &id) {
+        bool found = false;
+        const AccessUser u = access_->user(id, &found);
+        if (!found || u.role != Access::Role::Admin || u.disabled) return false;
+        int admins = 0;
+        const QList<AccessUser> all = access_->users();
+        for (const AccessUser &x : all)
+            if (x.role == Access::Role::Admin && !x.disabled) admins++;
+        return admins <= 1;
+    };
+
+    if (targetId.isEmpty() && method == "GET") {
+        sendRestResponse(socket, 200, listJson());
+        return;
+    }
+
+    // The list as a file: every account with its password hash, so they log
+    // in on the station that imports it.  Sessions and API tokens stay here.
+    if (targetId == "export" && method == "GET") {
+        access_->audit("users-export", AccessControl::who(admin.name, ip), QString("%1 accounts").arg(access_->userCount()));
+        sendRestResponse(socket, 200, access_->exportUsers());
+        return;
+    }
+    // {users: [...]}: an export, or a list written by hand with a plain
+    // "password" per entry.  Accounts are only ever added: a name that
+    // exists is skipped and reported, never replaced.
+    if (targetId == "import" && method == "POST") {
+        const QJsonArray list = in.value("users").toArray();
+        if (list.isEmpty()) {
+            sendRestResponse(socket, 400, QJsonObject{{"error", "no users in the file"}});
+            return;
+        }
+        if (list.size() > AccessControl::kMaxImport) {
+            sendRestResponse(socket, 400, QJsonObject{{"error", QString("at most %1 accounts at a time").arg(AccessControl::kMaxImport)}});
+            return;
+        }
+        if (pwBusy(socket)) return;
+        struct ImportRun { QJsonArray list; int next = 0; QJsonArray added; QJsonArray skipped; };
+        auto run = std::make_shared<ImportRun>();
+        run->list = list;
+        auto step = std::make_shared<std::function<void()>>();
+        *step = [this, sock, admin, ip, run, step]() {
+            while (sock && access_ && run->next < run->list.size()) {
+                const QJsonObject e = run->list.at(run->next++).toObject();
+                const QString name = e.value("username").toString(e.value("name").toString()).trimmed();
+                auto skip = [&](const QString &why) { run->skipped.append(QJsonObject{{"username", name}, {"reason", why}}); };
+                auto add = [this, run, e, name](const QString &hash) {
+                    QString err;
+                    if (access_->importUser(e, hash, &err).isEmpty())
+                        run->skipped.append(QJsonObject{{"username", name}, {"reason", err}});
+                    else
+                        run->added.append(name);
+                };
+                QString err;
+                bool taken = false;
+                access_->userByName(name, &taken);
+                if (!AccessControl::validName(name, &err)) { skip(err); continue; }
+                if (taken) { skip(QStringLiteral("that user name is taken")); continue; }
+                const QString hash = e.value("passwordHash").toString();
+                if (AccessControl::validPasswordHash(hash)) { add(hash); continue; }
+                const QString password = e.value("password").toString();
+                if (password.isEmpty()) { skip(QStringLiteral("no password")); continue; }
+                if (!AccessControl::validPassword(password, &err)) { skip(err); continue; }
+                // A plain password is hashed off this thread, one at a time.
+                hashPasswordAsync(password, [this, add, step](const QString &h) {
+                    if (access_) add(h);   // an empty hash (no thread to be had) is skipped as "no password"
+                    const std::function<void()> next = *step;   // a copy: the run clears *step at its end
+                    if (next) next();
+                });
+                return;
+            }
+            *step = nullptr;   // breaks the step -> lambda -> step cycle; we run from a copy
+            if (!access_) return;
+            access_->audit("users-import", AccessControl::who(admin.name, ip),
+                           QString("%1 added, %2 skipped").arg(run->added.size()).arg(run->skipped.size()));
+            updateSharedStats();
+            if (!sock) return;
+            QJsonArray arr;
+            const QList<AccessUser> all = access_->users();
+            for (const AccessUser &u : all) arr.append(u.toJson(false));
+            sendRestResponse(sock, 200, QJsonObject{{"added", run->added}, {"skipped", run->skipped}, {"users", arr}});
+        };
+        const std::function<void()> first = *step;
+        first();
+        return;
+    }
+
+    if (targetId.isEmpty() && method == "POST") {
+        const QString name = in.value("username").toString().trimmed();
+        const QString password = in.value("password").toString();
+        const Access::Role role = Access::roleFromName(in.value("role").toString());
+        const QString callsign = in.value("callsign").toString();
+        const QString notes = in.value("notes").toString();
+        QString err;
+        if (!AccessControl::validName(name, &err) || !AccessControl::validPassword(password, &err)) {
+            sendRestResponse(socket, 400, QJsonObject{{"error", err}});
+            return;
+        }
+        if (role == Access::Role::None) {
+            sendRestResponse(socket, 400, QJsonObject{{"error", "role: listen, control, operate or admin"}});
+            return;
+        }
+        if (!AccessControl::validCallsign(callsign)) {
+            sendRestResponse(socket, 400, QJsonObject{{"error", "callsign: letters, digits and '/' only"}});
+            return;
+        }
+        bool taken = false;
+        access_->userByName(name, &taken);
+        if (taken) {
+            sendRestResponse(socket, 409, QJsonObject{{"error", "that user name is taken"}});
+            return;
+        }
+        if (pwBusy(socket)) return;
+        hashPasswordAsync(password, [this, sock, admin, ip, name, role, callsign, notes](const QString &hash) {
+            if (!sock || !access_) return;
+            if (hash.isEmpty()) {
+                sendRestResponse(sock, 503, QJsonObject{{"error", "busy, try again in a moment"}}, "Retry-After: 3\r\n");
+                return;
+            }
+            QString err;
+            const QString id = access_->addUser(name, hash, role, callsign, &err);
+            if (id.isEmpty()) {
+                sendRestResponse(sock, 400, QJsonObject{{"error", err}});
+                return;
+            }
+            if (!notes.trimmed().isEmpty()) access_->setNotes(id, notes);
+            access_->audit("user-created", AccessControl::who(admin.name, ip), name + " " + Access::roleName(role));
+            updateSharedStats();
+            sendRestResponse(sock, 201, QJsonObject{{"user", access_->user(id).toJson(false)}});
+        });
+        return;
+    }
+
+    bool found = false;
+    const AccessUser target = access_->user(targetId, &found);
+    if (!found) {
+        sendRestResponse(socket, 404, QJsonObject{{"error", "no such user"}});
+        return;
+    }
+
+    if (method == "PUT" || method == "PATCH") {
+        // Everything is checked before anything is changed.  It used to be
+        // applied a field at a time: {"role":"listen","callsign":"??"} was
+        // answered 400 with the role already saved, no audit line for it
+        // and the member's open page still at the old level (2026-11-21).
+        // A value of the wrong type is an error, not false or zero:
+        // {"disabled":"true"} re-enabled a disabled account.
+        const auto bad = [&](int code, const QString &why) { sendRestResponse(socket, code, QJsonObject{{"error", why}}); };
+        const bool hasRole = in.contains("role"), hasCall = in.contains("callsign"), hasOnAir = in.contains("onAir");
+        const bool hasNotes = in.contains("notes"), hasDisabled = in.contains("disabled"), hasPassword = in.contains("password");
+        Access::Role role = target.role;
+        if (hasRole) {
+            role = Access::roleFromName(in.value("role").toString());
+            if (role == Access::Role::None) { bad(400, "role: listen, control, operate or admin"); return; }
+            if (role != Access::Role::Admin && lastAdmin(targetId)) { bad(409, "that is the last admin"); return; }
+        }
+        QString callsign = target.callsign;
+        if (hasCall) {
+            if (!in.value("callsign").isString() || !AccessControl::validCallsign(in.value("callsign").toString())) {
+                bad(400, "callsign: letters, digits and '/' only");
+                return;
+            }
+            callsign = AccessControl::normalizeCallsign(in.value("callsign").toString());
+        }
+        if (hasOnAir) {
+            const QString v = in.value("onAir").toString();
+            if (v != QLatin1String("station") && v != QLatin1String("own")) { bad(400, "onAir: station or own"); return; }
+            if (v == QLatin1String("own") && callsign.isEmpty()) { bad(400, "onAir own needs a callsign on the account"); return; }
+        }
+        if (hasNotes && !in.value("notes").isString()) { bad(400, "notes: text"); return; }
+        if (hasDisabled) {
+            if (!in.value("disabled").isBool()) { bad(400, "disabled: true or false"); return; }
+            if (in.value("disabled").toBool() && lastAdmin(targetId)) { bad(409, "that is the last admin"); return; }
+        }
+        if (in.contains("kick") && !in.value("kick").isBool()) { bad(400, "kick: true or false"); return; }
+        const QString password = in.value("password").toString();
+        if (hasPassword) {
+            QString err;
+            if (!in.value("password").isString() || !AccessControl::validPassword(password, &err)) {
+                bad(400, err.isEmpty() ? QStringLiteral("password: at least 8 characters") : err);
+                return;
+            }
+            if (pwBusy(socket)) return;
+        }
+
+        QStringList changes;
+        if (hasRole) {
+            access_->setRole(targetId, role);
+            changes << "role=" + Access::roleName(role);
+        }
+        if (hasCall) {
+            access_->setCallsign(targetId, callsign);
+            changes << "callsign=" + callsign;
+        }
+        if (hasOnAir) {
+            access_->setOnAir(targetId, in.value("onAir").toString());
+            changes << "onair=" + in.value("onAir").toString();
+        }
+        if (hasRole || hasCall || hasOnAir) refreshUserClients(targetId);
+        if (hasNotes) {
+            // What the note says stays out of the audit log: it is about a person.
+            access_->setNotes(targetId, in.value("notes").toString());
+            changes << "notes";
+        }
+        if (hasDisabled) {
+            const bool disabled = in.value("disabled").toBool();
+            access_->setDisabled(targetId, disabled);
+            if (disabled) closeUserClients(targetId, "account disabled");
+            changes << (disabled ? "disabled" : "enabled");
+        }
+        if (in.value("kick").toBool()) {
+            access_->logoutUser(targetId);
+            closeUserClients(targetId, "logged out by an admin");
+            changes << "kicked";
+        }
+        // What is done is in the audit log now, password or not: it used to
+        // be written when the hash came back, and not at all if the admin's
+        // connection had gone by then.
+        if (!changes.isEmpty())
+            access_->audit("user-updated", AccessControl::who(admin.name, ip), target.name + " " + changes.join(' '));
+        updateSharedStats();
+        if (hasPassword) {
+            hashPasswordAsync(password, [this, sock, admin, ip, targetId, target](const QString &hash) {
+                if (!access_) return;
+                bool still = false;
+                access_->user(targetId, &still);
+                if (hash.isEmpty() || !still) {
+                    if (sock) sendRestResponse(sock, still ? 503 : 404, QJsonObject{{"error", still ? "busy, try again in a moment" : "no such user"}});
+                    return;
+                }
+                access_->setPasswordHash(targetId, hash);
+                // A password set by an admin ends the account's sessions and
+                // its API tokens: the person who had them may not be the
+                // person who has it now.
+                access_->logoutUser(targetId);
+                access_->clearTokens(targetId);
+                closeUserClients(targetId, "password changed");
+                access_->audit("user-updated", AccessControl::who(admin.name, ip), target.name + " password");
+                updateSharedStats();
+                if (sock) sendRestResponse(sock, 200, QJsonObject{{"user", access_->user(targetId).toJson(false)}});
+            });
+            return;
+        }
+        sendRestResponse(socket, 200, QJsonObject{{"user", access_->user(targetId).toJson(false)}});
+        return;
+    }
+
+    if (method == "DELETE") {
+        if (targetId == admin.userId) {
+            sendRestResponse(socket, 409, QJsonObject{{"error", "you cannot remove yourself"}});
+            return;
+        }
+        if (lastAdmin(targetId)) {
+            sendRestResponse(socket, 409, QJsonObject{{"error", "that is the last admin"}});
+            return;
+        }
+        closeUserClients(targetId, "account removed");
+        access_->removeUser(targetId);
+        if (reservations_ && reservations_->removeUser(targetId)) broadcastSeat();
+        access_->audit("user-removed", AccessControl::who(admin.name, ip), target.name);
+        updateSharedStats();
+        sendRestResponse(socket, 200, listJson());
+        return;
+    }
+
+    sendRestResponse(socket, 405, QJsonObject{{"error", "Method not allowed"}});
 }

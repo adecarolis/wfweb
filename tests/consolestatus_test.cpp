@@ -75,6 +75,7 @@ int main()
         require(contains(lines, "IC-7300 on /dev/ttyUSB0 @ 115200  CONNECTED"), "rig line");
         require(contains(lines, "14.074.000 USB  RX"), "frequency line");
         require(contains(lines, "2 connected"), "browser count");
+        require(contains(lines, "Access     open - anyone who reaches this port can transmit"), "open access is spelled out");
         require(contains(lines, "http://192.168.1.42:8081/"), "REST URL");
         require(contains(lines, "127.0.0.1:4532"), "rigctld");
         require(contains(lines, "/tmp/wfweb-20261004101500.log"), "log file");
@@ -119,6 +120,56 @@ int main()
         lines = ConsoleStatus::render(s, 80, 24);
         require(contains(lines, "Starting..."), "placeholder before the server exists");
         require(!contains(lines, "Rig"), "no rig line before the server exists");
+    }
+
+    // --- reachable from the internet ---
+    {
+        ConsoleSnapshot s = full;
+        require(!contains(ConsoleStatus::render(s, 80, 24), "Internet"), "no internet line on a LAN");
+        s.publicClient = "203.0.113.9 at 14:02";
+        s.publicClients = 1;
+        QStringList lines = ConsoleStatus::render(s, 80, 24);
+        require(contains(lines, "Internet   PUBLIC CLIENT 203.0.113.9 at 14:02"), "public client named");
+        require(!contains(lines, "addresses so far"), "no count for a single address");
+        require(contains(lines, "meant for a LAN or a VPN"), "what wfweb is for");
+        s.publicClients = 3;
+        s.publicInterface = "198.51.100.4";
+        lines = ConsoleStatus::render(s, 80, 24);
+        require(contains(lines, "(3 addresses so far)"), "count of public addresses");
+        require(contains(lines, "           this host has the public address 198.51.100.4"),
+                "public interface on its own line under the client");
+        s.publicClient.clear();
+        lines = ConsoleStatus::render(s, 80, 24);
+        require(contains(lines, "Internet   this host has the public address 198.51.100.4"), "public interface alone");
+        // A short terminal keeps the warning over the less urgent lines.
+        s.publicClient = "203.0.113.9 at 14:02";
+        lines = ConsoleStatus::render(s, 80, 12);
+        require(contains(lines, "PUBLIC CLIENT"), "warning survives a short terminal");
+    }
+
+    // --- shared station and a real certificate ---
+    {
+        ConsoleSnapshot s = full;
+        s.shared = true;
+        s.setupCode = "K7QX-4MZP";
+        QStringList lines = ConsoleStatus::render(s, 80, 24);
+        require(contains(lines, "Access     shared station - SETUP CODE K7QX-4MZP"), "setup code shown while no admin exists");
+        require(!contains(lines, "anyone who reaches"), "no open-access warning with --shared");
+
+        s.setupCode.clear();
+        s.sharedUsers = 1;
+        lines = ConsoleStatus::render(s, 80, 24);
+        require(contains(lines, "Access     shared station, 1 account"), "account count, singular");
+        s.sharedUsers = 12;
+        require(contains(ConsoleStatus::render(s, 80, 24), "shared station, 12 accounts"), "account count, plural");
+
+        s.selfSigned = false;
+        lines = ConsoleStatus::render(s, 80, 24);
+        require(!contains(lines, "self-signed"), "no certificate note with the operator's own certificate");
+        require(contains(lines, "https://192.168.1.42:8080/"), "URL still https");
+
+        s.web = ConsoleSnapshot::WebDisabled;
+        require(!contains(ConsoleStatus::render(s, 80, 24), "Access"), "no access row without a web server");
     }
 
     // --- rig not there yet, transmitting, hostile text ---
