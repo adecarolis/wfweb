@@ -19,6 +19,6 @@
 // after it ("0.9.5+dev.e49e8c76"): read wfwebVersion() in buildinfo.h for
 // anything a person sees, not this macro.
 
-#define WFWEB_VERSION "0.9.5"
+#define WFWEB_VERSION "0.9.6"
 
 #endif // WFWEB_VERSION_H
