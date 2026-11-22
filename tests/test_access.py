@@ -314,6 +314,82 @@ def test_user_management(shared):
     assert shared.req("DELETE", f"/api/v1/shared/users/{op['id']}", cookie=admin).status_code == 404
 
 
+def test_account_routes_hardening(shared):
+    admin = shared.admin_cookie
+    r = shared.post("/api/v1/shared/users", {"username": "hard", "password": "hardening-pw", "role": "operate", "callsign": "w1hrd"}, cookie=admin)
+    assert r.status_code == 201, r.text
+    uid = r.json()["user"]["id"]
+
+    def user():
+        return [u for u in shared.get("/api/v1/shared/users", cookie=admin).json()["users"] if u["id"] == uid][0]
+
+    # Everything is checked before anything is changed.
+    r = shared.req("PUT", f"/api/v1/shared/users/{uid}", json={"role": "listen", "callsign": "??"}, cookie=admin)
+    assert r.status_code == 400 and user()["role"] == "operate", "a bad field leaves the good one unapplied"
+    r = shared.req("PUT", f"/api/v1/shared/users/{uid}", json={"callsign": "", "onAir": "own"}, cookie=admin)
+    assert r.status_code == 400 and user()["callsign"] == "W1HRD"
+    for body in ({"disabled": "true"}, {"password": ""}, {"password": "short"}, {"kick": "yes"}, {"notes": 5}):
+        assert shared.req("PUT", f"/api/v1/shared/users/{uid}", json=body, cookie=admin).status_code == 400, body
+    assert user()["disabled"] is False
+    # A callsign is checked when the account is made, too.
+    r = shared.post("/api/v1/shared/users", {"username": "badcall", "password": "hardening-pw", "role": "listen", "callsign": "W1 <b>"}, cookie=admin)
+    assert r.status_code == 400 and "callsign" in r.json()["error"], r.text
+
+    # An admin's API token does not manage accounts; it still reads the policy.
+    tok = shared.post("/api/v1/auth/tokens", {"name": "script"}, cookie=admin).json()
+    for method, path, body in (("GET", "/api/v1/shared/users", None), ("GET", "/api/v1/shared/users/export", None),
+                               ("POST", "/api/v1/shared/users", {"username": "viatoken", "password": "token-made-pw", "role": "admin"}),
+                               ("PUT", f"/api/v1/shared/users/{uid}", {"role": "admin"}),
+                               ("DELETE", f"/api/v1/shared/users/{uid}", None),
+                               ("POST", "/api/v1/shared/users/import", {"users": [{"username": "x1", "password": "token-made-pw", "role": "admin"}]})):
+        r = shared.req(method, path, token=tok["token"], json=body) if body is not None else shared.req(method, path, token=tok["token"])
+        assert r.status_code == 403 and "logged-in browser" in r.json()["error"], f"{method} {path}: {r.status_code} {r.text}"
+    assert shared.get("/api/v1/shared/policy", token=tok["token"]).status_code == 200
+    assert user()["role"] == "operate"
+    # Nor does a token change a password.
+    r = shared.post("/api/v1/auth/password", {"current": shared.admin_password, "password": "by-token-never"}, token=tok["token"])
+    assert r.status_code == 403 and "logged-in browser" in r.json()["error"]
+    assert shared.req("DELETE", f"/api/v1/auth/tokens/{tok['id']}", cookie=admin).status_code == 200
+
+    # A password set by an admin ends the account's API tokens with its sessions.
+    r = shared.post("/api/v1/auth/login", {"username": "hard", "password": "hardening-pw"})
+    hard_a, _ = set_cookie(r)
+    hard_tok = shared.post("/api/v1/auth/tokens", {"name": "mine"}, cookie=hard_a).json()["token"]
+    assert shared.get("/api/v1/radio/info", token=hard_tok).status_code == 200
+    assert shared.req("PUT", f"/api/v1/shared/users/{uid}", json={"password": "set-by-the-admin"}, cookie=admin).status_code == 200
+    assert shared.get("/api/v1/radio/info", token=hard_tok).status_code == 401
+    assert shared.get("/api/v1/auth/me", cookie=hard_a).json()["authenticated"] is False
+
+    # One's own password change keeps this browser and ends the others.
+    hard_a, _ = set_cookie(shared.post("/api/v1/auth/login", {"username": "hard", "password": "set-by-the-admin"}))
+    hard_b, _ = set_cookie(shared.post("/api/v1/auth/login", {"username": "hard", "password": "set-by-the-admin"}))
+    r = shared.post("/api/v1/auth/password", {"current": "set-by-the-admin", "password": "chosen-by-hard-1"}, cookie=hard_a)
+    assert r.status_code == 200, r.text
+    assert shared.get("/api/v1/auth/me", cookie=hard_a).json()["authenticated"] is True
+    assert shared.get("/api/v1/auth/me", cookie=hard_b).json()["authenticated"] is False, "the other session is ended"
+    # The current password is a guess like any other: counted and audited.
+    for _ in range(5):
+        assert shared.post("/api/v1/auth/password", {"current": "nope-nope-nope", "password": "another-pw-here"}, cookie=hard_a).status_code == 403
+    r = shared.post("/api/v1/auth/password", {"current": "chosen-by-hard-1", "password": "another-pw-here"}, cookie=hard_a)
+    assert r.status_code == 429, "five misses lock the password change"
+    audit = (shared.shared_dir / "audit.log").read_text()
+    assert "password-change-failed hard@" in audit
+
+    # A login name no account can have: refused, and not a word of it in
+    # the audit log (a line break in it forged a line).
+    r = shared.post("/api/v1/auth/login", {"username": "x\n2026-01-01T00:00:00Z login clubadmin@6.6.6.6 admin", "password": "p"})
+    assert r.status_code == 401
+    r = shared.post("/api/v1/auth/login", {"username": "A" * 200000, "password": "p"})
+    assert r.status_code in (401, 413)
+    audit = (shared.shared_dir / "audit.log").read_text()
+    assert "clubadmin@6.6.6.6" not in audit and "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" not in audit
+    assert all(len(line) < 700 for line in audit.splitlines())
+
+    assert shared.req("DELETE", f"/api/v1/shared/users/{uid}", cookie=admin).status_code == 200
+    # (Leaves this address with no miss on its count for the tests below.)
+    assert shared.post("/api/v1/auth/login", {"username": "clubadmin", "password": shared.admin_password}).status_code == 200
+
+
 def test_password_change(shared):
     cookie = shared.admin_cookie
     r = shared.post("/api/v1/auth/password", {"current": "wrong-wrong", "password": "another-admin-pw"}, cookie=cookie)

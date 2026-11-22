@@ -448,6 +448,82 @@ def test_private_and_listen_in(srv):
     assert "seat-private con1@" in audit
 
 
+def _wait_seat(srv, pred, timeout=5.0):
+    deadline = time.monotonic() + timeout
+    seat = rest_seat(srv)
+    while time.monotonic() < deadline and not pred(seat):
+        time.sleep(0.1)
+        seat = rest_seat(srv)
+    assert pred(seat), seat
+    return seat
+
+
+def test_a_holder_cut_by_the_server_leaves_no_grace(srv):
+    """A kick or a logout is not a holder who dropped off and may come
+    back: the seat frees at once.  (A kicked holder used to have it back by
+    reloading within 30 s, and "kept for X" stood for a session that was
+    gone.)"""
+    op1, _ = open_ws(srv, "op1")
+    con1, _ = open_ws(srv, "con1")
+    with con1:
+        send(op1, "seatTake")
+        assert seat_msg(op1, lambda m: m["mine"]) is not None
+        conns = srv.get("/api/v1/shared/connections", cookie=srv.admin_cookie).json()["connections"]
+        holder = [c for c in conns if c["seat"]]
+        assert len(holder) == 1 and holder[0]["name"] == "op1", conns
+        assert srv.req("DELETE", f"/api/v1/shared/connections/{holder[0]['id']}", cookie=srv.admin_cookie).status_code == 200
+        seat = _wait_seat(srv, lambda s: s["holder"] is None)
+        assert seat.get("grace") is None, "no 'kept for op1' after a kick"
+        send(con1, "seatTake")
+        _wait_seat(srv, lambda s: s["holder"] is not None and s["holder"]["name"] == "con1")
+        send(con1, "seatRelease")
+        _wait_seat(srv, lambda s: s["holder"] is None)
+    op1.close()
+
+    # Logging out gives the seat up too.
+    op2, _ = open_ws(srv, "op2")
+    send(op2, "seatTake")
+    assert seat_msg(op2, lambda m: m["mine"]) is not None
+    assert srv.post("/api/v1/auth/logout", cookie=srv.cookies["op2"]).status_code == 200
+    seat = _wait_seat(srv, lambda s: s["holder"] is None)
+    assert seat.get("grace") is None
+    op2.close()
+    r = srv.post("/api/v1/auth/login", {"username": "op2", "password": PASSWORDS["op2"]})
+    assert r.status_code == 200
+    srv.cookies["op2"], _ = set_cookie(r)
+
+
+def test_visitors_lowered_leave_the_seat(srv):
+    """A visitor in the seat when visitors are no longer let to tune could
+    not even give it up (seatRelease needs the level): it is freed."""
+    set_policy(srv, anonymous="control")
+    try:
+        v = srv.ws()
+        assert recv_until(v, lambda m: m.get("type") == "access") is not None
+        with v:
+            send(v, "seatTake")
+            assert seat_msg(v, lambda m: m["mine"]) is not None
+            set_policy(srv, anonymous="listen")
+            _wait_seat(srv, lambda s: s["holder"] is None)
+    finally:
+        set_policy(srv, anonymous="none")
+
+
+def test_switching_the_seat_on_releases_a_key(srv):
+    """With the seat off anyone with the level keys.  Switched on under a
+    held key, its owner has no seat to send the key-up with: it is released."""
+    set_policy(srv, seat=False)
+    op1, _ = open_ws(srv, "op1")
+    try:
+        with op1:
+            assert denied_for(op1, "setPTT", value=True) is None
+            wait_ptt(srv, True)
+            set_policy(srv, seat=True)
+            wait_ptt(srv, False)
+    finally:
+        set_policy(srv, seat=True)
+
+
 def test_seat_off(srv):
     set_policy(srv, seat=False)
     con1, seat = open_ws(srv, "con1")

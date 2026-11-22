@@ -1081,6 +1081,11 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
             // Route PTT through webserver so RADE EOO synthesis,
             // packet TX gating and ALC meter polling stay coherent.
             emit parent->pttRequested(val.toBool());
+        } else if (func == funcSendCW && parent->routeCw) {
+            // CW through the rig's keyer transmits without a key of its
+            // own: the web server refuses it under a shared station's TX
+            // inhibit and names it in the audit log, as it does a browser's.
+            emit parent->cwRequested(val.toString());
         } else if (rigCaps->commands.contains(func)) {
             queue->add(priorityImmediate, queueItem(func, val,false,state.receiver));
         }

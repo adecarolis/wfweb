@@ -378,11 +378,11 @@ The first start prints a setup code on the console and in the log; the first bro
 | Capability | Details |
 |------------|---------|
 | **Accounts** | A user name, a password, a callsign and a level: `listen` (hear, see, run the decoders), `control` (tune), `operate` (transmit, log) or `admin`. Every command, TX audio frame and REST write is checked on the server. Visitors without a login are refused, or let in to listen or to tune, as the admin decides; never to transmit |
-| **The seat** | One person drives the radio at a time; everyone else hears and sees the same radio and may ask for it. The holder hands over or declines, those who wait stand in line, a reload or a dropped connection keeps the seat for 30 s, and 10 idle minutes free it. A strip under the top bar says whose seat it is and who you are |
+| **The seat** | One person drives the radio at a time; everyone else hears and sees the same radio and may ask for it. The holder hands over or declines, those who wait stand in line, a reload or a dropped connection keeps the seat for 30 s, and 10 minutes without touching the radio free it. A strip under the top bar says whose seat it is and who you are |
 | **Schedule** | The admin reserves the seat for an account: once, every day or every week |
-| **Transmit safeguards** | TX inhibit for everything or for chosen bands, a TX time-out (10 minutes by default), a cap on connections, and an audit log with every login, seat change and key-down: account, address, frequency, mode, duration |
+| **Transmit safeguards** | TX inhibit for everything or for chosen bands (the band the rig transmits on, in split too), holding for rigctld and the packet link layer as for a browser; a TX time-out (10 minutes by default), a cap on connections, and an audit log with every login, seat change and key-down: account, address, frequency, mode, duration |
 | **Callsigns and the log** | Every QSO records who made it (`OPERATOR`) next to the call it was made under (`STATION_CALLSIGN`). An account can be set to transmit under its own callsign while it holds the seat; those QSOs are its own, not the club's |
-| **Scripts** | API tokens for the REST API (`Authorization: Bearer`): a script reads the station and logs. The radio itself is operated from the page only: over REST it is read-only |
+| **Scripts** | API tokens for the REST API (`Authorization: Bearer`): a script reads the station and logs, and an admin's can set the rules (TX inhibit). The radio itself is operated from the page only (over REST it is read-only), and accounts are managed from a logged-in browser only |
 
 `--shared` needs HTTPS: wfweb's own certificate, yours with `--cert` / `--key`, or a TLS-terminating proxy named with `--trust-proxy`. To reach the station from outside, a private network (Tailscale, WireGuard) or an identity-aware proxy in front of it is the better door than a forwarded port. **[SHARED_STATION.md](SHARED_STATION.md)** has the setup, the deployment options, the settings, the files and the REST routes; the wiki's [Shared Station](https://github.com/adecarolis/wfweb/wiki/Shared-Station) page is for the people using such a station, with pictures.
 
@@ -457,7 +457,7 @@ All settings can be passed as CLI flags. Run `wfweb --help` for the full list.
 | `--no-autoconnect` | Start without connecting to the rig (LAN only; connect via web UI Reconnect). Env: `WFWEB_NO_AUTOCONNECT=1` | autoconnect |
 | `--no-tui` | Print the plain log on an interactive terminal instead of the status page. Env: `WFWEB_NO_TUI=1` | status page on a terminal |
 | `--cert <file> --key <file>` | Serve HTTPS with your own certificate and private key (PEM, unencrypted; the certificate file may carry its chain) | generated self-signed certificate |
-| `--shared` | [Shared Station](#shared-station--accounts-access-levels-and-one-operators-seat): accounts, login and access control | off (no login) |
+| `--shared` | [Shared Station](#shared-station--accounts-access-levels-and-one-operators-seat): accounts, login and access control (not with `--no-web`) | off (no login) |
 | `--shared-dir <dir>` | Where the accounts, sessions and audit log are kept | `<data dir>/shared` |
 | `--shared-reset-admin` | Print a setup code that resets or creates an admin account | — |
 | `--trust-proxy <cidr>` | Reverse proxy address(es), comma separated, whose `X-Forwarded-For` / `X-Forwarded-Proto` are believed | none |

@@ -3,6 +3,9 @@
 #ifdef Q_OS_MACOS
 
 #include <QDebug>
+#include <QHash>
+#include <QMutex>
+#include <QMutexLocker>
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <sys/socket.h>
@@ -15,6 +18,22 @@
 #include <chrono>
 #include <thread>
 #include <vector>
+
+// Local port of the proxy's connection to the internal server -> the
+// browser's address (host order).  See clientOf() in the header.
+namespace {
+QMutex gClientsMutex;
+QHash<quint16, quint32> gClients;
+}
+
+bool TlsProxyWorker::clientOf(quint16 proxyPort, QHostAddress *client)
+{
+    QMutexLocker lock(&gClientsMutex);
+    const auto it = gClients.constFind(proxyPort);
+    if (it == gClients.constEnd()) return false;
+    if (client) *client = QHostAddress(it.value());
+    return true;
+}
 
 TlsProxyWorker::TlsProxyWorker(quint16 listenPort, quint16 backendPort,
                                const QString &certPath, const QString &keyPath,
@@ -126,8 +145,9 @@ void TlsProxyWorker::acceptLoop()
         // Spawn a detached thread per connection
         SSL_CTX *ctx = m_ctx;
         quint16 backendPort = m_backendPort;
-        std::thread([clientFd, ctx, backendPort]() {
-            TlsProxyWorker::proxyConnection(clientFd, ctx, backendPort);
+        const quint32 clientIp = ntohl(clientAddr.sin_addr.s_addr);
+        std::thread([clientFd, ctx, backendPort, clientIp]() {
+            TlsProxyWorker::proxyConnection(clientFd, ctx, backendPort, clientIp);
         }).detach();
     }
 }
@@ -185,7 +205,7 @@ const int kBackendSilentMs = 3000;       // a request the web server has not ans
 
 } // namespace
 
-void TlsProxyWorker::proxyConnection(int clientFd, SSL_CTX *ctx, quint16 backendPort)
+void TlsProxyWorker::proxyConnection(int clientFd, SSL_CTX *ctx, quint16 backendPort, quint32 clientIp)
 {
     noSigPipe(clientFd);
     SSL *ssl = SSL_new(ctx);
@@ -240,6 +260,20 @@ void TlsProxyWorker::proxyConnection(int clientFd, SSL_CTX *ctx, quint16 backend
         return;
     }
     noSigPipe(backendFd);
+
+    // Who this connection is for, under the port the internal server sees
+    // it come from -- before the first byte goes over, so it is there when
+    // the server reads the request.
+    quint16 proxyPort = 0;
+    {
+        struct sockaddr_in local{};
+        socklen_t len = sizeof(local);
+        if (getsockname(backendFd, reinterpret_cast<struct sockaddr*>(&local), &len) == 0) proxyPort = ntohs(local.sin_port);
+        if (proxyPort) {
+            QMutexLocker lock(&gClientsMutex);
+            gClients.insert(proxyPort, clientIp);
+        }
+    }
 
     // One buffer per direction; a side is read only while its buffer is empty.
     static const int kBuf = 16384;
@@ -337,6 +371,12 @@ void TlsProxyWorker::proxyConnection(int clientFd, SSL_CTX *ctx, quint16 backend
         qWarning() << "Web: TLS proxy: that connection ended after" << (nowMs() - firstRequestMs)
                    << "ms with" << fromBackend << "bytes from the internal server";
 
+    // Before the socket closes: its port may be another connection's a
+    // moment later.
+    if (proxyPort) {
+        QMutexLocker lock(&gClientsMutex);
+        gClients.remove(proxyPort);
+    }
     close(backendFd);
     SSL_shutdown(ssl);
     SSL_free(ssl);

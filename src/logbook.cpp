@@ -17,30 +17,55 @@
 // QsoRecord
 // ---------------------------------------------------------------------------
 
+// A QSO is typed by one person and shown in everybody's page.  The page
+// escapes what it shows; this is the second fence.  The short fields (a
+// call, a band, a report, a grid) have no use for markup characters or
+// control codes; a comment keeps its punctuation and loses only the latter.
+static QString qsoToken(const QString &in)
+{
+    QString out;
+    out.reserve(in.size());
+    for (const QChar ch : in) {
+        if (ch.unicode() < 0x20 || ch.unicode() == 0x7f) continue;
+        if (ch == '<' || ch == '>' || ch == '"' || ch == '\'' || ch == '`' || ch == '&') continue;
+        out.append(ch);
+    }
+    return out.trimmed();
+}
+
+static QString qsoText(const QString &in)
+{
+    QString out;
+    out.reserve(in.size());
+    for (const QChar ch : in)
+        out.append(ch.unicode() < 0x20 || ch.unicode() == 0x7f ? QChar(' ') : ch);
+    return out.trimmed();
+}
+
 QsoRecord QsoRecord::normalized() const
 {
     QsoRecord r;
-    r.call = call.trimmed().toUpper();
+    r.call = qsoToken(call).toUpper();
     if (r.call.isEmpty() || r.call.size() > 32)
         return QsoRecord();   // invalid
 
     r.id        = id.isEmpty() ? QUuid::createUuid().toString(QUuid::WithoutBraces) : id;
-    r.date      = date.trimmed().left(8);
-    r.time      = time.trimmed().left(6);
-    r.band      = band.trimmed().left(16);
-    r.mode      = mode.trimmed().left(16).toUpper();
-    r.grid      = grid.trimmed().left(16).toUpper();
-    r.theirGrid = theirGrid.trimmed().left(16).toUpper();
-    r.rstSent   = rstSent.trimmed().left(16);
-    r.rstRcvd   = rstRcvd.trimmed().left(16);
-    r.comment   = comment.trimmed().left(256);
-    r.name      = name.trimmed().left(128);
-    r.stationCall = stationCall.trimmed().left(32).toUpper();
-    r.operatorCall = operatorCall.trimmed().left(32).toUpper();
-    r.userId    = userId.trimmed().left(64);
+    r.date      = qsoToken(date).left(8);
+    r.time      = qsoToken(time).left(6);
+    r.band      = qsoToken(band).left(16);
+    r.mode      = qsoToken(mode).left(16).toUpper();
+    r.grid      = qsoToken(grid).left(16).toUpper();
+    r.theirGrid = qsoToken(theirGrid).left(16).toUpper();
+    r.rstSent   = qsoToken(rstSent).left(16);
+    r.rstRcvd   = qsoToken(rstRcvd).left(16);
+    r.comment   = qsoText(comment).left(256);
+    r.name      = qsoText(name).left(128);
+    r.stationCall = qsoToken(stationCall).left(32).toUpper();
+    r.operatorCall = qsoToken(operatorCall).left(32).toUpper();
+    r.userId    = qsoToken(userId).left(64);
     r.freq      = freq > 0 ? freq : 0;
     r.df        = df;
-    r.exported  = exported.trimmed().left(20);
+    r.exported  = qsoToken(exported).left(20);
     return r;
 }
 

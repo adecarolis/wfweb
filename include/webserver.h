@@ -159,6 +159,7 @@ public slots:
     // setPTT path the WebSocket clients use, so RADE EOO synthesis,
     // packet TX gating and ALC meter polling stay coherent.
     void onRigCtlPtt(bool on);
+    void onRigCtlCw(QString text);
 private slots:
     // HTTP
     void onHttpConnection();
@@ -249,6 +250,7 @@ private:
         bool requestComplete = false;  // and the body: the answer is ours to give
         qint64 lastRxMs = 0;           // a byte of the request last arrived
         bool requestDone = false;      // response handed to the socket
+        bool preGated = false;         // shared: the headers were looked at before the body was taken
         qint64 lastProgressMs = 0;     // bytesToWrite() last went down
         qint64 lastBytesToWrite = 0;
     };
@@ -281,6 +283,11 @@ private:
     // spot), so the QTcpSocket handed to the WebSocket server is kept, by
     // peer address and port until the QWebSocket exists, then by it.
     QHash<QString, QPointer<QTcpSocket>> wsHandover_;
+    QHash<QString, QByteArray> wsHandoverXff_;        // the upgrade request's X-Forwarded-For lines, joined
+    static const int kWsUpgradePeekBytes = 16384;
+    static QByteArray headerValues(const QByteArray &headerSection, const QByteArray &name);
+    QHostAddress clientAddress(const QHostAddress &peer, quint16 peerPort, quint16 localPort) const;
+    static QByteArray redactedHeaders(const QByteArray &headerSection);
     QHash<QWebSocket *, QPointer<QTcpSocket>> wsRawSocket_;
     static QString peerKey(const QHostAddress &addr, quint16 port) { return addr.toString() + ':' + QString::number(port); }
     static const int kHttpHeaderTimeoutMs = 10000;
@@ -319,8 +326,17 @@ private:
     void updateSharedStats();
     // PBKDF2 takes hundreds of milliseconds: run it on a worker thread and
     // call back on this thread, where the socket is answered.
+    // Password hashing runs two at a time on worker threads; see pwJob().
+    struct PwJob { std::function<QVariant()> work; std::function<void(QVariant)> done; };
+    QList<PwJob> pwQueue_;
+    int pwRunning_ = 0;
+    static const int kPwMaxRunning = 2;
+    static const int kPwMaxQueued = 16;
+    void pwJob(std::function<QVariant()> work, std::function<void(QVariant)> done);
+    void pwPump();
+    bool pwBusy(QTcpSocket *socket);
     void hashPasswordAsync(const QString &password, std::function<void(QString)> done);
-    void verifyPasswordAsync(const QString &password, const QString &hash, std::function<void(bool)> done);
+    void verifyPasswordAsync(const QString &password, const QString &hash, std::function<void(int)> done);
 
     std::unique_ptr<AccessControl> access_;
     std::atomic<bool> sharedMode_{false};
@@ -338,6 +354,7 @@ private:
         QString ip;
         qint64 sinceMs = 0;
         bool warnedTxAudio = false;   // one 'denied' per stream of 0x03 frames, not per frame
+        qint64 seatDeclinedMs = 0;    // when the holder last declined this socket's request
     };
     QHash<QWebSocket *, WsClient> wsInfo;
     QTimer *sharedTimer = nullptr;
@@ -346,7 +363,10 @@ private:
     Access::Role sharedAnonymous_ = Access::Role::None;   // what a visitor without a session may do
     bool txInhibit_ = false;                              // nobody keys the rig
     QStringList txInhibitBands_;                          // ... or nobody on these bands (rig-file names)
-    QString inhibitedBand();                              // the inhibited band the VFO is on, or empty
+    QString inhibitedBand();                              // the inhibited band the transmit VFO is on, or empty
+    quint64 txFrequencyHz(bool *split = nullptr);         // where a key lands: the other VFO in split
+    void stopCwKeyer();                                   // the rig's keyer drops what it still holds
+    qint64 packetInhibitLoggedMs_ = 0;                    // a dropped link-layer frame is logged once a minute
     QString txBlockedReason();                            // why nobody may transmit now, or empty
     int txTimeoutSecs_ = 600;                             // a key held this long is released
     int maxClients_ = 20;                                 // non-admin connections at once
@@ -386,6 +406,7 @@ private:
         QByteArray graceSession;         // a dropped holder's session, reserved until graceUntilMs
         QString graceName;
         qint64 graceUntilMs = 0;
+        qint64 graceSinceMs = 0;         // sinceMs of the holder the seat waits for
         QWebSocket *requester = nullptr; // the request the holder has not answered
         qint64 requestDeadlineMs = 0;    // 0 = never granted unasked
         QList<QWebSocket *> queue;       // waiting, first in line first
@@ -393,6 +414,7 @@ private:
         qint64 offerUntilMs = 0;
         bool warnedIdle = false;
         bool warnedMax = false;
+        qint64 warnedMaxMs = 0;          // when the "passes on in a minute" notice went out
     } seat_;
     bool seatEnabled_ = true;
     int seatIdleSecs_ = 600;
@@ -431,7 +453,11 @@ private:
     void seatOnDisconnect(QWebSocket *client, const AccessPrincipal &who);
     void seatOnConnect(QWebSocket *client);
     void seatCommand(QWebSocket *client, const QString &type, const QJsonObject &cmd);
-    QJsonObject seatJson(QWebSocket *client) const;
+    QJsonObject seatJson(QWebSocket *client, bool viewerHasAccount = true) const;
+    bool seatMayHold(QWebSocket *client) const;
+    void seatResume(QWebSocket *client);
+    void cutClient(QWebSocket *c, const QString &reason);
+    QString seatResHoldOverKey_;      // the slot whose 15-minute hold was announced as over
     void broadcastSeat();
     void handleSharedSeatRequest(QTcpSocket *socket, const QString &method, const RequestContext &ctx);
     // SSTV image gallery: /api/v1/sstv/images (list, upload, fetch, delete)
@@ -440,6 +466,7 @@ private:
     QJsonArray sstvGalleryList() const;
     void sstvGalleryChanged();
     QJsonObject buildInfoJson() const;
+    QJsonObject restInfoJson() const;      // ... without the server's file paths for a non-admin
     void sendJsonToAll(const QJsonObject &obj);
     void sendJsonTo(QWebSocket *client, const QJsonObject &obj);
     void startReporterSnrTimer();
@@ -525,6 +552,8 @@ private:
     // A browser's source call for packet (APRS beacon, AX.25 terminal)
     // must be the on-air call, any SSID.  True = refused and answered.
     bool onAirDenies(QWebSocket *client, const QString &cmd, const QString &call);
+    bool onAirCallIs(const QString &call) const;          // call (any SSID) is the call on the air
+    void termFollowOnAirCall();                           // AX.25 sessions / listeners under another call end
     // An account set to its own call but without one cannot be on the air.
     bool seatEligible(QWebSocket *client, const QString &cmd);
     // An admin edited an account: its open sockets follow, and so does
@@ -930,6 +959,7 @@ private:
     static constexpr int TERM_FIXED_CLIENT = 1;
     static constexpr int TERM_SCROLLBACK_MAX = 1000;
     QSet<QString> termRegisteredOwnCalls;   // tracked so we don't double-register
+    QSet<QString> termParkedOwnCalls_;      // taken out of service while another call is on the air
 
     // QSettings backing file — populated by servermain after getSettingsFilePath
     // resolves the -s flag.  Empty means "use the default (QSettings org/app)".

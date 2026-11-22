@@ -7926,7 +7926,7 @@ function updateFreeDVStatus(msg) {
             rptDot = '<span style="width:6px;height:6px;border-radius:50%;background:' + rc + ';display:inline-block" title="Reporter: ' + (reporterState || 'off') + '"></span>';
         }
         var csHtml = (freedvModeName === 'RADE' && radeRxCallsign)
-            ? '<span id="freedvCallsign" style="color:#0ff; min-width:60px; display:inline-block; text-align:center;">' + radeRxCallsign + '</span>'
+            ? '<span id="freedvCallsign" style="color:#0ff; min-width:60px; display:inline-block; text-align:center;">' + escapeHtml(radeRxCallsign) + '</span>'
             : '';
         // RADE encodes the user's callsign into the EOO frame on PTT-off.
         // If the user hasn't set one, show a clickable warning that opens
@@ -11182,8 +11182,13 @@ function appendDigiDirectedRow(d, isTx) {
     panel.scrollTop = panel.scrollHeight;
 }
 
+// Safe in element content AND inside a quoted attribute.  It used to leave
+// the quotes alone, and the log's edit row puts a QSO's fields in
+// value="...": a member's QSO with a quote in its call ran script in the
+// page of the admin who pressed Edit on it (2026-11-21).
 function escapeHtml(s) {
-    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 // A click on a decode selects the station and arms the answer, which goes

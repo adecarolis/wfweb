@@ -70,16 +70,16 @@ logbook's `POST` / `DELETE` answer `202` with the QSO or `{"status":
 | `200` | OK — GET success |
 | `201` | Created — a new API token, account or reservation |
 | `202` | Accepted — PUT/POST/DELETE queued |
-| `400` | Bad Request — malformed JSON or missing required field |
-| `401` | Unauthorized — `--shared` is on and the request carries no session cookie or API token |
-| `403` | Forbidden — not allowed for this account, or a login attempted over plain HTTP |
+| `400` | Bad Request — malformed JSON, a missing required field, or (`--shared`) a value of the wrong type |
+| `401` | Unauthorized — `--shared` is on and the request carries no session cookie or API token (answered from the headers, before the body is taken); a wrong user name or password |
+| `403` | Forbidden — `--shared`: not allowed for this account (`{"need": level}`); a write to the radio; an account route or a password change asked with a token instead of a logged-in browser; a wrong setup code or current password; a disabled account; a login over plain HTTP; a write with the session cookie from another site's page |
 | `404` | Not Found — unknown API path |
 | `405` | Method Not Allowed |
-| `409` | Conflict — `--shared`: another account has the seat and the request logs a QSO or writes to the gallery (`{"error", "need": "seat"}`), or a reservation overlaps another |
-| `413` | Payload Too Large — a request over 16 MB (an SSTV picture over 4 MB) |
-| `429` | Too Many Requests — login lockout (`Retry-After` says for how long) |
+| `409` | Conflict — `--shared`: another account has the seat and the request logs a QSO or writes to the gallery (`{"error", "need": "seat"}`); a reservation overlaps another; a user name is taken; the change would leave the station without an admin; the target is the caller's own account or connection |
+| `413` | Payload Too Large — a request over 16 MB (an SSTV picture over 4 MB). With `--shared` a body is capped by its route: 64 KB, except the ADIF import (16 MB), the rest of `/logbook` (4 MB), an SSTV picture (6 MB) and a user-list import (2 MB) |
+| `429` | Too Many Requests — login lockout, or five wrong current passwords on a password change (`Retry-After` says for how long) |
 | `500` | Internal Server Error — the logbook or the gallery could not be written |
-| `503` | Service Unavailable — rig not connected; the SSTV directory unavailable; or the server has too much unsent data queued (`Retry-After: 5`) |
+| `503` | Service Unavailable — rig not connected; the SSTV directory unavailable; the server has too much unsent data queued (`Retry-After: 5`); or (`--shared`) the line of password checks is full (`Retry-After: 3`) |
 
 A request's headers must be complete within 10 s of connecting, and a body
 that stops arriving for 30 s is dropped; a slow upload that keeps moving is
@@ -102,8 +102,8 @@ management routes under `/api/v1/shared/users` and the deployment notes are in
 | `POST /api/v1/auth/setup` `{code, username, password, callsign}` | HTTPS only; first run: the setup code from the console creates the admin and logs them in |
 | `POST /api/v1/auth/login` `{username, password}` | HTTPS only; sets the `wfweb_session` cookie (`HttpOnly; SameSite=Strict; Secure`) |
 | `POST /api/v1/auth/logout` | ends the session, clears the cookie, closes its WebSockets |
-| `POST /api/v1/auth/password` `{current, password}` | HTTPS only; changes the caller's password |
-| `GET` / `POST {name}` / `DELETE /<id>` `/api/v1/auth/tokens` | the caller's API tokens; the token value is returned once, on creation |
+| `POST /api/v1/auth/password` `{current, password}` | HTTPS only, from a logged-in browser (not a token); changes the caller's password and ends the account's other sessions |
+| `GET` / `POST {name}` / `DELETE /<id>` `/api/v1/auth/tokens` | the caller's API tokens, from a logged-in browser; the token value is returned once, on creation |
 
 A browser without a session gets `{"type":"authRequired","setupRequired":bool}`
 on the WebSocket and close code `4401` (unless the admin admits visitors);
@@ -115,7 +115,15 @@ With `--shared` every route needs the account's level: a `GET` is `listen`
 `/api/v1/shared/` are `admin` to read as well); writes to the SSTV gallery
 are `control`, to the logbook `operate`; `/station`, `/cw/macros` and writes under
 `/api/v1/shared/*` are `admin`. Short of it the answer is
-`403 {"error":"needs operate access","need":"operate"}`.
+`403 {"error":"needs operate access","need":"operate"}`. A path is the same
+route with or without a trailing slash.
+**An API token is for reading the station and for logging.** Whatever its
+account's level it does not set the radio (below), and it does not manage
+accounts (`/api/v1/shared/users*`), change a password or make another
+token: those answer `403` with "from a logged-in browser". An admin's
+token does read and set the policy (`/api/v1/shared/policy`), end a
+connection and clear the seat. `info.logbookPath` (the server's own file
+path) is given to an admin only.
 **A shared station is not operated over REST.** Every write under
 `/api/v1/radio/` (frequency, mode, gains, `/radio/tx`, `/radio/ptt`,
 `/radio/cw`, a memory recall) answers

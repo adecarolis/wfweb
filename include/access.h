@@ -130,6 +130,8 @@ public:
 
     static const int kSessionIdleDays = 30;      // a cookie unused this long is dropped
     static const int kLockoutFailures = 5;       // failures in the window before a lock
+    static const int kLockoutNameFailures = 50;  // ... for one name from every address together
+    static const int kMaxSessionsPerUser = 20;   // the oldest goes when another login would exceed it
     static const int kLockoutWindowSecs = 15 * 60;
     static const int kLockoutBaseSecs = 60;      // first lock; doubles per further failure
     static const int kLockoutMaxSecs = 15 * 60;
@@ -185,7 +187,11 @@ public:
     static QString hashPassword(const QString &password, int iterations);
     static bool verifyPassword(const QString &password, const QString &hash);
     int iterations() const { return iterations_; }
-    void setIterations(int n) { iterations_ = n; }
+    void setIterations(int n) { iterations_ = n; decoyHash_.clear(); }
+    // The hash an unknown name is verified against.  Made here, off any
+    // request: the first login for a name that does not exist used to pay
+    // for it on the web thread.
+    void ensureDecoy();
 
     // --- first run / recovery -----------------------------------------------
     // While no admin exists the server shows this code on its console and in
@@ -230,6 +236,12 @@ public:
     void logout(const QByteArray &token);
     void logoutSession(const QByteArray &hash);
     void logoutUser(const QString &userId);   // every session
+    void logoutOtherSessions(const QString &userId, const QByteArray &keepHash);
+    void clearTokens(const QString &userId);  // an admin's password reset ends them too
+    // The current-password check of a password change: counted like a login.
+    bool passwordChangeLocked(const QString &userId, int *retryAfterSecs) const;
+    void passwordChangeFailed(const QString &userId, const QString &name, const QString &ip);
+    void passwordChangeOk(const QString &userId);
     QList<AccessSession> sessions() const;
     bool sessionAlive(const QByteArray &hash) const { return sessions_.contains(hash); }
     // Drops idle sessions and writes sessions.json (and users.json, for
@@ -283,14 +295,16 @@ private:
     bool readJson(const QString &path, QJsonObject *root, bool *missing) const;
     void dropSessionsOf(const QString &userId);
     bool lockedOut(const QString &key, int *retryAfterSecs) const;
-    void recordFailure(const QString &key);
+    void recordFailure(const QString &key, int threshold = kLockoutFailures);
+    static QString ipKey(const QString &ip);      // "ip:<addr>", an IPv6 address by its /64
     void clearFailures(const QString &key);
     AccessPrincipal principalFor(const AccessUser &u) const;
 
     QString dir_;
     QList<AccessUser> users_;
     QHash<QByteArray, AccessSession> sessions_;   // by hash
-    QHash<QString, Failures> failures_;           // by "name:<lower>", "ip:<addr>", "setup:<addr>"
+    QHash<QString, Failures> failures_;           // by "name:<lower>|<addr>", "name:<lower>", "ip:<addr>", "setup:<addr>", "pw:<id>"
+    bool auditWarned_ = false;
     QString setupCode_;
     QString decoyHash_;
     int iterations_;
@@ -349,7 +363,10 @@ public:
     // Validates (5 min to 24 h, a start, until not before start) and checks
     // every occurrence in the next year against the others.  Returns the
     // new id, or empty with *error (bad input) or *conflict (the other one).
-    QString add(Reservation r, QString *error = nullptr, QString *conflict = nullptr);
+    // `now`: the year is counted from then for a slot whose first start is
+    // past, and a one-off slot already over is refused.
+    QString add(Reservation r, QString *error = nullptr, QString *conflict = nullptr,
+                const QDateTime &now = QDateTime());
     bool remove(const QString &id);
     int removeUser(const QString &userId);
     // Every occurrence that overlaps [from, to], soonest first.
@@ -360,6 +377,7 @@ public:
     static QList<Occurrence> expand(const Reservation &r, const QDateTime &from, const QDateTime &to);
     static bool overlaps(const Occurrence &a, const Occurrence &b);
     static const int kMaxYearsAhead = 1;
+    static const int kMaxReservations = 200;
 
 private:
     QString dir_;

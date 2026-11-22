@@ -396,7 +396,7 @@ names so the timing does not say which names exist.
 `webServer` maps HTTP onto it: `requestContext()` resolves the
 `wfweb_session` cookie or `Authorization: Bearer` on every `/api/v1/`
 request, `handleAuthRequest` (`/api/v1/auth/*`) and
-`handleSharedUsersRequest` (`/api/v1/shared/users`, admins) are the routes,
+`handleSharedUsersRequest` (`/api/v1/shared/users`, admins with a browser session, never a token) are the routes,
 (an account's `notes`, the admins' free text, is in `AccessUser::toJson`, which
 only those admin routes send: never put it in the principal or `userJson`),
 and `onWsNewConnection` reads the cookie off `QWebSocket::request()`: no
@@ -438,12 +438,12 @@ principal (`via: "anonymous"`), re-roled in place or cut (4401) when the
 policy changes; one past `maxClients` gets `stationFull` + 4503 (admins
 always get in). `Shared/TxInhibitBands` (policy `txInhibitBands`, rig-file
 band names) closes bands to transmitting for everyone, admins included:
-`inhibitedBand()` matches the operating frequency against `rigCaps->bands`,
+`inhibitedBand()` matches the transmit frequency (`txFrequencyHz()`: the other VFO in split) against `rigCaps->bands`,
 `txBlockedReason()` is the one text for both inhibits; refused in `setPTT`,
 for the on-air commands in the gate (`sendCW`, `packetTx`, `aprsTxBeacon`,
 `termConnect` / `termSend` / `termFileSend` / `termXferAccept`, `setTuner 2`:
 **a new command that transmits goes in that set**; the log and the mic are
-not refused; the same set gets a `tx <who> <kind> <freq mode>` audit line,
+not refused; the same set gets a `tx <who> <kind> <freq mode>` audit line, written by each handler where it takes the command (`onAirAudit`),
 `auditOnAir`, one a minute per account and kind, since only `setPTT` has a
 key-down of its own; the global inhibit lets `Access::txInhibitExempt`
 through: the log and `stopCW`); `seatTick`
@@ -647,6 +647,92 @@ on the ACCOUNTS tab's rows; no `mergeLogbook` in shared mode.
 Tests: `tests/test_shared_logbook.py` (its own server with a UDP socket as
 the remote logger), the `onAir` and tally parts of `access_test.cpp` /
 `logbook_test.cpp`. Next: proxy identity (phase 5).
+**The 2026-11-21 audit** (five reviews of the gate, the seat, the accounts
+code, the auth handlers and the page, then the fixes; the rules that came
+out of it, each from a defect found):
+- *One spelling per route.* `onHttpReadyRead` takes the trailing slash off
+  an `/api/v1/` path **before** the gate; `handleRestRequest` must not
+  normalize again. The router used to chop it after the gate had read the
+  path with it, so `DELETE /api/v1/logbook/` was a QSO-level route to the
+  gate and "clear the log" to the router: an operate account cleared and
+  imported the log. `restCapability` strips slashes too.
+- *What a token may not do.* `/api/v1/shared/users*`, `/auth/password` and
+  `/auth/tokens` need `ctx.who.via == "session"`: a token has no expiry
+  and is taken on the plain port, and an admin's made itself an admin
+  account and exported the hashes. Policy, connections and the seat stay
+  open to an admin's token (the documented way for a script to set TX
+  inhibit). An admin-set password and a recovery clear the account's
+  tokens (`clearTokens`).
+- *A write with the cookie comes from our page*: in shared mode a
+  non-GET with a session cookie and an `Origin` of another host is 403
+  (a sibling host passes SameSite=Strict). The WS upgrade peeks 16 KB and
+  refuses a header block that does not end in it.
+- *Refuse before buffering*: the pre-gate in `onHttpReadyRead`
+  (`HttpConn::preGated`) resolves the caller from the headers, answers 401
+  before the body and caps `Content-Length` per route. The guard at the
+  top also tests `requestComplete`, so a connection waiting for its
+  password check takes no second request.
+- *Password hashing is a queue* (`pwJob` / `pwPump`, two threads, sixteen
+  waiting, `pwBusy()` answers 503). **Call `pwBusy(socket)` before
+  `hashPasswordAsync` / `verifyPasswordAsync`**, and count a failed guess
+  even when the socket has gone (`loginFinish` in the continuation).
+- *Lockout keys* (`access.cpp`): `name:<lower>|<addr>` and `ip:<addr>`
+  (an IPv6 /64, `ipKey()`) at five, `name:<lower>` at fifty; a login name
+  that fails `validName` is a miss for the address only and is written to
+  the audit log as `?`. `audit()` cleans its `who` (`auditField`): never
+  hand it raw request text and assume a line is a line. `failures_` is
+  pruned in `expireSessions()`.
+- *Everything that transmits asks `txBlockedReason()`*: `setPTT`, the gate's
+  on-air set, `onAprsBeaconRequested`, **`onPacketTxReady`** (the AX.25
+  link layer's own frames, which keyed the rig under TX inhibit) and
+  `onRigCtlCw` (rigctld's `send_morse` now comes through the web server:
+  `rigCtlD::cwRequested`, `routeCw`). TX inhibit switched on also calls
+  `stopCwKeyer()`.
+- *The on-air call moving ends what was set up under the old one*:
+  `applyOnAirCall` -> `termFollowOnAirCall()` disconnects AX.25 sessions
+  and unregisters listeners whose call is not `onAirCallIs()`. `packetTx`'s
+  `src` is held to the on-air call like the beacon's; `termConnect` /
+  `termRegister` take AX.25 addresses only (`ax25CallOk`).
+- *The seat is given only to who may hold it*: `seatMayHold()` before every
+  `seatGive` that is not the holder's own `seatTake` (reserved slot,
+  unanswered request, hand-over, offer, grace). *A socket the server ends
+  goes through `cutClient()`* (kick, logout, disabled, removed, password
+  reset, expiry, visitors refused): the seat frees with no grace, the
+  level drops to None at once, `abort()` follows `close()` after 2 s.
+  `seatOfferNext()` respects the reserved slot's 15-minute hold; the grace
+  keeps `sinceMs` and the pending request; seat-exempt commands do not
+  count as the holder's activity; a holder's own key-up, and the mic
+  client's own `enableMic false`, are never refused (seat or inhibit);
+  switching the seat on unkeys. A request made within a minute of a
+  decline gets its deadline counted from the end of that minute, never no
+  deadline at all (one without kept everyone behind it waiting).
+- *`onWsDisconnected` tears down TX only for the socket that owned it*
+  (`wasKeyer` / `wasMic`): the FreeDV and packet blocks ran for any socket
+  that closed, so a listener leaving stopped the drain that unkeys a
+  packet burst.
+- *Times in a text for a page are UTC and say so* (`hhmmUtc`).
+- *Input is typed*: `applyPolicy`'s caller and the users PUT answer 400 to
+  a value of the wrong type (`"true"` read as false switched TX inhibit
+  off), and the users PUT validates every field before applying any.
+- *The page*: `escapeHtml` escapes quotes (both forks, and the copies in
+  `packet.js`, `cw-decoder.js`, `rtty-panel.js`): the log's edit row puts
+  QSO fields in `value="..."` and a member's QSO ran script in an admin's
+  page. `logbook.cpp` cleans the short QSO fields as a second fence.
+  `sendQuiet()` / `sendRefused()` are for what the page sends on its own
+  (never `send()` from an automatic path: every watcher got the toast);
+  `resetSharedUi()` clears the seat state and the admin / password /
+  schedule overlays when the login sheet comes up or the socket goes;
+  `seatLost` and a denied `setPTT` drop the PTT latch and the mic.
+- *macOS*: the TLS proxy records each connection's real client
+  (`TlsProxyWorker::clientOf`, keyed by the proxy's local port) and
+  `webServer::clientAddress()` reads it; without it every client was
+  127.0.0.1 (one lockout for all, `--trust-proxy 127.0.0.1` trusting
+  everyone). Compile-checked on Linux only: the macOS runner is its test.
+- `main.cpp` refuses `--shared --no-web`; `servermain` warns about
+  `--rigctld-bind-all` under `--shared`.
+- Patching `webserver.cpp` by script: a bare `s.index()` on an anchor that
+  also matches a forward declaration duplicated 1400 lines of it. Anchors
+  must be unique and in order.
 
 ### Shared theme + component kit (`theme.css`)
 `resources/web-shared/theme.css` is the single source of UI styling for both

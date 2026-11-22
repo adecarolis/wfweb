@@ -98,6 +98,12 @@ int main()
             && Access::restCapability("POST", "/api/v1/logbook/exported") == Cap::Tx, "one's own QSOs are operate");
     require(Access::restCapability("DELETE", "/api/v1/logbook") == Cap::Admin && Access::restCapability("POST", "/api/v1/logbook/adif") == Cap::Admin
             && Access::restCapability("GET", "/api/v1/logbook/adif") == Cap::View, "clearing and importing the whole log is admin");
+    // A trailing slash is the same route: read as "a QSO of the log" it let
+    // an operate account clear the whole of it (2026-11-21).
+    require(Access::restCapability("DELETE", "/api/v1/logbook/") == Cap::Admin && Access::restCapability("DELETE", "/api/v1/logbook//") == Cap::Admin
+            && Access::restCapability("POST", "/api/v1/logbook/adif/") == Cap::Admin
+            && Access::restCapability("PUT", "/api/v1/station/") == Cap::Admin, "a trailing slash does not lower a route");
+    require(Access::restReadOnly("PUT", "/api/v1/radio/") && Access::restReadOnly("PUT", "/api/v1/radio/frequency/"), "nor open the radio");
     require(Access::commandCapability("mergeLogbook") == Cap::Admin, "the browser-log migration is admin");
     require(Access::commandCapability("updateQso") == Cap::Tx && Access::seatExempt("updateQso") && Access::seatExempt("deleteQso")
             && !Access::seatExempt("qsoLogged"), "correcting the log needs no seat, logging does");
@@ -185,6 +191,14 @@ int main()
         require(AccessControl::forwardedClient(QHostAddress("::ffff:127.0.0.1"), "203.0.113.9", lo)
                         == QHostAddress("203.0.113.9"), "IPv4-mapped peer matches the v4 block");
         require(AccessControl::forwardedClient(peer, "nonsense", lo) == peer, "nothing usable: the peer");
+        // What a proxy of ours wrote when it did not know its client: the
+        // entry to its left is the client's own word and is not believed.
+        require(AccessControl::forwardedClient(peer, "6.6.6.6, unknown", lo) == peer
+                && AccessControl::forwardedClient(peer, "6.6.6.6, unix:", lo) == peer, "an unparseable last hop: nothing left of it is believed");
+        require(AccessControl::forwardedClient(peer, "6.6.6.6, unknown, 10.0.0.2", lan) == QHostAddress("10.0.0.2"),
+                "... the furthest proxy known is the best there is");
+        require(!AccessControl::forwardedClient(peer, "fe80::1%x login admin@10.0.0.1 admin", lo).toString().contains(' '),
+                "an IPv6 zone id carries no text into the log");
     }
 
     QTemporaryDir tmp;
@@ -277,8 +291,17 @@ int main()
             QJsonObject bad = opEntry;
             bad["username"] = "someone";
             require(other.importUser(bad, "not-a-hash", &err).isEmpty() && err == "no password", "import: a hash it cannot read");
-            require(!AccessControl::validPasswordHash("") && !AccessControl::validPasswordHash("pbkdf2-sha256$0$YQ==$YQ==")
-                    && AccessControl::validPasswordHash("pbkdf2-sha256$1000$YQ==$YQ=="), "hash shapes");
+            const QString goodSalt = QString::fromLatin1(QByteArray(16, 's').toBase64());
+            const QString goodKey = QString::fromLatin1(QByteArray(32, 'k').toBase64());
+            require(!AccessControl::validPasswordHash("") && !AccessControl::validPasswordHash("pbkdf2-sha256$0$" + goodSalt + "$" + goodKey)
+                    && AccessControl::validPasswordHash("pbkdf2-sha256$1000$" + goodSalt + "$" + goodKey)
+                    && AccessControl::validPasswordHash(AccessControl::hashPassword("some password", kIters)), "hash shapes");
+            // A one-byte key lets one password in a few hundred through; a
+            // hundred million rounds is a login that never ends.
+            require(!AccessControl::validPasswordHash("pbkdf2-sha256$1000$YQ==$YQ==")
+                    && !AccessControl::validPasswordHash("pbkdf2-sha256$1000$" + goodSalt + "$YQ==")
+                    && !AccessControl::validPasswordHash("pbkdf2-sha256$100000000$" + goodSalt + "$" + goodKey)
+                    && !AccessControl::validPasswordHash("pbkdf2-sha256$999$" + goodSalt + "$" + goodKey), "hash bounds: key, salt and rounds");
             bad["role"] = "owner";
             require(other.importUser(bad, opEntry["passwordHash"].toString(), &err).isEmpty() && err.startsWith("role"), "import: unknown role");
             bad["role"] = "listen"; bad["callsign"] = "K1 FM";
@@ -371,6 +394,51 @@ int main()
         fake = fake.addSecs(AccessControl::kLockoutMaxSecs + 1);
         require(login(ac, "op", "operator-pw", "10.0.0.3", &token) == AccessControl::LoginResult::Ok, "lock expires; success clears it");
         require(login(ac, "op", "wrong", "10.0.0.3") == AccessControl::LoginResult::BadCredentials, "counter was reset by the success");
+
+        // The name is locked for the address that missed, not for its owner
+        // somewhere else: five wrong passwords from one address used to keep
+        // the account from logging in anywhere.
+        for (int i = 0; i < AccessControl::kLockoutFailures; i++) login(ac, "alain", "wrong", "10.0.1.1");
+        require(login(ac, "alain", "hunter2hunter2", "10.0.1.1") == AccessControl::LoginResult::Locked, "locked where the misses came from");
+        require(login(ac, "alain", "hunter2hunter2", "10.0.1.2", &token) == AccessControl::LoginResult::Ok, "the owner logs in from elsewhere");
+        // Spread over many addresses the name locks for everyone, at fifty.
+        fake = fake.addSecs(AccessControl::kLockoutWindowSecs + AccessControl::kLockoutMaxSecs + 2);
+        ac.expireSessions();   // prunes the counters that no longer count
+        for (int i = 0; i < AccessControl::kLockoutNameFailures - 1; i++)
+            require(login(ac, "alain", "wrong", QString("10.2.%1.%2").arg(i / 200).arg(i % 200 + 1)) == AccessControl::LoginResult::BadCredentials,
+                    "a miss from a fresh address");
+        require(login(ac, "alain", "wrong", "10.3.0.1") == AccessControl::LoginResult::Locked, "the fiftieth miss locks the name");
+        require(login(ac, "alain", "hunter2hunter2", "10.3.0.2") == AccessControl::LoginResult::Locked, "from every address");
+        fake = fake.addSecs(AccessControl::kLockoutWindowSecs + AccessControl::kLockoutMaxSecs + 2);
+        ac.expireSessions();
+        require(login(ac, "alain", "hunter2hunter2", "10.3.0.2", &token) == AccessControl::LoginResult::Ok, "and that lock expires too");
+
+        // A login name no account can have: a miss for the address, and not
+        // a word of it in the audit log (a line break in it forged a line).
+        require(!AccessControl::validName("bob\n") && !AccessControl::validName("a b") && AccessControl::validName("bob"), "names: no newline, no space");
+        require(login(ac, "x@9.9.9.9\n2026-01-01T00:00:00Z login alain@1.2.3.4 admin", "p", "10.4.0.1") == AccessControl::LoginResult::BadCredentials,
+                "a forged name is a wrong login");
+        require(login(ac, QString(100000, 'A'), "p", "10.4.0.1") == AccessControl::LoginResult::BadCredentials, "so is a huge one");
+        {
+            const QString log = readAll(dir + "/audit.log");
+            require(!log.contains("alain@1.2.3.4") && !log.contains("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+                    && log.contains(" login-failed ?@10.4.0.1"), "neither is written to the audit log");
+        }
+        ac.audit("test", "who with\nnewline@1.1.1.1", "detail");
+        require(readAll(dir + "/audit.log").contains(" test who_with_newline@1.1.1.1 detail"), "who cannot break an audit line");
+        // An IPv6 client has a /64 of addresses: counted as one.
+        for (int i = 1; i <= AccessControl::kLockoutFailures; i++) login(ac, "nobody", "wrong", QString("2001:db8:1:2::%1").arg(i));
+        require(ac.loginPrecheck("nobody2", "2001:db8:1:2::ffff").locked && !ac.loginPrecheck("nobody2", "2001:db8:1:3::1").locked,
+                "an IPv6 /64 is one address to the lockout");
+        // No more than kMaxSessionsPerUser sessions an account.
+        for (int i = 0; i < AccessControl::kMaxSessionsPerUser + 5; i++)
+            require(login(ac, "op", "operator-pw", "10.5.0.1", &token) == AccessControl::LoginResult::Ok, "login in a loop");
+        {
+            int mine = 0;
+            const QList<AccessSession> all = ac.sessions();
+            for (const AccessSession &x : all) if (x.userId == op.id) mine++;
+            require(mine == AccessControl::kMaxSessionsPerUser && ac.resolveSession(token).authenticated, "the oldest sessions made room");
+        }
 
         // Setup lockout is per address.
         require(!ac.setupLocked("10.0.0.5", &retry), "setup not locked");
@@ -483,6 +551,20 @@ int main()
         Reservation dailyClash = daily;
         dailyClash.userId = "u5"; dailyClash.start = t0.addDays(3).addSecs(-14 * 3600 + 600);   // 06:10 three days on
         require(rs.add(dailyClash, &err, &conflict).isEmpty() && conflict.startsWith(dailyId), "a one-off inside a daily slot is refused");
+
+        // With the caller's clock: the year is counted from now for a slot
+        // that began long ago (checked from its own start, a weekly slot two
+        // years old met nothing still to come), and a one-off that is over
+        // is refused.
+        {
+            const QDateTime now = t0.addDays(1);
+            Reservation old;
+            old.userId = "u6"; old.start = t0.addDays(-7 * 110).addSecs(3 * 3600 + 600); old.minutes = 30; old.repeat = Reservation::Weekly;
+            require(rs.add(old, &err, &conflict, now).isEmpty() && conflict.startsWith(weeklyId), "a weekly slot two years old still meets next week's");
+            Reservation past;
+            past.userId = "u6"; past.start = t0.addDays(-3); past.minutes = 60;
+            require(rs.add(past, &err, &conflict, now).isEmpty() && err.contains("over"), "a one-off already over is refused");
+        }
 
         // Occurrences in a window, soonest first.
         const QList<Occurrence> week = rs.occurrences(t0, t0.addDays(7));

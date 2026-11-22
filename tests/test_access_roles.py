@@ -29,7 +29,7 @@ import time
 import pytest
 import requests
 
-from conftest import SharedServer, launch_shared_wfweb, set_cookie, _run_on_loop, _stop_wfweb
+from conftest import SharedServer, launch_shared_wfweb, set_cookie, _run_on_loop, _stop_wfweb, _find_free_port
 from mock_radio import MockIcomRadio
 
 PASSWORDS = {"clubadmin": "club-admin-pw-2026", "lis": "listener-pw-1", "con": "control-pw-1", "op": "operator-pw-1"}
@@ -46,7 +46,9 @@ def roles_mock(event_loop):
 @pytest.fixture(scope="module")
 def srv(roles_mock, event_loop, tmp_path_factory):
     home = tmp_path_factory.mktemp("roles-home")
-    s = launch_shared_wfweb(roles_mock, event_loop, home)
+    rigctld_port = _find_free_port()
+    s = launch_shared_wfweb(roles_mock, event_loop, home, extra_args=("--rigctld-port", str(rigctld_port)))
+    s.rigctld_port = rigctld_port
     # Admin through the setup code, then one account per level.
     r = s.post("/api/v1/auth/setup", {"code": s.setup_code(), "username": "clubadmin",
                                        "password": PASSWORDS["clubadmin"], "callsign": "K1FM"})
@@ -225,7 +227,15 @@ def test_tx_audio_from_a_listener_is_dropped_once(srv):
     ("op", "PUT", "/api/v1/station", {"callsign": "X1X"}, 403),
     ("op", "PUT", "/api/v1/cw/macros", {"macros": {}}, 403),
     ("op", "GET", "/api/v1/shared/users", None, 403),
-    ("clubadmin", "GET", "/api/v1/shared/users", None, 200),
+    # Accounts are managed from a logged-in browser, not with a token.
+    ("clubadmin", "GET", "/api/v1/shared/users", None, 403),
+    ("clubadmin", "GET", "/api/v1/shared/users/export", None, 403),
+    ("clubadmin", "POST", "/api/v1/shared/users", {"username": "viatoken", "password": "token-made-pw", "role": "admin"}, 403),
+    ("clubadmin", "GET", "/api/v1/shared/policy", None, 200),
+    # A trailing slash is the same route to the gate as to the router.
+    ("op", "DELETE", "/api/v1/logbook/", None, 403),
+    ("op", "PUT", "/api/v1/radio/frequency/", {"hz": 7074000}, 403),
+    ("lis", "GET", "/api/v1/radio/info/", None, 200),
     ("clubadmin", "PUT", "/api/v1/station", {"callsign": "K1FM", "grid": "FN42"}, 200),
 ])
 def test_rest_gate(srv, name, method, path, body, status):
@@ -233,7 +243,8 @@ def test_rest_gate(srv, name, method, path, body, status):
         else srv.req(method, path, token=srv.tokens[name], plain=True)
     assert r.status_code == status, f"{name} {method} {path}: {r.status_code} {r.text}"
     if status == 403:
-        assert "access" in r.json()["error"] or "admin" in r.json()["error"] or "read-only" in r.json()["error"]
+        assert ("access" in r.json()["error"] or "admin" in r.json()["error"] or "read-only" in r.json()["error"]
+                or "logged-in browser" in r.json()["error"])
 
 
 # ---------------------------------------------------------------------------
@@ -326,6 +337,38 @@ def test_tx_inhibit(srv):
         assert recv_until(ws, lambda m: m.get("type") == "sharedPolicy", 2.0)["policy"]["txInhibit"] is False
         assert denied_for(ws, {"cmd": "setPTT", "value": True}) is None
         assert denied_for(ws, {"cmd": "setPTT", "value": False}) is None
+
+
+def _rigctl(srv, line, wait=0.6):
+    """One rigctld command, as WSJT-X or fldigi would send it."""
+    import socket
+    with socket.create_connection(("127.0.0.1", srv.rigctld_port), timeout=5) as s:
+        s.sendall(line.encode() + b"\n")
+        s.settimeout(wait)
+        try:
+            s.recv(256)
+        except socket.timeout:
+            pass
+    time.sleep(0.3)
+
+
+def test_tx_inhibit_covers_rigctld_cw(srv):
+    """rigctld's send_morse goes out through the rig's keyer with no key of
+    its own: it is named in the audit log, and under TX inhibit it is
+    dropped like a browser's.  (It used to go straight to the rig.)"""
+    mark = _audit_mark(srv)
+    _rigctl(srv, "b TEST")
+    assert any(" tx rigctld@127.0.0.1 cw" in l for l in _audit_since(srv, mark)), _audit_since(srv, mark)
+    set_policy(srv, txInhibit=True)
+    try:
+        log_mark = len(open(srv.log_path, errors="replace").read())
+        _rigctl(srv, "b AGAIN")
+        deadline = time.monotonic() + 3
+        while time.monotonic() < deadline and "rigctld CW refused" not in open(srv.log_path, errors="replace").read()[log_mark:]:
+            time.sleep(0.1)
+        assert "rigctld CW refused" in open(srv.log_path, errors="replace").read()[log_mark:]
+    finally:
+        set_policy(srv, txInhibit=False)
 
 
 def _tune(srv, ws, hz):
@@ -552,6 +595,77 @@ def test_on_air_commands_are_audited(srv):
     assert any(" tx op@127.0.0.1 cw" in l for l in audit), "a browser's CW is named"
     new = _audit_since(srv, mark)
     assert sum(" tx op@127.0.0.1 cw" in l for l in new) <= 1, new
+
+
+def test_a_refused_command_is_not_a_transmission(srv):
+    """The 'tx' line is written when a command is taken, not when it is
+    asked: a frame the modem never sent used to be in the audit log, and
+    the one-a-minute throttle then left the real one out."""
+    mark = _audit_mark(srv)
+    ws, _ = open_ws(srv, "op")
+    with ws:
+        # The packet modem is off: nothing goes out, nothing is claimed.
+        ws.send(json.dumps({"cmd": "packetTx", "src": "K1FM", "dst": "APRS", "info": "test"}))
+        failed = recv_until(ws, lambda m: m.get("type") == "packetTxFailed", 3.0)
+        assert failed is not None and "not enabled" in failed["reason"]
+        # A source call that is not the station's is refused outright.
+        d = denied_for(ws, {"cmd": "packetTx", "src": "N0CALL", "dst": "APRS", "info": "test"})
+        assert d is not None and d["need"] == "callsign", d
+        d = denied_for(ws, {"cmd": "aprsTxBeacon", "src": "N0CALL", "lat": 42.0, "lon": -71.0})
+        assert d is not None and d["need"] == "callsign", d
+        # Not an AX.25 address: an error for the terminal, and no session.
+        ws.send(json.dumps({"cmd": "termConnect", "ownCall": "K1FM", "peerCall": 'X" ONMOUSEOVER="1', "chan": 0}))
+        err = recv_until(ws, lambda m: m.get("type") in ("termError", "termSession"), 3.0)
+        assert err is not None and err["type"] == "termError", err
+    time.sleep(0.3)
+    new = _audit_since(srv, mark)
+    assert not any(" tx op@" in l for l in new), new
+
+
+def test_policy_and_account_input_is_typed(srv):
+    """A value of the wrong type is refused: read leniently, "true" in
+    quotes switched TX inhibit OFF and "600" was no time-out at all."""
+    for body in ({"txInhibit": "true"}, {"maxClients": "20"}, {"txTimeoutSecs": "600"}, {"txTimeoutSecs": 600.5},
+                 {"seat": "on"}, {"txInhibitBands": "20m"}, {"seatIdleSecs": -5}):
+        r = srv.req("PUT", "/api/v1/shared/policy", json=body, cookie=srv.admin_cookie)
+        assert r.status_code == 400, f"{body}: {r.status_code} {r.text}"
+    pol = srv.get("/api/v1/shared/policy", cookie=srv.admin_cookie).json()["policy"]
+    assert pol["txInhibit"] is False and pol["maxClients"] >= 1 and pol["seat"] is False
+
+
+def test_cookie_writes_come_from_this_site(srv):
+    """A write carrying the session cookie from a page on another host is
+    refused (a sibling site of the same domain passes SameSite=Strict); a
+    token, or no Origin at all, is a script and passes."""
+    body = {"maxClients": 20}
+    r = srv.req("PUT", "/api/v1/shared/policy", json=body, cookie=srv.admin_cookie, headers={"Origin": "https://www.example.org"})
+    assert r.status_code == 403 and "cross-site" in r.json()["error"], r.text
+    r = srv.req("PUT", "/api/v1/shared/policy", json=body, cookie=srv.admin_cookie, headers={"Origin": "null"})
+    assert r.status_code == 403
+    r = srv.req("PUT", "/api/v1/shared/policy", json=body, cookie=srv.admin_cookie,
+                headers={"Origin": f"https://127.0.0.1:{srv.web_port}"})
+    assert r.status_code == 200, r.text
+    assert srv.req("PUT", "/api/v1/shared/policy", json=body, cookie=srv.admin_cookie).status_code == 200
+    r = srv.req("PUT", "/api/v1/shared/policy", json=body, token=srv.tokens["clubadmin"], headers={"Origin": "https://www.example.org"})
+    assert r.status_code == 200, "a token is not a cookie: the script chose to send it"
+    # Reading is not writing.
+    assert srv.get("/api/v1/radio/info", cookie=srv.admin_cookie, headers={"Origin": "https://www.example.org"}).status_code == 200
+
+
+def test_bodies_are_capped_per_route(srv):
+    """Nothing is buffered for a caller who will be refused, and a body is
+    no bigger than its route needs."""
+    big = "x" * 200000
+    try:
+        r = srv.req("PUT", "/api/v1/station", data=big, cookie=srv.admin_cookie)
+        assert r.status_code == 413, r.status_code
+    except requests.ConnectionError:
+        pass    # answered and closed before the body was all sent: as good
+    try:
+        r = requests.put(srv.https + "/api/v1/station", data=big, verify=False, timeout=10)
+        assert r.status_code in (401, 413), r.status_code
+    except requests.ConnectionError:
+        pass
 
 
 def test_connection_cap_and_kick(srv):

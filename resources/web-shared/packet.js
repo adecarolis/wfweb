@@ -1649,10 +1649,14 @@
     }
 
     function escapeHtml(s) {
+        // Quotes too: the result goes into title="..." and download="..."
+        // attributes, with text that came off the air (an APRS comment).
         return String(s == null ? '' : s)
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;');
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 
     // Real amateur callsigns always contain at least one digit (ITU rule).

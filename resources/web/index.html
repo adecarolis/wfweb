@@ -3880,7 +3880,7 @@ function onTransportOpen() {
     // it (see the rigInfo handler).  Pushing our saved copy here is exactly
     // what let a stale tab overwrite the call for everyone.
     var rCb = document.getElementById('digiReporterEnable');
-    if (rCb && rCb.checked) sendReporterConfig();
+    if (rCb && rCb.checked && !sendRefused('setReporter')) sendReporterConfig();
 }
 
 function onTransportClose(e) {
@@ -3889,6 +3889,7 @@ function onTransportClose(e) {
     // bare 4401 (a session that expired while we were away) shows it now.
     var closeCode = e && e.detail && e.detail.code;
     if (closeCode === 4401 && !authSheet.shown) showLoginSheet(authSetup, '');
+    if (accessState.shared) resetSharedUi();
     dropPttLatch();
     document.getElementById('connDot').classList.remove('connected');
     document.getElementById('connDot').title = 'Disconnected';
@@ -4054,10 +4055,16 @@ function txInhibitBand() {
     var pol = accessState && accessState.shared && accessState.policy;
     var closed = pol && pol.txInhibitBands;
     if (!closed || !closed.length || !currentFreq) return '';
+    // Where a key would land: in split, the other VFO (as the server reads it).
+    var tx = currentFreq;
+    if (isSplit && currentVfo !== 'MEM') {
+        var other = currentVfo === 'B' ? vfoAFreq : vfoBFreq;
+        if (other) tx = other;
+    }
     var low = closed.map(function (n) { return String(n).toLowerCase(); });
     for (var i = 0; i < rigBandTable.length; i++) {
         var b = rigBandTable[i];
-        if (currentFreq >= b.start && currentFreq <= b.end && low.indexOf(String(b.name).toLowerCase()) >= 0) return b.name;
+        if (tx >= b.start && tx <= b.end && low.indexOf(String(b.name).toLowerCase()) >= 0) return b.name;
     }
     return '';
 }
@@ -4091,7 +4098,37 @@ function updateAccessUi() {
     if (addQ) addQ.style.display = (accessState.shared && !accessState.can.tx) ? 'none' : '';
     if (currentPanel === 'func') renderFuncOverlay();
     var so = document.getElementById('sharedOverlay');
-    if (so && so.classList.contains('visible')) renderSharedOverlay();
+    if (so && so.classList.contains('visible')) {
+        if (accessState.can.admin) renderSharedOverlay();
+        else closeSharedModal();      // no longer an admin: the window goes
+    }
+}
+
+// Whoever was logged in here is not any more (logged out, cut by the
+// server, the connection gone): nothing of theirs stays on screen for the
+// next person at this browser.  The admin window used to stay open with
+// its list of accounts, their notes and the connections' addresses, the
+// password sheet with what had been typed, and a seat prompt with dead
+// buttons sat above the login sheet.
+function resetSharedUi() {
+    seatState = { enabled: seatState.enabled, holder: null, mine: false, queue: [], position: 0,
+                  request: null, requested: null, offer: null, grace: null,
+                  privateNow: false, listenIn: true, allowPrivate: false };
+    pttSentHere = false;
+    stopSeatCountdown();
+    ['sharedOverlay', 'passwordOverlay', 'scheduleOverlay'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.classList.remove('visible');
+    });
+    ['pwCurrent', 'pwNew', 'pwRepeat'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    sharedView.users = []; sharedView.connections = []; sharedView.reservations = [];
+    sharedView.upcoming = []; sharedView.active = null; sharedView.importResult = null;
+    sharedView.pwFor = null; sharedView.notesFor = null; sharedView.confirmDel = null;
+    hideSeatMenu();
+    updateSeatUi();
 }
 
 // ---- The seat: who drives the radio ----
@@ -4238,6 +4275,10 @@ function seatTagClick(ev) {
     if (!accessState.can.control) return;
     if (seatState.mine) { toggleSeatMenu(); return; }
     if (seatState.offer) { seatAction('seatAccept'); return; }
+    // Our own reserved slot is running: the button says TAKE and takes,
+    // whatever we asked for before it began.
+    var r = seatState.reservation;
+    if (seatState.holder && r && r.mine) { seatAction('seatTake'); return; }
     if (seatState.requested || seatState.position) { seatAction('seatCancel'); return; }
     seatAction('seatTake');
 }
@@ -4301,6 +4342,7 @@ function showLoginSheet(setup, reason, cancelable) {
     if (!cancelable) {
         accessState.user = null;
         updateUserTag();
+        resetSharedUi();
     }
     document.getElementById('loginCancel').style.display = cancelable ? '' : 'none';
     document.getElementById('loginError').textContent = '';
@@ -4523,7 +4565,12 @@ function sharedApi(method, path, body) {
     if (body !== undefined) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
     return fetch(path, opts).then(function (r) {
         return r.json().catch(function () { return {}; }).then(function (j) {
-            if (!r.ok) throw new Error(j.error || ('HTTP ' + r.status));
+            if (!r.ok) {
+                var err = new Error(j.error || ('HTTP ' + r.status));
+                err.status = r.status;
+                err.body = j;
+                throw err;
+            }
             return j;
         });
     });
@@ -4552,6 +4599,25 @@ function sharedReload() {
             renderSharedOverlay();
         })
         .catch(function (e) { accessToast('Shared station: ' + e.message); });
+}
+
+// The NOW tab's connection list (who is here, SEAT, ON AIR) is fetched, not
+// pushed: it follows the seat's messages, at most once every two seconds,
+// while that tab is the one on screen.
+var sharedNowTimer = null;
+function sharedNowRefresh() {
+    var so = document.getElementById('sharedOverlay');
+    if (!so || !so.classList.contains('visible') || sharedView.tab !== 'now' || !accessState.can.admin) return;
+    if (sharedNowTimer) return;
+    sharedNowTimer = setTimeout(function () {
+        sharedNowTimer = null;
+        if (!so.classList.contains('visible') || sharedView.tab !== 'now') return;
+        sharedApi('GET', '/api/v1/shared/connections').then(function (r) {
+            sharedView.connections = r.connections || [];
+            sharedView.max = r.max || 0;
+            if (so.classList.contains('visible') && sharedView.tab === 'now') renderSharedOverlay();
+        }).catch(function () {});
+    }, 2000);
 }
 
 function sharedSetPolicy(patch) {
@@ -4591,17 +4657,23 @@ function sharedSetTab(tab) {
 
 // Two presses to delete: no confirm() dialog, it would stall the audio.
 function sharedDeleteBtn(key, label, run) {
-    return sharedBtn(sharedView.confirmDel === key ? 'SURE?' : label, 'danger', function () {
+    // The first press only changes this button: redrawing the window for it
+    // emptied whatever form was being filled in next to it.
+    var btn = sharedBtn(sharedView.confirmDel === key ? 'SURE?' : label, 'danger', function () {
         if (sharedView.confirmDel !== key) {
             sharedView.confirmDel = key;
+            btn.textContent = 'SURE?';
             if (sharedView.confirmTimer) clearTimeout(sharedView.confirmTimer);
-            sharedView.confirmTimer = setTimeout(function () { sharedView.confirmDel = null; renderSharedOverlay(); }, 3000);
-            renderSharedOverlay();
+            sharedView.confirmTimer = setTimeout(function () {
+                if (sharedView.confirmDel === key) sharedView.confirmDel = null;
+                btn.textContent = label;
+            }, 3000);
             return;
         }
         sharedView.confirmDel = null;
         run();
     });
+    return btn;
 }
 
 // One rule: its name, the control, and what it does.
@@ -4881,12 +4953,17 @@ function sharedImportUsers(file) {
         try { data = JSON.parse(reader.result); } catch (e) { accessToast('not a user list: the file is not JSON'); return; }
         var users = Array.isArray(data) ? data : (data && data.users);
         if (!Array.isArray(users) || !users.length) { accessToast('not a user list: no users in the file'); return; }
+        // One import at a time: a second press while the first was still
+        // hashing passwords answered "0 added" over the real result.
+        if (sharedView.importing) { accessToast('An import is already running'); return; }
+        sharedView.importing = true;
         accessToast('Importing ' + users.length + ' accounts\u2026');
         sharedApi('POST', '/api/v1/shared/users/import', { users: users }).then(function (r) {
+            sharedView.importing = false;
             sharedView.importResult = { added: r.added || [], skipped: r.skipped || [] };
             accessToast(sharedView.importResult.added.length + ' added, ' + sharedView.importResult.skipped.length + ' skipped');
             sharedReload();
-        }).catch(function (e) { accessToast(e.message); });
+        }).catch(function (e) { sharedView.importing = false; accessToast(e.message); });
     };
     reader.readAsText(file);
 }
@@ -4944,7 +5021,19 @@ function renderSharedSchedule(panel) {
                      repeat: rRep.value, title: rTitle.value.trim() };
         if (rUntil.value && rRep.value !== 'once') body.until = new Date(rUntil.value + 'T23:59:59').toISOString();
         sharedApi('POST', '/api/v1/shared/reservations', body).then(sharedReload)
-            .catch(function (e) { accessToast(e.message); });
+            .catch(function (e) {
+                // "<id> <ISO start> (<repeat>)": say which slot is in the way.
+                var c = e.body && e.body.conflict, text = e.message;
+                if (c) {
+                    var parts = String(c).split(' ');
+                    var other = sharedView.reservations.filter(function (x) { return x.id === parts[0]; })[0];
+                    var when = parts[1] ? new Date(parts[1]) : null;
+                    text = 'That time is taken' + (other ? ' by ' + (other.name || 'another slot') : '')
+                         + (when && !isNaN(when) ? ', ' + when.toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '')
+                         + (parts[2] ? ' ' + parts[2] : '');
+                }
+                accessToast(text);
+            });
     }));
     panel.appendChild(foot);
 
@@ -5012,7 +5101,7 @@ function renderSharedRules(panel, pol) {
     sharedRule(panel, 'Longest turn while others wait', sharedNumber('seatMaxSecs', pol.seatMaxSecs, 0, 1440, 'min', 60),
         'With somebody in line, the seat moves on after this long. 0: no limit.');
     sharedRule(panel, 'A higher role takes over', sharedSwitch(!!pol.seatPreemptHigher, function () { sharedSetPolicy({ seatPreemptHigher: !pol.seatPreemptHigher }); }),
-        'An ASK from a higher role (an operator asking a control user) is granted after 30 s when unanswered, whatever the time above.');
+        'An ASK from a higher role (an operator asking a control user) is granted after 30 s when unanswered, even with 0 above (sooner if the time above is shorter). The holder may still decline.');
     sharedRule(panel, 'Listen-in', sharedSwitch(pol.listenIn !== false, function () { sharedSetPolicy({ listenIn: pol.listenIn === false }); }),
         'The others hear the audio and see the scope while somebody has the seat.');
     sharedRule(panel, 'Private sessions', sharedSwitch(!!pol.allowPrivate, function () { sharedSetPolicy({ allowPrivate: !pol.allowPrivate }); }),
@@ -5029,6 +5118,22 @@ function seatTagNudge() {
     clearTimeout(seatTagNudge.t);
     seatTagNudge.t = setTimeout(function () { tag.classList.remove('nudge'); }, 1700);
 }
+// Would send() refuse this command here (the level, or the seat)?  For what
+// the page sends on its own (a mode bar opening, the reporter's settings on
+// connect): those go through sendQuiet(), so that somebody who is only
+// watching is not told to take the seat for something they never pressed.
+function sendRefused(cmd) {
+    if (!accessState.shared) return false;
+    if (accessState.denied[cmd]) return true;
+    return !!(seatState.enabled && !seatState.mine && accessState.needsSeat[cmd]);
+}
+window.sendRefused = sendRefused;   // rtty-panel.js asks before its automatic AFSK
+function sendQuiet(obj) {
+    if (obj && sendRefused(obj.cmd)) return false;
+    return send(obj);
+}
+
+var pttSentHere = false;   // this page's key is down as far as the server knows
 function send(obj) {
     // Shared Station: what this role may not send is refused here, with the
     // reason on screen; the server refuses it again regardless. false tells a
@@ -5037,8 +5142,17 @@ function send(obj) {
         accessToast(accessDeniedText(accessState.denied[obj.cmd]));
         return false;
     }
+    // Our own key-up always goes out: the seat may have gone while the key
+    // was down, and the server takes a key-up from whoever holds the key.
+    var ownKeyUp = obj && ((obj.cmd === 'setPTT' && obj.value === false && pttSentHere)
+                           || (obj.cmd === 'enableMic' && obj.value === false));   // ... and our own mic off
+    if (obj && obj.cmd === 'setPTT') pttSentHere = obj.value === true;
     // ... and what needs the seat, while somebody else has it or nobody does.
-    if (accessState.shared && obj && seatState.enabled && !seatState.mine && accessState.needsSeat[obj.cmd]) {
+    if (!ownKeyUp && accessState.shared && obj && seatState.enabled && !seatState.mine && accessState.needsSeat[obj.cmd]) {
+        if (obj.cmd === 'setPTT') {
+            pttSentHere = false;
+            if (obj.value === false) return false;   // nothing of ours was keyed: no second note
+        }
         accessToast(seatState.holder
             ? seatState.holder.name + ' has the seat' + (accessState.can.control ? ' — press ASK, top left' : '')
             : 'Take the seat first (TAKE, top left)');
@@ -5447,13 +5561,26 @@ function handleMessage(msg) {
             break;
         case 'denied':
             accessToast(msg.reason || ('needs ' + msg.need + ' access'));
+            // The server took the key away, or never gave it: the PTT
+            // button does not go on saying "TX LOCKED" for three minutes.
+            if (msg.cmd === 'setPTT') { pttSentHere = false; dropPttLatch(); }
+            if (msg.cmd === 'enableMic' && (micEnabled || micStarting)) stopMic();
             break;
         case 'seat':
             seatState = msg;
             updateSeatUi();
+            sharedNowRefresh();
+            // The FT8 panel was opened to watch and the seat is ours now.
+            if (digiBarVisible && digiWatchOnly && !sendRefused('setFrequency')) digiClaimRadio();
             break;
         case 'seatLost':
             accessToast('You lost the seat' + (msg.to ? ' to ' + msg.to : '') + ': ' + msg.reason);
+            // Whatever this page was transmitting with is over: the latch,
+            // and a microphone that would go on streaming to a server that
+            // drops every frame of it.
+            pttSentHere = false;
+            dropPttLatch();
+            if (micEnabled || micStarting) stopMic();
             break;
         case 'seatNotice':
             accessToast(msg.text);
@@ -5958,6 +6085,7 @@ function updateTxStatus(tx) {
 function updateSplit(on) {
     isSplit = on;
     document.getElementById('splitBadge').classList.toggle('hidden', !on);
+    updateTxInhibitUi();   // the band a key lands on just changed
 }
 
 // Speech compressor (SSB). wfweb takes it out for the length of its own
@@ -6460,7 +6588,7 @@ function setTxMeterCaps(list, poCal) {
 
 // Comp/Vd/Id each cost the radio an extra poll, so the backend only reads
 // the one that is showing.
-function sendTxMeterSelection() { send({ cmd: 'setTxMeter', value: txMeterKind }); }
+function sendTxMeterSelection() { sendQuiet({ cmd: 'setTxMeter', value: txMeterKind }); }
 
 function cycleTxMeter() {
     var kinds = txMeterKinds();
@@ -8629,7 +8757,13 @@ var PTT_LATCH_MAX_MS = 180000, PTT_LATCH_WARN_MS = 15000, PTT_LATCH_SLIDE_PX = 6
         slideOk = touchUi && e.pointerType !== 'mouse';
         if (slideOk) showCap();
         flushAudio();
-        send({ cmd: 'setPTT', value: true });
+        // Refused here (no seat, level): nothing is keyed, so nothing to
+        // slide-latch and no "TX LOCKED" over a silent radio.
+        if (send({ cmd: 'setPTT', value: true }) === false) {
+            pttPointerActive = false;
+            slideOk = false;
+            hideCap();
+        }
     }
     // Press: detected on bar via delegation
     bar.addEventListener('pointerdown', function(e) {
@@ -9183,7 +9317,7 @@ function updateFreeDVStatus(msg) {
             rptDot = '<span style="width:6px;height:6px;border-radius:50%;background:' + rc + ';display:inline-block" title="Reporter: ' + (reporterState || 'off') + '"></span>';
         }
         var csHtml = (freedvModeName === 'RADE' && radeRxCallsign)
-            ? '<span id="freedvCallsign" style="color:#0ff; min-width:60px; display:inline-block; text-align:center;">' + radeRxCallsign + '</span>'
+            ? '<span id="freedvCallsign" style="color:#0ff; min-width:60px; display:inline-block; text-align:center;">' + escapeHtml(radeRxCallsign) + '</span>'
             : '';
         // RADE encodes the user's callsign into the EOO frame on PTT-off.
         // If the user hasn't set one, show a clickable warning that opens
@@ -9706,7 +9840,9 @@ function startMic() {
             micEnabled = true; micStarting = false;
             var en = { cmd: 'enableMic', value: true, device: micDeviceLabel };
             if (micAutoSwitchedFrom) en.autoSwitchedFrom = micAutoSwitchedFrom;
-            send(en);
+            // Refused here (Shared Station: the level, or the seat): the
+            // microphone is not left open and streaming to nobody.
+            if (send(en) === false) { micEnabled = false; stopMic(); return; }
             micRepaint();
         }).catch(function(err) { if (gen === micStartGen) micStartFailed('Mic AudioWorklet failed:', err); });
     }).catch(function(err) { if (gen === micStartGen) micStartFailed('getUserMedia failed:', err); });
@@ -10951,7 +11087,9 @@ function saveCWMacros() {
 function adoptCWMacros(macros, migrate) {
     var serverSet = macros || {};
     if (migrate && !Object.keys(serverSet).length && Object.keys(cwMacros).length) {
-        saveCWMacros();   // the server adopts this browser's set and echoes it back
+        // the server adopts this browser's set and echoes it back (an
+        // admin's to do on a shared station: anybody else keeps theirs here)
+        if (!sendRefused('setCWMacros')) saveCWMacros();
         return;
     }
     cwMacros = serverSet;
@@ -11407,8 +11545,9 @@ function renderCWOverlay() {
         btn.classList.toggle('active', btn.dataset.mode === cwMode);
     });
     updateCWTranscript();
-    // Send current speed to backend
-    send({ cmd: 'setCWSpeed', wpm: cwSpeed });
+    // Send current speed to backend (quietly: the bar opens for whoever
+    // watches the rig go into CW, seat or not)
+    sendQuiet({ cmd: 'setCWSpeed', wpm: cwSpeed });
     setTimeout(focusCwInput, 100);
 }
 
@@ -11802,7 +11941,9 @@ function reportDigiSpot(d) {
     // DIGI mode is always USB, so on-air freq = dial + audio offset.
     var rfFreq = Math.round((currentFreq || 0) + (d.freq || 0));
     if (rfFreq <= 0) return;
-    send({
+    // Quiet: one of these per decode, from every page that decodes -- a
+    // listener's would be a "needs control access" note every 15 seconds.
+    sendQuiet({
         cmd: 'reportDigiSpot',
         callsign: fromCall,
         grid: grid,
@@ -11918,32 +12059,50 @@ function digiSetPane(pane) {
     }).observe(panel, { childList: true });
 })();
 
+var digiWatchOnly = false;   // Shared Station: the panel was opened without the seat, to decode only
+
+// What opening the FT8 / FT4 panel does to the radio: USB, the digital mod
+// level, the band's dial frequency, with where the rig was remembered so
+// closing the panel puts it back.  On open -- or, when the panel was
+// opened without the seat, at the moment the seat becomes ours: taking it
+// with the panel open used to leave the rig on whatever mode and
+// frequency it had, under a band selector that said otherwise.
+function digiClaimRadio() {
+    digiWatchOnly = false;
+    // FT8 requires USB — set it automatically; remember where the rig was
+    // so closing the panel can put it back.
+    saveVfoSnapshot();
+    if (currentMode !== 'USB') setMode('USB');
+    // Set USB Mod Level to 75% for DIGI; save previous value
+    var slider = document.getElementById('micGainSlider');
+    digiSavedModLevel = slider ? parseInt(slider.value) : -1;
+    throttledSend('micGain', 'setMicGain', DIGI_MOD_LEVEL);
+    updateSlider('micGain', DIGI_MOD_LEVEL);
+    ALC_SMOOTHED = 0; // reset ALC filter for new session
+    // Tune to the FT8/FT4 frequency for the current band
+    var band = getCurrentDigiBand();
+    if (band) send({ cmd: 'setFrequency', value: digiDialHz(band) });
+}
+
 function toggleDigiBar() {
     digiBarVisible = !digiBarVisible;
     var bar = document.getElementById('digiBar');
     if (digiBarVisible) {
         closeOtherModes('digi');
+        // Shared Station, without the seat (or the level): the panel opens
+        // to decode what the radio is hearing and leaves the radio alone --
+        // no mode, level or frequency of ours, and no note about the seat
+        // for having opened a decoder.
+        digiWatchOnly = sendRefused('setFrequency');
         // Tell the backend FT8/FT4 is now active so PSK Reporter can connect.
-        send({ cmd: 'setDigiActive', active: true, mode: digiMode });
+        sendQuiet({ cmd: 'setDigiActive', active: true, mode: digiMode });
         bar.classList.remove('hidden');
         document.body.classList.add('digi-open');
-        // FT8 requires USB — set it automatically on open; remember where
-        // the rig was so closing the panel can put it back.
-        saveVfoSnapshot();
-        if (currentMode !== 'USB') setMode('USB');
-        // Set USB Mod Level to 75% for DIGI; save previous value
-        var slider = document.getElementById('micGainSlider');
-        digiSavedModLevel = slider ? parseInt(slider.value) : -1;
-        throttledSend('micGain', 'setMicGain', DIGI_MOD_LEVEL);
-        updateSlider('micGain', DIGI_MOD_LEVEL);
-        ALC_SMOOTHED = 0; // reset ALC filter for new session
-        // Tune to the FT8/FT4 frequency for the current band
+        digiSavedModLevel = -1;
         var band = getCurrentDigiBand();
         var bandSel = document.getElementById('digiBandSel');
-        if (band) {
-            if (bandSel) bandSel.value = band.label;
-            send({ cmd: 'setFrequency', value: digiDialHz(band) });
-        }
+        if (band && bandSel) bandSel.value = band.label;
+        if (!digiWatchOnly) digiClaimRadio();
         digiRxEnabled = true;        // always start with RX on
         updateDigiRxToggle();
         initDigiTxCtx(); // create TX context while we have a user gesture
@@ -11954,10 +12113,10 @@ function toggleDigiBar() {
     } else {
         bar.classList.add('hidden');
         document.body.classList.remove('digi-open');
-        send({ cmd: 'setDigiActive', active: false });
+        sendQuiet({ cmd: 'setDigiActive', active: false });
         stopDigiTune();
         stopDigiPeriodTimer();
-        restoreVfoSnapshot();
+        if (!digiWatchOnly && !sendRefused('setFrequency')) restoreVfoSnapshot();
         // Restore USB Mod Level
         if (digiSavedModLevel >= 0) {
             throttledSend('micGain', 'setMicGain', digiSavedModLevel);
@@ -12541,8 +12700,13 @@ function appendDigiDirectedRow(d, isTx) {
     panel.scrollTop = panel.scrollHeight;
 }
 
+// Safe in element content AND inside a quoted attribute.  It used to leave
+// the quotes alone, and the log's edit row puts a QSO's fields in
+// value="...": a member's QSO with a quote in its call ran script in the
+// page of the admin who pressed Edit on it (2026-11-21).
 function escapeHtml(s) {
-    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 // A click on a decode selects the station and arms the answer, which goes
@@ -14303,12 +14467,14 @@ function freqToBand(hz) {
 // row (manual entry) is removed here; it is replaced by that echo.
 function commitQsoLogEntry(entry, draftIdx) {
     if (!entry || !entry.call) return null;
+    // Refused here (Shared Station: no seat, or the level): the row stays as
+    // typed.  It used to be taken away first, and the QSO was gone.
+    if (send({ cmd: 'qsoLogged', qso: entry }) === false) return null;
     if (draftIdx !== undefined && draftIdx >= 0) {
         qsoLog.splice(draftIdx, 1);
         digiLogEditIdx = -1;
         removeDigiLogRow(draftIdx);
     }
-    send({ cmd: 'qsoLogged', qso: entry });
     if (!logbookPersistent) mirrorQsoLocally(entry);
     return entry;
 }
@@ -14462,7 +14628,7 @@ function logDigiQso(dxCall, rstSent, rstRcvd, txFreq) {
                  ((rstSent >= 0 ? '+' : '') + Math.round(rstSent)) : '',
         rstRcvd: (rstRcvd !== undefined ? rstRcvd : digiTheirReport) || ''
     };
-    commitQsoLogEntry(entry);
+    if (!commitQsoLogEntry(entry)) return;
     // Show "LOGGED" confirmation in the directed panel
     var dirPanel = document.getElementById('digiDirectedPanel');
     if (dirPanel) {
@@ -14908,13 +15074,19 @@ function initDigiHandlers() {
 
     // Persist MY call and grid on change; rebuild msg rows on change
     if (myCallEl) {
+        // Shared Station: the station call is set when the field is left or
+        // Enter is pressed, not a keystroke at a time -- every partial call
+        // ("K", "K1", "K1F") was saved, sent to every page and, for whoever
+        // was transmitting or logging in that second, used on the air.
+        myCallEl.addEventListener('change', function() {
+            if (accessState.shared && accessState.can.admin) stationCallEdited(this.value);
+        });
         myCallEl.addEventListener('input', function() {
             this.value = this.value.toUpperCase();
             if (accessState.shared) {
                 // The station call, an admin's to set; the on-air call
                 // comes back from the server (stationChanged).
-                if (accessState.can.admin) stationCallEdited(this.value);
-                else updateCallsignUi();
+                if (!accessState.can.admin) updateCallsignUi();
                 return;
             }
             window.App.callsign.set(this.value);
@@ -14974,7 +15146,7 @@ function initDigiHandlers() {
             digiMode = (digiMode === 'FT8') ? 'FT4' : 'FT8';
             this.textContent = digiMode;
             if (digiBarVisible) {
-                send({ cmd: 'setDigiActive', active: true, mode: digiMode });
+                sendQuiet({ cmd: 'setDigiActive', active: true, mode: digiMode });
                 stopDigiPeriodTimer();
                 resetDigiRxBuffer();
                 startDigiPeriodTimer();

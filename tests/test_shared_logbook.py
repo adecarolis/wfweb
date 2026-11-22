@@ -600,6 +600,10 @@ def test_packet_calls_must_be_the_on_air_call(srv):
     try:
         take_seat(mem)
         assert denied_for(mem, "termRegister", ownCall="W1MEM", chan=0) is not None, "a member is on the station call"
+        # A frame the server builds carries the call on the air as its source.
+        d = denied_for(mem, "packetTx", src="W1MEM", dst="APRS", info="hello")
+        assert d is not None and d["need"] == "callsign" and CLUB in d["reason"], d
+        assert denied_for(mem, "packetTx", src=CLUB + "-1", dst="APRS", info="hello") is None
         assert denied_for(mem, "termRegister", ownCall=CLUB + "-1", chan=0) is None
         send(mem, "termUnregister", ownCall=CLUB + "-1", chan=0)
         release_seat(mem)

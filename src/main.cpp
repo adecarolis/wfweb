@@ -248,7 +248,8 @@ int main(int argc, char *argv[])
         "                          (PEM, unencrypted; the certificate file may carry its\n"
         "                          chain) instead of the generated self-signed one\n"
         "  --shared                Shared Station: accounts, login and access control\n"
-        "                          (see SHARED_STATION.md; Shared/Enabled=true in settings)\n"
+        "                          (see SHARED_STATION.md; Shared/Enabled=true in settings;\n"
+        "                          not with --no-web)\n"
         "  --shared-dir <dir>      Accounts, sessions, audit log (default: <data dir>/shared)\n"
         "  --shared-reset-admin    Print a setup code that resets or creates an admin\n"
         "  --trust-proxy <cidr>    Reverse proxy address(es), comma separated, whose\n"
@@ -638,6 +639,17 @@ int main(int argc, char *argv[])
             return -1;
         }
 
+    }
+
+    // Shared Station gates the web server.  --no-web starts the wfview-style
+    // rig server instead, which has its own user list and none of the
+    // accounts, levels, seat or audit log: the two together used to start
+    // without a word, with access control the operator asked for and did
+    // not get.
+    if (overrides.shared && overrides.noWeb) {
+        std::cout << "Error: --shared needs the web server; it cannot be combined with --no-web\n"
+                     "(the rig server takes wfview's own users and is not covered by Shared Station)\n";
+        return -1;
     }
 
     // Container-friendly alternative to --no-autoconnect (issue #70)

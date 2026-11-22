@@ -142,6 +142,10 @@ servermain::servermain(const QString settingsFile, const cmdLineOverrides& overr
             connect(rigctl, &rigCtlD::pttRequested,
                     web, &webServer::onRigCtlPtt,
                     Qt::QueuedConnection);
+            connect(rigctl, &rigCtlD::cwRequested,
+                    web, &webServer::onRigCtlCw,
+                    Qt::QueuedConnection);
+            rigctl->routeCw = true;
             // rigCtlClient::rigCtlClient subscribes to cachingQueue::rigCapsUpdated
             // directly per-connection, so we don't fan out from rigCtlD.
             QMetaObject::invokeMethod(rigctl, "startServer",
@@ -149,6 +153,12 @@ servermain::servermain(const QString settingsFile, const cmdLineOverrides& overr
                                       Q_ARG(qint16, prefs.rigCtlPort));
             qInfo(logSystem()) << "rigctld starting on port" << prefs.rigCtlPort
                                << (prefs.rigCtlBindAll ? "(0.0.0.0)" : "(127.0.0.1)");
+            // The Hamlib protocol has no login: on every interface it is a
+            // way round a shared station's accounts.
+            if (prefs.rigCtlBindAll && (cliOverrides.shared || (settings && settings->value("Shared/Enabled", false).toBool())))
+                qWarning(logSystem()) << "Shared: rigctld is open to the network (--rigctld-bind-all) on port" << prefs.rigCtlPort
+                                      << "- it takes no login, tunes the radio and keys it, and is not held to the seat."
+                                      << "Leave it on localhost on a shared station.";
         }
     }
 
@@ -694,6 +704,9 @@ void servermain::setServerToPrefs()
         qInfo(logSystem()) << "Rig server disabled (use --no-web to enable)";
         return;
     }
+    if (settings && settings->value("Shared/Enabled", false).toBool())
+        qWarning(logSystem()) << "Shared: Shared/Enabled is set but the web server is off (--no-web):"
+                              << "the rig server has no accounts, no seat and no audit log";
 
     serverThread = new QThread(this);
 

@@ -132,11 +132,16 @@ bool Access::restReadOnly(const QString &method, const QString &path)
     return path == QLatin1String("/api/v1/radio") || path.startsWith(QLatin1String("/api/v1/radio/"));
 }
 
-Access::Cap Access::restCapability(const QString &method, const QString &path)
+Access::Cap Access::restCapability(const QString &method, const QString &pathIn)
 {
     const QString m = method.toUpper();
     if (m == QLatin1String("GET") || m == QLatin1String("HEAD") || m == QLatin1String("OPTIONS"))
         return Cap::View;
+    // The web server hands the path over without its trailing slash; the
+    // routes below are compared whole, so one that slipped through must not
+    // read as a lesser route ("/api/v1/logbook/" is the whole log, not a QSO).
+    QString path = pathIn;
+    while (path.length() > 1 && path.endsWith(QLatin1Char('/'))) path.chop(1);
     // No row for /api/v1/radio: a shared station does not take writes to the
     // radio over REST at all (restReadOnly, asked first by the gate).
     if (path.startsWith(QLatin1String("/api/v1/logbook"))) {
@@ -451,8 +456,13 @@ QHostAddress AccessControl::forwardedClient(const QHostAddress &peer, const QByt
         } else if (item.count(':') == 1) {
             item = item.left(item.indexOf(':'));
         }
-        const QHostAddress addr(item);
-        if (addr.isNull()) continue;
+        QHostAddress addr(item);
+        // Not an address ("unknown", nginx's "unix:"): written by a proxy
+        // of ours that did not know its client, so nothing to its left is
+        // vouched for.  It used to be skipped, which handed the next entry,
+        // the client's own, back as the client.
+        if (addr.isNull()) break;
+        addr.setScopeId(QString());   // "fe80::1%any text" parses, zone and all
         if (!inSubnets(addr, trustedProxies)) return addr;
         leftmost = addr;    // a proxy's own address: keep walking left
     }
@@ -509,8 +519,10 @@ bool AccessControl::load(QString *error)
 
     sessions_.clear();
     if (!readJson(d.filePath(QStringLiteral("sessions.json")), &root, &missing)) {
-        if (error) *error = QString("cannot read %1").arg(d.filePath(QStringLiteral("sessions.json")));
-        return false;
+        // Nothing in it is worth refusing to start for: everyone logs in again.
+        qWarning().noquote() << "Shared: cannot read" << d.filePath(QStringLiteral("sessions.json"))
+                             << "- starting with no sessions, everyone logs in again";
+        missing = true;
     }
     if (!missing) {
         const QJsonArray arr = root["sessions"].toArray();
@@ -523,7 +535,8 @@ bool AccessControl::load(QString *error)
             s.lastSeen = fromIso(o["lastSeen"]);
             s.ip = o["ip"].toString();
             s.userAgent = o["userAgent"].toString();
-            if (!s.hash.isEmpty() && findUser(s.userId) >= 0) sessions_.insert(s.hash, s);
+            // (No lastSeen: it would never expire.)
+            if (!s.hash.isEmpty() && s.lastSeen.isValid() && findUser(s.userId) >= 0) sessions_.insert(s.hash, s);
         }
     }
     sessionsDirty_ = false;
@@ -630,7 +643,7 @@ bool AccessControl::hasAdmin() const
 
 bool AccessControl::validName(const QString &name, QString *error)
 {
-    static const QRegularExpression re(QStringLiteral("^[A-Za-z0-9][A-Za-z0-9._-]{1,31}$"));
+    static const QRegularExpression re(QStringLiteral("\\A[A-Za-z0-9][A-Za-z0-9._-]{1,31}\\z"));
     if (!re.match(name).hasMatch()) {
         if (error) *error = QStringLiteral("user name: 2-32 letters, digits, . _ -");
         return false;
@@ -672,6 +685,12 @@ QString AccessControl::addUser(const QString &name, const QString &passwordHash,
         if (error) *error = QStringLiteral("no password");
         return QString();
     }
+    // The callsign of an own-call account goes on the air (the RADE
+    // end-of-over, the reporters, STATION_CALLSIGN): checked on every way in.
+    if (!validCallsign(callsign)) {
+        if (error) *error = QStringLiteral("callsign: letters, digits and '/' only");
+        return QString();
+    }
     AccessUser u;
     u.id = randomId();
     u.name = name;
@@ -690,9 +709,12 @@ bool AccessControl::validPasswordHash(const QString &hash)
     if (parts.size() != 4 || parts[0] != QLatin1String(kHashPrefix)) return false;
     bool ok = false;
     const int iterations = parts[1].toInt(&ok);
-    if (!ok || iterations < 1 || iterations > 100 * 1000 * 1000) return false;
-    return !QByteArray::fromBase64(parts[2].toLatin1()).isEmpty()
-        && !QByteArray::fromBase64(parts[3].toLatin1()).isEmpty();
+    // What hashPassword() writes, within sane bounds: a one-byte key in an
+    // imported file let one password in several hundred through, and a
+    // hundred million rounds is a login attempt that never ends.
+    if (!ok || iterations < 1000 || iterations > 10 * 1000 * 1000) return false;
+    return QByteArray::fromBase64(parts[2].toLatin1()).size() >= 8
+        && QByteArray::fromBase64(parts[3].toLatin1()).size() == kKeyBytes;
 }
 
 QJsonObject AccessControl::exportUsers() const
@@ -890,14 +912,21 @@ QString AccessControl::setupAdmin(const QString &name, const QString &passwordHa
         if (error) *error = QStringLiteral("no password");
         return QString();
     }
+    if (!validCallsign(callsign)) {
+        if (error) *error = QStringLiteral("callsign: letters, digits and '/' only");
+        return QString();
+    }
     QString id;
     const int existing = findUserByName(name);
     if (existing >= 0) {
-        // Recovery of a known account: new password, admin, enabled.
+        // Recovery of a known account: new password, admin, enabled.  Its
+        // API tokens go too: one made by whoever had the account before the
+        // reset would still answer as it, now an admin.
         AccessUser &u = users_[existing];
         u.passwordHash = passwordHash;
         u.role = Access::Role::Admin;
         u.disabled = false;
+        u.tokens.clear();
         if (!callsign.trimmed().isEmpty()) u.callsign = normalizeCallsign(callsign);
         id = u.id;
         dropSessionsOf(id);
@@ -909,6 +938,12 @@ QString AccessControl::setupAdmin(const QString &name, const QString &passwordHa
         audit(QStringLiteral("setup"), who(name, ip), QStringLiteral("admin created"));
     }
     clearFailures(QStringLiteral("setup:") + ip);
+    // Locked out is what recovery is for: the misses that led here are
+    // forgotten, or the new password was refused for another quarter hour.
+    const QString lower = name.toLower();
+    clearFailures(QStringLiteral("name:") + lower);
+    clearFailures(QStringLiteral("name:") + lower + '|' + ipKey(ip));
+    clearFailures(ipKey(ip));
     recovery_ = false;
     return id;
 }
@@ -925,7 +960,24 @@ bool AccessControl::lockedOut(const QString &key, int *retryAfterSecs) const
     return true;
 }
 
-void AccessControl::recordFailure(const QString &key)
+// An IPv6 client has a /64 of addresses to itself: counted by address it
+// had five tries from each.
+QString AccessControl::ipKey(const QString &ip)
+{
+    const QHostAddress a(ip);
+    if (!a.isNull() && a.protocol() == QAbstractSocket::IPv6Protocol) {
+        bool v4 = false;
+        a.toIPv4Address(&v4);
+        if (!v4) {
+            const Q_IPV6ADDR raw = a.toIPv6Address();
+            QByteArray net(reinterpret_cast<const char *>(raw.c), 8);
+            return QStringLiteral("ip:") + QString::fromLatin1(net.toHex()) + QStringLiteral("/64");
+        }
+    }
+    return QStringLiteral("ip:") + ip;
+}
+
+void AccessControl::recordFailure(const QString &key, int threshold)
 {
     const qint64 nowMs = now().toMSecsSinceEpoch();
     Failures &f = failures_[key];
@@ -934,8 +986,8 @@ void AccessControl::recordFailure(const QString &key)
         f.firstMs = nowMs;
     }
     f.count++;
-    if (f.count >= kLockoutFailures) {
-        const int over = f.count - kLockoutFailures;          // 0 on the fifth failure
+    if (f.count >= threshold) {
+        const int over = f.count - threshold;                 // 0 on the fifth failure
         qint64 secs = qint64(kLockoutBaseSecs) << qMin(over, 20);
         secs = qMin<qint64>(secs, kLockoutMaxSecs);
         f.lockedUntilMs = nowMs + secs * 1000;
@@ -950,26 +1002,40 @@ void AccessControl::clearFailures(const QString &key)
 
 // --- sessions --------------------------------------------------------------
 
+void AccessControl::ensureDecoy()
+{
+    if (decoyHash_.isEmpty()) decoyHash_ = hashPassword(QString::fromLatin1(randomToken()), iterations_);
+}
+
+// Three counters stand behind a login.  The name from this address and the
+// address itself lock after five misses.  The name from every address
+// together locks after fifty: it used to be five too, which let anyone who
+// had read a user name off the seat strip keep that account from logging
+// in anywhere, for as long as they cared to send one wrong password a lock
+// period (2026-11-21).  Fifty is still nothing to a password of eight
+// characters, and a guesser spread over many addresses meets it.
 AccessControl::LoginCheck AccessControl::loginPrecheck(const QString &name, const QString &ip) const
 {
     LoginCheck c;
-    int retryName = 0, retryIp = 0;
-    const bool lockedName = lockedOut(QStringLiteral("name:") + name.toLower(), &retryName);
-    const bool lockedIp = lockedOut(QStringLiteral("ip:") + ip, &retryIp);
-    if (lockedName || lockedIp) {
+    const QString lower = name.toLower();
+    int r1 = 0, r2 = 0, r3 = 0;
+    const bool valid = validName(name);
+    const bool lockedHere = valid && lockedOut(QStringLiteral("name:") + lower + '|' + ipKey(ip), &r1);
+    const bool lockedName = valid && lockedOut(QStringLiteral("name:") + lower, &r2);
+    const bool lockedIp = lockedOut(ipKey(ip), &r3);
+    if (lockedHere || lockedName || lockedIp) {
         c.locked = true;
-        c.retryAfterSecs = qMax(retryName, retryIp);
+        c.retryAfterSecs = qMax(r1, qMax(r2, r3));
         return c;
     }
-    const int i = findUserByName(name);
+    const int i = valid ? findUserByName(name) : -1;
     if (i >= 0 && !users_.at(i).passwordHash.isEmpty()) {
         c.hash = users_.at(i).passwordHash;
     } else {
         // Unknown name: verify against a decoy so the reply takes as long as
-        // for a real account.  Made once; the first miss pays for it.
-        if (decoyHash_.isEmpty())
-            const_cast<AccessControl *>(this)->decoyHash_ =
-                hashPassword(QString::fromLatin1(randomToken()), iterations_);
+        // for a real account.  ensureDecoy() made it at start-up; this is
+        // for a caller that did not ask.
+        if (decoyHash_.isEmpty()) const_cast<AccessControl *>(this)->ensureDecoy();
         c.hash = decoyHash_;
     }
     return c;
@@ -979,23 +1045,34 @@ AccessControl::LoginResult AccessControl::loginFinish(const QString &name, bool 
                                                       const QString &userAgent, QByteArray *token,
                                                       int *retryAfterSecs)
 {
-    const QString nameKey = QStringLiteral("name:") + name.toLower();
-    const QString ipKey = QStringLiteral("ip:") + ip;
+    // A name no account can have (too long, a newline, anything that is not
+    // a user name) is a miss for the address and nothing else: it is not
+    // kept as a key and it is not written to the audit log, where a line
+    // break in it forged a line and 16 MB of it was 16 MB (2026-11-21).
+    const bool valid = validName(name);
+    const QString lower = name.toLower();
+    const QString hereKey = QStringLiteral("name:") + lower + '|' + ipKey(ip);
+    const QString nameKey = QStringLiteral("name:") + lower;
+    const QString addrKey = ipKey(ip);
     int retry = 0;
-    if (lockedOut(nameKey, &retry) || lockedOut(ipKey, &retry)) {
+    if ((valid && (lockedOut(hereKey, &retry) || lockedOut(nameKey, &retry))) || lockedOut(addrKey, &retry)) {
         if (retryAfterSecs) *retryAfterSecs = retry;
         return LoginResult::Locked;
     }
 
-    const int i = findUserByName(name);
+    const int i = valid ? findUserByName(name) : -1;
     if (!passwordOk || i < 0) {
-        recordFailure(nameKey);
-        recordFailure(ipKey);
-        int r1 = 0, r2 = 0;
-        const bool locked = lockedOut(nameKey, &r1) | lockedOut(ipKey, &r2);
-        audit(locked ? QStringLiteral("login-locked") : QStringLiteral("login-failed"), who(name, ip));
+        if (valid) {
+            recordFailure(hereKey);
+            recordFailure(nameKey, kLockoutNameFailures);
+        }
+        recordFailure(addrKey);
+        int r1 = 0, r2 = 0, r3 = 0;
+        const bool locked = (valid && (lockedOut(hereKey, &r1) | lockedOut(nameKey, &r3))) | lockedOut(addrKey, &r2);
+        audit(locked ? QStringLiteral("login-locked") : QStringLiteral("login-failed"),
+              who(valid ? name : QStringLiteral("?"), ip));
         if (locked) {
-            if (retryAfterSecs) *retryAfterSecs = qMax(r1, r2);
+            if (retryAfterSecs) *retryAfterSecs = qMax(r1, qMax(r2, r3));
             return LoginResult::Locked;
         }
         return LoginResult::BadCredentials;
@@ -1007,8 +1084,25 @@ AccessControl::LoginResult AccessControl::loginFinish(const QString &name, bool 
         return LoginResult::Disabled;
     }
 
+    // (The address is cleared too.  Keeping its count would stop a member
+    // from trying a few passwords on other names between logins of their
+    // own, but those names have their own counter for this address, and a
+    // club behind one address would lock itself out on five typos a
+    // quarter of an hour, whoever made them.)
+    clearFailures(hereKey);
     clearFailures(nameKey);
-    clearFailures(ipKey);
+    clearFailures(addrKey);
+    // No more than kMaxSessionsPerUser: a loop of logins grew sessions.json
+    // without end, all of it rewritten at every login.
+    {
+        QList<AccessSession> mine;
+        for (const AccessSession &x : qAsConst(sessions_))
+            if (x.userId == u.id) mine.append(x);
+        if (mine.size() >= kMaxSessionsPerUser) {
+            std::sort(mine.begin(), mine.end(), [](const AccessSession &a, const AccessSession &b) { return a.lastSeen < b.lastSeen; });
+            for (int k = 0; k <= mine.size() - kMaxSessionsPerUser; k++) sessions_.remove(mine.at(k).hash);
+        }
+    }
     const QByteArray t = randomToken();
     AccessSession s;
     s.hash = tokenHash(t);
@@ -1024,6 +1118,42 @@ AccessControl::LoginResult AccessControl::loginFinish(const QString &name, bool 
     audit(QStringLiteral("login"), who(u.name, ip), Access::roleName(u.role));
     if (token) *token = t;
     return LoginResult::Ok;
+}
+
+bool AccessControl::passwordChangeLocked(const QString &userId, int *retryAfterSecs) const
+{
+    return lockedOut(QStringLiteral("pw:") + userId, retryAfterSecs);
+}
+
+void AccessControl::passwordChangeFailed(const QString &userId, const QString &name, const QString &ip)
+{
+    recordFailure(QStringLiteral("pw:") + userId);
+    audit(QStringLiteral("password-change-failed"), who(name, ip), QStringLiteral("wrong current password"));
+}
+
+void AccessControl::passwordChangeOk(const QString &userId)
+{
+    clearFailures(QStringLiteral("pw:") + userId);
+}
+
+void AccessControl::logoutOtherSessions(const QString &userId, const QByteArray &keepHash)
+{
+    bool changed = false;
+    for (auto it = sessions_.begin(); it != sessions_.end();) {
+        if (it->userId == userId && it->hash != keepHash) { it = sessions_.erase(it); changed = true; }
+        else ++it;
+    }
+    if (changed) saveSessions();
+}
+
+void AccessControl::clearTokens(const QString &userId)
+{
+    const int i = findUser(userId);
+    if (i < 0 || users_.at(i).tokens.isEmpty()) return;
+    const int n = users_.at(i).tokens.size();
+    users_[i].tokens.clear();
+    saveUsers();
+    audit(QStringLiteral("token-revoked"), who(users_.at(i).name, QString()), QString("all %1, with the password").arg(n));
 }
 
 AccessPrincipal AccessControl::principalFor(const AccessUser &u) const
@@ -1116,6 +1246,13 @@ void AccessControl::expireSessions()
     }
     if (sessionsDirty_) saveSessions();
     if (usersDirty_) saveUsers();
+    // Misses that no longer count: every failed name and address used to
+    // stay for the life of the process.
+    const qint64 nowMs = t.toMSecsSinceEpoch();
+    for (auto it = failures_.begin(); it != failures_.end();) {
+        if (it->lockedUntilMs <= nowMs && nowMs - it->firstMs > qint64(kLockoutWindowSecs) * 1000) it = failures_.erase(it);
+        else ++it;
+    }
 }
 
 // --- API tokens --------------------------------------------------------------
@@ -1182,14 +1319,36 @@ AccessPrincipal AccessControl::resolveToken(const QByteArray &token)
 
 // --- audit -------------------------------------------------------------------
 
+// One event, one line.  Every field may carry text somebody outside chose
+// (a login name, an address out of X-Forwarded-For, a callsign): nothing
+// that breaks a line or a field gets through, and nothing is unbounded.
+static QString auditField(const QString &in, int max)
+{
+    QString out;
+    out.reserve(qMin(in.size(), max));
+    for (const QChar ch : in) {
+        if (out.size() >= max) break;
+        out.append(ch.isSpace() || !ch.isPrint() ? QLatin1Char('_') : ch);
+    }
+    return out;
+}
+
 void AccessControl::audit(const QString &event, const QString &whoStr, const QString &detail)
 {
     QFile f(QDir(dir_).filePath(QStringLiteral("audit.log")));
     const bool fresh = !f.exists();
-    if (!f.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) return;
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
+        if (!auditWarned_) {
+            auditWarned_ = true;
+            qWarning().noquote() << "Shared: cannot write" << f.fileName() << "-" << f.errorString()
+                                 << "- the audit log is NOT being kept";
+        }
+        return;
+    }
+    auditWarned_ = false;
     if (fresh) f.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner);
-    QString line = now().toUTC().toString(Qt::ISODate) + ' ' + event + ' ' + whoStr;
-    if (!detail.isEmpty()) line += ' ' + detail.simplified();
+    QString line = now().toUTC().toString(Qt::ISODate) + ' ' + auditField(event, 40) + ' ' + auditField(whoStr, 120);
+    if (!detail.isEmpty()) line += ' ' + detail.simplified().left(400);
     f.write(line.toUtf8() + '\n');
 }
 
@@ -1351,7 +1510,7 @@ Occurrence Reservations::nextAfter(const QDateTime &t, int withinSecs) const
     return best;
 }
 
-QString Reservations::add(Reservation r, QString *error, QString *conflict)
+QString Reservations::add(Reservation r, QString *error, QString *conflict, const QDateTime &now)
 {
     if (!r.start.isValid()) {
         if (error) *error = QStringLiteral("a start time is required");
@@ -1374,20 +1533,37 @@ QString Reservations::add(Reservation r, QString *error, QString *conflict)
     r.id = AccessControl::randomId(4);
     if (!r.created.isValid()) r.created = QDateTime::currentDateTimeUtc();
 
+    if (items_.size() >= kMaxReservations) {
+        if (error) *error = QString("no more than %1 reserved slots: remove one that is over").arg(kMaxReservations);
+        return QString();
+    }
     // No two slots overlap: every occurrence of the new one in the coming
-    // year against every occurrence of the others.
-    const QDateTime horizon = r.start.addDays(366 * kMaxYearsAhead);
-    const QList<Occurrence> mine = expand(r, r.start, horizon);
+    // year against every occurrence of the others.  The year runs from now
+    // when the first start is in the past: counted from the start, a weekly
+    // slot begun two years ago was checked against nothing still to come.
+    // Both lists are in time order, so one pass over the two (the product
+    // was 134 000 comparisons per daily slot, on the web thread).
+    // (`now` is the caller's clock; without one the year runs from the start.)
+    if (now.isValid() && r.repeat == Reservation::Once && r.start.addSecs(qint64(r.minutes) * 60) <= now) {
+        if (error) *error = QStringLiteral("that slot is already over");
+        return QString();
+    }
+    const QDateTime from = now.isValid() ? qMax(r.start, now.toUTC().addSecs(-qint64(r.minutes) * 60)) : r.start;
+    const QDateTime horizon = from.addDays(366 * kMaxYearsAhead);
+    const QList<Occurrence> mine = expand(r, from, horizon);
     for (const Reservation &other : items_) {
-        const QList<Occurrence> theirs = expand(other, r.start, horizon);
-        for (const Occurrence &a : mine) {
-            for (const Occurrence &b : theirs) {
-                if (!overlaps(a, b)) continue;
+        const QList<Occurrence> theirs = expand(other, from, horizon);
+        int i = 0, j = 0;
+        while (i < mine.size() && j < theirs.size()) {
+            const Occurrence &a = mine.at(i);
+            const Occurrence &b = theirs.at(j);
+            if (overlaps(a, b)) {
                 if (conflict)
                     *conflict = QString("%1 %2 (%3)").arg(other.id, b.start.toString(Qt::ISODate), Reservation::repeatName(other.repeat));
                 if (error) *error = QStringLiteral("that time is taken");
                 return QString();
             }
+            if (a.end <= b.end) i++; else j++;
         }
     }
     items_.append(r);
