@@ -295,8 +295,8 @@ funcType kenwoodCommander::getCommand(funcs func, QByteArray &payload, int value
     funcType cmd;
 
     // Value is set to INT_MIN by default as this should be outside any "real" values
-    auto it = this->rigCaps.commands.find(func);
-    if (it != this->rigCaps.commands.end())
+    auto it = this->rigCaps.commands.constFind(func);
+    if (it != this->rigCaps.commands.constEnd())
     {
         if (value == INT_MIN || (value>=it.value().minVal && value <= it.value().maxVal))
         {
@@ -377,7 +377,7 @@ void kenwoodCommander::parseData(QByteArray data)
                 qInfo(logRig()) << "Unsupported command received from rig" << d << "Check rig file";
             continue;
         } else {
-            type = this->rigCaps.commands.find(func).value();
+            type = this->rigCaps.commands.value(func);
         }
 
         d.remove(0,count);

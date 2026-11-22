@@ -45,7 +45,7 @@ struct RIGCONFIG {
 	// Not rigAvailable: rigServer::receiveRigCaps sets that one too, on its own
 	// thread, and whichever ran first used to decide whether polling started.
 	bool pollingStarted=false;
-    rigCapabilities* rigCaps = Q_NULLPTR;
+    const rigCapabilities* rigCaps = Q_NULLPTR;
 	rigCommander* rig = Q_NULLPTR;
 	QThread* rigThread = Q_NULLPTR;
     audioHandlerBase* rxaudio = Q_NULLPTR;

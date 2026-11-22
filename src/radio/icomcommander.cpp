@@ -328,8 +328,8 @@ funcType icomCommander::getCommand(funcs func, QByteArray &payload, int value, u
 {
     funcType cmd;
     // Value is set to INT_MIN by default as this should be outside any "real" values
-    auto it = rigCaps.commands.find(func);
-    if (it != rigCaps.commands.end())
+    auto it = rigCaps.commands.constFind(func);
+    if (it != rigCaps.commands.constEnd())
     {
         if (value == INT_MIN || (value>=it.value().minVal && value <= it.value().maxVal))
         {

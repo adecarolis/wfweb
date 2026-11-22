@@ -1854,6 +1854,17 @@ the server's state to a stall that is the server's (thread stacks on macOS).
 when it ran first a `--no-web` server never polled its rig
 (`test_rig_server_meters.py`, twice in some thirty CI job runs).
 
+**The commander's `rigCaps` is read from every thread with no lock**
+(main, web, queue, pty) through the pointer `rigCapsUpdated` hands out.
+Hold it as `const rigCapabilities *` (the compiler then picks the
+non-detaching overloads), never copy the struct or pass it by value
+(`haveRigID` / `discoveredRigID` take a const reference), and look up in the
+commander with `constFind` / `value`. The rig thread's by-value
+`emit haveRigID(rigCaps)` made `commands` shared for a moment, the web
+thread's `rigCaps->commands[funcKeySpeed]` (cwSpeedRange) detached it and
+freed the old data while the main thread's `initPeriodicPolling()` walked it:
+SIGSEGV 2 s after start on the bench, once (2026-11-22, read off the core).
+
 ## Workflow Rules
 
 ### 1. Plan First

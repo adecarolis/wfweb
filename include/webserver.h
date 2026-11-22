@@ -617,7 +617,7 @@ private:
     QWebSocketServer *wsServer = nullptr;
     QList<QWebSocket *> wsClients;
     cachingQueue *queue = nullptr;
-    rigCapabilities *rigCaps = nullptr;
+    const rigCapabilities *rigCaps = nullptr;
     QTimer *statusTimer = nullptr;
     QMimeDatabase mimeDb;
     bool rigPoweredOn = true;

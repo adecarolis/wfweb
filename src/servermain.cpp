@@ -1277,7 +1277,7 @@ void servermain::initPeriodicPolling()
     // Restore the normal queue interval
     for (RIGCONFIG* radio : serverConfig.rigs) {
         if (radio->rigAvailable && radio->rigCaps != Q_NULLPTR) {
-            rigCapabilities* rigCaps = radio->rigCaps;
+            const rigCapabilities* rigCaps = radio->rigCaps;
             qDebug(logSystem()) << "initPeriodicPolling() rig=" << rigCaps->modelName << " numReceiver=" << rigCaps->numReceiver << " numVFO=" << rigCaps->numVFO << " hasCommand29=" << rigCaps->hasCommand29;
 
             if (usingLAN) {
@@ -1309,7 +1309,7 @@ void servermain::initPeriodicPolling()
 
             // Re-add periodic poll commands
             QSet<funcs> periodicFuncs;
-            foreach (auto cap, rigCaps->periodic) {
+            for (const periodicType &cap : rigCaps->periodic) {
                 if (cap.receiver == char(-1)) {
                     for (uchar v = 0; v < rigCaps->numReceiver; v++)
                         queue->add(queuePriority(cap.prioVal), cap.func, true, v);

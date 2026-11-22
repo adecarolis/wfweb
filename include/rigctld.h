@@ -191,7 +191,7 @@ protected:
 
 private:
     cachingQueue* queue;
-    rigCapabilities* rigCaps=Q_NULLPTR;
+    const rigCapabilities* rigCaps=Q_NULLPTR;
     rigCtlD* parent;
     bool chkVfoEecuted=false;
     unsigned long crcTable[256];

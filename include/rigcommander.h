@@ -113,8 +113,8 @@ signals:
     void haveScopeEdge(char edge);
 
     // Rig ID:
-    void haveRigID(rigCapabilities rigCaps);
-    void discoveredRigID(rigCapabilities rigCaps);
+    void haveRigID(const rigCapabilities &rigCaps);
+    void discoveredRigID(const rigCapabilities &rigCaps);
 
     // Repeater:
     void haveDuplexMode(duplexMode_t);
@@ -151,6 +151,11 @@ protected:
     bool usingNativeLAN;
     bool rigPoweredOn = false; // Assume the radio is not powered-on until we know otherwise.
 
+    // Published to the other threads by address (cachingQueue::setRigCaps)
+    // and read there with no lock. Never copy it while they may read it, and
+    // look things up with constFind / value: a copy makes its QHashes shared,
+    // a non-const access then detaches one and frees the data under a reader
+    // (main thread segfault in initPeriodicPolling, 2026-11-22).
     struct rigCapabilities rigCaps;
     bool haveRigCaps=false;
     QHash<quint16,rigInfo> rigList;

@@ -74,7 +74,7 @@ private:
     bool disableTransceive = false;
     QSocketNotifier *ptReader = Q_NULLPTR;
     quint16 civId=0;
-    rigCapabilities* rigCaps = Q_NULLPTR;
+    const rigCapabilities* rigCaps = Q_NULLPTR;
     cachingQueue* queue = Q_NULLPTR;
 };
 
