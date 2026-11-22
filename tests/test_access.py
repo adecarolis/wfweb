@@ -379,8 +379,15 @@ def test_account_routes_hardening(shared):
     # the audit log (a line break in it forged a line).
     r = shared.post("/api/v1/auth/login", {"username": "x\n2026-01-01T00:00:00Z login clubadmin@6.6.6.6 admin", "password": "p"})
     assert r.status_code == 401
-    r = shared.post("/api/v1/auth/login", {"username": "A" * 200000, "password": "p"})
-    assert r.status_code in (401, 413)
+    # A name under the body cap is read, refused and not written whole;
+    # one over it is refused from the headers.
+    r = shared.post("/api/v1/auth/login", {"username": "A" * 60000, "password": "p"})
+    assert r.status_code == 401
+    try:
+        r = shared.post("/api/v1/auth/login", {"username": "A" * 200000, "password": "p"})
+        assert r.status_code in (401, 413)
+    except requests.ConnectionError:
+        pass    # answered 413 and closed before the body was all sent: as good
     audit = (shared.shared_dir / "audit.log").read_text()
     assert "clubadmin@6.6.6.6" not in audit and "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" not in audit
     assert all(len(line) < 700 for line in audit.splitlines())

@@ -256,6 +256,8 @@ void servermain::openRig()
                 udpPrefs.waterfallFormat = radio->waterfallFormat;
                 audioSetup lanRxSetup = rxSetup;
                 audioSetup lanTxSetup = txSetup;
+                lanRxSetup.type = prefs.audioSystem;
+                lanTxSetup.type = prefs.audioSystem;
                 memcpy(lanRxSetup.guid, radio->guid, GUIDLEN);
                 memcpy(lanTxSetup.guid, radio->guid, GUIDLEN);
                 QMetaObject::invokeMethod(radio->rig, [=]() {
