@@ -67,7 +67,6 @@ struct networkStatus {
 	quint32 packetsLost = 0;
 	quint16 rtt = 0;
 	quint32 networkLatency = 0;
-    qint64 timeDifference = 0;
 	QString message;
 };
 
@@ -92,8 +91,6 @@ public:
 
 	void printHex(const QByteArray& pdata);
 	void printHex(const QByteArray& pdata, bool printVert, bool printHoriz);
-
-    qint64 getTimeDifference() { return pingLatenessMs;}
 
 	//QTime timeStarted;
 
@@ -155,24 +152,6 @@ public:
 	quint16 seqPrefix = 0;
 	QString connectionType = "";
 	int congestion = 0;
-
-protected:
-    //QTime startTime;
-    //QTime radioTime;
-    //qint64 timeOffset;
-    //qint64 timeDifference = 0;
-
-    QElapsedTimer mono;
-    bool    haveSync = false;
-    quint32 radioBase = 0;     // radio uptime ms at sync
-    qint64  localBase = 0;     // local monotonic ms at sync
-    int     pingDriftMs = 0;   // signed drift estimate (radio ahead/behind prediction)
-    int     badSyncCount = 0;
-
-    int pingLatenessMs = 0;   // +ve = path delay vs prediction
-    int pingBaselineMs = 0;   // learned steady-state delay
-
-
 
 private:
 	void sendRetransmitRequest();

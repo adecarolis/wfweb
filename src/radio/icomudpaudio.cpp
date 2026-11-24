@@ -179,23 +179,9 @@ void icomUdpAudio::dataReceived()
                 if (rxAudioThread == Q_NULLPTR)
                     startAudio();
 
-                const int excess = pingLatenessMs - (pingBaselineMs + rxSetup.latency);
-
-                if (excess > 0) {
-                    qDebug(logUdp()) << "Audio latency high:"
-                                     << "lateness" << pingLatenessMs
-                                     << "baseline" << pingBaselineMs
-                                     << "excess" << excess;
-
-                    if (++latencyCounter > 5) {
-                        qInfo(logUdp()) << "Latency sustained -> flushing audio";
-                        latencyCounter = 0;
-                        //flushAudio();   // clear queue / reset decoder
-                        break;
-                    }
-                } else {
-                    latencyCounter = 0;
-                }
+                // Every packet goes on, however late: the jitter buffer in the
+                // browser and the sound-card handlers deal with lateness. The
+                // rig's ping clock says nothing about it, it drifts (#161).
                 audioPacket tempAudio;
                 tempAudio.seq  = quint32(seqPrefix << 16) | quint32(in->seq) ;
                 tempAudio.time = QTime::currentTime();
