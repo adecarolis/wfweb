@@ -219,6 +219,8 @@ private:
     int getSubCommand(QStringList& response, bool extended, const commandStruct cmd, const subCommandStruct sub[], QStringList params);
     int dumpState(QStringList &response, bool extended);
     int dumpCaps(QStringList &response, bool extended);
+    int setClock(const QStringList& params);
+    int getClock(QStringList& response);
     QStringList buildPrefixes(commandStruct cmd, bool extended);
     vfo_t currentVfo = vfoUnknown;
     vfo_t splitVfo = vfoUnknown;

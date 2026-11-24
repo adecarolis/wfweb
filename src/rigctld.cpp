@@ -1,5 +1,7 @@
 #include "rigctld.h"
 #include "logcategories.h"
+#include <QRegularExpression>
+#include <QDateTime>
 
 
 
@@ -564,6 +566,16 @@ void rigCtlClient::socketReadyRead()
                     sendStatus=false;
                     break;
                 }
+                else if (commands_list[i].sstr == 0xf8)
+                {
+                    ret = setClock(command);
+                    break;
+                }
+                else if (commands_list[i].sstr == 0xf9)
+                {
+                    ret = getClock(response);
+                    break;
+                }
                 // Special commands are funcNone so will not get called here
                 if (commands_list[i].func != funcNone) {
                     ret = getCommand(response, extended, commands_list[i],command, commands);
@@ -921,6 +933,112 @@ void rigCtlClient::genCrc(unsigned long crcTable[])
         }
         crcTable[(size_t)b] = remainder;
     }
+}
+
+/**
+ * set_clock as Hamlib's rigctl reads it: "local", "utc", or
+ * YYYY-MM-DDTHH:MM[:SS[.sss]] followed by the UTC offset as +HH, +HHMM or +HH:MM
+ * (below 24 it is hours, as in Hamlib). Like Hamlib's Icom backend it sets the
+ * UTC offset, the time (hours and minutes: the rig keeps no seconds) and the date.
+ */
+int rigCtlClient::setClock(const QStringList& params)
+{
+    if (rigCaps == Q_NULLPTR || params.isEmpty())
+        return -RIG_EINVAL;
+    if (!rigCaps->commands.contains(funcDate) || !rigCaps->commands.contains(funcTime))
+        return -RIG_ENIMPL;
+
+    QDate date;
+    QTime time;
+    int offsetMins = 0;
+    const QString arg = params[0].trimmed();
+    const bool utc = !arg.compare("utc", Qt::CaseInsensitive);
+    if (utc || !arg.compare("local", Qt::CaseInsensitive)) {
+        const QDateTime now = utc ? QDateTime::currentDateTimeUtc() : QDateTime::currentDateTime();
+        date = now.date();
+        time = now.time();
+        offsetMins = now.offsetFromUtc() / 60;
+    } else {
+        static const QRegularExpression re(QStringLiteral(
+            "^(\\d{4})-(\\d{2})-(\\d{2})T(\\d{2}):(\\d{2})(?::(\\d{2})(?:\\.\\d+)?)?([+-])(\\d{1,4})(?::(\\d{2}))?$"));
+        const QRegularExpressionMatch m = re.match(arg);
+        if (!m.hasMatch())
+            return -RIG_EINVAL;
+        date = QDate(m.captured(1).toInt(), m.captured(2).toInt(), m.captured(3).toInt());
+        time = QTime(m.captured(4).toInt(), m.captured(5).toInt(), m.captured(6).isEmpty() ? 0 : m.captured(6).toInt());
+        int offset = m.captured(8).toInt();
+        if (offset < 24 || !m.captured(9).isEmpty())
+            offset = offset * 100 + m.captured(9).toInt();
+        if (offset / 100 > 14 || offset % 100 > 59)
+            return -RIG_EINVAL;
+        offsetMins = (offset / 100 * 60 + offset % 100) * (m.captured(7) == "-" ? -1 : 1);
+    }
+    if (!date.isValid() || !time.isValid())
+        return -RIG_EINVAL;
+
+    if (rigCaps->commands.contains(funcUTCOffset)) {
+        timekind off;
+        off.hours = static_cast<quint8>(qAbs(offsetMins) / 60);
+        off.minutes = static_cast<quint8>(qAbs(offsetMins) % 60);
+        off.isMinus = offsetMins < 0;
+        queue->addUnique(priorityImmediate, queueItem(funcUTCOffset, QVariant::fromValue<timekind>(off), false, 0));
+    }
+    timekind t;
+    t.hours = static_cast<quint8>(time.hour());
+    t.minutes = static_cast<quint8>(time.minute());
+    t.isMinus = false;
+    queue->addUnique(priorityImmediate, queueItem(funcTime, QVariant::fromValue<timekind>(t), false, 0));
+    datekind d;
+    d.year = static_cast<uint16_t>(date.year());
+    d.month = static_cast<quint8>(date.month());
+    d.day = static_cast<quint8>(date.day());
+    queue->addUnique(priorityImmediate, queueItem(funcDate, QVariant::fromValue<datekind>(d), false, 0));
+    qInfo(logRigCtlD()) << "set_clock" << date.toString(Qt::ISODate) << time.toString("HH:mm")
+                        << "UTC offset" << offsetMins << "min";
+    return RIG_OK;
+}
+
+/**
+ * get_clock in Hamlib's format, YYYY-MM-DDTHH:MM:SS.sss+HH:MM. Seconds are 0,
+ * as in Hamlib's Icom backend (the rig keeps none). The values come from the
+ * cache like every other read; one not read yet is asked for now and the
+ * answer is a timeout, so the client's retry gets it.
+ */
+int rigCtlClient::getClock(QStringList& response)
+{
+    if (rigCaps == Q_NULLPTR)
+        return -RIG_EINVAL;
+    if (!rigCaps->commands.contains(funcDate) || !rigCaps->commands.contains(funcTime))
+        return -RIG_ENIMPL;
+
+    const bool hasOffset = rigCaps->commands.contains(funcUTCOffset);
+    const cacheItem d = queue->getCache(funcDate, 0);
+    const cacheItem t = queue->getCache(funcTime, 0);
+    const cacheItem o = hasOffset ? queue->getCache(funcUTCOffset, 0) : cacheItem();
+    if (d.value.userType() != qMetaTypeId<datekind>() || t.value.userType() != qMetaTypeId<timekind>()
+        || (hasOffset && o.value.userType() != qMetaTypeId<timekind>()))
+        return -RIG_ETIMEOUT;
+
+    const datekind dk = d.value.value<datekind>();
+    const timekind tk = t.value.value<timekind>();
+    QDateTime clock(QDate(dk.year, dk.month, dk.day), QTime(tk.hours, tk.minutes), Qt::UTC);
+    if (!clock.isValid())
+        return -RIG_EIO;
+    // A cached reading moves on by the whole minutes since the rig sent it.
+    if (t.reply.isValid())
+        clock = clock.addSecs(qMax<qint64>(0, t.reply.secsTo(QDateTime::currentDateTime())) / 60 * 60);
+
+    timekind off;
+    off.hours = 0;
+    off.minutes = 0;
+    off.isMinus = false;
+    if (hasOffset)
+        off = o.value.value<timekind>();
+    response.append(QString("%1%2%3:%4")
+                        .arg(clock.toString("yyyy-MM-ddTHH:mm:00.000"), off.isMinus ? "-" : "+")
+                        .arg(off.hours, 2, 10, QChar('0'))
+                        .arg(off.minutes, 2, 10, QChar('0')));
+    return RIG_OK;
 }
 
 int rigCtlClient::getCommand(QStringList& response, bool extended, const commandStruct cmd, QStringList params , QString fullcmd )
