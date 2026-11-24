@@ -1367,10 +1367,25 @@ void icomCommander::parseCommand()
     case funcVOXDelay:
         value.setValue(bcdHexToUChar(payloadIn.at(0)));
         break;
-    // Time & date functions
-    case funcUTCOffset:
+    // Time & date functions, BCD: date YYYY MM DD, time HH MM, UTC offset HH MM sign (00 = +)
     case funcDate:
+        if (payloadIn.size() >= 4) {
+            datekind d;
+            d.year = bcdHexToUChar(payloadIn.at(0)) * 100 + bcdHexToUChar(payloadIn.at(1));
+            d.month = bcdHexToUChar(payloadIn.at(2));
+            d.day = bcdHexToUChar(payloadIn.at(3));
+            value.setValue(d);
+        }
+        break;
     case funcTime:
+    case funcUTCOffset:
+        if (payloadIn.size() >= (func == funcUTCOffset ? 3 : 2)) {
+            timekind t;
+            t.hours = bcdHexToUChar(payloadIn.at(0));
+            t.minutes = bcdHexToUChar(payloadIn.at(1));
+            t.isMinus = func == funcUTCOffset && payloadIn.at(2) != 0;
+            value.setValue(t);
+        }
         break;
     // Fixed Freq Scope Edges
     case funcScopeEdge1a:
