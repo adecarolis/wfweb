@@ -116,6 +116,9 @@ public:
     // True once cwRequested is connected to the web server; false keeps
     // send_morse going straight to the rig.
     bool routeCw = false;
+    // True once powerRequested is connected to the web server; false keeps
+    // set_powerstat going straight to the rig.
+    bool routePower = false;
     virtual ~rigCtlD();
 
     Q_INVOKABLE int startServer(qint16 port);
@@ -129,6 +132,10 @@ signals:
     void pttRequested(bool on);
     // send_morse text, for the same reason (set routeCw when connected).
     void cwRequested(QString text);
+    // set_powerstat, for the same reason as the web page's power button: the
+    // rig is woken (preamble, baud reset) and polling is stopped / restarted
+    // by servermain, not by a plain CI-V set (set routePower when connected).
+    void powerRequested(bool on);
     void onStarted();
     void onStopped();
     void sendData(QString data);

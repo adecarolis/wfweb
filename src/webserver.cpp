@@ -4776,6 +4776,16 @@ void webServer::onRigCtlCw(QString text)
     queue->add(priorityImmediate, queueItem(funcSendCW, QVariant::fromValue<QString>(text)));
 }
 
+// rigctld's set_powerstat: the same setPower branch as the page's power
+// button (servermain::powerRigOn / powerRigOff).
+void webServer::onRigCtlPower(bool on)
+{
+    QJsonObject cmd;
+    cmd["cmd"] = "setPower";
+    cmd["value"] = on;
+    handleCommand(nullptr, cmd);
+}
+
 void webServer::sendCurrentState(QWebSocket *client)
 {
     QJsonObject info = buildInfoJson();

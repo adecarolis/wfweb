@@ -1081,7 +1081,11 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
             val.setValue(static_cast<ushort>(float(params[0].toFloat() * 5.1)));
             break;
         case typeBinary:
-            if (params.length()>1){
+            if (func == funcPowerControl) {
+                // Hamlib's powerstat_t: 1 is ON; OFF, STANDBY and OPERATE
+                // all switch an Icom off (icom_set_powerstat).
+                val.setValue(params[0].toInt() == 1);
+            } else if (params.length()>1){
                 queue->add(priorityImmediate, queueItem(funcSelectVFO, QVariant::fromValue<vfo_t>(vfoFromName(params[0]).vfo),false,state.receiver));
                 val.setValue(static_cast<bool>(params[1].toInt()));
             } else {
@@ -1204,6 +1208,12 @@ int rigCtlClient::getCommand(QStringList& response, bool extended, const command
             // own: the web server refuses it under a shared station's TX
             // inhibit and names it in the audit log, as it does a browser's.
             emit parent->cwRequested(val.toString());
+        } else if (func == funcPowerControl && parent->routePower) {
+            // A plain 18 01 / 18 00 set does not do what the page's power
+            // button does: a rig switched off is CI-V-silent and needs the
+            // wake-up preamble, and the server must clear its queue and stop
+            // polling on the way down and start it again on the way up.
+            emit parent->powerRequested(val.toBool());
         } else if (rigCaps->commands.contains(func)) {
             queue->add(priorityImmediate, queueItem(func, val,false,state.receiver));
         }
