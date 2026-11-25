@@ -1279,6 +1279,10 @@ modeInfo.filter = 1;
 // second or more on the macOS runner, test_set_is_not_held_up_by_refresh_reads).
 // So never rely on a plain read queued before a set going out first: a read
 // that must see the old value has to be answered before the set is queued.
+// Bare actions (VFO mode select, VFO A/B/Main/Sub select, swap, equalize,
+// memory to VFO) carry no value but are ordered like sets (isBareAction() in
+// cachingqueue.cpp): the IC-9700 memory recall queues VFO mode before the
+// freq / channel / memory-mode sets, and sent last it left the rig on VFO.
 
 // EXCEPTION: funcMemoryContents is addressed by channel, so two of them are
 // never duplicates. Use add() — addUnique() compares command+receiver only
