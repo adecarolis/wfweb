@@ -45,6 +45,23 @@ cachingQueue::~cachingQueue()
         qWarning(logRig()) << "cachingQueue() thread did not stop";
 }
 
+// A command that carries no value but acts on the rig rather than reading it.
+// Ordered like a set in run(): it must not be overtaken by sets queued after it.
+static bool isBareAction(funcs f)
+{
+    switch (f) {
+    case funcVFOModeSelect:
+    case funcVFOASelect: case funcVFOBSelect:
+    case funcVFOMainSelect: case funcVFOSubSelect:
+    case funcVFOSwapAB: case funcVFOSwapMS:
+    case funcVFOEqualAB: case funcVFOEqualMS:
+    case funcMemoryToVFO:
+        return true;
+    default:
+        return false;
+    }
+}
+
 void cachingQueue::run()
 {
     // Setup queue.
@@ -100,11 +117,15 @@ void cachingQueue::run()
                 // (test_set_is_not_held_up_by_refresh_reads, 2026-11-22). A
                 // read that goes out after the set answers with the new
                 // value, which is what it was asked for. Sets keep their
-                // order among themselves.
+                // order among themselves. A bare action (VFO mode / VFO select,
+                // swap, equalize: no value, but it changes the rig) counts as
+                // a set: the memory recall queues "VFO mode" before freq,
+                // channel and memory mode, and sent last it put the rig back
+                // on the VFO after the channel had loaded (IC-9700).
                 auto pick = queue.end();
                 while (it != queue.end() && it.key() == prio)
                 {
-                    if (prio == priorityImmediate && it.value().param.isValid())
+                    if (prio == priorityImmediate && (it.value().param.isValid() || isBareAction(it.value().command)))
                         pick = it;
                     it++;
                 }
