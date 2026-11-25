@@ -146,6 +146,10 @@ servermain::servermain(const QString settingsFile, const cmdLineOverrides& overr
                     web, &webServer::onRigCtlCw,
                     Qt::QueuedConnection);
             rigctl->routeCw = true;
+            connect(rigctl, &rigCtlD::powerRequested,
+                    web, &webServer::onRigCtlPower,
+                    Qt::QueuedConnection);
+            rigctl->routePower = true;
             // rigCtlClient::rigCtlClient subscribes to cachingQueue::rigCapsUpdated
             // directly per-connection, so we don't fan out from rigCtlD.
             QMetaObject::invokeMethod(rigctl, "startServer",
@@ -1222,6 +1226,15 @@ void servermain::receiveBaudRate(quint32 baud)
 void servermain::powerRigOn()
 {
     qDebug(logSystem()) << "powerRigOn() called, current rigPoweredOn=" << rigPoweredOn;
+
+    // Already on: a rigctld client's set_powerstat 1 (many send one as they
+    // connect). The wake command does no harm, but the probe below would
+    // clear the queue and leave polling at the probe's 2 s for good: only
+    // the off -> on transition starts periodic polling again.
+    if (rigPoweredOn) {
+        emit sendPowerOn();
+        return;
+    }
 
     // A radio that started powered-off is CI-V-silent, so it was never
     // identified and the auto-baud probe (connectToRig) is still sweeping the

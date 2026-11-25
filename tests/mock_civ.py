@@ -144,6 +144,12 @@ class CivRadioBase:
         # Track received CI-V commands for test assertions
         self.civ_log: list[bytes] = []
 
+        # Power: 18 00 switches the radio off, and a radio that is off is
+        # CI-V-silent, like a real one, until 18 01 behind the wake-up
+        # preamble (a run of FE longer than a frame's two) switches it on.
+        self.powered: bool = True
+        self._preamble_len: int = 2   # FE bytes ahead of the frame being handled
+
     # ------------------------------------------------------------------
     # State setters (for test setup)
     # ------------------------------------------------------------------
@@ -200,6 +206,17 @@ class CivRadioBase:
     def dispatch_civ(self, cmd: int, payload: bytes, from_addr: int) -> bytes | None:
         to = from_addr
         frm = self._radio_addr
+
+        if cmd == CMD_POWER_CTRL and payload[:1] == b"\x00":
+            self.powered = False
+            return self.civ_ack(to, frm)
+        if cmd == CMD_POWER_CTRL and payload[:1] == b"\x01":
+            if not self.powered and self._preamble_len <= 2:
+                return None   # asleep: a plain frame does not wake it
+            self.powered = True
+            return self.civ_ack(to, frm)
+        if not self.powered:
+            return None
 
         if cmd == CMD_CMD29:
             return self._handle_cmd29(to, frm, payload)
@@ -290,7 +307,7 @@ class CivRadioBase:
             return self.civ_ack(to, frm)
 
         if cmd == CMD_POWER_CTRL:
-            return self.civ_ack(to, frm)
+            return self.civ_ack(to, frm)   # a read, or a value the mock does not model
 
         if cmd == CMD_RX_FREQ:
             receiver = payload[0] if payload else 0
@@ -404,6 +421,12 @@ class CivRadioBase:
     def parse_and_dispatch(self, frame: bytes) -> bytes | None:
         """Parse a raw CI-V frame and return the response frame (or None)."""
         self.civ_log.append(frame)
+
+        # A run of FE (the wake-up preamble wfweb puts ahead of 18 01 for a
+        # rig that is off) is one preamble to the rig.
+        self._preamble_len = len(frame) - len(frame.lstrip(b"\xfe"))
+        while len(frame) > 2 and frame[2] == 0xFE:
+            frame = frame[1:]
 
         if len(frame) < 6:
             return None

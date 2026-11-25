@@ -167,6 +167,8 @@ public slots:
     // packet TX gating and ALC meter polling stay coherent.
     void onRigCtlPtt(bool on);
     void onRigCtlCw(QString text);
+    // rigctld's set_powerstat, through the page's setPower command.
+    void onRigCtlPower(bool on);
 private slots:
     // HTTP
     void onHttpConnection();
