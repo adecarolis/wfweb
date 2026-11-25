@@ -145,9 +145,12 @@ class CivRadioBase:
         self.civ_log: list[bytes] = []
 
         # Power: 18 00 switches the radio off, and a radio that is off is
-        # CI-V-silent, like a real one, until 18 01 behind the wake-up
-        # preamble (a run of FE longer than a frame's two) switches it on.
+        # CI-V-silent, like a real one, until 18 01 switches it on. On USB
+        # (wake_needs_preamble) only behind the wake-up preamble, a run of FE
+        # longer than a frame's two; a LAN rig's network side stays up and
+        # takes a plain 18 01, so wfweb sends none there.
         self.powered: bool = True
+        self.wake_needs_preamble: bool = False
         self._preamble_len: int = 2   # FE bytes ahead of the frame being handled
 
     # ------------------------------------------------------------------
@@ -211,7 +214,7 @@ class CivRadioBase:
             self.powered = False
             return self.civ_ack(to, frm)
         if cmd == CMD_POWER_CTRL and payload[:1] == b"\x01":
-            if not self.powered and self._preamble_len <= 2:
+            if not self.powered and self.wake_needs_preamble and self._preamble_len <= 2:
                 return None   # asleep: a plain frame does not wake it
             self.powered = True
             return self.civ_ack(to, frm)

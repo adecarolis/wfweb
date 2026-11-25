@@ -34,6 +34,8 @@ class SerialMockRadio(CivRadioBase):
 
     def __init__(self, radio_addr: int = RADIO_IC7610_ADDR) -> None:
         super().__init__(radio_addr)
+        # A rig switched off on USB wakes only behind the FE preamble.
+        self.wake_needs_preamble = True
         self._master_fd: int | None = None
         self._slave_fd: int | None = None
         self._slave_path: str = ""
