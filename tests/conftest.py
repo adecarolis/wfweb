@@ -36,11 +36,21 @@ WFWEB_BIN = PROJECT_ROOT / "wfweb"
 
 
 def _find_free_port() -> int:
-    """Find a free TCP port for the web server."""
+    """Find a free TCP port for the web server, with the next one free too:
+    the plain REST port is web port + 1, and with that one taken the server
+    runs without it ("Connection refused" in one test run out of seven)."""
     import socket
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("127.0.0.1", 0))
-        return s.getsockname()[1]
+    for _ in range(50):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(("127.0.0.1", 0))
+            port = s.getsockname()[1]
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as n:
+                    n.bind(("127.0.0.1", port + 1))
+                return port
+            except OSError:
+                continue
+    raise RuntimeError("no two free TCP ports in a row")
 
 
 def _wait_for_rest(url: str, timeout: float = 15.0) -> bool:
