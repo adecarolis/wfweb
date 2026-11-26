@@ -35,21 +35,35 @@ WFWEB_BIN = PROJECT_ROOT / "wfweb"
 # ---------------------------------------------------------------------------
 
 
+_ports_given = set()
+
+
 def _find_free_port() -> int:
-    """Find a free TCP port for the web server, with the next one free too:
-    the plain REST port is web port + 1, and with that one taken the server
-    runs without it ("Connection refused" in one test run out of seven)."""
+    """A free TCP port for the web server, with the next one free too (the
+    plain REST port is web port + 1), below the range the system hands to
+    outgoing connections.
+
+    bind(0) was the wrong tool: Linux gives it odd ports and gives outgoing
+    connections even ones from the same range, so web port + 1 was a port any
+    live connection of the test run itself could be sitting on -- and a
+    listener cannot bind a port a connection uses.  The server then ran
+    without its plain port: "Connection refused" in test_schedule_rest, one
+    run in seven locally and on the Ubuntu runner (2026-11-26).  Ephemeral
+    ranges start at 32768 (Linux) or 49152 (macOS, Windows)."""
+    import random
     import socket
-    for _ in range(50):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.bind(("127.0.0.1", 0))
-            port = s.getsockname()[1]
-            try:
-                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as n:
-                    n.bind(("127.0.0.1", port + 1))
-                return port
-            except OSError:
-                continue
+    for _ in range(200):
+        port = random.randrange(20000, 30000, 2)
+        if port in _ports_given:
+            continue
+        try:
+            for p in (port, port + 1):
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.bind(("", p))
+        except OSError:
+            continue
+        _ports_given.add(port)
+        return port
     raise RuntimeError("no two free TCP ports in a row")
 
 

@@ -686,9 +686,14 @@ adds `connected`. The seeding fills only the accounts with no `lastTx`.
 and `rigctld`, the audit log's names for a visitor and a local program,
 which an account of that name could not be told from. Login keeps
 `validName`, so an account that already has such a name still gets in.
-`_find_free_port()` in `tests/conftest.py` checks the next port too: the
-plain REST port is web port + 1, and with it taken the server ran without
-it ("Connection refused" on the plain port, one run in seven).
+`_find_free_port()` in `tests/conftest.py` hands out web ports between
+20000 and 30000, with the next one (the plain REST port) free too.
+**Never pick a server port with `bind(0)`**: Linux gives it odd ports and
+gives outgoing connections even ones from the same range, and a listener
+cannot bind a port a live connection is on, so web port + 1 was where the
+test run's own connections sat and the server ran without its plain port
+("Connection refused" in `test_schedule_rest`, one run in seven and on the
+Ubuntu runner, 2026-11-26).
 **The 2026-11-21 audit** (five reviews of the gate, the seat, the accounts
 code, the auth handlers and the page, then the fixes; the rules that came
 out of it, each from a defect found):
