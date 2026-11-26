@@ -120,8 +120,10 @@ if (phase === 'setup') {
     await win(me, 'schedule-window', '#scheduleOverlay');
     await me.evaluate(() => closeScheduleModal());
     await admin.setViewportSize({ width: W, height: 1500 }); await admin.evaluate(() => openSharedModal()); await wait(admin, 1200);
-    for (const t of ['now', 'accounts', 'schedule', 'rules']) {
-        await admin.evaluate(t => sharedSetTab(t), t); await wait(admin, 400);
+    for (const t of ['now', 'accounts', 'schedule', 'rules', 'audit']) {
+        await admin.evaluate(t => sharedSetTab(t), t); await wait(admin, t === 'audit' ? 1500 : 400);
+        // The audit log: the newest lines are enough for a picture.
+        if (t === 'audit') await admin.evaluate(() => { document.querySelectorAll('#sharedOverlay .sp-audit-row').forEach((r, i) => { if (i >= 24) r.remove(); }); });
         await admin.evaluate(() => { for (const e of [document.getElementById('sharedOverlay'), document.querySelector('#sharedOverlay .shared-panel')]) { e.style.maxHeight = 'none'; e.style.height = 'auto'; e.style.overflow = 'visible'; } });
         await win(admin, 'settings-' + t, '#sharedOverlay');
     }

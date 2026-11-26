@@ -156,6 +156,9 @@ int main()
     require(!AccessControl::validName("a", nullptr), "one-letter name refused");
     require(!AccessControl::validName("has space", nullptr), "space in name refused");
     require(AccessControl::validName("k1fm.club-2", nullptr), "dots, dashes, digits accepted");
+    require(!AccessControl::nameAllowed("rigctld") && !AccessControl::nameAllowed("Anonymous") && !AccessControl::nameAllowed("a b"),
+            "the audit log's own names are nobody's account");
+    require(AccessControl::nameAllowed("rigctld2") && AccessControl::validName("rigctld"), "only for a new account, a name like them is fine");
 
     // --- HTTP helpers ---
     require(AccessControl::cookieValue("theme=dark; wfweb_session=abc.def-ghi; other=1", "wfweb_session") == "abc.def-ghi",
@@ -516,6 +519,191 @@ int main()
         require(!ac.setupAdmin("rescue", AccessControl::hashPassword("rescue-pw-123", kIters), "", "10.0.0.1", &err).isEmpty(), "recovery adds an admin");
         require(ac.userByName("rescue").role == Access::Role::Admin && ac.userCount() == 2, "second admin");
         require(readAll(dir + "/audit.log").contains(" setup-reset alain@10.0.0.1"), "reset audited");
+    }
+
+    // --- the audit log read back, newest first, a page at a time ---
+    {
+        require(Access::auditKind("key-down") == "tx" && Access::auditKind("unkey") == "tx"
+                && Access::auditKind("seat-take") == "seat" && Access::auditKind("reservation-add") == "seat"
+                && Access::auditKind("login-failed") == "login" && Access::auditKind("logout") == "login"
+                && Access::auditKind("log-clear") == "log" && Access::auditKind("qso-edit") == "log"
+                && Access::auditKind("user-created") == "admin" && Access::auditKind("users-export") == "admin"
+                && Access::auditKind("nonsense") == "", "every event belongs to a family");
+        const QString adir = tmp.filePath("audit");
+        AccessControl ac(adir);
+        require(ac.load(&err), "audit: load");
+        AccessControl::AuditQuery q;
+        require(ac.auditPage(q).entries.isEmpty() && ac.auditPage(q).next == 0, "no log yet: nothing, and nothing before it");
+
+        const QDateTime t0 = QDateTime::fromString("2026-11-24T12:00:00Z", Qt::ISODate);
+        int n = 0;
+        ac.setClock([&] { return t0.addSecs(n); });
+        for (n = 0; n < 200; n++) {
+            if (n % 2) ac.audit("key-down", AccessControl::who("op", "10.0.0.2"), QString("14.074.%1 USB").arg(n, 3, 10, QChar('0')));
+            else ac.audit("connect", AccessControl::who(n % 4 ? "Ann" : "anonymous", "2001:db8::1"), "listen");
+        }
+        AccessControl::AuditPage p = ac.auditPage(q);
+        require(p.entries.size() == 100 && p.next > 0, "a page, with more to come");
+        const AuditEntry e = p.entries.first();
+        require(e.time == t0.addSecs(199) && e.event == "key-down" && e.kind == "tx" && e.name == "op" && e.ip == "10.0.0.2"
+                && e.detail == "14.074.199 USB", "newest first, the line in its parts");
+        require(p.entries.at(1).name == "Ann" && p.entries.at(1).ip == "2001:db8::1", "an IPv6 address is whole");
+        require(p.reached == t0.addSecs(100), "reached: the oldest line looked at");
+        const QJsonObject ej = e.toJson();
+        require(ej["time"].toString() == "2026-11-24T12:03:19Z" && ej["kind"].toString() == "tx", "the JSON shape");
+        q.before = p.next;
+        p = ac.auditPage(q);
+        require(p.entries.size() == 100 && p.entries.first().time == t0.addSecs(99) && p.entries.last().time == t0, "the page before it");
+        require(p.next == 0, "and the log begins there");
+
+        // Filters.
+        q = AccessControl::AuditQuery();
+        q.kind = "tx";
+        p = ac.auditPage(q);
+        require(p.entries.size() == 100 && p.entries.last().time == t0.addSecs(1) && p.next > 0, "by kind");
+        q.before = p.next;
+        p = ac.auditPage(q);
+        require(p.entries.isEmpty() && p.next == 0, "nothing of it is left, and it says so");
+        q = AccessControl::AuditQuery();
+        q.name = "ANN";
+        p = ac.auditPage(q);
+        require(p.entries.size() == 50 && p.entries.first().name == "Ann" && p.next == 0, "by name, ignoring case");
+        q.name = "An";
+        require(ac.auditPage(q).entries.isEmpty(), "the whole name");
+        q.name = "op"; q.kind = "seat";
+        p = ac.auditPage(q);
+        require(p.entries.isEmpty() && p.next == 0 && p.reached == t0, "both, matching nothing: it looked at all of it");
+
+        // A bounded look at a time, whatever the size: every line once, in order.
+        for (int scan : {60, 61, 100, 137, 1000, 4096}) {
+            q = AccessControl::AuditQuery();
+            q.scanBytes = scan; q.limit = 7;
+            int seen = 0, calls = 0;
+            QDateTime last = t0.addSecs(1000);
+            do {
+                p = ac.auditPage(q);
+                require(p.entries.size() <= 7, "the limit holds");
+                for (const AuditEntry &x : p.entries) {
+                    require(x.time == t0.addSecs(199 - seen), "in order, none twice, none missing");
+                    last = x.time;
+                    seen++;
+                }
+                require(p.next == 0 || p.next < (q.before ? q.before : 1 << 30), "each page goes further back");
+                q.before = p.next;
+                calls++;
+            } while (p.next > 0 && calls < 10000);
+            require(seen == 200 && last == t0, "every line, whatever the piece it was read in");
+        }
+
+        // Lines that are not ours, a cut one at the end, and a log pruned
+        // under a page that was being read.
+        {
+            QFile f(adir + "/audit.log");
+            require(f.open(QIODevice::WriteOnly | QIODevice::Truncate), "rewrite the log");
+            f.write("2026-11-24T12:00:00Z login ann@10.0.0.1 operate\n"
+                    "\n"
+                    "garbage\n"
+                    "not-a-time login ann@10.0.0.1 x\n"
+                    " leading blank\n"
+                    "2026-11-24T12:00:01Z logout ann@-\r\n"
+                    "2026-11-24T12:00:02Z onair - K1FM (station call)\n"
+                    "2026-11-24T12:00:03Z conn");
+        }
+        q = AccessControl::AuditQuery();
+        q.before = 100000;
+        p = ac.auditPage(q);
+        require(p.entries.size() == 3 && p.next == 0, "the lines that are whole");
+        require(p.entries.at(0).event == "onair" && p.entries.at(0).name == "-" && p.entries.at(0).detail == "K1FM (station call)", "the server's own line");
+        require(p.entries.at(1).event == "logout" && p.entries.at(1).ip.isEmpty() && p.entries.at(1).detail.isEmpty(), "no address, no detail, a CRLF");
+    }
+
+    // --- activity: when an account was last here and last on the air ---
+    {
+        const QString adir = tmp.filePath("activity");
+        const QDateTime t0 = QDateTime::fromString("2026-11-24T12:00:00Z", Qt::ISODate);
+        QDateTime t = t0;
+        QString id, idle;
+        QByteArray token, api;
+        {
+            AccessControl ac(adir);
+            ac.setIterations(kIters);
+            ac.setClock([&] { return t; });
+            require(ac.load(&err), "activity: load");
+            id = ac.addUser("op", AccessControl::hashPassword("operator-pw", kIters), Access::Role::Operate, "", &err);
+            idle = ac.addUser("idle", AccessControl::hashPassword("operator-pw", kIters), Access::Role::Operate, "", &err);
+            require(!ac.user(id).lastSeen.isValid() && !ac.user(id).lastTx.isValid(), "a new account has been nowhere");
+            require(login(ac, "op", "operator-pw", "10.0.0.2", &token) == AccessControl::LoginResult::Ok, "login");
+            require(ac.user(id).lastSeen == t0, "a login is a sighting");
+            t = t0.addSecs(60);
+            ac.noteSeen(id);
+            require(ac.user(id).lastSeen == t0, "kept to five minutes");
+            ac.noteSeen(id, true);
+            require(ac.user(id).lastSeen == t, "unless exact");
+            t = t0.addSecs(3600);
+            require(ac.resolveSession(token).authenticated && ac.user(id).lastSeen == t, "a request with the session is one");
+            ac.createToken(id, "script", &api);
+            t = t0.addSecs(7200);
+            require(ac.resolveToken(api).authenticated && ac.user(id).lastSeen == t0.addSecs(3600), "a script's is not");
+            ac.noteTx(id, "14.074.000  USB");
+            require(ac.user(id).lastTx == t && ac.user(id).lastTxOn == "14.074.000 USB", "a transmission");
+            ac.noteSeen("nope"); ac.noteTx("", "x");
+            ac.expireSessions();
+            const QJsonObject j = ac.user(id).toJson(false);
+            require(j["lastTx"].toString() == "2026-11-24T14:00:00Z" && j["lastTxOn"].toString() == "14.074.000 USB"
+                    && j["lastSeen"].toString() == "2026-11-24T13:00:00Z", "in what the admins get");
+            const QJsonObject pj = ac.resolveSession(token).toJson();
+            require(!pj.contains("lastSeen") && !pj.contains("lastTx"), "not in what the account sees of itself");
+            require(!QJsonDocument(ac.exportUsers()).toJson().contains("lastTx"), "nor in the exported list");
+        }
+        {
+            AccessControl ac(adir);
+            require(ac.load(&err), "activity: reload");
+            require(ac.user(id).lastTx == t0.addSecs(7200) && ac.user(id).lastTxOn == "14.074.000 USB"
+                    && ac.user(id).lastSeen == t0.addSecs(3600), "kept across a restart");
+            require(!ac.user(idle).lastTx.isValid() && !ac.user(idle).lastSeen.isValid(), "never is never");
+        }
+        // Accounts written by a server that kept neither: from the sessions
+        // and the audit log, once.
+        const auto strip = [&](const QString &key) {
+            QFile f(adir + "/users.json");
+            require(f.open(QIODevice::ReadOnly), "read users.json");
+            QJsonObject root = QJsonDocument::fromJson(f.readAll()).object();
+            f.close();
+            QJsonArray arr = root["users"].toArray();
+            for (int i = 0; i < arr.size(); i++) {
+                QJsonObject o = arr.at(i).toObject();
+                for (const char *k : {"lastSeen", "lastTx", "lastTxOn"}) o.remove(k);
+                if (!key.isEmpty()) o[key] = "";
+                arr[i] = o;
+            }
+            root["users"] = arr;
+            require(f.open(QIODevice::WriteOnly | QIODevice::Truncate), "write users.json");
+            f.write(QJsonDocument(root).toJson());
+        };
+        {
+            QFile f(adir + "/audit.log");
+            require(f.open(QIODevice::WriteOnly | QIODevice::Truncate), "a log of its own");
+            f.write("2026-10-01T10:00:00Z key-down idle@10.0.0.9 3.573.000 USB\n"     // another 'idle', before this one was made
+                    "2026-11-24T12:30:00Z key-down OP@10.0.0.2 7.074.000 USB\n"
+                    "2026-11-24T12:30:12Z key-up op@10.0.0.2 12.0 s\n"
+                    "2026-11-24T12:45:00Z tx op@10.0.0.2 cw 7.030.000 CW\n"
+                    "2026-11-24T12:50:00Z key-down rigctld@127.0.0.1 7.030.000 CW\n");
+        }
+        strip(QString());
+        {
+            AccessControl ac(adir);
+            require(ac.load(&err), "activity: an old users.json");
+            require(ac.user(id).lastTx == t0.addSecs(45 * 60) && ac.user(id).lastTxOn == "cw 7.030.000 CW", "the last transmission, from the log");
+            require(ac.user(id).lastSeen == t0.addSecs(3600), "last seen, from its session");
+            require(!ac.user(idle).lastTx.isValid(), "a namesake's from before the account is not this one's");
+            ac.expireSessions();
+            require(readAll(adir + "/users.json").contains("cw 7.030.000 CW"), "and saved");
+        }
+        strip("lastTx");
+        {
+            AccessControl ac(adir);
+            require(ac.load(&err) && !ac.user(id).lastTx.isValid(), "only from a file that never had it");
+        }
     }
 
     // --- reservations: once / daily / weekly, occurrences, conflicts ---

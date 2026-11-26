@@ -334,6 +334,7 @@ private:
                            const QByteArray &body, const RequestContext &ctx);
     void handleSharedUsersRequest(QTcpSocket *socket, const QString &method, const QString &path,
                                   const QByteArray &body, const RequestContext &ctx);
+    QJsonArray sharedUsersJson() const;
     QJsonObject authMeJson(const RequestContext &ctx) const;
     QByteArray sessionCookieHeader(const QByteArray &token, bool secure) const;
     void closeSessionClients(const QByteArray &sessionHash, const QString &reason);
@@ -394,6 +395,8 @@ private:
                                    const RequestContext &ctx);
     void handleSharedConnectionsRequest(QTcpSocket *socket, const QString &method, const QString &path,
                                         const RequestContext &ctx);
+    void handleSharedAuditRequest(QTcpSocket *socket, const QString &method, const QUrlQuery &query,
+                                  const RequestContext &ctx);
 
     // --- the gate ------------------------------------------------------------
     Access::Role clientRole(QWebSocket *client) const;    // Admin in open mode
@@ -579,7 +582,7 @@ private:
     // A transmission with no key of its own (CW through the rig's keyer,
     // packet and APRS frames, a tune): a "tx" line in the audit log, at most
     // one a minute per account and kind.
-    void auditOnAir(const QString &kind, const QString &who);
+    void auditOnAir(const QString &kind, const QString &who, const QString &userId = QString());
     QHash<QString, qint64> onAirAudited_;
     QString onAirApplied_;
     QString onAirAppliedBy_;

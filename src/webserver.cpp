@@ -255,6 +255,10 @@ webServer::~webServer()
     // connected, 2026-11-22).
     for (QWebSocket *c : qAsConst(wsClients))
         c->disconnect(this);
+    if (access_) {
+        for (QWebSocket *c : qAsConst(wsClients)) access_->noteSeen(wsInfo.value(c).who.userId, true);
+        access_->expireSessions();   // writes what the last minute changed
+    }
     qDeleteAll(wsClients);
     wsClients.clear();
 }
@@ -1276,6 +1280,10 @@ void webServer::onHttpReadyRead()
             }
             if (path.startsWith("/api/v1/shared/connections")) {
                 handleSharedConnectionsRequest(socket, method, path, ctx);
+                return;
+            }
+            if (path == "/api/v1/shared/audit") {
+                handleSharedAuditRequest(socket, method, query, ctx);
                 return;
             }
             restPrincipal_ = &ctx.who;
@@ -2450,6 +2458,7 @@ void webServer::onWsNewConnection()
         wsInfo.insert(pSocket, info);
         access_->audit("connect", AccessControl::who(who.authenticated ? who.name : QStringLiteral("anonymous"), ip),
                        Access::roleName(who.role));
+        access_->noteSeen(who.userId, true);
     }
 
     connect(pSocket, &QWebSocket::textMessageReceived, this, &webServer::onWsTextMessage);
@@ -2550,6 +2559,7 @@ void webServer::onWsDisconnected()
             gone = info.who;
             if (access_) access_->audit("disconnect", AccessControl::who(
                 info.who.authenticated ? info.who.name : QStringLiteral("anonymous"), info.ip));
+            if (access_) access_->noteSeen(info.who.userId, true);
         }
         wsClients.removeAll(pClient);
         wsRawSocket_.remove(pClient);
@@ -2886,7 +2896,7 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
     // log as a transmission, and the one-a-minute throttle then left the
     // real one out (2026-11-21).
     const auto onAirAudit = [this, client](const char *kind) {
-        if (client && sharedMode_) auditOnAir(QString::fromLatin1(kind), wsWho(client));
+        if (client && sharedMode_) auditOnAir(QString::fromLatin1(kind), wsWho(client), wsInfo.value(client).who.userId);
     };
 
     // The account behind a browser's log command (shared mode only).
@@ -10999,7 +11009,9 @@ void webServer::pttAccounting(bool on, QWebSocket *client)
             // (the gate in onHttpReadyRead).
             pttWho = QStringLiteral("rigctld@127.0.0.1");
         }
-        if (access_) access_->audit("key-down", pttWho, operatingText());
+        const QString what = operatingText();
+        if (access_) access_->audit("key-down", pttWho, what);
+        if (access_ && client) access_->noteTx(wsInfo.value(client).who.userId, what);
         if (txTimeoutSecs_ > 0 && txTimeoutTimer) txTimeoutTimer->start(txTimeoutSecs_ * 1000);
     } else {
         if (txTimeoutTimer) txTimeoutTimer->stop();
@@ -11020,16 +11032,18 @@ QString webServer::wsWho(QWebSocket *client) const
 // One line a minute at most per account and kind: a CW over typed a
 // character at a time is one sendCW per character, a terminal session one
 // termSend per line.  Open mode: no audit log, nothing to write.
-void webServer::auditOnAir(const QString &kind, const QString &who)
+void webServer::auditOnAir(const QString &kind, const QString &who, const QString &userId)
 {
     if (!sharedMode_ || !access_ || who.isEmpty()) return;
+    const QString what = kind + ' ' + operatingText();
+    access_->noteTx(userId, what);
     const qint64 now = QDateTime::currentMSecsSinceEpoch();
     const QString key = who + ' ' + kind;
     const qint64 last = onAirAudited_.value(key, 0);
     if (last && now - last < 60000) return;
     if (onAirAudited_.size() > 512) onAirAudited_.clear();
     onAirAudited_.insert(key, now);
-    access_->audit("tx", who, kind + ' ' + operatingText());
+    access_->audit("tx", who, what);
 }
 
 void webServer::forceUnkey(const QString &reason)
@@ -11864,6 +11878,8 @@ void webServer::closeUserClients(const QString &userId, const QString &reason)
 void webServer::sharedHousekeeping()
 {
     if (!access_) return;
+    // A page left open sends no request for hours; it is here all the same.
+    for (QWebSocket *c : qAsConst(wsClients)) access_->noteSeen(wsInfo.value(c).who.userId);
     access_->expireSessions();
     const QList<QWebSocket *> clients = wsClients;
     for (QWebSocket *c : clients) {
@@ -12064,7 +12080,7 @@ void webServer::handleAuthRequest(QTcpSocket *socket, const QString &method, con
         const QString password = in.value("password").toString();
         const QString callsign = in.value("callsign").toString();
         QString err;
-        if (!AccessControl::validName(name, &err) || !AccessControl::validPassword(password, &err)) {
+        if (!AccessControl::nameAllowed(name, &err) || !AccessControl::validPassword(password, &err)) {
             sendRestResponse(socket, 400, QJsonObject{{"error", err}});
             return;
         }
@@ -12230,6 +12246,76 @@ void webServer::handleAuthRequest(QTcpSocket *socket, const QString &method, con
 }
 
 // Account management, admins only: /api/v1/shared/users[/<id>].
+QJsonArray webServer::sharedUsersJson() const
+{
+    QSet<QString> here;
+    for (QWebSocket *c : wsClients) {
+        const AccessPrincipal who = wsInfo.value(c).who;
+        if (who.authenticated) here.insert(who.userId);
+    }
+    QJsonArray arr;
+    const QList<AccessUser> all = access_->users();
+    for (const AccessUser &u : all) {
+        QJsonObject o = u.toJson(false);
+        o["connected"] = here.contains(u.id);
+        arr.append(o);
+    }
+    return arr;
+}
+
+// The audit log for the admins' page.  Names, addresses and who transmitted
+// when: like the accounts, for an admin who logged in and never for a token,
+// which has no expiry and is taken on the plain-HTTP port.
+void webServer::handleSharedAuditRequest(QTcpSocket *socket, const QString &method, const QUrlQuery &query,
+                                         const RequestContext &ctx)
+{
+    if (ctx.who.role != Access::Role::Admin) {
+        sendRestResponse(socket, 403, QJsonObject{{"error", "admin only"}});
+        return;
+    }
+    if (ctx.who.via != QLatin1String("session")) {
+        sendRestResponse(socket, 403, QJsonObject{{"error", "read the audit log from a logged-in browser"}});
+        return;
+    }
+    if (method != "GET") {
+        sendRestResponse(socket, 405, QJsonObject{{"error", "Method not allowed"}});
+        return;
+    }
+    if (!access_) {
+        sendRestResponse(socket, 404, QJsonObject{{"error", "shared station mode is off"}});
+        return;
+    }
+    AccessControl::AuditQuery q;
+    bool ok = true;
+    if (query.hasQueryItem("before")) {
+        q.before = query.queryItemValue("before").toLongLong(&ok);
+        if (!ok || q.before < 1) {
+            sendRestResponse(socket, 400, QJsonObject{{"error", "before: the 'next' of an earlier page"}});
+            return;
+        }
+    }
+    if (query.hasQueryItem("limit")) {
+        q.limit = query.queryItemValue("limit").toInt(&ok);
+        if (!ok || q.limit < 1 || q.limit > AccessControl::kAuditMaxEntries) {
+            sendRestResponse(socket, 400, QJsonObject{{"error", QString("limit: 1 to %1").arg(AccessControl::kAuditMaxEntries)}});
+            return;
+        }
+    }
+    q.kind = query.queryItemValue("kind");
+    if (!q.kind.isEmpty() && !Access::auditKinds().contains(q.kind)) {
+        sendRestResponse(socket, 400, QJsonObject{{"error", "kind: " + Access::auditKinds().join(", ")}});
+        return;
+    }
+    q.name = query.queryItemValue("name", QUrl::FullyDecoded);
+    const AccessControl::AuditPage page = access_->auditPage(q);
+    QJsonArray arr;
+    for (const AuditEntry &e : page.entries) arr.append(e.toJson());
+    QJsonObject o{{"entries", arr}};
+    if (page.next > 0) o["next"] = double(page.next);
+    if (page.reached.isValid()) o["reached"] = page.reached.toString(Qt::ISODate);
+    sendRestResponse(socket, 200, o);
+}
+
 void webServer::handleSharedUsersRequest(QTcpSocket *socket, const QString &method, const QString &path,
                                          const QByteArray &body, const RequestContext &ctx)
 {
@@ -12257,11 +12343,11 @@ void webServer::handleSharedUsersRequest(QTcpSocket *socket, const QString &meth
     const AccessPrincipal admin = ctx.who;
     const QString ip = ctx.ip;
 
+    // now: the page counts "seen 2 h ago" from it, not from a clock of its
+    // own that may be off.
     auto listJson = [this]() {
-        QJsonArray arr;
-        const QList<AccessUser> all = access_->users();
-        for (const AccessUser &u : all) arr.append(u.toJson(false));
-        return QJsonObject{{"users", arr}};
+        return QJsonObject{{"users", sharedUsersJson()},
+                           {"now", QDateTime::currentDateTimeUtc().toString(Qt::ISODate)}};
     };
     // The last enabled admin cannot be demoted, disabled or removed: that
     // would leave the station with nobody to let anyone in but the console.
@@ -12321,7 +12407,7 @@ void webServer::handleSharedUsersRequest(QTcpSocket *socket, const QString &meth
                 QString err;
                 bool taken = false;
                 access_->userByName(name, &taken);
-                if (!AccessControl::validName(name, &err)) { skip(err); continue; }
+                if (!AccessControl::nameAllowed(name, &err)) { skip(err); continue; }
                 if (taken) { skip(QStringLiteral("that user name is taken")); continue; }
                 const QString hash = e.value("passwordHash").toString();
                 if (AccessControl::validPasswordHash(hash)) { add(hash); continue; }
@@ -12342,10 +12428,7 @@ void webServer::handleSharedUsersRequest(QTcpSocket *socket, const QString &meth
                            QString("%1 added, %2 skipped").arg(run->added.size()).arg(run->skipped.size()));
             updateSharedStats();
             if (!sock) return;
-            QJsonArray arr;
-            const QList<AccessUser> all = access_->users();
-            for (const AccessUser &u : all) arr.append(u.toJson(false));
-            sendRestResponse(sock, 200, QJsonObject{{"added", run->added}, {"skipped", run->skipped}, {"users", arr}});
+            sendRestResponse(sock, 200, QJsonObject{{"added", run->added}, {"skipped", run->skipped}, {"users", sharedUsersJson()}});
         };
         const std::function<void()> first = *step;
         first();
@@ -12359,7 +12442,7 @@ void webServer::handleSharedUsersRequest(QTcpSocket *socket, const QString &meth
         const QString callsign = in.value("callsign").toString();
         const QString notes = in.value("notes").toString();
         QString err;
-        if (!AccessControl::validName(name, &err) || !AccessControl::validPassword(password, &err)) {
+        if (!AccessControl::nameAllowed(name, &err) || !AccessControl::validPassword(password, &err)) {
             sendRestResponse(socket, 400, QJsonObject{{"error", err}});
             return;
         }

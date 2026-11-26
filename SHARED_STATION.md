@@ -55,7 +55,8 @@ the browser it runs in and has nothing to share.
   list can be saved to a file and added to from one (EXPORT / IMPORT): a
   backup, or the accounts of another station, passwords included.
 - **An audit log** (`audit.log`): every setup, login, failed login, lockout,
-  logout, connection, token and account change, one line each.
+  logout, connection, token and account change, one line each. Admins read
+  it in the page (the AUDIT tab).
 - **Brute-force lockout**: five failed logins from an address, for one
   user name or for several, lock that address out for a minute, doubling on
   every further miss, 15 minutes at most. A name is locked for the address
@@ -401,7 +402,10 @@ Four tabs:
   seat), PASSWORD (sets a new one and ends the account's
   sessions and API tokens), NOTES (a line about the account for the admins only: a name, a
   membership number; the account never sees it), ENABLE / DISABLE, DELETE
-  (two presses), and a form to add one. USER LIST at the bottom: EXPORT
+  (two presses), and a form to add one. Under each account, when it was
+  last here (*connected now*, *seen 2 h ago*) and last on the air, with the
+  frequency and mode; a program on an API token does not count as being
+  here. USER LIST at the bottom: EXPORT
   saves every account to `wfweb-users-<date>.json` (name, callsign, level,
   STATION / OWN, notes, disabled, and the password hash — keep the file as
   private as `users.json`); IMPORT adds the accounts of such a file and
@@ -409,7 +413,8 @@ Four tabs:
   account: a name that exists is skipped. A list written by hand may carry
   a plain `password` per entry instead of the hash. A user name is 2 to 32
   letters, digits, `.`, `_` or `-` (no `@`, no `/`: not an e-mail address,
-  not `F/K1FM`), unique whatever the case; a password 8 to 256 characters;
+  not `F/K1FM`), unique whatever the case, and not `anonymous` or `rigctld`,
+  the audit log's names for a visitor and a local program; a password 8 to 256 characters;
   a callsign 3 to 16 letters, digits and `/`, with a letter and a digit.
 - **SCHEDULE**: the reservations, a form to add one, and the next two weeks.
 - **RULES**: every setting with a line saying what it does; a change
@@ -420,6 +425,12 @@ Four tabs:
   *TX time-out* (0 = none), *TX inhibit* (the same switch as in NOW),
   *Bands nobody transmits on* (one button per band of the rig; red = closed
   to transmitting for everyone), and the seat's rules.
+- **AUDIT**: the audit log, newest first, times in UTC as in the file: all of
+  it or one kind of event (TX, SEAT, LOGINS, ADMIN, LOG), everyone's lines or
+  one account's (what it did; what was done to it is an admin's line). A
+  key-down and its key-up are one row, with the duration. OLDER reads
+  further back, REFRESH starts again at the newest. The events are listed
+  in "The audit log's events" below.
 
 ## Setting it up
 
@@ -449,10 +460,10 @@ Everything lives in one directory, `<data dir>/shared` by default
 
 | File | Holds |
 |------|-------|
-| `users.json` | accounts: name, callsign, role, password hash (PBKDF2-HMAC-SHA256, per-user salt, iteration count in the hash), API token hashes |
+| `users.json` | accounts: name, callsign, role, password hash (PBKDF2-HMAC-SHA256, per-user salt, iteration count in the hash), API token hashes, when each was last here and last transmitted |
 | `sessions.json` | browser sessions by the SHA-256 of their cookie token (the token itself is never stored), with the address and browser each was opened from |
 | `reservations.json` | the reserved slots |
-| `audit.log` | one line per event: `2026-11-07T10:11:12Z login clubadmin@192.168.1.20 admin` |
+| `audit.log` | one line per event: `2026-11-07T10:11:12Z login clubadmin@192.168.1.20 admin`. Only ever added to: prune it when you like, also while the server runs |
 
 Back up the directory with the rest of the station's data. It holds no
 plain-text secret: a copy of it logs nobody in. An unreadable
@@ -573,12 +584,19 @@ these are the routes that make credentials and hand out password hashes.
 
 | Route | Does |
 |-------|------|
-| `GET` | `{users:[{id, name, callsign, onAir, role, notes, disabled, created, lastLogin, tokens}]}` |
+| `GET` | `{users:[{id, name, callsign, onAir, role, notes, disabled, created, lastLogin, lastSeen, lastTx, lastTxOn, connected, tokens}], now}`. `lastSeen`: a page of the account connected or went, or a request came with its session (never a token's). `lastTx` / `lastTxOn`: the start of its last transmission and what it was on (`14.074.000 USB`, `cw 7.030.000 CW`); empty when there is none on record. `now` is the server's clock, to count from |
 | `POST` `{username, password, role, callsign, notes?}` | adds an account (`201`); `400` a bad name, password, role or callsign, `409` a name that is taken |
 | `PUT /<id>` `{role?, callsign?, onAir?, notes?, disabled?, password?, kick?}` | changes it. Everything is checked before anything is changed: one bad field (`400`, a value of the wrong type included: `disabled` and `kick` are `true` / `false`) leaves the others unapplied. `notes` is free text for the admins (500 characters, never shown to the account, and the audit log records that it changed, not what it says); `disabled`, a new `password` and `kick` end the account's sessions, a new `password` its API tokens too. `onAir` is `station` or `own` (`400` without a callsign on the account); a callsign is letters, digits and `/`. `409` when it would leave the station without an admin. The account's open pages follow at once, a new `role` included (a key or a seat the new level does not cover is given up), and so does the on-air call when it holds the seat |
 | `DELETE /<id>` | removes it; not yourself, not the last admin (`409`) |
 | `GET /export` | `{wfwebUsers: 1, exported, users:[{username, callsign, role, onAir, notes, disabled, passwordHash}]}`: every account, with the hash its password is stored as. No ids, sessions or API tokens |
 | `POST /import` `{users:[...]}` | adds each entry (those of an export, or `{username, role, password, callsign?, onAir?, notes?, disabled?}` with a plain password, which is hashed here); at most 500. Answers `{added:[names], skipped:[{username, reason}], users}`. Never replaces an account: an existing name, a bad role or callsign, a missing or too short password are skipped with the reason |
+
+The audit log, like the accounts: admins, from a logged-in browser session
+only (an API token is answered `403`).
+
+| Route | Does |
+|-------|------|
+| `GET /api/v1/shared/audit?limit=&before=&kind=&name=` | `{entries:[{time, event, kind, name, ip, detail}], next?, reached?}`, newest first. `limit` 1 to 500 (100); `kind` one of `tx`, `seat`, `login`, `admin`, `log`; `name` an account, `anonymous` (visitors), `rigctld`, `-` (the server). A request looks at half a megabyte of the log at most, so a page may come back short, or empty, with a `next`: pass it as `before` to go on from there; no `next` means the log begins here. `reached` is the time of the oldest line looked at. Nothing over REST writes or clears the log |
 
 Policy and connections, admins only (a session or an admin's token):
 
@@ -703,8 +721,9 @@ access freely.
 
 Personal data: user names, callsigns and addresses in `audit.log`, and the
 addresses and browser names in `sessions.json`, are personal data under
-GDPR and its relatives. Keep them where only the station's keeper reads
-them, and prune the log when it is no longer needed.
+GDPR and its relatives. Every admin account reads the log in the AUDIT tab:
+make admins only of those who may. Keep the files where only the station's
+keeper reads them, and prune the log when it is no longer needed.
 
 ### The audit log's events
 

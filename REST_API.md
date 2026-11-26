@@ -111,15 +111,16 @@ with one, the first message is `{"type":"access","shared":true,"user":{...},
 "role":...,"can":{...},"denied":{...},"policy":{...}}`.
 
 With `--shared` every route needs the account's level: a `GET` is `listen`
-(the accounts, their export, the policy and the connection list under
-`/api/v1/shared/` are `admin` to read as well); writes to the SSTV gallery
+(the accounts, their export, the audit log, the policy and the connection
+list under `/api/v1/shared/` are `admin` to read as well); writes to the SSTV gallery
 are `control`, to the logbook `operate`; `/station`, `/cw/macros` and writes under
 `/api/v1/shared/*` are `admin`. Short of it the answer is
 `403 {"error":"needs operate access","need":"operate"}`. A path is the same
 route with or without a trailing slash.
 **An API token is for reading the station and for logging.** Whatever its
 account's level it does not set the radio (below), and it does not manage
-accounts (`/api/v1/shared/users*`), change a password or make another
+accounts (`/api/v1/shared/users*`), read the audit log
+(`/api/v1/shared/audit`), change a password or make another
 token: those answer `403` with "from a logged-in browser". An admin's
 token does read and set the policy (`/api/v1/shared/policy`), end a
 connection and clear the seat. `info.logbookPath` (the server's own file
@@ -136,9 +137,10 @@ to the gallery answers `409 {"error":"W1ABC has the seat","need":"seat"}`
 (changing or deleting one's own QSO, and the export
 stamp, are not held to the seat). Clearing the logbook and importing into it
 are `admin`.
-Policy, connections, the seat and the reservations (`/api/v1/shared/policy`,
-`/api/v1/shared/connections`, `/api/v1/shared/seat`,
-`/api/v1/shared/reservations`) are described in `SHARED_STATION.md`.
+Policy, connections, the seat, the reservations and the audit log
+(`/api/v1/shared/policy`, `/api/v1/shared/connections`, `/api/v1/shared/seat`,
+`/api/v1/shared/reservations`, `/api/v1/shared/audit`) are described in
+`SHARED_STATION.md`.
 
 ### Station identity
 

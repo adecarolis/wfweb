@@ -520,7 +520,32 @@ body.access-listen #freqDisplay, body.access-listen #modeBtn { opacity: 0.55; }
 .shared-panel .sp-seg .wf-btn:first-child { border-radius: 4px 0 0 4px; margin-left: 0; }
 .shared-panel .sp-seg .wf-btn:last-child { border-radius: 0 4px 4px 0; }
 .shared-panel .sp-switch { min-width: 52px; }
+/* ACCOUNTS: when the account was last here and last on the air. */
+.shared-panel .sp-activity { grid-column: 1 / -1; color: #789; font-size: 12px; overflow-wrap: anywhere; }
+.shared-panel .sp-activity .here { color: #3d3; }
+/* AUDIT: the log as a table, newest first, a heading per day (UTC). */
+.shared-panel .sp-audit-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; }
+.shared-panel .sp-audit-bar select { flex: 0 1 190px; }
+.shared-panel .sp-audit-row { display: grid; grid-template-columns: 64px minmax(80px, 150px) minmax(110px, 160px) 1fr; gap: 2px 10px;
+    padding: 3px 4px; border-bottom: 1px solid #0a2240; font-size: 12px; align-items: baseline; }
+.shared-panel .sp-audit-time { color: #789; font-variant-numeric: tabular-nums; }
+.shared-panel .sp-audit-who { color: #dff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shared-panel .sp-audit-ev { color: #9ab; }
+.shared-panel .sp-audit-ev.tx { color: #f88; }
+.shared-panel .sp-audit-ev.seat { color: #ee0; }
+.shared-panel .sp-audit-ev.login { color: #8cf; }
+.shared-panel .sp-audit-ev.admin { color: #d9f; }
+.shared-panel .sp-audit-ev.log { color: #8d8; }
+.shared-panel .sp-audit-what { color: #9ab; overflow-wrap: anywhere; min-width: 0; }
+.shared-panel .sp-audit-ip { color: #678; }
 @media (max-width: 520px) {
+    .sp-tabs { gap: 3px; }
+    .sp-tabs .wf-tab { padding: 6px 1px; font-size: clamp(9px, 2.9vw, 12px); }
+    .shared-panel .sp-audit-bar .sp-seg { width: 100%; }
+    .shared-panel .sp-audit-bar .sp-seg .wf-btn { flex: 1; padding-left: 2px; padding-right: 2px; justify-content: center; text-align: center; }
+    .shared-panel .sp-audit-bar select { flex: 1; }
+    .shared-panel .sp-audit-row { grid-template-columns: 60px 1fr auto; }
+    .shared-panel .sp-audit-what { grid-column: 2 / -1; }
     .shared-panel .sp-item { grid-template-columns: auto 1fr; }
     .shared-panel .sp-item-info { text-align: right; }
     .shared-panel .sp-item-acts { grid-column: 1 / -1; flex-wrap: wrap; justify-content: flex-start; }
@@ -4142,6 +4167,7 @@ function resetSharedUi() {
     sharedView.users = []; sharedView.connections = []; sharedView.reservations = [];
     sharedView.upcoming = []; sharedView.active = null; sharedView.importResult = null;
     sharedView.pwFor = null; sharedView.notesFor = null; sharedView.confirmDel = null;
+    sharedView.audit = auditEmpty();
     hideSeatMenu();
     updateSeatUi();
 }
@@ -4518,7 +4544,7 @@ function hideUserMenu() {
 // pushes policy changes back as sharedPolicy, so the window re-renders from
 // what it answers, never from what it hoped.
 var sharedView = { tab: 'now', users: [], connections: [], max: 0, pwFor: null, confirmDel: null, confirmTimer: null,
-                   reservations: [], upcoming: [] };
+                   reservations: [], upcoming: [], skewMs: 0, audit: auditEmpty() };
 
 // ---- The schedule (everyone with an account) ----
 function whenText(iso, withDate) {
@@ -4600,6 +4626,7 @@ function openSharedModal() {
     setPanel('default');
     document.getElementById('sharedOverlay').classList.add('visible');
     sharedReload();
+    if (sharedView.tab === 'audit') auditLoad();
 }
 
 function closeSharedModal() {
@@ -4611,6 +4638,7 @@ function sharedReload() {
                  sharedApi('GET', '/api/v1/shared/reservations')])
         .then(function (res) {
             sharedView.users = res[0].users || [];
+            sharedView.skewMs = res[0].now ? Date.parse(res[0].now) - Date.now() : 0;
             sharedView.connections = res[1].connections || [];
             sharedView.max = res[1].max || 0;
             sharedView.reservations = res[2].reservations || [];
@@ -4660,11 +4688,11 @@ function sharedBtn(label, cls, onclick) {
     return b;
 }
 
-// The window is four tabs: NOW (the seat, TX inhibit, who is connected),
-// ACCOUNTS, SCHEDULE (reservations) and RULES (the policy).  Every rule is a
-// labelled row with its unit and a line saying what it does, and applies
-// when it is changed.
-var SHARED_TABS = [['now', 'NOW'], ['accounts', 'ACCOUNTS'], ['schedule', 'SCHEDULE'], ['rules', 'RULES']];
+// The window is five tabs: NOW (the seat, TX inhibit, who is connected),
+// ACCOUNTS, SCHEDULE (reservations), RULES (the policy) and AUDIT (the audit
+// log).  Every rule is a labelled row with its unit and a line saying what it
+// does, and applies when it is changed.
+var SHARED_TABS = [['now', 'NOW'], ['accounts', 'ACCOUNTS'], ['schedule', 'SCHEDULE'], ['rules', 'RULES'], ['audit', 'AUDIT']];
 
 function sharedSetTab(tab) {
     sharedView.tab = tab;
@@ -4673,6 +4701,7 @@ function sharedSetTab(tab) {
     sharedView.importResult = null;
     sharedView.confirmDel = null;
     renderSharedOverlay();
+    if (tab === 'audit') auditLoad();
 }
 
 // Two presses to delete: no confirm() dialog, it would stall the audio.
@@ -4747,7 +4776,7 @@ function renderSharedOverlay() {
     });
     var scroll = panel.scrollTop;
     panel.innerHTML = '';
-    ({ now: renderSharedNow, accounts: renderSharedAccounts, schedule: renderSharedSchedule, rules: renderSharedRules })[sharedView.tab](panel, accessState.policy || {});
+    ({ now: renderSharedNow, accounts: renderSharedAccounts, schedule: renderSharedSchedule, rules: renderSharedRules, audit: renderSharedAudit })[sharedView.tab](panel, accessState.policy || {});
     panel.scrollTop = scroll;
 }
 
@@ -4821,6 +4850,32 @@ function renderSharedNow(panel, pol) {
 }
 
 // ---- ACCOUNTS ----
+// "2 h ago" by the server's clock: this browser's may be off.
+function agoText(iso) {
+    var t = Date.parse(iso);
+    var s = Math.max(0, (Date.now() + sharedView.skewMs - t) / 1000);
+    if (s < 90) return 'just now';
+    if (s < 5400) return Math.round(s / 60) + ' min ago';
+    if (s < 36 * 3600) return Math.round(s / 3600) + ' h ago';
+    if (s < 14 * 86400) return Math.round(s / 86400) + ' days ago';
+    return 'on ' + new Date(t).toLocaleDateString([], { year: 'numeric', month: 'short', day: 'numeric' });
+}
+// When the account was last here and last on the air.
+function sharedActivity(u) {
+    var line = sharedEl('div', 'sp-activity');
+    var seen = u.connected ? sharedEl('span', 'here', 'connected now')
+        : sharedEl('span', '', u.lastSeen ? 'seen ' + agoText(u.lastSeen) : 'never logged in');
+    if (u.lastSeen) seen.title = utcText(u.lastSeen);
+    line.appendChild(seen);
+    if (u.lastTx) {
+        var tx = sharedEl('span', '', ' \u00b7 last TX ' + agoText(u.lastTx) + (u.lastTxOn ? ', ' + u.lastTxOn : ''));
+        tx.title = utcText(u.lastTx);
+        line.appendChild(tx);
+    } else if (u.role === 'operate' || u.role === 'admin') {
+        line.appendChild(sharedEl('span', '', ' \u00b7 no TX on record'));
+    }
+    return line;
+}
 function renderSharedAccounts(panel, pol) {
     var roles = ['listen', 'control', 'operate', 'admin'];
     if (pol.seat === false && sharedView.users.some(function (u) { return u.onAir === 'own'; }))
@@ -4874,6 +4929,7 @@ function renderSharedAccounts(panel, pol) {
             sharedApi('DELETE', '/api/v1/shared/users/' + u.id).then(sharedReload).catch(function (e) { accessToast(e.message); sharedReload(); });
         }));
         row.appendChild(a);
+        row.appendChild(sharedActivity(u));
         if (sharedView.pwFor === u.id) {
             var pwRow = sharedEl('div', 'sp-item-extra');
             var pw = sharedEl('input', 'wf-field'); pw.type = 'password'; pw.placeholder = 'new password for ' + u.name; pw.autocomplete = 'new-password';
@@ -4950,6 +5006,139 @@ function renderSharedAccounts(panel, pol) {
         res.skipped.forEach(function (k) { box.appendChild(sharedEl('div', '', (k.username || '(no name)') + ': ' + k.reason)); });
         panel.appendChild(box);
     }
+}
+
+// ---- AUDIT: the audit log, newest first.  Read a page at a time: the
+// server looks at a bounded piece of the file per request, so a filter that
+// matches little comes back short with more to come, and the next pieces are
+// asked for until the page is full, a few of them per press.  Times are UTC,
+// as in the file and in the QSO log. ----
+var AUDIT_PAGE = 100, AUDIT_STEPS = 10;
+var AUDIT_KINDS = [['', 'ALL'], ['tx', 'TX'], ['seat', 'SEAT'], ['login', 'LOGINS'], ['admin', 'ADMIN'], ['log', 'LOG']];
+function auditEmpty() {
+    return { kind: '', name: '', entries: [], next: 0, reached: '', loading: false, error: '', gen: 0, names: {} };
+}
+function utcText(iso) { return String(iso).replace('T', ' ').replace('Z', '') + ' UTC'; }
+
+function auditLoad(more) {
+    var v = sharedView.audit;
+    if (more && (v.loading || !v.next)) return;
+    var gen = ++v.gen;
+    if (!more) { v.entries = []; v.next = 0; v.reached = ''; }
+    v.loading = true;
+    v.error = '';
+    var want = v.entries.length + AUDIT_PAGE, steps = 0;
+    var shown = function () {
+        var so = document.getElementById('sharedOverlay');
+        return so && so.classList.contains('visible') && sharedView.tab === 'audit';
+    };
+    var step = function () {
+        var q = ['limit=' + (want - v.entries.length)];
+        if (v.next) q.push('before=' + v.next);
+        if (v.kind) q.push('kind=' + v.kind);
+        if (v.name) q.push('name=' + encodeURIComponent(v.name));
+        sharedApi('GET', '/api/v1/shared/audit?' + q.join('&')).then(function (r) {
+            // Another filter was picked, or somebody else is logged in now.
+            if (gen !== v.gen || v !== sharedView.audit) return;
+            v.entries = v.entries.concat(r.entries || []);
+            v.next = r.next || 0;
+            v.reached = r.reached || v.reached;
+            v.entries.forEach(function (e) { v.names[e.name] = true; });
+            if (v.next && v.entries.length < want && ++steps < AUDIT_STEPS && shown()) { step(); return; }
+            v.loading = false;
+            if (shown()) renderSharedOverlay();
+        }).catch(function (e) {
+            if (gen !== v.gen || v !== sharedView.audit) return;
+            v.loading = false;
+            v.error = e.message;
+            if (shown()) renderSharedOverlay();
+        });
+    };
+    step();
+    if (shown()) renderSharedOverlay();
+}
+
+// Who the filter can name: the accounts, the names that are not accounts,
+// and any other the log has shown (an account removed since).
+function auditNames() {
+    var v = sharedView.audit, out = [['', 'everyone']], known = {};
+    var add = function (name, label) {
+        var key = name.toLowerCase();
+        if (known[key]) return;
+        known[key] = true;
+        out.push([name, label]);
+    };
+    ['anonymous', 'rigctld', '-', '?'].forEach(function (n) { known[n] = true; });
+    sharedView.users.forEach(function (u) { add(u.name, u.name); });
+    Object.keys(v.names).concat(v.name || []).sort().forEach(function (n) { add(n, n + ' (no account)'); });
+    return out.concat([['anonymous', 'visitors'], ['rigctld', 'rigctld (local programs)'], ['-', 'the server itself']]);
+}
+
+// The rows to show: a key-down and the key-up that follows it are one over.
+function auditRows(entries) {
+    var rows = [], up = null;
+    entries.forEach(function (e) {
+        // Newest first: the key-up comes before its key-down.
+        if (e.event === 'key-up') {
+            up = { time: e.time, event: e.event, kind: e.kind, name: e.name, ip: e.ip, detail: e.detail };
+            rows.push(up);
+        } else if (e.event === 'key-down' && up && up.name === e.name) {
+            var i = rows.indexOf(up);
+            rows.splice(i, 1);
+            rows.push({ time: e.time, event: e.event, kind: e.kind, name: e.name, ip: e.ip,
+                        detail: (e.detail ? e.detail + ' \u00b7 ' : '') + up.detail });
+            up = null;
+        } else {
+            if (e.event === 'key-down') up = null;
+            rows.push(e);
+        }
+    });
+    return rows;
+}
+
+function renderSharedAudit(panel) {
+    var v = sharedView.audit;
+    var bar = sharedEl('div', 'sp-audit-bar');
+    var seg = sharedEl('div', 'sp-seg');
+    AUDIT_KINDS.forEach(function (k) {
+        seg.appendChild(sharedBtn(k[1], 'toggle' + (v.kind === k[0] ? ' active' : ''), function () { v.kind = k[0]; auditLoad(); }));
+    });
+    bar.appendChild(seg);
+    var sel = sharedEl('select', 'wf-field');
+    sel.title = 'whose lines';
+    auditNames().forEach(function (n) {
+        var o = sharedEl('option', '', n[1]); o.value = n[0]; if (n[0] === v.name) o.selected = true; sel.appendChild(o);
+    });
+    sel.onchange = function () { v.name = sel.value; auditLoad(); };
+    bar.appendChild(sel);
+    bar.appendChild(sharedBtn('REFRESH', '', function () { auditLoad(); }));
+    panel.appendChild(bar);
+
+    var list = sharedEl('div', 'sp-audit'), day = '';
+    auditRows(v.entries).forEach(function (e) {
+        var d = String(e.time).slice(0, 10);
+        if (d !== day) {
+            list.appendChild(sharedEl('h4', day ? '' : 'first', d + ' UTC'));
+            day = d;
+        }
+        var row = sharedEl('div', 'sp-audit-row');
+        row.appendChild(sharedEl('span', 'sp-audit-time', String(e.time).slice(11, 19)));
+        row.appendChild(sharedEl('span', 'sp-audit-who', e.name === 'anonymous' ? 'visitor' : e.name === '-' ? '\u2013' : e.name));
+        row.appendChild(sharedEl('span', 'sp-audit-ev ' + (e.kind || ''), e.event));
+        var what = sharedEl('span', 'sp-audit-what', e.detail);
+        if (e.ip) what.appendChild(sharedEl('span', 'sp-audit-ip', (e.detail ? ' \u00b7 ' : '') + e.ip));
+        row.appendChild(what);
+        list.appendChild(row);
+    });
+    panel.appendChild(list);
+
+    if (v.error) panel.appendChild(sharedEl('div', 'sp-empty', 'The log could not be read: ' + v.error));
+    else if (v.loading) panel.appendChild(sharedEl('div', 'sp-empty', 'reading\u2026'));
+    else if (!v.entries.length) panel.appendChild(sharedEl('div', 'sp-empty', v.next ? 'nothing so far' : 'nothing'));
+    var foot = sharedEl('div', 'sp-form-foot');
+    foot.appendChild(sharedEl('span', 'sp-dim', v.loading ? '' : v.next ? 'Read back to ' + utcText(v.reached) + '.' : 'The log begins here.'));
+    if (v.next && !v.loading) foot.appendChild(sharedBtn('OLDER', '', function () { auditLoad(true); }));
+    panel.appendChild(foot);
 }
 
 function sharedExportUsers() {

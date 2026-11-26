@@ -487,11 +487,11 @@ Station sits in the top bar: the two tiles there overflowed a phone
 (451 px on a 390 px screen, 2026-11-14) and did not say which name was the
 seat's. Body classes `access-listen` / `access-notx` / `access-admin` /
 `tx-inhibit` dim PTT etc. STATION SETTINGS opens `#sharedOverlay`
-(`renderSharedOverlay`, no FUNC tile any more), four tabs
+(`renderSharedOverlay`, no FUNC tile any more), five tabs
 (`sharedView.tab`): NOW (seat card with TAKE IT / CLEAR, TX inhibit, the
 connection list with KICK, `/api/v1/shared/connections`), ACCOUNTS,
 SCHEDULE (reservations), RULES (the policy: one labelled row per knob with
-a line saying what it does, applied on change). Only NOW is redrawn by the
+a line saying what it does, applied on change), AUDIT (below). Only NOW is redrawn by the
 seat's one-second countdown; the other tabs hold forms. `--shared` without TLS is refused unless
 `--trust-proxy <cidr>` names the proxy whose `X-Forwarded-For/-Proto` to
 believe; logins are refused on the plain REST port. The client address is
@@ -658,6 +658,37 @@ on the ACCOUNTS tab's rows; no `mergeLogbook` in shared mode.
 Tests: `tests/test_shared_logbook.py` (its own server with a UDP socket as
 the remote logger), the `onAir` and tally parts of `access_test.cpp` /
 `logbook_test.cpp`. Next: proxy identity (phase 5).
+**The audit log in the page, and an account's activity** (#162).
+`AccessControl::auditPage` reads `audit.log` backwards from a byte offset
+(`before` / `next`), at most `kAuditScanBytes` (512 KB) a call whether the
+lines match or not: it runs on the web thread and the file has no size
+limit, so a filtered page may be short or empty with more to come, and the
+page's `auditLoad` goes on by itself, `AUDIT_STEPS` requests a press. Only
+pruning shortens the file; a `before` past its end means the end.
+`GET /api/v1/shared/audit` is for admins with `via == "session"`, never a
+token. **A new audit event** goes in SHARED_STATION.md's table and needs a
+family (the word before its first `-`) in `kAuditFamilies`, which gives it
+its `kind`, the AUDIT tab's filter; `tests/test_access_audit.py` checks both
+against the source. The page shows event names as they are in the file and
+folds a key-up into its key-down (`auditRows`), in UTC.
+`AccessUser` has `lastSeen` (`noteSeen`: a page connecting or going, a
+request with the session cookie, once a minute for the pages that are open;
+never a token; kept to 5 min unless exact), `lastTx` and `lastTxOn`
+(`noteTx`: the key-down in `pttAccounting`, and `auditOnAir` ahead of its
+one-a-minute throttle, for CW / packet / APRS / a tune). Like `notes` they
+are in `AccessUser::toJson`, so admins only, never in the principal or the
+export. They are written by the `expireSessions()` sweep and by `~webServer`;
+a `users.json` without the `lastTx` key is an older server's and is filled
+once from the sessions and the log (`seedActivity`). `sharedUsersJson()`
+adds `connected`. The seeding fills only the accounts with no `lastTx`.
+**A new account goes through `AccessControl::nameAllowed()`**, not
+`validName` alone (the form, the setup, the import): it refuses `anonymous`
+and `rigctld`, the audit log's names for a visitor and a local program,
+which an account of that name could not be told from. Login keeps
+`validName`, so an account that already has such a name still gets in.
+`_find_free_port()` in `tests/conftest.py` checks the next port too: the
+plain REST port is web port + 1, and with it taken the server ran without
+it ("Connection refused" on the plain port, one run in seven).
 **The 2026-11-21 audit** (five reviews of the gate, the seat, the accounts
 code, the auth handlers and the page, then the fixes; the rules that came
 out of it, each from a defect found):
@@ -667,8 +698,8 @@ out of it, each from a defect found):
   path with it, so `DELETE /api/v1/logbook/` was a QSO-level route to the
   gate and "clear the log" to the router: an operate account cleared and
   imported the log. `restCapability` strips slashes too.
-- *What a token may not do.* `/api/v1/shared/users*`, `/auth/password` and
-  `/auth/tokens` need `ctx.who.via == "session"`: a token has no expiry
+- *What a token may not do.* `/api/v1/shared/users*`, `/api/v1/shared/audit`,
+  `/auth/password` and `/auth/tokens` need `ctx.who.via == "session"`: a token has no expiry
   and is taken on the plain port, and an admin's made itself an admin
   account and exported the hashes. Policy, connections and the seat stay
   open to an admin's token (the documented way for a script to set TX

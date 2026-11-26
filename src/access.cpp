@@ -207,6 +207,46 @@ static QDateTime fromIso(const QJsonValue &v)
     return t;
 }
 
+namespace {
+// A line of audit.log: "<UTC time> <event> <who>[ <detail>]".  audit() lets
+// no blank into the first three, so they split on blanks.  The time is
+// parsed when asked for: most lines a page looks at are filtered out first.
+struct AuditLine {
+    QByteArray stamp, event, who, rest;
+    explicit AuditLine(const QByteArray &line)
+    {
+        const int a = line.indexOf(' ');
+        const int b = a < 0 ? -1 : line.indexOf(' ', a + 1);
+        if (a < 1 || b <= a + 1) return;
+        const int c = line.indexOf(' ', b + 1);
+        stamp = line.left(a);
+        event = line.mid(a + 1, b - a - 1);
+        who = c < 0 ? line.mid(b + 1) : line.mid(b + 1, c - b - 1);
+        if (c >= 0) rest = line.mid(c + 1);
+    }
+    bool valid() const { return !who.isEmpty(); }
+    QDateTime time() const { return fromIso(QString::fromLatin1(stamp)); }
+    QString name() const
+    {
+        const int at = who.lastIndexOf('@');
+        return QString::fromUtf8(at < 0 ? who : who.left(at));
+    }
+    QString ip() const
+    {
+        const int at = who.lastIndexOf('@');
+        const QByteArray v = at < 0 ? QByteArray() : who.mid(at + 1);
+        return v == "-" ? QString() : QString::fromUtf8(v);
+    }
+    QString detail() const { return QString::fromUtf8(rest); }
+};
+} // namespace
+
+QJsonObject AuditEntry::toJson() const
+{
+    return QJsonObject{{"time", isoUtc(time)}, {"event", event}, {"kind", kind},
+                       {"name", name}, {"ip", ip}, {"detail", detail}};
+}
+
 QJsonObject AccessUser::toJson(bool withSecrets) const
 {
     QJsonObject o{
@@ -214,6 +254,7 @@ QJsonObject AccessUser::toJson(bool withSecrets) const
         {"onAir", onAirOwn ? QStringLiteral("own") : QStringLiteral("station")},
         {"role", Access::roleName(role)}, {"disabled", disabled},
         {"created", isoUtc(created)}, {"lastLogin", isoUtc(lastLogin)},
+        {"lastSeen", isoUtc(lastSeen)}, {"lastTx", isoUtc(lastTx)}, {"lastTxOn", lastTxOn},
         {"notes", notes},
     };
     if (withSecrets) o["passwordHash"] = passwordHash;
@@ -242,6 +283,9 @@ AccessUser AccessUser::fromJson(const QJsonObject &o)
     u.disabled = o["disabled"].toBool();
     u.created = fromIso(o["created"]);
     u.lastLogin = fromIso(o["lastLogin"]);
+    u.lastSeen = fromIso(o["lastSeen"]);
+    u.lastTx = fromIso(o["lastTx"]);
+    u.lastTxOn = o["lastTxOn"].toString();
     const QJsonArray toks = o["tokens"].toArray();
     for (const QJsonValue &v : toks) {
         const QJsonObject to = v.toObject();
@@ -531,11 +575,14 @@ bool AccessControl::load(QString *error)
         if (error) *error = QString("cannot read %1").arg(d.filePath(QStringLiteral("users.json")));
         return false;
     }
+    bool seed = false;
     if (!missing) {
         const QJsonArray arr = root["users"].toArray();
         for (const QJsonValue &v : arr) {
             AccessUser u = AccessUser::fromJson(v.toObject());
-            if (!u.id.isEmpty() && !u.name.isEmpty()) users_.append(u);
+            if (u.id.isEmpty() || u.name.isEmpty()) continue;
+            users_.append(u);
+            if (!v.toObject().contains("lastTx")) seed = true;
         }
     }
 
@@ -571,7 +618,40 @@ bool AccessControl::load(QString *error)
     }
     probe.close();
     probe.remove();
+    if (seed) seedActivity();
     return true;
+}
+
+// users.json was last written by a server without the activity fields: take
+// what its sessions and audit log say, once, so that the operators of years
+// do not read "no TX on record" the day after an upgrade.
+void AccessControl::seedActivity()
+{
+    for (AccessUser &u : users_) {
+        if (!u.lastSeen.isValid()) u.lastSeen = u.lastLogin;
+        for (const AccessSession &s : qAsConst(sessions_))
+            if (s.userId == u.id && (!u.lastSeen.isValid() || s.lastSeen > u.lastSeen)) u.lastSeen = s.lastSeen;
+    }
+    // Only for the accounts with nothing on record: what the server noted
+    // itself is never older than the log.
+    QSet<int> blank;
+    for (int i = 0; i < users_.size(); ++i)
+        if (!users_.at(i).lastTx.isValid()) blank.insert(i);
+    QFile f(QDir(dir_).filePath(QStringLiteral("audit.log")));
+    if (f.open(QIODevice::ReadOnly)) {
+        while (!f.atEnd()) {
+            const AuditLine l(f.readLine().trimmed());
+            if (!l.valid() || (l.event != "key-down" && l.event != "tx")) continue;
+            const int i = findUserByName(l.name());
+            if (!blank.contains(i)) continue;
+            // The name may have been somebody else's before.
+            const QDateTime t = l.time();
+            if (!t.isValid() || (users_.at(i).created.isValid() && t < users_.at(i).created)) continue;
+            users_[i].lastTx = t;
+            users_[i].lastTxOn = l.detail();
+        }
+    }
+    usersDirty_ = true;
 }
 
 bool AccessControl::readJson(const QString &path, QJsonObject *root, bool *missing) const
@@ -673,6 +753,20 @@ bool AccessControl::validName(const QString &name, QString *error)
     return true;
 }
 
+// The names the audit log gives to who is not an account: a visitor and a
+// local program.  An account of that name could not be told from them there.
+// Only when an account is made: one that exists already still logs in.
+bool AccessControl::nameAllowed(const QString &name, QString *error)
+{
+    if (!validName(name, error)) return false;
+    if (name.compare(QLatin1String("anonymous"), Qt::CaseInsensitive) == 0
+        || name.compare(QLatin1String("rigctld"), Qt::CaseInsensitive) == 0) {
+        if (error) *error = QStringLiteral("user name: '%1' is the audit log's name for something else").arg(name.toLower());
+        return false;
+    }
+    return true;
+}
+
 bool AccessControl::validPassword(const QString &password, QString *error)
 {
     if (password.size() < 8) {
@@ -694,7 +788,7 @@ QString AccessControl::normalizeCallsign(const QString &callsign)
 QString AccessControl::addUser(const QString &name, const QString &passwordHash, Access::Role role,
                                const QString &callsign, QString *error)
 {
-    if (!validName(name, error)) return QString();
+    if (!nameAllowed(name, error)) return QString();
     if (findUserByName(name) >= 0) {
         if (error) *error = QStringLiteral("that user name is taken");
         return QString();
@@ -1135,6 +1229,7 @@ AccessControl::LoginResult AccessControl::loginFinish(const QString &name, bool 
     s.userAgent = userAgent.left(200);
     sessions_.insert(s.hash, s);
     u.lastLogin = s.created;
+    u.lastSeen = s.created;
     saveUsers();
     saveSessions();
     audit(QStringLiteral("login"), who(u.name, ip), Access::roleName(u.role));
@@ -1211,6 +1306,7 @@ AccessPrincipal AccessControl::resolveSession(const QByteArray &token)
     if (it->lastSeen.msecsTo(t) >= kTouchIntervalMs) {
         it->lastSeen = t;
         sessionsDirty_ = true;
+        noteSeen(it->userId);
     }
     AccessPrincipal p = principalFor(users_.at(i));
     p.via = QStringLiteral("session");
@@ -1275,6 +1371,28 @@ void AccessControl::expireSessions()
         if (it->lockedUntilMs <= nowMs && nowMs - it->firstMs > qint64(kLockoutWindowSecs) * 1000) it = failures_.erase(it);
         else ++it;
     }
+}
+
+// --- activity ----------------------------------------------------------------
+
+void AccessControl::noteSeen(const QString &userId, bool exact)
+{
+    const int i = findUser(userId);
+    if (i < 0) return;
+    const QDateTime t = now();
+    AccessUser &u = users_[i];
+    if (!exact && u.lastSeen.isValid() && u.lastSeen.msecsTo(t) < kTouchIntervalMs) return;
+    u.lastSeen = t;
+    usersDirty_ = true;
+}
+
+void AccessControl::noteTx(const QString &userId, const QString &what)
+{
+    const int i = findUser(userId);
+    if (i < 0) return;
+    users_[i].lastTx = now();
+    users_[i].lastTxOn = what.simplified().left(80);
+    usersDirty_ = true;
 }
 
 // --- API tokens --------------------------------------------------------------
@@ -1372,6 +1490,77 @@ void AccessControl::audit(const QString &event, const QString &whoStr, const QSt
     QString line = now().toUTC().toString(Qt::ISODate) + ' ' + auditField(event, 40) + ' ' + auditField(whoStr, 120);
     if (!detail.isEmpty()) line += ' ' + detail.simplified().left(400);
     f.write(line.toUtf8() + '\n');
+}
+
+// By family, the part before the first '-': "seat-take" and whatever the
+// seat learns to say next are seat events.
+static const struct { const char *family; const char *kind; } kAuditFamilies[] = {
+    {"key", "tx"}, {"unkey", "tx"}, {"tx", "tx"}, {"onair", "tx"},
+    {"seat", "seat"}, {"reservation", "seat"},
+    {"login", "login"}, {"logout", "login"}, {"connect", "login"}, {"disconnect", "login"},
+    {"kick", "login"}, {"password", "login"}, {"token", "login"},
+    {"setup", "admin"}, {"recovery", "admin"}, {"user", "admin"}, {"users", "admin"}, {"policy", "admin"},
+    {"qso", "log"}, {"log", "log"},
+};
+
+QString Access::auditKind(const QString &event)
+{
+    const QString family = event.section('-', 0, 0);
+    for (const auto &f : kAuditFamilies)
+        if (family == QLatin1String(f.family)) return QString::fromLatin1(f.kind);
+    return QString();
+}
+
+QStringList Access::auditKinds()
+{
+    QStringList out;
+    for (const auto &f : kAuditFamilies)
+        if (!out.contains(QLatin1String(f.kind))) out << QString::fromLatin1(f.kind);
+    return out;
+}
+
+AccessControl::AuditPage AccessControl::auditPage(const AuditQuery &q) const
+{
+    AuditPage page;
+    QFile f(QDir(dir_).filePath(QStringLiteral("audit.log")));
+    if (!f.open(QIODevice::ReadOnly)) return page;   // nothing written yet
+    // The file may have been pruned since the page that gave `before`.
+    qint64 end = f.size();
+    if (q.before > 0 && q.before < end) end = q.before;
+    const qint64 pos = qMax<qint64>(0, end - qMax(1, q.scanBytes));
+    if (!f.seek(pos)) return page;
+    const QByteArray block = f.read(end - pos);
+    // A block from the middle of the file starts in the middle of a line:
+    // that one is the next page's, which ends where its successor begins.
+    int first = 0;
+    if (pos > 0) {
+        const int nl = block.indexOf('\n');
+        first = nl < 0 ? block.size() : nl + 1;
+    }
+    const int limit = qBound(1, q.limit, kAuditMaxEntries);
+    QByteArray oldest;
+    int stop = block.size();
+    while (stop > first) {
+        // The line that ends at stop, its '\n' included.
+        const int nl = stop >= 2 ? block.lastIndexOf('\n', stop - 2) : -1;
+        const int start = qMax(first, nl + 1);
+        const AuditLine l(block.mid(start, stop - start).trimmed());
+        stop = start;
+        if (!l.valid()) continue;
+        oldest = l.stamp;
+        const QString event = QString::fromUtf8(l.event);
+        const QString kind = Access::auditKind(event);
+        if (!q.kind.isEmpty() && kind != q.kind) continue;
+        if (!q.name.isEmpty() && l.name().compare(q.name, Qt::CaseInsensitive) != 0) continue;
+        const QDateTime t = l.time();
+        if (!t.isValid()) continue;     // not a line of ours
+        page.entries.append(AuditEntry{t, event, kind, l.name(), l.ip(), l.detail()});
+        if (page.entries.size() >= limit) break;
+    }
+    page.reached = fromIso(QString::fromLatin1(oldest));
+    // A single line longer than the whole scan: step over it.
+    page.next = first >= block.size() && pos > 0 ? pos : pos + stop;
+    return page;
 }
 
 // ---------------------------------------------------------------------------

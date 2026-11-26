@@ -60,6 +60,11 @@ QStringList commandsDeniedTo(Role role);
 // (what it decodes, which meter it watches) and the seat commands themselves.
 bool seatExempt(const QString &cmd);
 QStringList commandsNeedingSeat();
+// What an audit event is about, for the AUDIT tab's filter: "tx", "seat",
+// "login", "admin" (accounts and settings), "log" (the logbook).  Empty for
+// an event of no known family.
+QString auditKind(const QString &event);
+QStringList auditKinds();
 }
 
 struct AccessToken {
@@ -88,6 +93,13 @@ struct AccessUser {
     bool disabled = false;
     QDateTime created;
     QDateTime lastLogin;
+    // The last time its browser was here, and the last time it transmitted
+    // and on what ("14.074.000 USB", "cw 7.030.000 CW").  lastLogin alone
+    // says little: a session lives as long as it is used once in 30 days.
+    // For the admins, like notes: in toJson(), never in the principal.
+    QDateTime lastSeen;
+    QDateTime lastTx;
+    QString lastTxOn;
     QList<AccessToken> tokens;
 
     QJsonObject toJson(bool withSecrets) const;   // false: the shape the API returns
@@ -101,6 +113,17 @@ struct AccessSession {
     QDateTime lastSeen;
     QString ip;
     QString userAgent;
+};
+
+// One line of audit.log read back.
+struct AuditEntry {
+    QDateTime time;
+    QString event;
+    QString kind;           // Access::auditKind(event)
+    QString name;           // an account, "anonymous", "rigctld", "?" (a login name no account could have), "-" (the server)
+    QString ip;             // empty: none
+    QString detail;
+    QJsonObject toJson() const;
 };
 
 // Who a request comes from, once its cookie or bearer token is resolved.
@@ -180,6 +203,9 @@ public:
     bool setDisabled(const QString &id, bool disabled);  // disabling ends the user's sessions
     bool removeUser(const QString &id);                   // and the user's sessions
     static bool validName(const QString &name, QString *error = nullptr);
+    // validName, and not a name the audit log uses for a visitor or a local
+    // program ("anonymous", "rigctld").  For making an account, not for login.
+    static bool nameAllowed(const QString &name, QString *error = nullptr);
     static bool validPassword(const QString &password, QString *error = nullptr);
     static QString normalizeCallsign(const QString &callsign);
 
@@ -248,6 +274,14 @@ public:
     // token lastUsed stamps) if anything changed.  Run it about once a minute.
     void expireSessions();
 
+    // --- activity (the ACCOUNTS tab) ----------------------------------------
+    // Seen: a page of the account connected or went, or a request came with
+    // its session cookie.  Not an API token, which is a script and has a
+    // lastUsed of its own.  Kept to kTouchIntervalMs unless exact.  Both are
+    // written by the next expireSessions() sweep; an unknown id is ignored.
+    void noteSeen(const QString &userId, bool exact = false);
+    void noteTx(const QString &userId, const QString &what);
+
     // --- API tokens (Authorization: Bearer) ---------------------------------
     QString createToken(const QString &userId, const QString &name, QByteArray *token,
                         QString *error = nullptr);
@@ -258,6 +292,25 @@ public:
     // One line: "<UTC time> <event> <who> <detail>", who = "name@ip" or "-".
     void audit(const QString &event, const QString &who, const QString &detail = QString());
     static QString who(const QString &name, const QString &ip);
+    // The log read back, newest first, a page at a time.  A call looks at
+    // scanBytes of the file at most, matching or not: it runs on the server
+    // thread and the log has no size limit.  So a page may come back short,
+    // or empty, with more to come: next says where to go on.
+    static constexpr int kAuditMaxEntries = 500;
+    static constexpr int kAuditScanBytes = 512 * 1024;
+    struct AuditQuery {
+        qint64 before = 0;      // the `next` of the page before; 0 = the end of the log
+        int limit = 100;
+        QString kind;           // empty: every event
+        QString name;           // empty: everyone; ignoring case, the whole name
+        int scanBytes = kAuditScanBytes;
+    };
+    struct AuditPage {
+        QList<AuditEntry> entries;
+        qint64 next = 0;        // 0: the log begins here
+        QDateTime reached;      // the oldest line looked at
+    };
+    AuditPage auditPage(const AuditQuery &q) const;
 
     // --- HTTP helpers (pure) ------------------------------------------------
     static QByteArray cookieValue(const QByteArray &cookieHeader, const QByteArray &name);
@@ -299,6 +352,7 @@ private:
     bool writeJson(const QString &path, const QJsonObject &root) const;
     bool readJson(const QString &path, QJsonObject *root, bool *missing) const;
     void dropSessionsOf(const QString &userId);
+    void seedActivity();        // accounts kept by a server that had no lastSeen / lastTx
     bool lockedOut(const QString &key, int *retryAfterSecs) const;
     void recordFailure(const QString &key, int threshold = kLockoutFailures);
     static QString ipKey(const QString &ip);      // "ip:<addr>", an IPv6 address by its /64
