@@ -450,13 +450,51 @@
         if (menu.table.source) head.title = menu.table.source;
         this.el.appendChild(head);
 
-        var list = h('div', 'setmenu-list');
+        // The tree: each group's path ("SET > Function > SPLIT") is a branch;
+        // groups that share a path (the table repeats "SET > Function"
+        // around its sub-menus) land in the same node, in table order.
+        var root = { name: '', key: '', children: [], byName: {}, items: [] };
         (menu.table.groups || []).forEach(function (g) {
-            list.appendChild(h('div', 'setmenu-group', g.path || ''));
-            (g.items || []).forEach(function (it) {
+            var node = root;
+            String(g.path || 'Other').split('>').map(function (s) { return s.trim(); }).forEach(function (seg) {
+                if (!node.byName[seg]) {
+                    var child = { name: seg, key: (node.key ? node.key + ' > ' : '') + seg, children: [], byName: {}, items: [] };
+                    node.byName[seg] = child;
+                    node.children.push(child);
+                }
+                node = node.byName[seg];
+            });
+            (g.items || []).forEach(function (it) { node.items.push(it); });
+        });
+        function count(n) {
+            return n.items.length + n.children.reduce(function (s, c) { return s + count(c); }, 0);
+        }
+        this.nodes = [];
+        var openKeys = this._openKeys();
+
+        var search = h('input', 'wf-field setmenu-search');
+        search.type = 'search';
+        search.placeholder = 'Find a setting or item number';
+        search.value = this.query || '';
+        search.oninput = function () { self.query = search.value; self._applyFilter(); };
+        bar.insertBefore(search, this.status);
+
+        var tree = h('div', 'setmenu-tree');
+        function build(node, parentEl, depth) {
+            var det = h('details', 'setmenu-node depth-' + Math.min(depth, 2));
+            var sum = h('summary');
+            sum.appendChild(h('span', 'setmenu-node-name', node.name));
+            sum.appendChild(h('span', 'setmenu-count', String(count(node))));
+            det.appendChild(sum);
+            var body = h('div', 'setmenu-node-body');
+            det.appendChild(body);
+            if (openKeys.indexOf(node.key) >= 0) det.open = true;
+            var rec = { node: node, el: det, rows: [] };
+            self.nodes.push(rec);
+            node.items.forEach(function (it) {
                 var row = h('div', 'setmenu-row');
                 var name = h('div', 'setmenu-name');
-                name.appendChild(h('span', '', it.name));
+                name.appendChild(h('span', 'setmenu-label', it.name));
                 name.appendChild(h('span', 'setmenu-item', it.item));
                 if (it.firmware) name.appendChild(h('span', 'setmenu-item', 'fw ' + it.firmware));
                 name.title = [it.note, it.source].filter(Boolean).join('\n');
@@ -465,12 +503,69 @@
                 row.appendChild(ctl);
                 var st = h('div', 'setmenu-state');
                 row.appendChild(st);
-                list.appendChild(row);
-                self.rows[it.item] = { item: it, row: row, ctl: ctl, st: st };
+                body.appendChild(row);
+                self.rows[it.item] = { item: it, row: row, ctl: ctl, st: st, node: rec };
+                rec.rows.push(it.item);
                 self._updateRow(it.item);
             });
+            node.children.forEach(function (c) { build(c, body, depth + 1); });
+            det.addEventListener('toggle', function () {
+                if (det.open) self._readIdle(rec);
+                // What the search opens is not what the operator left open.
+                if (!self._filtering && !String(self.query || '').trim()) self._saveOpen();
+            });
+            parentEl.appendChild(det);
+        }
+        root.children.forEach(function (c) { build(c, tree, 0); });
+        this.tree = tree;
+        this.el.appendChild(tree);
+        this._applyFilter();
+        // Sections left open last time: read what they show.
+        this.nodes.forEach(function (rec) { if (rec.el.open) self._readIdle(rec); });
+    };
+    // Opening a section reads its items the first time: no READ ALL needed.
+    WfSetMenuPanel.prototype._readIdle = function (rec) {
+        var menu = this.menu, asked = this._asked || (this._asked = {});
+        rec.rows.forEach(function (no) {
+            var st = menu.state[no];
+            // A read is queued before its state says "reading": remember it.
+            if ((!st || st.status === 'idle') && !asked[no]) {
+                asked[no] = true;
+                menu.read(no).then(function () { delete asked[no]; });
+            }
         });
-        this.el.appendChild(list);
+    };
+    WfSetMenuPanel.prototype._openKeys = function () {
+        try { return JSON.parse(global.localStorage.getItem('wfSetMenuOpen') || '[]'); } catch (e) { return []; }
+    };
+    WfSetMenuPanel.prototype._saveOpen = function () {
+        var keys = this.nodes.filter(function (r) { return r.el.open; }).map(function (r) { return r.node.key; });
+        try { global.localStorage.setItem('wfSetMenuOpen', JSON.stringify(keys)); } catch (e) {}
+    };
+    // Search: rows whose name, item number or section match; the sections
+    // that hold a match open (without being remembered as open), the rest hide.
+    WfSetMenuPanel.prototype._applyFilter = function () {
+        var self = this, q = String(this.query || '').trim().toLowerCase();
+        this._filtering = true;
+        var openKeys = this._openKeys();
+        // Children are pushed after their parent: walk backwards so a parent
+        // sees whether any child matched.
+        var visible = {};
+        for (var i = this.nodes.length - 1; i >= 0; i--) {
+            var rec = this.nodes[i], any = false;
+            rec.rows.forEach(function (no) {
+                var r = self.rows[no], it = r.item;
+                var hit = !q || (it.name + ' ' + it.item + ' ' + rec.node.key).toLowerCase().indexOf(q) >= 0;
+                r.row.style.display = hit ? '' : 'none';
+                if (hit) any = true;
+            });
+            rec.node.children.forEach(function (c) { if (visible[c.key]) any = true; });
+            visible[rec.node.key] = any;
+            rec.el.style.display = any ? '' : 'none';
+            rec.el.open = q ? any : openKeys.indexOf(rec.node.key) >= 0;
+        }
+        // The toggle events of this pass fire after it (and read what they open).
+        setTimeout(function () { self._filtering = false; }, 0);
     };
     WfSetMenuPanel.prototype._updateRow = function (itemNo) {
         var r = this.rows[itemNo];
@@ -530,8 +625,9 @@
         }
         var b = doc.createElement('button');
         b.type = 'button';
-        b.className = 'wf-btn';
+        b.className = 'wf-btn setmenu-rd';
         b.textContent = 'READ';
+        b.title = 'Read ' + it.item + ' from the radio again';
         b.disabled = busy;
         b.onclick = function () { menu.read(itemNo); };
         r.ctl.appendChild(b);
