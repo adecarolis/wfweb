@@ -1,7 +1,86 @@
 {
   "model": "IC-7300",
-  "source": "seed table: items confirmed on a radio; to be completed from the IC-7300 CI-V command table (full manual) and the firmware supplement",
+  "source": "partial: items confirmed on a radio and the CI-V commands of the firmware 1.30 / 1.40 Information sheets (Icom A7292-9EX, A7292-10EX_0a); the rest of the Set menu is in the full manual's command table. Items checked by reading on firmware 1.42.",
   "groups": [
+    {
+      "path": "SET > Tone Control/TBW",
+      "items": [
+        {
+          "item": "0196",
+          "name": "TX > SSB-D TBW",
+          "type": "enum",
+          "firmware": "1.30+",
+          "source": "IC-7300 Information V1.30 (A7292-9EX), p. 2; nibble order from the default value read on firmware 1.42, 2026-11-27",
+          "note": "high digit = higher edge, low digit = lower edge (the default 300 - 2700 Hz reads 12)",
+          "options": [
+            [
+              "00",
+              "100 - 2500 Hz"
+            ],
+            [
+              "01",
+              "200 - 2500 Hz"
+            ],
+            [
+              "02",
+              "300 - 2500 Hz"
+            ],
+            [
+              "03",
+              "500 - 2500 Hz"
+            ],
+            [
+              "10",
+              "100 - 2700 Hz"
+            ],
+            [
+              "11",
+              "200 - 2700 Hz"
+            ],
+            [
+              "12",
+              "300 - 2700 Hz"
+            ],
+            [
+              "13",
+              "500 - 2700 Hz"
+            ],
+            [
+              "20",
+              "100 - 2800 Hz"
+            ],
+            [
+              "21",
+              "200 - 2800 Hz"
+            ],
+            [
+              "22",
+              "300 - 2800 Hz"
+            ],
+            [
+              "23",
+              "500 - 2800 Hz"
+            ],
+            [
+              "30",
+              "100 - 2900 Hz"
+            ],
+            [
+              "31",
+              "200 - 2900 Hz"
+            ],
+            [
+              "32",
+              "300 - 2900 Hz"
+            ],
+            [
+              "33",
+              "500 - 2900 Hz"
+            ]
+          ]
+        }
+      ]
+    },
     {
       "path": "SET > Function",
       "items": [
@@ -9,8 +88,361 @@
           "item": "0029",
           "name": "Time-Out Timer (CI-V)",
           "type": "enum",
-          "options": [["00", "OFF"], ["01", "3 min"], ["02", "5 min"], ["03", "10 min"], ["04", "20 min"], ["05", "30 min"]],
+          "options": [
+            [
+              "00",
+              "OFF"
+            ],
+            [
+              "01",
+              "3 min"
+            ],
+            [
+              "02",
+              "5 min"
+            ],
+            [
+              "03",
+              "10 min"
+            ],
+            [
+              "04",
+              "20 min"
+            ],
+            [
+              "05",
+              "30 min"
+            ]
+          ],
           "source": "IC-7300 manual (codes); read 01 on a radio, 2026-11-27"
+        }
+      ]
+    },
+    {
+      "path": "SET > Function > Front Key Customize",
+      "items": [
+        {
+          "item": "0198",
+          "name": "[VOX/BK-IN]",
+          "type": "enum",
+          "options": [
+            [
+              "00",
+              "VOX/BK-IN"
+            ],
+            [
+              "01",
+              "PRESET"
+            ],
+            [
+              "02",
+              "Voice/Keyer/RTTY Memory 1"
+            ],
+            [
+              "03",
+              "Voice/Keyer/RTTY Memory 2"
+            ],
+            [
+              "04",
+              "Voice/Keyer/RTTY Memory 3"
+            ],
+            [
+              "05",
+              "Voice/Keyer/RTTY Memory 4"
+            ]
+          ],
+          "firmware": "1.40+",
+          "source": "IC-7300 Information V1.40 (A7292-10EX_0a), p. 8; read on firmware 1.42 (factory default), 2026-11-27"
+        },
+        {
+          "item": "0199",
+          "name": "[AUTOTUNE]",
+          "type": "enum",
+          "options": [
+            [
+              "00",
+              "AUTOTUNE"
+            ],
+            [
+              "01",
+              "PRESET"
+            ],
+            [
+              "02",
+              "Voice/Keyer/RTTY Memory 1"
+            ],
+            [
+              "03",
+              "Voice/Keyer/RTTY Memory 2"
+            ],
+            [
+              "04",
+              "Voice/Keyer/RTTY Memory 3"
+            ],
+            [
+              "05",
+              "Voice/Keyer/RTTY Memory 4"
+            ]
+          ],
+          "firmware": "1.40+",
+          "source": "IC-7300 Information V1.40 (A7292-10EX_0a), p. 8; read on firmware 1.42 (factory default), 2026-11-27"
+        },
+        {
+          "item": "0200",
+          "name": "[▲]",
+          "type": "enum",
+          "options": [
+            [
+              "00",
+              "M-CH UP"
+            ],
+            [
+              "01",
+              "M-CH DOWN"
+            ],
+            [
+              "02",
+              "PRESET"
+            ],
+            [
+              "03",
+              "Voice/Keyer/RTTY Memory 1"
+            ],
+            [
+              "04",
+              "Voice/Keyer/RTTY Memory 2"
+            ],
+            [
+              "05",
+              "Voice/Keyer/RTTY Memory 3"
+            ],
+            [
+              "06",
+              "Voice/Keyer/RTTY Memory 4"
+            ]
+          ],
+          "firmware": "1.40+",
+          "source": "IC-7300 Information V1.40 (A7292-10EX_0a), p. 8; read on firmware 1.42 (factory default), 2026-11-27"
+        },
+        {
+          "item": "0201",
+          "name": "[▼]",
+          "type": "enum",
+          "options": [
+            [
+              "00",
+              "M-CH UP"
+            ],
+            [
+              "01",
+              "M-CH DOWN"
+            ],
+            [
+              "02",
+              "PRESET"
+            ],
+            [
+              "03",
+              "Voice/Keyer/RTTY Memory 1"
+            ],
+            [
+              "04",
+              "Voice/Keyer/RTTY Memory 2"
+            ],
+            [
+              "05",
+              "Voice/Keyer/RTTY Memory 3"
+            ],
+            [
+              "06",
+              "Voice/Keyer/RTTY Memory 4"
+            ]
+          ],
+          "firmware": "1.40+",
+          "source": "IC-7300 Information V1.40 (A7292-10EX_0a), p. 8; read on firmware 1.42 (factory default), 2026-11-27"
+        }
+      ]
+    },
+    {
+      "path": "SET > Function > MIC Key Customize",
+      "items": [
+        {
+          "item": "0202",
+          "name": "[UP]",
+          "type": "enum",
+          "options": [
+            [
+              "00",
+              "No function"
+            ],
+            [
+              "01",
+              "UP"
+            ],
+            [
+              "02",
+              "DOWN"
+            ],
+            [
+              "03",
+              "UP (VFO: kHz)"
+            ],
+            [
+              "04",
+              "DOWN (VFO: kHz)"
+            ],
+            [
+              "05",
+              "XFC"
+            ],
+            [
+              "06",
+              "VFO/MEMO"
+            ],
+            [
+              "07",
+              "BAND UP"
+            ],
+            [
+              "08",
+              "BAND DOWN"
+            ],
+            [
+              "09",
+              "SPEECH"
+            ],
+            [
+              "10",
+              "MODE"
+            ],
+            [
+              "11",
+              "Voice/Keyer/RTTY Memory 1"
+            ],
+            [
+              "12",
+              "Voice/Keyer/RTTY Memory 2"
+            ],
+            [
+              "13",
+              "Voice/Keyer/RTTY Memory 3"
+            ],
+            [
+              "14",
+              "Voice/Keyer/RTTY Memory 4"
+            ],
+            [
+              "15",
+              "TS"
+            ],
+            [
+              "16",
+              "MPAD"
+            ],
+            [
+              "17",
+              "SPLIT"
+            ],
+            [
+              "18",
+              "A/B"
+            ],
+            [
+              "19",
+              "TUNER"
+            ]
+          ],
+          "firmware": "1.40+",
+          "source": "IC-7300 Information V1.40 (A7292-10EX_0a), p. 9; read on firmware 1.42 (factory default), 2026-11-27"
+        },
+        {
+          "item": "0203",
+          "name": "[DOWN]",
+          "type": "enum",
+          "options": [
+            [
+              "00",
+              "No function"
+            ],
+            [
+              "01",
+              "UP"
+            ],
+            [
+              "02",
+              "DOWN"
+            ],
+            [
+              "03",
+              "UP (VFO: kHz)"
+            ],
+            [
+              "04",
+              "DOWN (VFO: kHz)"
+            ],
+            [
+              "05",
+              "XFC"
+            ],
+            [
+              "06",
+              "VFO/MEMO"
+            ],
+            [
+              "07",
+              "BAND UP"
+            ],
+            [
+              "08",
+              "BAND DOWN"
+            ],
+            [
+              "09",
+              "SPEECH"
+            ],
+            [
+              "10",
+              "MODE"
+            ],
+            [
+              "11",
+              "Voice/Keyer/RTTY Memory 1"
+            ],
+            [
+              "12",
+              "Voice/Keyer/RTTY Memory 2"
+            ],
+            [
+              "13",
+              "Voice/Keyer/RTTY Memory 3"
+            ],
+            [
+              "14",
+              "Voice/Keyer/RTTY Memory 4"
+            ],
+            [
+              "15",
+              "TS"
+            ],
+            [
+              "16",
+              "MPAD"
+            ],
+            [
+              "17",
+              "SPLIT"
+            ],
+            [
+              "18",
+              "A/B"
+            ],
+            [
+              "19",
+              "TUNER"
+            ]
+          ],
+          "firmware": "1.40+",
+          "source": "IC-7300 Information V1.40 (A7292-10EX_0a), p. 9; read on firmware 1.42 (factory default), 2026-11-27"
         }
       ]
     },
@@ -21,9 +453,30 @@
           "item": "0061",
           "name": "ACC/USB AF SQL",
           "type": "enum",
-          "options": [["00", "OFF (OPEN)"], ["01", "ON"]],
+          "options": [
+            [
+              "00",
+              "OFF (OPEN)"
+            ],
+            [
+              "01",
+              "ON"
+            ]
+          ],
           "source": "read, written and read back on a radio, 2026-11-27",
           "note": "rigs/IC-7300.rig names 1A 05 0061 'CI-V Output (ANT)': that label is wrong"
+        }
+      ]
+    },
+    {
+      "path": "SET > Connectors > USB SEND/Keying",
+      "items": [
+        {
+          "item": "0197",
+          "name": "Inhibit Timer at USB Connection",
+          "type": "bool",
+          "firmware": "1.30+",
+          "source": "IC-7300 Information V1.30 (A7292-9EX), p. 2; read on firmware 1.42 (factory default), 2026-11-27"
         }
       ]
     }
