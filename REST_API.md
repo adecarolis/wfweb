@@ -842,6 +842,79 @@ curl -s -X POST http://localhost:8081/api/v1/radio/memories/5/recall | jq .
 
 ---
 
+### POST /api/v1/radio/civ
+
+Sends one raw CI-V command to an Icom radio and answers with the radio's
+reply. For what the named routes do not cover, chiefly the Set menu
+(`1A 05 xxxx`). Icom only (`400` for other rigs).
+
+**Body:** `{"hex": "<command>"}`, either the command body alone
+(`"1A 05 00 61"`) or a whole frame (`"FE FE 94 E0 1A 05 00 61 FD"`).
+Spaces, `:`, `,` and `-` between bytes are ignored. A whole frame must be
+addressed to the radio; its from-address is replaced.
+
+**Validation (`400`):** not hex, an odd number of digits, empty, longer than
+64 bytes of command, a frame not of the shape `FE FE <to> <from> ... FD` or
+addressed to another device, or an `FE` / `FD` inside the command (one frame
+per request).
+
+**Refused (`403`):** commands that transmit or switch the radio off, which
+would bypass TX inhibit, the compressor hold and the PTT bookkeeping:
+`1C 00` (PTT), `1C 01` (tuner / TUNE), `17` (CW), `18` (power). Use
+`/radio/ptt`, `/radio/tx`, `/radio/cw` and the power control for those.
+
+**How it travels:** the frame goes through the rig commander's own port
+writer (the path the rig server and the CI-V TCP port use; the serial port
+is never opened a second time), from controller address `E2`. The radio
+answers to `E2`, so the reply is matched to the request and does not enter
+wfweb's cache: a value changed this way shows on the page only after wfweb's
+next read of it. One request is on the wire at a time; others wait in line
+(up to 32, then `503`). No reply within 1 s is a timeout.
+
+**Response (`200`):**
+
+| Field | |
+|-------|-|
+| `request` | the frame sent, hex |
+| `frames` | the reply frame(s), hex |
+| `body` | the reply without `FE FE <to> <from>` and `FD` |
+| `reply` | `ok` (FB), `ng` (FA, the radio refused it) or `data` |
+| `data` | for `data`: the value after the echoed command, e.g. `00` |
+| `ms` | round trip |
+
+`504 {"request", "reply": "timeout", "error"}` when the radio does not
+answer; `503` when no rig is connected or the line is full.
+
+```bash
+# Read ACC/USB AF SQL (IC-7300, 1A 05 0061)
+curl -s -X POST http://localhost:8081/api/v1/radio/civ \
+  -H 'Content-Type: application/json' -d '{"hex": "1A 05 00 61"}' | jq .
+```
+```json
+{"request": "FE FE 94 E2 1A 05 00 61 FD",
+ "frames": ["FE FE E2 94 1A 05 00 61 00 FD"],
+ "body": "1A 05 00 61 00", "reply": "data", "data": "00", "ms": 18}
+```
+```bash
+# Set it to ON
+curl -s -X POST http://localhost:8081/api/v1/radio/civ \
+  -H 'Content-Type: application/json' -d '{"hex": "1A 05 00 61 01"}' | jq .reply
+"ok"
+```
+
+Set-menu item numbers differ between models and firmware versions: read an
+item, and check the answer, before writing it.
+
+**WebSocket:** `{"cmd": "civRaw", "id": <any>, "hex": "1A 05 00 61"}` is
+answered with `{"type": "civRawReply", "id": <same>, ...}` and the fields
+above; a refused request has `"reply": "error"`, `status` (the HTTP code
+above) and `error`.
+
+**Shared Station:** refused over REST like every radio write. On the
+WebSocket it is for admins holding the seat.
+
+---
+
 ## CORS Preflight
 
 All endpoints respond to `OPTIONS` with CORS headers, enabling use from browser JavaScript on any origin:
