@@ -78,6 +78,9 @@ const char *const kAdminCommands[] = {
     "setPower", "disconnectLan", "reconnectLan", "writeMemory", "renameMemory", "clearMemory",
     "setReporter", "setStationCallsign", "setCWMacros", "aprsBeaconConfig",
     "seatClear",
+    // Raw CI-V (civraw.h): reaches every setting of the radio, the Set menu
+    // included, past the named commands' checks.
+    "civRaw",
     // Whole-log operations: the migration of a browser's old local log.
     "mergeLogbook",
 };

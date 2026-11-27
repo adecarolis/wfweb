@@ -7,6 +7,7 @@
 #include "wfweb_version.h"
 #include "buildinfo.h"
 #include "wsjtxmessage.h"
+#include "civraw.h"
 #include <cmath>
 
 static quint64 jsonHz(const QJsonValue &v);   // a Hz field from JSON, bounded; defined above handleCommand
@@ -1505,6 +1506,7 @@ void webServer::sendRestResponse(QTcpSocket *socket, int statusCode, const QJson
     case 429: statusText = "Too Many Requests"; break;
     case 500: statusText = "Internal Server Error"; break;
     case 503: statusText = "Service Unavailable"; break;
+    case 504: statusText = "Gateway Timeout"; break;
     default:  statusText = statusCode >= 500 ? "Error" : statusCode >= 400 ? "Error" : "OK"; break;
     }
 
@@ -1532,6 +1534,180 @@ void webServer::sendRestResponse(QTcpSocket *socket, int statusCode, const QJson
     socket->disconnectFromHost();
 }
 
+// ---------------------------------------------------------------------------
+// Raw CI-V passthrough (POST /api/v1/radio/civ, WebSocket civRaw)
+// ---------------------------------------------------------------------------
+// The frame goes to rigCommander::dataFromServer (connected in servermain),
+// the same writer the rig server and the CI-V TCP port use, so the serial
+// port or the LAN CI-V stream is never opened twice.  The reply comes back on
+// haveDataForServer; it is addressed to CivRaw::kCtrlAddr, so it is ours and
+// icomCommander leaves it alone.
+
+quint8 webServer::civRawRigAddr() const
+{
+    if (civRawSeenAddr_)
+        return civRawSeenAddr_;
+    return rigCaps ? static_cast<quint8>(rigCaps->modelID & 0xff) : 0;
+}
+
+static QJsonObject civRawResult(const QByteArray &sentFrame, const QByteArray &sentBody,
+                                const QByteArray &reply, qint64 ms)
+{
+    QJsonObject o;
+    o["request"] = CivRaw::toHex(sentFrame);
+    if (reply.isEmpty()) {
+        o["reply"] = "timeout";
+        o["error"] = QStringLiteral("no reply from the radio within %1 ms").arg(ms);
+        return o;
+    }
+    const QByteArray body = reply.mid(4, reply.size() - 5);
+    o["frames"] = QJsonArray{CivRaw::toHex(reply)};
+    o["body"] = CivRaw::toHex(body);
+    if (body == QByteArray("\xFB", 1)) {
+        o["reply"] = "ok";
+    } else if (body == QByteArray("\xFA", 1)) {
+        o["reply"] = "ng";
+    } else {
+        o["reply"] = "data";
+        // A read is answered with the command it asked and the value.
+        o["data"] = CivRaw::toHex(body.startsWith(sentBody) ? body.mid(sentBody.size()) : body);
+    }
+    o["ms"] = ms;
+    return o;
+}
+
+bool webServer::civRawSubmit(const QString &hex, CivRawJob job, int *status, QString *error)
+{
+    if (!queue || !rigCaps) {
+        *status = 503; *error = QStringLiteral("Rig not connected");
+        return false;
+    }
+    if (rigCaps->manufacturer != manufIcom) {
+        *status = 400; *error = QStringLiteral("raw CI-V is for Icom rigs only");
+        return false;
+    }
+    const quint8 addr = civRawRigAddr();
+    if (!addr) {
+        *status = 503; *error = QStringLiteral("the radio's CI-V address is not known yet");
+        return false;
+    }
+    QByteArray body;
+    if (!CivRaw::parse(hex, addr, &body, error)) {
+        *status = 400;
+        return false;
+    }
+    const QString refused = CivRaw::refusedReason(body);
+    if (!refused.isEmpty()) {
+        *status = 403; *error = refused;
+        return false;
+    }
+    if (civRawJobs_.size() >= kCivRawMaxQueued) {
+        *status = 503; *error = QStringLiteral("too many raw CI-V requests waiting");
+        return false;
+    }
+    if (!civRawTimer_) {
+        civRawTimer_ = new QTimer(this);
+        civRawTimer_->setSingleShot(true);
+        connect(civRawTimer_, &QTimer::timeout, this, [this]() { civRawFinish(QByteArray()); });
+    }
+    job.body = body;
+    job.frame = CivRaw::frame(addr, body);
+    civRawJobs_.append(job);
+    civRawPump();
+    return true;
+}
+
+void webServer::civRawPump()
+{
+    while (!civRawInFlight_ && !civRawJobs_.isEmpty()) {
+        CivRawJob &j = civRawJobs_.first();
+        if (!j.rest && !j.ws) {
+            // The caller is gone: what it asked is not sent.
+            civRawJobs_.removeFirst();
+            continue;
+        }
+        qInfo() << "Web: raw CI-V" << CivRaw::toHex(j.frame);
+        civRawBuf_.clear();
+        civRawInFlight_ = true;
+        j.sentMs = QDateTime::currentMSecsSinceEpoch();
+        civRawTimer_->start(kCivRawTimeoutMs);
+        emit civRawOut(j.frame);
+    }
+}
+
+void webServer::receiveRigRawData(QByteArray data)
+{
+    // Learn the radio's address from its frames to wfweb (E0 / E1) or to all
+    // (00).  One header per block, whatever is in flight.
+    if (data.size() >= 4 && static_cast<quint8>(data.at(0)) == 0xFE
+        && static_cast<quint8>(data.at(1)) == 0xFE) {
+        const quint8 to = static_cast<quint8>(data.at(2));
+        const quint8 from = static_cast<quint8>(data.at(3));
+        if ((to == 0xE0 || to == 0xE1 || to == 0x00) && from != 0xE0 && from != 0xE1
+            && from != CivRaw::kCtrlAddr && from != 0xFE)
+            civRawSeenAddr_ = from;
+    }
+    if (!civRawInFlight_)
+        return;
+    civRawBuf_.append(data);
+    if (civRawBuf_.size() > 16384)   // spectrum lines; a reply is short
+        civRawBuf_ = civRawBuf_.right(4096);
+    const quint8 addr = civRawRigAddr();
+    for (const QByteArray &f : CivRaw::takeFrames(&civRawBuf_)) {
+        if (CivRaw::isReply(f, addr)) {
+            civRawFinish(f);
+            return;
+        }
+    }
+}
+
+void webServer::civRawFinish(const QByteArray &reply)
+{
+    if (!civRawInFlight_ || civRawJobs_.isEmpty())
+        return;
+    civRawTimer_->stop();
+    civRawInFlight_ = false;
+    civRawBuf_.clear();
+    const CivRawJob job = civRawJobs_.takeFirst();
+    const qint64 ms = reply.isEmpty() ? kCivRawTimeoutMs
+                                      : QDateTime::currentMSecsSinceEpoch() - job.sentMs;
+    const QJsonObject result = civRawResult(job.frame, job.body, reply, ms);
+    if (reply.isEmpty())
+        qInfo() << "Web: raw CI-V timeout for" << CivRaw::toHex(job.frame);
+    else
+        qInfo() << "Web: raw CI-V reply" << CivRaw::toHex(reply) << "in" << ms << "ms";
+    if (job.rest) {
+        sendRestResponse(job.rest, reply.isEmpty() ? 504 : 200, result);
+    } else if (job.ws) {
+        QJsonObject o = result;
+        o["type"] = "civRawReply";
+        o["id"] = job.wsId;
+        sendJsonTo(job.ws, o);
+    }
+    civRawPump();
+}
+
+void webServer::handleCivRawRest(QTcpSocket *socket, const QString &method, const QByteArray &body)
+{
+    if (method != "POST") {
+        sendRestResponse(socket, 405, QJsonObject{{"error", "Method not allowed"}});
+        return;
+    }
+    QJsonParseError perr;
+    const QJsonDocument doc = QJsonDocument::fromJson(body, &perr);
+    if (perr.error != QJsonParseError::NoError || !doc.isObject() || !doc.object().value("hex").isString()) {
+        sendRestResponse(socket, 400, QJsonObject{{"error", "body must be {\"hex\": \"<CI-V command>\"}"}});
+        return;
+    }
+    CivRawJob job;
+    job.rest = socket;
+    int status = 0;
+    QString error;
+    if (!civRawSubmit(doc.object().value("hex").toString(), job, &status, &error))
+        sendRestResponse(socket, status, QJsonObject{{"error", error}});
+    // else: answered from civRawFinish when the radio replies or the wait ends
+}
+
 void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
                                    const QString &path, const QUrlQuery &query,
                                    const QByteArray &body)
@@ -1552,6 +1728,11 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
 
     if (p.startsWith("/api/v1/sstv/images")) {
         handleSstvRequest(socket, method, p, query, body);
+        return;
+    }
+
+    if (p == "/api/v1/radio/civ") {
+        handleCivRawRest(socket, method, body);
         return;
     }
 
@@ -3621,6 +3802,27 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
     }
     else if (type == "reconnectLan") {
         emit requestLanReconnect();
+    }
+    else if (type == "civRaw") {
+        // {cmd: "civRaw", id, hex} -> {type: "civRawReply", id, ...} (REST_API.md)
+        if (!client)
+            return;
+        // Admin-only under --shared (access.cpp); it acts on the radio, so
+        // it takes the seat as well, which admin commands otherwise do not.
+        if (sharedMode_ && seatEnabled_ && client != seat_.holder) {
+            denySeat(client, type);
+            return;
+        }
+        CivRawJob job;
+        job.ws = client;
+        job.wsId = cmd.value("id");
+        int status = 0;
+        QString error;
+        if (!civRawSubmit(cmd.value("hex").toString(), job, &status, &error)) {
+            QJsonObject o{{"type", "civRawReply"}, {"id", job.wsId},
+                          {"reply", "error"}, {"status", status}, {"error", error}};
+            sendJsonTo(client, o);
+        }
     }
     else if (type == "getMemories") {
         if (!queue || !rigCaps) {
