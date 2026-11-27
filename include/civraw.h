@@ -42,6 +42,12 @@ QList<QByteArray> takeFrames(QByteArray *buf);
 // True for a frame from rigAddr to kCtrlAddr: the reply to our request.
 bool isReply(const QByteArray &frame, quint8 rigAddr);
 
+// True when a reply frame can be the answer to this request body: OK / NG
+// (FB / FA), or data that echoes the request ("1A 05 00 61" -> "1A 05 00 61
+// 01").  A reply that echoes something else is a late answer to an earlier
+// request (its wait had timed out) and must not be taken for this one.
+bool answers(const QByteArray &frame, const QByteArray &requestBody);
+
 // "FE FE 94 E2 1A FD": upper-case hex, one space between bytes.
 QString toHex(const QByteArray &bytes);
 

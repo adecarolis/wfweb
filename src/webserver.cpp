@@ -1658,6 +1658,10 @@ void webServer::receiveRigRawData(QByteArray data)
     const quint8 addr = civRawRigAddr();
     for (const QByteArray &f : CivRaw::takeFrames(&civRawBuf_)) {
         if (CivRaw::isReply(f, addr)) {
+            if (!CivRaw::answers(f, civRawJobs_.first().body)) {
+                qDebug() << "Web: raw CI-V late reply ignored" << CivRaw::toHex(f);
+                continue;
+            }
             civRawFinish(f);
             return;
         }
@@ -1737,7 +1741,8 @@ static QString setMenuSpaced(const QString &hex)
 
 // Read one item: ok with its data (hex, no spaces), missing (NG: not on this
 // radio or firmware), or an error.  A read that gets no answer is asked
-// again, twice at most: over USB the odd reply is lost below the web layer.
+// again, four times at most: over USB about one reply in fifty is lost
+// below the web layer (IC-7300, 2026-11-27).
 void webServer::setMenuRead(const QString &itemNo, int tries,
                             std::function<void(bool, bool, const QString &, const QString &)> cb)
 {
@@ -1745,8 +1750,13 @@ void webServer::setMenuRead(const QString &itemNo, int tries,
     CivRawJob job;
     job.done = [this, itemNo, tries, cb](const QByteArray &reply) {
         if (reply.isEmpty()) {
-            if (tries < 2) setMenuRead(itemNo, tries + 1, cb);
-            else cb(false, false, QString(), QStringLiteral("no reply from the radio"));
+            // Asked again after a growing pause: replies are lost in short
+            // bursts, which three immediate tries can all fall into.
+            static const int kRetryMs[] = {100, 250, 500, 1000};
+            if (tries < 4)
+                QTimer::singleShot(kRetryMs[tries], this, [this, itemNo, tries, cb]() { setMenuRead(itemNo, tries + 1, cb); });
+            else
+                cb(false, false, QString(), QStringLiteral("no reply from the radio"));
             return;
         }
         const QByteArray body = reply.mid(4, reply.size() - 5);

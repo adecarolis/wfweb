@@ -68,6 +68,26 @@ def test_ng_is_reported(rest_url, mock_radio, monkeypatch):
     assert r.json()["reply"] == "ng"
 
 
+def test_late_reply_is_not_taken_for_the_next(rest_url, mock_radio, monkeypatch):
+    """A reply that comes after its request timed out arrives while the next
+    request waits: it echoes another command and must be ignored."""
+    mock_radio.settings[REG] = bytes([0x01])
+    mock_radio.settings[0x0062] = bytes([0x00])
+    orig = mock_radio.dispatch_civ
+
+    def stale_first(cmd, payload, from_addr):
+        r = orig(cmd, payload, from_addr)
+        if from_addr == CTRL and cmd == 0x1A and payload == bytes([0x05, 0x00, 0x61]):
+            late = mock_radio.civ_frame(CTRL, RADIO, 0x1A, data=bytes([0x05, 0x00, 0x62, 0x00]))
+            return late + r
+        return r
+
+    monkeypatch.setattr(mock_radio, "dispatch_civ", stale_first)
+    d = civ(rest_url, "1A 05 00 61").json()
+    assert d["reply"] == "data" and d["data"] == "01", d
+    assert d["body"] == "1A 05 00 61 01"
+
+
 def test_timeout(rest_url, mock_radio, monkeypatch):
     orig = mock_radio.dispatch_civ
 

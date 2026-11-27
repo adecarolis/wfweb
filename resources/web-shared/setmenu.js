@@ -330,11 +330,19 @@
     // A read that gets no answer is asked again, twice at most: reading
     // twice changes nothing, and over USB the odd reply is lost below us
     // (about one read in twenty on an IC-7300 with the scope streaming).
+    // Losses come in short bursts, so the tries are spaced out (100, 250,
+    // 500, 1000 ms): three back to back could all fall in one.
+    var RETRY_MS = [100, 250, 500, 1000];
+    WfSetMenu.prototype.retryDelay = function (ms) {
+        return new Promise(function (r) { setTimeout(r, ms); });
+    };
     WfSetMenu.prototype._readRaw = function (item, tries) {
         var self = this;
-        tries = tries === undefined ? 2 : tries;
+        tries = tries === undefined ? 0 : tries;
         return Promise.resolve(this.civ(WfSetMenuCodec.readHex(item))).then(function (r) {
-            if (r && r.reply === 'timeout' && tries > 0) return self._readRaw(item, tries - 1);
+            if (r && r.reply === 'timeout' && tries < RETRY_MS.length) {
+                return self.retryDelay(RETRY_MS[tries]).then(function () { return self._readRaw(item, tries + 1); });
+            }
             if (!r) return { ok: false, error: 'no answer' };
             if (r.reply === 'data') {
                 var d = WfSetMenuCodec.decode(item, r.data);

@@ -162,6 +162,8 @@ const table = { model: 'TEST', groups: [{ path: 'SET > A', items: [sql, tot, lvl
     return r;
   };
   const m = new WfSetMenu({ civ: lossy });
+  const pauses = [];
+  m.retryDelay = (ms) => { pauses.push(ms); return Promise.resolve(); };
   m.setTable({ groups: [{ items: [sql, tot] }] });
   await m.read('0061');
   check(m.state['0061'].status === 'ok' && m.state['0061'].value === '00', 'a read that lost two replies is asked again and succeeds');
@@ -173,7 +175,8 @@ const table = { model: 'TEST', groups: [{ path: 'SET > A', items: [sql, tot, lvl
   rig.silent.add('0061');
   rig.log.length = 0;
   await m.read('0061');
-  check(m.state['0061'].status === 'error' && rig.log.length === 3, 'a read is tried three times in all, then reported');
+  check(m.state['0061'].status === 'error' && rig.log.length === 5, 'a read is tried five times in all, then reported');
+  check(pauses.slice(-4).join(',') === '100,250,500,1000', 'the tries are spaced out: ' + pauses.slice(-4).join(','));
 }
 
 // --- the queue: newest section first, closed sections dropped ------------

@@ -140,6 +140,14 @@ bool isReply(const QByteArray &f, quint8 rigAddr)
         && static_cast<quint8>(f.at(3)) == rigAddr;
 }
 
+bool answers(const QByteArray &f, const QByteArray &requestBody)
+{
+    const QByteArray body = f.mid(4, f.size() - 5);
+    if (body.size() == 1 && (static_cast<quint8>(body.at(0)) == 0xFB || static_cast<quint8>(body.at(0)) == 0xFA))
+        return true;
+    return body.startsWith(requestBody);
+}
+
 QString toHex(const QByteArray &bytes)
 {
     return QString::fromLatin1(bytes.toHex(' ')).toUpper();
