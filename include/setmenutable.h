@@ -12,7 +12,7 @@
 // which items there are, whether one may be written, and whether a value
 // is one the item takes.  Pure Qt5Core; the format is documented at the top
 // of resources/web-shared/setmenu.js.
-namespace SetMenu {
+namespace SetMenuDef {
 
 struct Item {
     QString no;           // "0061"
@@ -52,6 +52,6 @@ QString label(const Item &item, const QString &dataHex);
 QString readHex(const Item &item);
 QString setHex(const Item &item, const QString &dataHex);
 
-} // namespace SetMenu
+} // namespace SetMenuDef
 
 #endif // SETMENUTABLE_H

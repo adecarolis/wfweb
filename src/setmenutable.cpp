@@ -5,7 +5,7 @@
 #include <QJsonObject>
 #include <QRegularExpression>
 
-namespace SetMenu {
+namespace SetMenuDef {
 
 const Item *Table::find(const QString &no) const
 {
@@ -138,4 +138,4 @@ QString setHex(const Item &item, const QString &dataHex)
     return readHex(item) + QLatin1Char(' ') + spaced(dataHex.toUpper().remove(QLatin1Char(' ')));
 }
 
-} // namespace SetMenu
+} // namespace SetMenuDef

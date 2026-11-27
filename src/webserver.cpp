@@ -1777,7 +1777,7 @@ bool webServer::setMenuStart(std::unique_ptr<SetMenuRun> run, const QJsonObject 
     QFile f(QStringLiteral(":/web/setmenu/") + model + QStringLiteral(".json"));
     if (!f.open(QIODevice::ReadOnly)) { *status = 404; *error = QStringLiteral("no SET menu table for ") + model; return false; }
     QString perr;
-    if (!SetMenu::parse(f.readAll(), &run->table, &perr)) { *status = 500; *error = perr; return false; }
+    if (!SetMenuDef::parse(f.readAll(), &run->table, &perr)) { *status = 500; *error = perr; return false; }
 
     if (!run->restore) {
         for (int i = 0; i < run->table.items.size(); ++i) run->order << i;
@@ -1824,7 +1824,7 @@ void webServer::setMenuStep()
         }
     }
     if (run->pos >= run->order.size()) { setMenuFinish(); return; }
-    const SetMenu::Item item = run->table.items.at(run->order.at(run->pos));
+    const SetMenuDef::Item item = run->table.items.at(run->order.at(run->pos));
     auto next = [this, run]() {
         if (setMenuRun_.get() != run) return;
         run->pos++;
@@ -1836,7 +1836,7 @@ void webServer::setMenuStep()
             if (setMenuRun_.get() != run) return;
             if (ok) {
                 QJsonObject o{{"name", item.name}, {"data", data}};
-                const QString lbl = SetMenu::label(item, data);
+                const QString lbl = SetMenuDef::label(item, data);
                 if (!lbl.isEmpty()) o["value"] = lbl;
                 run->items.insert(item.no, o);
             } else if (missing) {
@@ -1862,18 +1862,18 @@ void webServer::setMenuStep()
     if (item.readonly) { skip(QStringLiteral("read-only here")); return; }
     if (!item.restore) { skip(QStringLiteral("not restored (the clock, or the radio's own calibration)")); return; }
     const QString target = run->wanted.value(item.no).toString();
-    const QString bad = SetMenu::validate(item, target);
+    const QString bad = SetMenuDef::validate(item, target);
     if (!bad.isEmpty()) { fail(QStringLiteral("backup value refused: ") + bad); return; }
 
     setMenuRead(item.no, 0, [this, run, item, target, next, skip, fail](bool ok, bool missing, const QString &current, const QString &err) {
         if (setMenuRun_.get() != run) return;
         if (missing) { skip(QStringLiteral("not on this radio")); return; }
         if (!ok) { fail(QStringLiteral("read before writing failed: ") + err); return; }
-        const QString bad = SetMenu::validate(item, target, current);
+        const QString bad = SetMenuDef::validate(item, target, current);
         if (!bad.isEmpty()) { fail(QStringLiteral("backup value refused: ") + bad); return; }
         if (current == target) { run->unchanged++; next(); return; }
         QJsonObject change{{"item", item.no}, {"name", item.name}, {"path", item.path}, {"from", current}, {"to", target}};
-        const QString fromLbl = SetMenu::label(item, current), toLbl = SetMenu::label(item, target);
+        const QString fromLbl = SetMenuDef::label(item, current), toLbl = SetMenuDef::label(item, target);
         if (!fromLbl.isEmpty()) change["fromValue"] = fromLbl;
         if (!toLbl.isEmpty()) change["toValue"] = toLbl;
         if (run->dryRun) { run->changes.append(change); next(); return; }
@@ -1898,7 +1898,7 @@ void webServer::setMenuStep()
         };
         int status = 0;
         QString error;
-        if (!civRawSubmit(SetMenu::setHex(item, target), job, &status, &error))
+        if (!civRawSubmit(SetMenuDef::setHex(item, target), job, &status, &error))
             fail(error);
     });
 }

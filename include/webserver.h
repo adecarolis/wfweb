@@ -1101,7 +1101,7 @@ private:
         QPointer<QTcpSocket> rest;
         QPointer<QWebSocket> ws;
         QJsonValue wsId;
-        SetMenu::Table table;
+        SetMenuDef::Table table;
         QList<int> order;                // table positions to visit
         int pos = 0;
         QJsonObject wanted;              // restore: item -> data from the backup
