@@ -80,7 +80,7 @@ const char *const kAdminCommands[] = {
     "seatClear",
     // Raw CI-V (civraw.h): reaches every setting of the radio, the Set menu
     // included, past the named commands' checks.
-    "civRaw",
+    "civRaw", "setMenuBackup", "setMenuRestore",
     // Whole-log operations: the migration of a browser's old local log.
     "mergeLogbook",
 };
@@ -138,6 +138,10 @@ bool Access::restReadOnly(const QString &method, const QString &path)
 Access::Cap Access::restCapability(const QString &method, const QString &pathIn)
 {
     const QString m = method.toUpper();
+    // A SET menu backup only reads, but it is hundreds of raw CI-V reads of
+    // the radio's every setting: the admins', like the raw CI-V route.
+    if (pathIn.startsWith(QLatin1String("/api/v1/radio/setmenu")))
+        return Cap::Admin;
     if (m == QLatin1String("GET") || m == QLatin1String("HEAD") || m == QLatin1String("OPTIONS"))
         return Cap::View;
     // The web server hands the path over without its trailing slash; the

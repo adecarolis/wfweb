@@ -143,7 +143,8 @@ E("0055", "Screen Capture File Type", ["PNG", "BMP"], "19-4")
 E("0056", "Keyboard Type", ["Ten-key", "Full Keyboard"], "19-4")
 E("0194", "Screen Full Keyboard Layout", ["English", "German", "French"], "19-7")
 B("0057", "Calibration Marker", "19-4")
-LV("0058", "REF Adjust", "19-4", note="the reference oscillator: changes the radio's frequency accuracy")
+LV("0058", "REF Adjust", "19-4", restore=False,
+   note="the reference oscillator: this radio's own calibration, so a restore leaves it alone")
 
 group("SET > Function > Front Key Customize")
 FKEY = ["PRESET", "Voice/Keyer/RTTY Memory 1", "Voice/Keyer/RTTY Memory 2", "Voice/Keyer/RTTY Memory 3", "Voice/Keyer/RTTY Memory 4"]
@@ -218,8 +219,8 @@ E("0093", "Display Language", ["English", "Japanese"], "19-5")
 
 # ---------------------------------------------------------------- Time Set
 group("SET > Time Set")
-R("0094", "Date", "19-5", "date")
-R("0095", "Time", "19-5", "time")
+R("0094", "Date", "19-5", "date", restore=False, note="the clock: a restore leaves it alone")
+R("0095", "Time", "19-5", "time", restore=False, note="the clock: a restore leaves it alone")
 R("0096", "UTC Offset", "19-5", "utcOffset", note="offset 0000-1400 (hhmm), then 00 = + / 01 = - (p. 19-13)")
 
 # ---------------------------------------------------------------- Scope

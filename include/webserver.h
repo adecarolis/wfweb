@@ -28,6 +28,7 @@
 #include <functional>
 #include "logbook.h"
 #include "access.h"
+#include "setmenutable.h"
 
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 #include <QAudioDeviceInfo>
@@ -1072,6 +1073,7 @@ private:
         QPointer<QTcpSocket> rest;       // REST caller, or
         QPointer<QWebSocket> ws;         // WebSocket caller
         QJsonValue wsId;                 // the page's request id, echoed
+        std::function<void(const QByteArray &)> done;   // or the server's own (SET menu backup)
         qint64 sentMs = 0;
     };
     static constexpr int kCivRawTimeoutMs = 1000;
@@ -1089,6 +1091,35 @@ private:
     void civRawPump();
     void civRawFinish(const QByteArray &reply);   // empty = timeout
     void handleCivRawRest(QTcpSocket *socket, const QString &method, const QByteArray &body);
+
+    // SET menu backup / restore (setmenutable.h): every item of the model's
+    // table read in turn through the raw CI-V queue; a restore writes only
+    // what differs, each read before, set, read back.  One run at a time.
+    struct SetMenuRun {
+        bool restore = false;
+        bool dryRun = false;
+        QPointer<QTcpSocket> rest;
+        QPointer<QWebSocket> ws;
+        QJsonValue wsId;
+        SetMenu::Table table;
+        QList<int> order;                // table positions to visit
+        int pos = 0;
+        QJsonObject wanted;              // restore: item -> data from the backup
+        QJsonObject items;               // backup: item -> {name, data, value}
+        QJsonArray notOnRadio, changes, written, skipped, failed;
+        QJsonObject errors;
+        int unchanged = 0;
+        qint64 lastProgressMs = 0;
+    };
+    std::unique_ptr<SetMenuRun> setMenuRun_;
+    // Starts a run; false with *status / *error when it cannot.
+    bool setMenuStart(std::unique_ptr<SetMenuRun> run, const QJsonObject &backup, int *status, QString *error);
+    void setMenuStep();
+    void setMenuFinish(const QString &abortError = QString());
+    void setMenuRead(const QString &itemNo, int tries,
+                     std::function<void(bool ok, bool missing, const QString &data, const QString &error)> cb);
+    void handleSetMenuRest(QTcpSocket *socket, const QString &method, const QString &path,
+                           const QUrlQuery &query, const QByteArray &body);
 
     // Memory channel scanning
     QMap<quint32, memoryType> memories;  // key = (group << 16) | channel

@@ -915,6 +915,72 @@ WebSocket it is for admins holding the seat.
 
 ---
 
+### GET /api/v1/radio/setmenu/backup
+
+Reads every item of the radio's SET menu table (the one the page's
+FUNC > SET window draws, `resources/web-shared/setmenu/<model>.json`; the
+IC-7300 has 216) through the raw CI-V route, one at a time, and answers
+with a backup. Icom rigs with a table only (`404` otherwise). It takes
+about 20 s on an IC-7300 over USB: give the client a long timeout. One
+backup or restore runs at a time (`409`).
+
+```bash
+curl -s --max-time 120 http://localhost:8081/api/v1/radio/setmenu/backup > ic7300-set.json
+```
+```json
+{"format": "wfweb-setmenu-backup", "version": 1, "model": "IC-7300",
+ "created": "2026-11-27T11:30:00Z", "wfweb": "0.9.6+dev.abc12345",
+ "items": {"0029": {"name": "Time-Out Timer (CI-V)", "data": "01", "value": "3 min"},
+           "0065": {"name": "USB MOD Level", "data": "0192"}, "...": {}},
+ "notOnRadio": ["0028"], "errors": {}}
+```
+
+`data` is what the radio sends after `1A 05 <item>`, as hex; `value` is its
+label where the item has one. `notOnRadio`: items the radio refuses (NG:
+not on this model, version or firmware). `errors`: items with no answer.
+
+### POST /api/v1/radio/setmenu/restore
+
+Body: a backup as above. With `?dryRun=1` nothing is written: the answer
+lists what would change. Without it, every item whose value differs is
+written with the same checks as the SET window: read first, set, read
+back and compared.
+
+- The backup must be of the same model (`400` otherwise).
+- Never written: read-only items (CI-V transceive and echo back, the USB
+  serial function, the USB SEND / keying lines, the CI-V USB port),
+  the clock (date, time) and REF Adjust (the radio's own calibration).
+- A value the item does not take (a code not in its list, a level out of
+  range, a raw value of another length) is refused before the radio.
+
+```bash
+curl -s -X POST 'http://localhost:8081/api/v1/radio/setmenu/restore?dryRun=1' \
+  -H 'Content-Type: application/json' --data @ic7300-set.json | jq .changes
+curl -s --max-time 120 -X POST http://localhost:8081/api/v1/radio/setmenu/restore \
+  -H 'Content-Type: application/json' --data @ic7300-set.json | jq .
+```
+```json
+{"dryRun": false, "model": "IC-7300", "unchanged": 207,
+ "written": [{"item": "0081", "name": "LCD Backlight", "path": "SET > Display", "from": "0028", "to": "0031"}],
+ "skipped": [{"item": "0094", "name": "Date", "reason": "not restored (the clock, or the radio's own calibration)"}],
+ "failed": []}
+```
+
+A dry run answers `changes` (same entries) in place of `written`; an entry
+carries `fromValue` / `toValue` labels where the item has them.
+
+**WebSocket:** `{"cmd": "setMenuBackup", "id": n}` and
+`{"cmd": "setMenuRestore", "id": n, "backup": {...}, "dryRun": true}` send
+`{"type": "setMenuProgress", "id", "done", "total"}` as they go and end with
+`{"type": "setMenuResult", "id", "restore": bool, ...}` (the fields above;
+`status` and `error` when refused).
+
+**Shared Station:** both routes are for admins (the backup too, being a read
+of every setting through raw CI-V); the restore, a write to the radio, is
+refused over REST. On the WebSocket: admins holding the seat.
+
+---
+
 ## CORS Preflight
 
 All endpoints respond to `OPTIONS` with CORS headers, enabling use from browser JavaScript on any origin:

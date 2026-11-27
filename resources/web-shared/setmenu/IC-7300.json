@@ -1702,7 +1702,8 @@
      "min": 0,
      "max": 255,
      "percent": true,
-     "note": "the reference oscillator: changes the radio's frequency accuracy",
+     "restore": false,
+     "note": "the reference oscillator: this radio's own calibration, so a restore leaves it alone",
      "source": "IC-7300 Full Manual rev. 11, p. 19-4"
     }
    ]
@@ -2676,6 +2677,8 @@
      "name": "Date",
      "type": "raw",
      "format": "date",
+     "restore": false,
+     "note": "the clock: a restore leaves it alone",
      "source": "IC-7300 Full Manual rev. 11, p. 19-5"
     },
     {
@@ -2683,6 +2686,8 @@
      "name": "Time",
      "type": "raw",
      "format": "time",
+     "restore": false,
+     "note": "the clock: a restore leaves it alone",
      "source": "IC-7300 Full Manual rev. 11, p. 19-5"
     },
     {
