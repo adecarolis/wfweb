@@ -133,6 +133,34 @@ const table = { model: 'TEST', groups: [{ path: 'SET > A', items: [sql, tot, lvl
   check(!res.ok && rig.log.length === 0, 'out-of-range value is refused before any CI-V');
 }
 
+// --- lost replies --------------------------------------------------------
+{
+  const rig = radio({ '0061': '00', '0029': '01' });
+  // Drop the first two answers to each read of 0061, as the USB link
+  // sometimes does; and the OK of one set of 0029.
+  let dropReads = 2, dropSetAck = true;
+  const lossy = async (hex) => {
+    const b = hex.replace(/\s/g, '');
+    const r = await rig.civ(hex);
+    if (b === '1A050061' && dropReads > 0) { dropReads--; return { reply: 'timeout', error: 'no reply' }; }
+    if (b.startsWith('1A050029') && b.length > 8 && dropSetAck) { dropSetAck = false; return { reply: 'timeout', error: 'no reply' }; }
+    return r;
+  };
+  const m = new WfSetMenu({ civ: lossy });
+  m.setTable({ groups: [{ items: [sql, tot] }] });
+  await m.read('0061');
+  check(m.state['0061'].status === 'ok' && m.state['0061'].value === '00', 'a read that lost two replies is asked again and succeeds');
+  await m.read('0029');
+  rig.log.length = 0;
+  const res = await m.write('0029', '05');
+  check(res.ok && res.lostAck && rig.regs['0029'] === '05' && sets(rig).length === 1,
+        'a set whose OK was lost is confirmed by reading, not sent twice');
+  rig.silent.add('0061');
+  rig.log.length = 0;
+  await m.read('0061');
+  check(m.state['0061'].status === 'error' && rig.log.length === 3, 'a read is tried three times in all, then reported');
+}
+
 // --- serial: two writes at once do not interleave ------------------------
 {
   const rig = radio({ '0061': '00', '0029': '01' });

@@ -31,10 +31,14 @@
 //   bool    one byte 00 / 01 (labels optional: "options" as for enum)
 //   enum    one byte, the codes listed in "options" [[code, label], ...]
 //   level   "digits" BCD digits (default 4: 0000-0255), "min" / "max",
-//           shown as a number, or as % of max with "percent": true
+//           shown as a number, as % of max with "percent": true, or on
+//           the radio's own scale with "range": [lo, hi]
 //   number  "digits" BCD digits, "min" / "max", optional "scale" (shown =
 //           raw * scale), "unit", "decimals"
-//   raw     anything else (date, time, HPF/LPF pairs): shown as hex, read-only
+//   raw     anything else: read-only; "format" renders it (rgb, date, time,
+//           utcOffset, ascii, edges, offset, hpflpf), else it is shown as hex
+// Any item with "readonly": true is shown but never written from here
+// (settings that can cut wfweb's own link to the radio, or key it).
 (function (global) {
     'use strict';
 
@@ -66,8 +70,66 @@
                 return { ok: true, value: n, text: WfSetMenuCodec.format(item, n) };
             }
             default:
-                return { ok: true, value: d, text: spaced(d) || '(empty)' };
+                return { ok: true, value: d, text: WfSetMenuCodec.rawText(item, d) };
             }
+        },
+        // A readable rendering of the multi-byte formats the Icom tables
+        // describe ("format" on a raw item); the hex when it does not fit.
+        rawText: function (item, d) {
+            var hex = spaced(d) || '(empty)';
+            var b = [];
+            for (var i = 0; i + 1 < d.length; i += 2) b.push(d.substr(i, 2));
+            var bcd = function (s) { return isBcd(s) ? parseInt(s, 10) : NaN; };
+            var khz = function (s) {   // 5 bytes, 1 Hz digits last-in: "XX XX XX XX 00" little-endian BCD
+                if (s.length !== 10 || !isBcd(s)) return null;
+                var digits = '';
+                for (var j = 8; j >= 0; j -= 2) digits += s.substr(j, 2);
+                return (parseInt(digits, 10) / 1e6).toFixed(3);
+            };
+            switch (item.format) {
+            case 'rgb':
+                if (b.length === 6 && isBcd(d)) return 'R ' + bcd(b[0] + b[1]) + ' G ' + bcd(b[2] + b[3]) + ' B ' + bcd(b[4] + b[5]);
+                break;
+            case 'date':
+                if (d.length === 8 && isBcd(d)) return d.substr(0, 4) + '-' + d.substr(4, 2) + '-' + d.substr(6, 2);
+                break;
+            case 'time':
+                if (d.length === 4 && isBcd(d)) return d.substr(0, 2) + ':' + d.substr(2, 2);
+                break;
+            case 'utcOffset':
+                if (d.length === 6 && isBcd(d)) return (b[2] === '01' ? '-' : '+') + d.substr(0, 2) + ':' + d.substr(2, 2);
+                break;
+            case 'ascii': {
+                var s = '';
+                for (var k = 0; k < b.length; k++) s += String.fromCharCode(parseInt(b[k], 16));
+                return '"' + s + '"';
+            }
+            case 'edges':
+                // Two frequencies, each 3 BCD bytes least significant first
+                // (100 Hz digit fixed 0): 100 Hz/1 kHz, 10 kHz/100 kHz, 1 MHz/10 MHz.
+                if (d.length === 12 && isBcd(d)) {
+                    var mhz = function (o) { return (parseInt(b[o + 2] + b[o + 1] + b[o], 10) / 10000).toFixed(3); };
+                    return mhz(0) + ' - ' + mhz(3) + ' MHz';
+                }
+                if (d.length === 20) {
+                    var lo = khz(d.substr(0, 10)), hi = khz(d.substr(10, 10));
+                    if (lo && hi) return lo + ' - ' + hi + ' MHz';
+                }
+                break;
+            case 'offset':
+                // 3 BCD bytes least significant first (100 Hz digit fixed 0), then 00 = +, 01 = -
+                if (b.length === 4 && isBcd(d)) {
+                    return (b[3] === '01' ? '-' : '+') + (parseInt(b[2] + b[1] + b[0], 10) / 10000).toFixed(3) + ' MHz';
+                }
+                break;
+            case 'hpflpf':
+                if (b.length === 2 && isBcd(d)) {
+                    var h = bcd(b[0]), l = bcd(b[1]);
+                    return 'HPF ' + (h === 0 ? 'through' : h * 100 + ' Hz') + ', LPF ' + (l >= 25 ? 'through' : l * 100 + ' Hz');
+                }
+                break;
+            }
+            return hex;
         },
         // Control value -> CI-V data (hex, no spaces); throws on a value the
         // item does not take.
@@ -105,6 +167,10 @@
         },
         format: function (item, n) {
             if (item.percent && item.max) return Math.round(n * 100 / item.max) + '% (' + n + ')';
+            if (item.range && item.max) {   // [lo, hi]: what the radio's screen shows for 0 .. max
+                var shown = item.range[0] + n * (item.range[1] - item.range[0]) / item.max;
+                return Math.round(shown) + (item.unit ? ' ' + item.unit : '') + ' (' + n + ')';
+            }
             if (item.scale) {
                 var v = n * item.scale;
                 return v.toFixed(item.decimals !== undefined ? item.decimals : 1) + (item.unit ? ' ' + item.unit : '');
@@ -112,6 +178,7 @@
             return n + (item.unit ? ' ' + item.unit : '');
         },
         writable: function (item) {
+            if (item.readonly) return false;
             return item.type === 'bool' || item.type === 'enum' || item.type === 'level' || item.type === 'number';
         },
         readHex: function (item) { return '1A 05 ' + spaced(item.item); },
@@ -165,9 +232,15 @@
         this.state[itemNo] = st;
         this._emit(itemNo);
     };
-    // Raw read, no state change: {ok, value, text} or {ok: false, missing, error}
-    WfSetMenu.prototype._readRaw = function (item) {
+    // Raw read, no state change: {ok, value, text} or {ok: false, missing, error}.
+    // A read that gets no answer is asked again, twice at most: reading
+    // twice changes nothing, and over USB the odd reply is lost below us
+    // (about one read in twenty on an IC-7300 with the scope streaming).
+    WfSetMenu.prototype._readRaw = function (item, tries) {
+        var self = this;
+        tries = tries === undefined ? 2 : tries;
         return Promise.resolve(this.civ(WfSetMenuCodec.readHex(item))).then(function (r) {
+            if (r && r.reply === 'timeout' && tries > 0) return self._readRaw(item, tries - 1);
             if (!r) return { ok: false, error: 'no answer' };
             if (r.reply === 'data') {
                 var d = WfSetMenuCodec.decode(item, r.data);
@@ -213,6 +286,9 @@
         if (!item) return Promise.resolve({ ok: false, error: 'no such item' });
         return this._serial(function () {
             var shown = self.state[itemNo] || {};
+            if (!WfSetMenuCodec.writable(item)) {
+                return { ok: false, error: 'read-only here' + (item.note ? ': ' + item.note : '') };
+            }
             if (shown.status !== 'ok') {
                 return { ok: false, error: 'read the item first' };
             }
@@ -236,6 +312,20 @@
                     return { ok: true, unchanged: true };
                 }
                 return Promise.resolve(self.civ(WfSetMenuCodec.setHex(item, data))).then(function (w) {
+                    if (w && w.reply === 'timeout') {
+                        // The set is not sent again; what the radio holds now says
+                        // whether it was taken and only the OK got lost.
+                        return self._readRaw(item).then(function (now) {
+                            var expect = WfSetMenuCodec.decode(item, data);
+                            if (now.ok && now.value === expect.value) {
+                                self._set(itemNo, { status: 'ok', value: now.value, text: now.text, written: true });
+                                return { ok: true, lostAck: true };
+                            }
+                            return fail('write not confirmed: no answer to the set',
+                                        now.ok ? { status: 'ok', value: now.value, text: now.text,
+                                                   error: 'write not confirmed: no answer to the set' } : null);
+                        });
+                    }
                     if (!w || w.reply !== 'ok') {
                         var why = !w ? 'no answer' : w.reply === 'ng' ? 'the radio refused the value (NG)'
                                 : (w.error || w.reply);
