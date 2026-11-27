@@ -41,6 +41,21 @@ for (const [it, v] of [[lvl, 256], [lvl, -1], [lvl, 1.5], [tot, '02'], [raw, '00
 check(threw === 6, 'out-of-range, unknown codes and raw items are refused');
 check(C.readHex(sql) === '1A 05 00 61' && C.setHex(sql, '01') === '1A 05 00 61 01', 'read / set frames');
 
+// --- fields in the radio's own units --------------------------------------
+{
+  const nbw = { item: '0190', type: 'level', digits: 4, min: 0, max: 255, range: [1, 100] };
+  check(C.toShown(lvl, 128) === 50 && C.fromShown(lvl, 50) === 128, 'percent level: field 50 <-> raw 128');
+  check(C.toShown(nbw, 128) === 51, 'range level: raw 128 shows as 51 on a 1-100 scale');
+  check(C.toShown(dly, 15) === 1.5 && C.fromShown(dly, 1.5) === 15, 'scaled number: field 1.5 s <-> raw 15');
+  let stable = true;
+  for (let s = 0; s <= 100; s++) if (C.toShown(lvl, C.fromShown(lvl, s)) !== s) stable = false;
+  for (let s = 1; s <= 100; s++) if (C.toShown(nbw, C.fromShown(nbw, s)) !== s) stable = false;
+  for (let s = 0; s <= 20; s++) if (C.toShown(dly, C.fromShown(dly, s / 10)) !== s / 10) stable = false;
+  check(stable, 'every value a field takes comes back as itself after raw and back');
+  check(String(C.shownRange(lvl)) === '0,100' && String(C.shownRange(nbw)) === '1,100' && String(C.shownRange(dly)) === '0,2',
+        'field limits are in shown units');
+}
+
 // --- fake radio ----------------------------------------------------------
 function radio(regs) {
   const r = { regs: { ...regs }, log: [], refuseSet: new Set(), ignoreSet: new Set(), silent: new Set() };

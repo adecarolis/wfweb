@@ -337,8 +337,10 @@
 .setmenu-group { color: var(--mode-accent); font-weight: var(--fw-bold); font-size: var(--fs-xs); letter-spacing: 1px; padding: var(--space-2) 0 2px; border-bottom: var(--border-w) solid var(--mode-accent-dim); }
 .setmenu-row { display: grid; grid-template-columns: minmax(16em, 1fr) auto minmax(6em, 16em); align-items: center; gap: var(--space-1) var(--space-2); padding: 3px 0; border-bottom: var(--border-w) solid var(--border-col); }
 @media (max-width: 640px) {             /* phone: name above, control and state below */
-    .setmenu-row { grid-template-columns: 1fr auto; }
+    .setmenu-row { grid-template-columns: minmax(0, 1fr) auto; }
     .setmenu-name { grid-column: 1 / -1; }
+    .setmenu-ctl { min-width: 0; }
+    .setmenu-ctl select.wf-field { min-width: 0; max-width: calc(100% - 5em); }
 }
 .setmenu-row.missing { opacity: 0.45; }
 .setmenu-name { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: baseline; min-width: 0; }

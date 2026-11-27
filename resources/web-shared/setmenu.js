@@ -177,6 +177,35 @@
             }
             return n + (item.unit ? ' ' + item.unit : '');
         },
+        // Level / number fields are edited in the units the radio's own
+        // screen uses (%, its 1-100 scale, seconds), not in the raw value:
+        // typing 50 into a 0-255 level meant 20%.  shown <-> raw.
+        unitStep: function (item) {
+            if (item.type === 'number' && item.scale) return item.scale;
+            return 1;
+        },
+        toShown: function (item, raw) {
+            if (item.type === 'level' && item.percent && item.max) return Math.round(raw * 100 / item.max);
+            if (item.type === 'level' && item.range && item.max)
+                return Math.round(item.range[0] + raw * (item.range[1] - item.range[0]) / item.max);
+            if (item.type === 'number' && item.scale)
+                return Number((raw * item.scale).toFixed(item.decimals !== undefined ? item.decimals : 1));
+            return raw;
+        },
+        fromShown: function (item, shown) {
+            var v = Number(shown);
+            if (!isFinite(v)) return NaN;
+            if (item.type === 'level' && item.percent && item.max) return Math.round(v * item.max / 100);
+            if (item.type === 'level' && item.range && item.max)
+                return Math.round((v - item.range[0]) * item.max / (item.range[1] - item.range[0]));
+            if (item.type === 'number' && item.scale) return Math.round(v / item.scale);
+            return v;
+        },
+        shownRange: function (item) {
+            var lo = item.min !== undefined ? item.min : 0;
+            var hi = item.max !== undefined ? item.max : Math.pow(10, item.digits || 4) - 1;
+            return [WfSetMenuCodec.toShown(item, lo), WfSetMenuCodec.toShown(item, hi)];
+        },
         writable: function (item) {
             if (item.readonly) return false;
             return item.type === 'bool' || item.type === 'enum' || item.type === 'level' || item.type === 'number';
@@ -472,14 +501,20 @@
                     field.value = st.value;
                     field.onchange = function () { self._write(itemNo, field.value); };
                 } else {
+                    var span = WfSetMenuCodec.shownRange(it);
                     field = doc.createElement('input');
                     field.className = 'wf-field';
                     field.type = 'number';
-                    field.min = it.min !== undefined ? it.min : 0;
-                    if (it.max !== undefined) field.max = it.max;
-                    field.step = 1;
-                    field.value = st.value;
-                    field.onchange = function () { self._write(itemNo, field.value); };
+                    field.min = span[0];
+                    field.max = span[1];
+                    field.step = WfSetMenuCodec.unitStep(it);
+                    field.value = WfSetMenuCodec.toShown(it, st.value);
+                    field.title = span[0] + ' to ' + span[1] + (it.percent ? ' %' : it.unit ? ' ' + it.unit : '');
+                    field.onchange = function () {
+                        var raw = WfSetMenuCodec.fromShown(it, field.value);
+                        if (isNaN(raw)) { self._updateRow(itemNo); return; }
+                        self._write(itemNo, raw);
+                    };
                 }
                 field.disabled = busy;
                 r.ctl.appendChild(field);
@@ -503,10 +538,11 @@
 
         var text = { idle: '', reading: 'reading...', writing: 'writing...', ok: st.written ? 'written ✓' : '',
                      missing: 'not on this radio', error: '' }[st.status] || '';
-        if (st.error) text = st.error;
+        if (st.error && st.status !== 'missing') text = st.error;
         r.st.textContent = text;
-        r.st.className = 'setmenu-state' + (st.error || st.status === 'error' ? ' err'
-                                            : st.status === 'missing' ? ' dim' : st.written ? ' ok' : '');
+        r.st.title = st.error || '';
+        r.st.className = 'setmenu-state' + (st.status === 'missing' ? ' dim'
+                                            : st.error || st.status === 'error' ? ' err' : st.written ? ' ok' : '');
         r.row.classList.toggle('missing', st.status === 'missing');
     };
     WfSetMenuPanel.prototype._write = function (itemNo, value) {
