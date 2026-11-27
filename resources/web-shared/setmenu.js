@@ -224,7 +224,9 @@
         this.table = null;
         this.state = {};
         this._listeners = [];
-        this._busy = Promise.resolve();
+        this._q = [];              // jobs waiting: {fn, kind, item, resolve, promise}
+        this._running = false;
+        this._pendingRead = {};    // item -> its waiting read job
     }
     WfSetMenu.prototype.onChange = function (fn) { this._listeners.push(fn); };
     WfSetMenu.prototype._emit = function (itemNo) {
@@ -250,12 +252,75 @@
         for (var i = 0; i < all.length; i++) if (all[i].item === itemNo) return all[i];
         return null;
     };
-    // One operation at a time, in order: the window never interleaves the
-    // read-set-read of one item with another's.
-    WfSetMenu.prototype._serial = function (fn) {
-        var p = this._busy.then(fn, fn);
-        this._busy = p.then(function () {}, function () {});
-        return p;
+    // One operation at a time: the window never interleaves the read-set-read
+    // of one item with another's.  Unlike a promise chain, the queue can be
+    // reordered (the section opened last goes first) and its waiting reads
+    // dropped (a section closed before it was read sends nothing more).
+    WfSetMenu.prototype._job = function (kind, item, fn) {
+        var job = { kind: kind, item: item, fn: fn };
+        job.promise = new Promise(function (resolve) { job.resolve = resolve; });
+        return job;
+    };
+    WfSetMenu.prototype._serial = function (fn, front) {
+        var job = this._job('op', null, fn);
+        if (front) this._q.unshift(job); else this._q.push(job);
+        this._pump();
+        return job.promise;
+    };
+    WfSetMenu.prototype._pump = function () {
+        var self = this;
+        if (this._running || !this._q.length) return;
+        var job = this._q.shift();
+        if (job.kind === 'read') delete this._pendingRead[job.item];
+        this._running = true;
+        var done = function (v) {
+            self._running = false;
+            job.resolve(v);
+            self._pump();
+        };
+        var r;
+        try { r = job.fn(); } catch (e) { done({ ok: false, error: e.message }); return; }
+        Promise.resolve(r).then(done, function (e) { done({ ok: false, error: (e && e.message) || String(e) }); });
+    };
+    // Is a read of this item waiting (not yet on the wire)?
+    WfSetMenu.prototype.readPending = function (itemNo) { return !!this._pendingRead[itemNo]; };
+    // Queue reads of these items, in this order; with front, ahead of
+    // everything waiting (a read already waiting moves up with them).
+    // Returns one promise per item.
+    WfSetMenu.prototype.readMany = function (itemNos, opts) {
+        var self = this, front = opts && opts.front, batch = [], promises = [];
+        itemNos.forEach(function (no) {
+            var job = self._pendingRead[no];
+            if (job) {
+                if (front) self._q.splice(self._q.indexOf(job), 1);
+                else { promises.push(job.promise); return; }
+            } else {
+                var item = self.find(no);
+                if (!item) { promises.push(Promise.resolve({ ok: false, error: 'no such item' })); return; }
+                job = self._job('read', no, function () { return self._doRead(no, item); });
+                self._pendingRead[no] = job;
+            }
+            batch.push(job);
+            promises.push(job.promise);
+        });
+        if (front) Array.prototype.unshift.apply(this._q, batch);
+        else Array.prototype.push.apply(this._q, batch);
+        this._pump();
+        return promises;
+    };
+    // Drop the waiting reads of these items (one on the wire finishes).
+    // Their promises resolve {ok: false, cancelled: true}; the items stay idle.
+    WfSetMenu.prototype.cancelReads = function (itemNos) {
+        var self = this, n = 0;
+        itemNos.forEach(function (no) {
+            var job = self._pendingRead[no];
+            if (!job) return;
+            self._q.splice(self._q.indexOf(job), 1);
+            delete self._pendingRead[no];
+            job.resolve({ ok: false, cancelled: true });
+            n++;
+        });
+        return n;
     };
     WfSetMenu.prototype._set = function (itemNo, st) {
         this.state[itemNo] = st;
@@ -282,30 +347,23 @@
             return { ok: false, error: (e && e.message) || String(e) };
         });
     };
-    WfSetMenu.prototype.read = function (itemNo) {
-        var self = this, item = this.find(itemNo);
-        if (!item) return Promise.resolve({ ok: false, error: 'no such item' });
-        return this._serial(function () {
-            self._set(itemNo, { status: 'reading', value: (self.state[itemNo] || {}).value, text: (self.state[itemNo] || {}).text });
-            return self._readRaw(item).then(function (r) {
-                if (r.ok) self._set(itemNo, { status: 'ok', value: r.value, text: r.text });
-                else self._set(itemNo, { status: r.missing ? 'missing' : 'error', error: r.error });
-                return r;
-            });
+    WfSetMenu.prototype.read = function (itemNo, opts) {
+        return this.readMany([itemNo], opts)[0];
+    };
+    WfSetMenu.prototype._doRead = function (itemNo, item) {
+        var self = this;
+        self._set(itemNo, { status: 'reading', value: (self.state[itemNo] || {}).value, text: (self.state[itemNo] || {}).text });
+        return self._readRaw(item).then(function (r) {
+            if (r.ok) self._set(itemNo, { status: 'ok', value: r.value, text: r.text });
+            else self._set(itemNo, { status: r.missing ? 'missing' : 'error', error: r.error });
+            return r;
         });
     };
     WfSetMenu.prototype.readAll = function (onProgress) {
-        var self = this, all = this.items(), done = 0;
-        var chain = Promise.resolve();
-        all.forEach(function (it) {
-            chain = chain.then(function () {
-                return self.read(it.item).then(function () {
-                    done++;
-                    if (onProgress) onProgress(done, all.length);
-                });
-            });
-        });
-        return chain;
+        var all = this.items().map(function (it) { return it.item; }), done = 0;
+        return Promise.all(this.readMany(all).map(function (p) {
+            return p.then(function (r) { done++; if (onProgress) onProgress(done, all.length); return r; });
+        }));
     };
     // Checked write: read (must match what the window holds), set, read back.
     // Resolves {ok, error?}.  Nothing is written unless the first read
@@ -313,6 +371,7 @@
     WfSetMenu.prototype.write = function (itemNo, newValue) {
         var self = this, item = this.find(itemNo);
         if (!item) return Promise.resolve({ ok: false, error: 'no such item' });
+        // The operator's change goes ahead of reads still waiting.
         return this._serial(function () {
             var shown = self.state[itemNo] || {};
             if (!WfSetMenuCodec.writable(item)) {
@@ -378,7 +437,7 @@
                     });
                 });
             }, function (e) { return fail((e && e.message) || String(e)); });
-        });
+        }, true);
     };
 
     // ------------------------------------------------------------------
@@ -416,26 +475,6 @@
         this.rows = {};
 
         var bar = h('div', 'midi-row');
-        var readAll = h('button', 'wf-btn', 'READ ALL');
-        readAll.type = 'button';
-        readAll.onclick = function () {
-            readAll.disabled = true;
-            self.setMessage('Reading...');
-            menu.readAll(function (done, total) { self.setMessage('Read ' + done + ' / ' + total); })
-                .then(function () {
-                    var miss = 0, err = 0;
-                    menu.items().forEach(function (it) {
-                        var st = menu.state[it.item] || {};
-                        if (st.status === 'missing') miss++;
-                        else if (st.status === 'error') err++;
-                    });
-                    self.setMessage('Read ' + menu.items().length + ' items' +
-                                    (miss ? ', ' + miss + ' not on this radio' : '') +
-                                    (err ? ', ' + err + ' failed' : ''), err ? '' : 'ok');
-                    readAll.disabled = false;
-                });
-        };
-        bar.appendChild(readAll);
         this.status = h('span', 'midi-status', this.message);
         bar.appendChild(this.status);
         this.el.appendChild(bar);
@@ -484,12 +523,14 @@
             var det = h('details', 'setmenu-node depth-' + Math.min(depth, 2));
             var sum = h('summary');
             sum.appendChild(h('span', 'setmenu-node-name', node.name));
+            var prog = h('span', 'setmenu-progress');
+            sum.appendChild(prog);
             sum.appendChild(h('span', 'setmenu-count', String(count(node))));
             det.appendChild(sum);
             var body = h('div', 'setmenu-node-body');
             det.appendChild(body);
             if (openKeys.indexOf(node.key) >= 0) det.open = true;
-            var rec = { node: node, el: det, rows: [] };
+            var rec = { node: node, el: det, rows: [], prog: prog, batch: null };
             self.nodes.push(rec);
             node.items.forEach(function (it) {
                 var row = h('div', 'setmenu-row');
@@ -510,7 +551,8 @@
             });
             node.children.forEach(function (c) { build(c, body, depth + 1); });
             det.addEventListener('toggle', function () {
-                if (det.open) self._readIdle(rec);
+                if (det.open) self._readSection(rec);
+                else self._cancelSection(rec);
                 // What the search opens is not what the operator left open.
                 if (!self._filtering && !String(self.query || '').trim()) self._saveOpen();
             });
@@ -520,20 +562,43 @@
         this.tree = tree;
         this.el.appendChild(tree);
         this._applyFilter();
-        // Sections left open last time: read what they show.
-        this.nodes.forEach(function (rec) { if (rec.el.open) self._readIdle(rec); });
+        // Sections left open last time: read what they show, top to bottom.
+        this.nodes.filter(function (rec) { return rec.el.open; }).reverse()
+            .forEach(function (rec) { self._readSection(rec); });
     };
-    // Opening a section reads its items the first time: no READ ALL needed.
-    WfSetMenuPanel.prototype._readIdle = function (rec) {
-        var menu = this.menu, asked = this._asked || (this._asked = {});
-        rec.rows.forEach(function (no) {
+    // Opening a section reads its own items (not its sub-sections'), one at
+    // a time, ahead of anything still waiting: the section opened last is
+    // the one being looked at.  Items read before are not asked again; the
+    // row's READ is there for that.  The header counts the reads down.
+    WfSetMenuPanel.prototype._readSection = function (rec) {
+        var self = this, menu = this.menu;
+        var todo = rec.rows.filter(function (no) {
             var st = menu.state[no];
-            // A read is queued before its state says "reading": remember it.
-            if ((!st || st.status === 'idle') && !asked[no]) {
-                asked[no] = true;
-                menu.read(no).then(function () { delete asked[no]; });
-            }
+            return !st || st.status === 'idle' || menu.readPending(no);
         });
+        if (!todo.length) return;
+        var batch = { total: todo.length, done: 0 };
+        rec.batch = batch;
+        this._showProgress(rec);
+        menu.readMany(todo, { front: true }).forEach(function (p) {
+            p.then(function (r) {
+                if (rec.batch !== batch) return;   // closed, or opened again since
+                if (r && r.cancelled) return;
+                batch.done++;
+                if (batch.done >= batch.total) rec.batch = null;
+                self._showProgress(rec);
+            });
+        });
+    };
+    // Closing a section drops its reads still waiting (one on the wire ends).
+    WfSetMenuPanel.prototype._cancelSection = function (rec) {
+        this.menu.cancelReads(rec.rows);
+        rec.batch = null;
+        this._showProgress(rec);
+    };
+    WfSetMenuPanel.prototype._showProgress = function (rec) {
+        var b = rec.batch;
+        rec.prog.textContent = b ? 'reading ' + b.done + '/' + b.total : '';
     };
     WfSetMenuPanel.prototype._openKeys = function () {
         try { return JSON.parse(global.localStorage.getItem('wfSetMenuOpen') || '[]'); } catch (e) { return []; }

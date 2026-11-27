@@ -176,6 +176,43 @@ const table = { model: 'TEST', groups: [{ path: 'SET > A', items: [sql, tot, lvl
   check(m.state['0061'].status === 'error' && rig.log.length === 3, 'a read is tried three times in all, then reported');
 }
 
+// --- the queue: newest section first, closed sections dropped ------------
+{
+  const regs = {};
+  for (let i = 1; i <= 12; i++) regs[String(i).padStart(4, '0')] = '00';
+  const rig = radio(regs);
+  const order = [];
+  let release;
+  let gate = new Promise((r) => { release = r; });
+  // The first read is held on the wire until released, so the rest queue up.
+  const held = async (hex) => { order.push(hex.replace(/\s/g, '').slice(4, 8)); if (order.length === 1) await gate; return rig.civ(hex); };
+  const items = Object.keys(regs).map((n) => ({ item: n, name: 'x' + n, type: 'bool' }));
+  const m = new WfSetMenu({ civ: held });
+  m.setTable({ groups: [{ items }] });
+  const a = m.readMany(['0001', '0002', '0003', '0004']);           // section A opened
+  const b = m.readMany(['0005', '0006', '0007'], { front: true });   // then section B
+  check(m.readPending('0002') && m.readPending('0005'), 'waiting reads are known as pending');
+  const n = m.cancelReads(['0002', '0003', '0004']);                 // A closed
+  check(n === 3, 'closing a section drops its three waiting reads');
+  const c = m.readMany(['0006', '0008'], { front: true });           // C opened, shares 0006 with B
+  release();
+  const ra = await Promise.all(a), rb = await Promise.all(b), rc = await Promise.all(c);
+  check(order.join(',') === '0001,0006,0008,0005,0007',
+        'the read on the wire finishes, then the newest section, then the one before: ' + order.join(','));
+  check(ra.slice(1).every((r) => r.cancelled) && ra[0].ok, 'dropped reads resolve as cancelled, the one on the wire as read');
+  check(rb.every((r) => r.ok) && rc.every((r) => r.ok), 'reads moved up still answer every caller');
+  check(m.state['0002'].status === 'idle', 'a dropped read leaves its item unread, to be read when opened again');
+
+  // A write goes ahead of reads still waiting.
+  order.length = 0;
+  gate = new Promise((r) => { release = r; });
+  m.readMany(['0009', '0010', '0011']);
+  const w = m.write('0001', '01');
+  release();
+  await w;
+  check(order[0] === '0009' && order[1] === '0001', 'the operator\'s write goes right after the read on the wire');
+}
+
 // --- serial: two writes at once do not interleave ------------------------
 {
   const rig = radio({ '0061': '00', '0029': '01' });

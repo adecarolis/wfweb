@@ -353,7 +353,8 @@
 .setmenu-node.depth-0[open] > summary { color: var(--mode-accent); }
 .setmenu-node.depth-1 > summary { padding-left: 28px; font-weight: 600; }
 .setmenu-node.depth-2 > summary { padding-left: 46px; color: var(--text-dim); font-weight: 600; }
-.setmenu-count { margin-left: auto; color: var(--text-faint); font-size: var(--fs-sm); font-weight: normal; }
+.setmenu-progress { margin-left: auto; color: var(--mode-accent); font-size: var(--fs-sm); font-weight: normal; }
+.setmenu-count { margin-left: var(--space-3); min-width: 2.5em; text-align: right; color: var(--text-faint); font-size: var(--fs-sm); font-weight: normal; }
 .setmenu-node-body { background: rgba(255, 255, 255, 0.015); }
 
 .setmenu-row { display: grid; grid-template-columns: minmax(14em, 1fr) auto minmax(5em, 14em); align-items: center;
