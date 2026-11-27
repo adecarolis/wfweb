@@ -929,8 +929,8 @@ packet are known to the backend) and the backend switches COMP off before
 the key and back on after the unkey: `holdCompressorForDigitalTx` /
 `releaseCompressorHold` on the server (every unkey site calls the release,
 including the vanished-client and shutdown paths), `_holdCompressor` /
-`_releaseCompressor` in `serial-transport.js` (`_restoreCompressorDirect`
-on close) and its mirror in `virtual-transport.js`. SSB only, never on an
+`_releaseCompressor` in `serial-transport.js` (`_takeCompressorRestore`
+on close, below) and its mirror in `virtual-transport.js`. SSB only, never on an
 unread state, never switched on if it was off, and a `setCompressor` during
 the over wins. A new digital TX path must send `digital: true`, and must
 bracket the over with `enableMic true` / `false` like FT8 does: that is
@@ -977,6 +977,24 @@ the tile): the rig takes the set while keyed and the power
 is back outside 500-2500 Hz. Tests: the TBW cases of
 `tests/test_compressor.py` (the mock keeps a setting per COMP state) and
 `tests/tbw_browser.mjs` (Web Serial transport against a fake IC-7300).
+
+**Standalone `close()` writes the rig back itself** (`_close()` in
+`serial-transport.js`): the unkey when the rig is keyed or a key / unkey is
+still queued, the held filter, COMP, then both mod inputs as read at connect
+(never a WLAN / LAN value), straight to the port, each write under
+`withDeadline`. What to write is settled before the first await and the
+command queue is dropped with it; `_closing` then keeps `sendCommand` and
+`_enqueue` out. Until 2026-11-26 none of it ran: `withDeadline` was called
+and never defined (it came from the unmerged multi-rig branch), the
+ReferenceError went into a best-effort `catch`, and the rig was left on USB
+inputs, COMP off and WIDE. With the helper in, the queue still drained
+while `close()` awaited: a key queued as the port closed went out behind
+the restore and left the rig on transmit, and an unkey's queued filter /
+COMP restore was dropped with the queue. **A setting the transport changes
+on the rig for its own use needs its way back in `_close()`**, and a test
+in `tests/tbw_browser.mjs` that closes the port and reads what the fake rig
+received. Not done there: the scope output stays on (the server leaves it
+on too), and a tab closed or reloaded runs no `close()` at all.
 
 **FUNC TBW tile** (after COMP, both forks, SSB only like the rig's key): the
 setting in use, WIDE / MID / NAR, a press steps to the next

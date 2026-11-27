@@ -48,6 +48,22 @@
         return 'Icom 0x' + addr.toString(16).toUpperCase();
     }
 
+    // Settles with `promise`, or rejects with an Error naming `label` once
+    // `ms` have passed; the timer is cleared either way. For the writes
+    // close() makes on its way out: a Web Serial write on a port whose cable
+    // was pulled, or whose stack is wedged, may never settle at all (IC-705
+    // CDC ports, #80), and the close must not wait on it.
+    function withDeadline(promise, ms, label) {
+        return new Promise(function (resolve, reject) {
+            var timer = setTimeout(function () {
+                reject(new Error(label + ' timed out after ' + ms + ' ms'));
+            }, ms);
+            Promise.resolve(promise).then(
+                function (v) { clearTimeout(timer); resolve(v); },
+                function (e) { clearTimeout(timer); reject(e); });
+        });
+    }
+
     // Bauds tried during auto-detect, ordered by likelihood. 19200 is the
     // most common Icom default; 115200 is what people set for snappy SDR
     // operation; 9600 is the original factory default for older rigs.
@@ -391,6 +407,7 @@
             // disable, and disconnect (issue #79).
             this._savedDataOffMod = null;
             this._savedDataMod = null;
+            this._closing = null;   // the close under way (a promise), see close()
 
             // Speech compressor taken out for wfweb's own digital overs
             // (#147): they run in plain USB/LSB, where the rig keeps the
@@ -491,13 +508,48 @@
             }
         }
 
-        async close() {
-            // Put the rig's mod inputs back the way the user had them
-            // before we drop the link (issue #79). The command queue is
-            // about to be cleared, so the frames are written directly.
-            await this._restoreCompressorDirect();
-            await this._restoreModInputsDirect();
+        // A second call while one is under way gets the same close.
+        close() {
+            if (!this._closing) {
+                var self = this;
+                this._closing = this._close().finally(function () { self._closing = null; });
+            }
+            return this._closing;
+        }
+
+        async _close() {
+            // The rig is left as the operator had it: on receive, the SSB
+            // transmit filter and COMP back from a digital over's hold
+            // (#147), the mod inputs as they were at connect (#79).
+            //
+            // What to write is settled here, before the first await, and the
+            // command queue is dropped with it: while the port is open
+            // _drain() keeps writing, so a key still queued went out behind
+            // the restore and left a closed port with the rig on transmit,
+            // and a hold's COMP-off overtook the COMP-on that undid it. From
+            // the first await on, _closing keeps anything new out of the
+            // queue (sendCommand, _enqueue). The frames go straight to the
+            // port, in the order of a normal unkey: PTT, filter, COMP.
             this._stopPolling();
+            var frames = [];
+            if (this._rigCanTransmit() &&
+                    (this.state.transmitting || this._queue.indexOf('setPTT') !== -1)) {
+                frames.push([civ.cmdSetPTT(false), 'Unkey write']);
+                if (this.state.transmitting) {
+                    this.state.transmitting = false;
+                    this._emit('update', { transmitting: false });
+                }
+            }
+            frames = frames.concat(this._takeCompressorRestore(), this._takeModInputRestore());
+            this._queue = [];
+            this._payloads = {};
+            for (var i = 0; i < frames.length && this.writer; i++) {
+                try {
+                    await withDeadline(this.writer.write(civ.buildFrame(this.civAddr, this.controllerAddr,
+                        frames[i][0])), 1000, frames[i][1]);
+                    await new Promise(function (r) { setTimeout(r, 20); });
+                } catch (e) { break; }   // best effort: the link is gone, and so is the rest
+            }
             this._open = false;
             await this._stopRxAudio();
             await this._stopTxAudio();
@@ -515,7 +567,7 @@
         isOpen() { return this._open; }
 
         sendCommand(obj) {
-            if (!obj || !obj.cmd) return;
+            if (!obj || !obj.cmd || this._closing) return;
 
             // Analog levels — uniform 0x14 NN <BCD level> shape.
             if (ANALOG_SUB.hasOwnProperty(obj.cmd)) {
@@ -1517,6 +1569,7 @@
         // ----------------------------------------------------------------
 
         _enqueue(key, payload) {
+            if (this._closing) return;   // close() has taken what it writes; see _close()
             this._payloads[key] = payload;
             if (this._queue.indexOf(key) === -1) this._queue.push(key);
             this._drain();
@@ -1541,6 +1594,7 @@
         // needs a long FE preamble that must precede the FE FE addr ctrl ...
         // start-of-frame).
         _enqueueRaw(key, frameBytes) {
+            if (this._closing) return;
             this._payloads[key] = { __raw: frameBytes };
             if (this._queue.indexOf(key) === -1) this._queue.push(key);
             this._drain();
@@ -1583,13 +1637,13 @@
             this._enqueue(key, civ.cmdSetModInput(prefix, reg));
         }
 
-        // Put both mod-input registers back to the values the rig had
-        // before we touched them (captured by the connect-time reads).
-        // Only runs on disconnect: close() clears the command queue, so
-        // the restore frames go straight to the port (best-effort,
-        // deadline-guarded). Never restores a network (WLAN/LAN) value.
-        async _restoreModInputsDirect() {
-            if (!this.writer || !this._modIn) return;
+        // close(): both mod-input registers go back to the values the rig
+        // had before we touched them (captured by the connect-time reads).
+        // Returns the frames for _close() to write and forgets the values.
+        // Never a network (WLAN/LAN) value.
+        _takeModInputRestore() {
+            var out = [];
+            if (!this._modIn) return out;
             var regs = [
                 [this._modIn.off,   this._savedDataOffMod],
                 [this._modIn.data1, this._savedDataMod],
@@ -1598,15 +1652,11 @@
                 var prefix = regs[i][0], v = regs[i][1];
                 if (prefix == null || v === null) continue;
                 if (this._modIn.netRegs && this._modIn.netRegs.indexOf(v) !== -1) continue;
-                try {
-                    var frame = civ.buildFrame(this.civAddr, this.controllerAddr,
-                        civ.cmdSetModInput(prefix, v));
-                    await withDeadline(this.writer.write(frame), 1000, 'Mod-input restore write');
-                    await new Promise(function (r) { setTimeout(r, 20); });
-                } catch (e) { /* best effort — the link may already be gone */ }
+                out.push([civ.cmdSetModInput(prefix, v), 'Mod-input restore write']);
             }
             this._savedDataOffMod = null;
             this._savedDataMod = null;
+            return out;
         }
 
         async _readLoop() {
@@ -3890,27 +3940,33 @@
             this._enqueue('read_txBandwidth', civ.cmdReadTxBandwidth());
         }
 
-        // close(): the queue is about to be dropped, so write it directly.
-        // The filter first, while COMP is still off.
-        async _restoreCompressorDirect() {
-            var on = this._compHeld && this._compRestoreOn;
-            var tbw = this._tbwHeld ? this._tbwRestore : -1;
+        // close(): what the rig is owed for the filter and for COMP, as
+        // frames for _close() to write, the filter first, while COMP is
+        // still off. During a hold that is the hold's own restore. Otherwise
+        // it is a set still in the queue close() is about to drop: the
+        // restore of an over that has just ended (_releaseCompressor), or
+        // the operator's own word. A hold with nothing to put back and a
+        // set queued is that word too (setCompressor / setTxBandwidth during
+        // the over clear the hold's restore); the hold's own COMP-off and
+        // WIDE are only ever queued with a restore pending, which wins.
+        _takeCompressorRestore() {
+            var out = [];
+            if (this._tbwHeld && this._tbwRestore > 0) {
+                out.push([civ.cmdSetTxBandwidth(this._tbwRestore), 'TX bandwidth restore write']);
+            } else if (this._payloads.setTxBandwidth) {
+                out.push([this._payloads.setTxBandwidth, 'TX bandwidth write']);
+            }
+            if (this._compHeld && this._compRestoreOn) {
+                out.push([civ.cmdSetBoolFunc(0x44, true), 'Compressor restore write']);
+            } else if (this._payloads.setCompressor) {
+                out.push([this._payloads.setCompressor, 'Compressor write']);
+            }
             this._compHeld = false;
             this._compRestoreOn = false;
             this._tbwHeld = false;
             this._tbwAwait = false;
             this._tbwRestore = -1;
-            if (!this.writer) return;
-            try {
-                if (tbw > 0) {
-                    await withDeadline(this.writer.write(civ.buildFrame(this.civAddr, this.controllerAddr,
-                        civ.cmdSetTxBandwidth(tbw))), 1000, 'TX bandwidth restore write');
-                }
-                if (on) {
-                    await withDeadline(this.writer.write(civ.buildFrame(this.civAddr, this.controllerAddr,
-                        civ.cmdSetBoolFunc(0x44, true))), 1000, 'Compressor restore write');
-                }
-            } catch (e) { /* best effort — the link may already be gone */ }
+            return out;
         }
     }
 

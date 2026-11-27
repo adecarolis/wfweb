@@ -9,7 +9,12 @@
 // neither. WIDE already: no set. COMP switched by the operator mid-over: the
 // hold moves to the other setting. Then the FUNC TBW tile: it reads the
 // setting of the COMP state in use, a tap steps and writes it, and it is
-// gone outside SSB.
+// gone outside SSB. Last, the port is closed in the middle of a digital over:
+// close() drops the command queue, so the transport writes what the rig is
+// owed itself (the unkey, the filter, COMP, then both mod inputs as they were
+// read at connect). Fresh pages close with a key and with an unkey just
+// queued, and a fake IC-705 left on WLAN checks that a network input is never
+// written back.
 //
 // Needs playwright-core and a Chromium (found like comp_browser.mjs);
 // `--probe` only reports whether they were found. Run through
@@ -83,16 +88,21 @@ const server = http.createServer((req, res) => {
 await new Promise(r => server.listen(0, '127.0.0.1', r));
 const BASE = `http://127.0.0.1:${server.address().port}/`;
 
-// A fake IC-7300 behind navigator.serial: answers the probe, frequency and
-// mode, COMP (16 44), TBW (16 58, one setting per COMP state), and ACKs
-// everything else, the key (1C 00) included.
-function fakeIc7300() {
-  const RIG = 0x94, CTL = 0xE0;
-  const rig = window.__rig = { comp: 1, tbw: [2, 1], mode: 0x01, freq: 14074000 };
+// A fake Icom behind navigator.serial: answers the probe, frequency and
+// mode, COMP (16 44), TBW (16 58, one setting per COMP state), the two mod
+// input registers (1A 05 xx yy: Data-Off and DATA1, as the operator left
+// them), the key (1C 00), and ACKs everything else.
+const IC7300 = { addr: 0x94, modRegs: [[0x00, 0x66], [0x00, 0x67]], mod: [0x00, 0x01] };   // MIC, ACC
+const IC7300_ON_USB = { addr: 0x94, modRegs: [[0x00, 0x66], [0x00, 0x67]], mod: [0x03, 0x03] };
+const IC705  = { addr: 0xA4, modRegs: [[0x01, 0x18], [0x01, 0x19]], mod: [0x03, 0x00] };   // WLAN, MIC
+function fakeIcom(opt) {
+  const RIG = opt.addr, CTL = 0xE0;
+  const rig = window.__rig = { comp: 1, tbw: [2, 1], mode: 0x01, freq: 14074000, mod: opt.mod.slice(), ptt: 0 };
   const log = window.__civLog = [];
   let ctrl = null;
   const readable = new ReadableStream({ start(c) { ctrl = c; } });
-  const reply = (bytes) => ctrl.enqueue(new Uint8Array([0xFE, 0xFE, CTL, RIG, ...bytes, 0xFD]));
+  // A reply to a frame written just before the port closed has nowhere to go.
+  const reply = (bytes) => { try { ctrl.enqueue(new Uint8Array([0xFE, 0xFE, CTL, RIG, ...bytes, 0xFD])); } catch (e) { /* closed */ } };
   const bcd = (hz) => { const out = []; for (let i = 0; i < 5; i++) { const two = hz % 100; hz = Math.floor(hz / 100); out.push(((two / 10 | 0) << 4) | (two % 10)); } return out; };
   const respond = (p) => {
     const [c, s] = p;
@@ -110,6 +120,15 @@ function fakeIc7300() {
       if (p[2] > 2) return reply([0xFA]);
       rig.tbw[rig.comp] = p[2];
       return reply([0xFB]);
+    }
+    if (c === 0x1C && s === 0x00 && p.length === 3) { rig.ptt = p[2]; return reply([0xFB]); }
+    if (c === 0x1A && s === 0x05 && p.length >= 4) {
+      const k = opt.modRegs.findIndex(r => r[0] === p[2] && r[1] === p[3]);
+      if (k >= 0) {
+        if (p.length === 4) return reply([0x1A, 0x05, p[2], p[3], rig.mod[k]]);
+        rig.mod[k] = p[4];
+        return reply([0xFB]);
+      }
     }
     return reply([0xFB]);
   };
@@ -151,7 +170,7 @@ try {
   const ctx = await browser.newContext({ viewport: { width: 1100, height: 800 } });
   const page = await ctx.newPage();
   page.on('pageerror', (e) => { console.log('pageerror: ' + e.message); fails++; });
-  await page.addInitScript(fakeIc7300);
+  await page.addInitScript(fakeIcom, IC7300);
   await page.goto(BASE);
   await page.click('#startBtn');
   await page.waitForFunction(() => window.currentFreq > 0, null, { timeout: 30000 });
@@ -283,7 +302,103 @@ try {
     check(f.join() === 'KEY,UNKEY', `an FM over (packet) touches neither, and the filter is not read in FM (got ${f.join(', ')})`);
     check(await tile() === null, 'no TBW tile outside SSB');
   }
+
+  // ---- the port closed with COMP and the filter held ------------------------
+  // The sets written since a mark, as hex: COMP, the filter, the mod inputs
+  // and the key (reads carry no value byte and are left out).
+  const setsSince = (pg, m) => pg.evaluate((m) => window.__civLog.slice(m)
+    .map(p => p.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' '))
+    .filter(x => /^(16 44|16 58|1A 05 .. ..|1C 00) ..$/.test(x)), m);
+  {
+    await send({ cmd: 'setMode', value: 'USB' });
+    await page.waitForFunction(() => window.__rig.mode === 0x01 && window.currentMode === 'USB', null, { timeout: 5000 });
+    await send({ cmd: 'setCompressor', value: true });
+    await page.waitForFunction(() => window.__rig.comp === 1, null, { timeout: 5000 });
+    await settle();
+    await page.evaluate(() => { window.__rig.tbw = [2, 1]; });
+    check((await rig()).mod.join() === '3,3', `both mod inputs are on USB for the session (got ${(await rig()).mod.join()})`);
+    await send({ cmd: 'setPTT', value: true, digital: true });
+    await page.waitForFunction(() => window.__rig.comp === 0 && window.__rig.tbw[0] === 0, null, { timeout: 5000 })
+      .then(() => check(true, 'before the close: COMP off and the filter on WIDE, both held'),
+            async () => check(false, `before the close: nothing held (got ${JSON.stringify(await rig())})`));
+    const m = await mark();
+    await page.evaluate(() => window.serialTransport.close());
+    await settle();
+    const f = await setsSince(page, m);
+    const r = await rig();
+    check(f.join() === '1C 00 00,16 58 02,16 44 01,1A 05 00 66 00,1A 05 00 67 01',
+          `closed mid-over: unkey, the filter back to NAR, COMP on, then Data-Off to MIC and DATA1 to ACC (got ${f.join(', ') || 'nothing'})`);
+    check(r.ptt === 0 && r.comp === 1 && r.tbw.join() === '2,1' && r.mod.join() === '0,1',
+          `closed mid-over: the rig is on receive with COMP, both filters and the mod inputs as the operator had them (got ${JSON.stringify(r)})`);
+  }
   await page.close();
+
+  // The closes below each need a rig of their own. Its own context: a page
+  // leaves the rig's baud and address in localStorage.
+  const openRig = async (fake, usb) => {
+    const c = await browser.newContext({ viewport: { width: 1100, height: 800 } });
+    const pg = await c.newPage();
+    pg.on('pageerror', (e) => { console.log('pageerror: ' + e.message); fails++; });
+    await pg.addInitScript(fakeIcom, fake);
+    await pg.goto(BASE);
+    await pg.click('#startBtn');
+    await pg.waitForFunction(() => window.currentFreq > 0 && window.currentMode === 'USB', null, { timeout: 30000 });
+    await pg.waitForFunction((usb) => window.__rig.mod.join() === usb && window.__civLog.some(p => p[0] === 0x16 && p[1] === 0x44), usb, { timeout: 10000 });
+    await pg.waitForTimeout(800);
+    return pg;
+  };
+  const rigOf = (pg) => pg.evaluate(() => JSON.parse(JSON.stringify(window.__rig)));
+
+  // ---- a key sent as the port closes ----------------------------------------
+  // The key is still queued when close() starts: it must not go out behind
+  // the restore and leave a closed port with the rig on transmit.
+  {
+    const pg = await openRig(IC7300, '3,3');
+    const m = await pg.evaluate(() => window.__civLog.length);
+    await pg.evaluate(() => { window.send({ cmd: 'setPTT', value: true, digital: true }); return window.serialTransport.close(); });
+    await pg.waitForTimeout(600);
+    const f = await setsSince(pg, m);
+    const r = await rigOf(pg);
+    check(!f.includes('1C 00 01') && r.ptt === 0, `key + close: the rig is never keyed (got ${f.join(', ') || 'nothing'}; ptt ${r.ptt})`);
+    check(r.comp === 1 && r.tbw.join() === '2,1' && r.mod.join() === '0,1', `key + close: COMP, the filters and the mod inputs as they were (got ${JSON.stringify(r)})`);
+    await pg.close();
+  }
+
+  // ---- an unkey sent as the port closes -------------------------------------
+  // The over has ended: its restore (the filter, then COMP) is queued behind
+  // the unkey when close() drops the queue. On a rig already on USB inputs
+  // there is no mod input to write, so nothing gives the queue time to drain.
+  {
+    const pg = await openRig(IC7300_ON_USB, '3,3');
+    await pg.evaluate(() => window.send({ cmd: 'setPTT', value: true, digital: true }));
+    await pg.waitForFunction(() => window.__rig.ptt === 1 && window.__rig.comp === 0 && window.__rig.tbw[0] === 0, null, { timeout: 5000 }).catch(() => {});
+    const m = await pg.evaluate(() => window.__civLog.length);
+    await pg.evaluate(() => { window.send({ cmd: 'setPTT', value: false }); return window.serialTransport.close(); });
+    await pg.waitForTimeout(600);
+    const f = await setsSince(pg, m);
+    const r = await rigOf(pg);
+    check(f.join() === '1C 00 00,16 58 02,16 44 01', `unkey + close: the unkey, then NAR, then COMP on still reach the rig (got ${f.join(', ') || 'nothing'})`);
+    check(r.ptt === 0 && r.comp === 1 && r.tbw.join() === '2,1' && r.mod.join() === '3,3', `unkey + close: COMP and the filters as the operator had them, the mod inputs untouched (got ${JSON.stringify(r)})`);
+    await pg.close();
+  }
+
+  // ---- a rig left on a network mod input ------------------------------------
+  // An IC-705 with Data-Off MOD on WLAN and DATA1 MOD on MIC. The session runs
+  // both on USB; the close puts MIC back and never writes WLAN, which is
+  // silent TX over a serial cable (#79).
+  {
+    const pg = await openRig(IC705, '1,1');
+    check((await rigOf(pg)).mod.join() === '1,1', 'IC-705: both mod inputs go to USB at connect');
+    const m = await pg.evaluate(() => window.__civLog.length);
+    await pg.evaluate(() => window.serialTransport.close());
+    await pg.waitForTimeout(600);
+    const f = await setsSince(pg, m);
+    const all = await setsSince(pg, 0);
+    const r = await rigOf(pg);
+    check(f.join() === '1A 05 01 19 00' && r.mod.join() === '1,0', `IC-705 closed on receive: DATA1 back on MIC, Data-Off left on USB, nothing else written (got ${f.join(', ') || 'nothing'}; rig ${r.mod.join()})`);
+    check(!all.includes('1A 05 01 18 03') && !all.includes('1A 05 01 19 03'), 'IC-705: WLAN is never written, at connect or at the close');
+    await pg.close();
+  }
 } finally {
   await browser.close();
   server.close();

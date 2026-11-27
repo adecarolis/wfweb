@@ -461,7 +461,8 @@ def test_comp_browser():
 
 def test_tbw_browser():
     """The Standalone transport's hold of the transmit filter, on the Web
-    Serial transport against a fake IC-7300."""
+    Serial transport against a fake IC-7300, and what it writes back when
+    the port is closed: the filter, COMP, the mod inputs."""
     if not shutil.which("node"):
         pytest.skip("node unavailable")
     probe = _node("tbw_browser.mjs", "--probe", timeout=60)
