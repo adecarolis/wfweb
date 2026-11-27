@@ -2888,6 +2888,16 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
             </div>
             <div id="midiPanel"></div>
         </div>
+        <!-- SET menu window (FUNC > SET): the radio's SET mode items (CI-V
+             1A 05) from setmenu/<model>.json, read and written through raw
+             CI-V. Body built by WfSetMenuPanel (setmenu.js). -->
+        <div id="setMenuOverlay" class="mem-modal">
+            <div class="mem-modal-title">
+                <span>SET menu</span>
+                <button class="digi-settings-close" style="width:auto;margin:0;padding:2px 12px" onclick="closeSetMenuModal()">&#x2715; Close</button>
+            </div>
+            <div id="setMenuPanel"></div>
+        </div>
         <!-- PADDLE window (CW bar, CALL row): keyer options and the paddle's
              adapter -- a MIDI controller's jack (mapped in FUNC > MIDI) or a
              USB keyboard adapter. Body built by WfPaddlePanel (paddle-panel.js). -->
@@ -3377,6 +3387,7 @@ body.ui-locked .softBtn:not(.ptt-btn):not(.key-btn) { opacity: 0.4; }
 <script src="cw-paddle.js"></script>
 <script src="midi.js"></script>
 <script src="paddle-panel.js"></script>
+<script src="setmenu.js"></script>
 <script>
 // ============================================================
 // STATE
@@ -3389,6 +3400,7 @@ var transport = null;         // alias to wsTransport
 var ws = null;                // alias to wsTransport.ws — legacy readyState checks
 var serverVersion = '';  // set from rigInfo message
 var rigModelName = '';   // set from rigInfo/rigConnected
+var rigManufacturer = '';   // likewise: 'Icom' gets FUNC > SET (raw CI-V Set menu)
 var rigTagName = '';     // server --name override (rigInfo.name); empty = show the model
 function updateRigTag() {
     var label = rigTagName || rigModelName;
@@ -5447,7 +5459,7 @@ function handleMessage(msg) {
                 if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner); if (msg.hasBreakIn !== undefined) updateHasBreakIn(!!msg.hasBreakIn); if (msg.hasCompressor !== undefined || msg.hasCompLevel !== undefined) updateHasCompressor(msg); if (msg.hasAgc !== undefined) updateHasAgc(msg); if (msg.hasTxBandwidth !== undefined) updateHasTxBandwidth(!!msg.hasTxBandwidth);
                 if (msg.txMeters !== undefined) setTxMeterCaps(msg.txMeters, msg.poCal);
                 if (msg.cwSpeedRange) applyCwSpeedRange(msg.cwSpeedRange);
-                if (msg.manufacturer !== undefined) cwKeyerType = (msg.manufacturer === 'Icom') ? 'icom' : 'ideal';
+                if (msg.manufacturer !== undefined) { cwKeyerType = (msg.manufacturer === 'Icom') ? 'icom' : 'ideal'; rigManufacturer = msg.manufacturer; }
                 if (msg.hasMemoryMode !== undefined) hasMemoryMode = !!msg.hasMemoryMode;
                 if (msg.memoriesLocal !== undefined) setMemoriesLocal(!!msg.memoriesLocal);
                 if (msg.memGroups !== undefined) setupMemoryGroups(msg.memGroups, msg.memStart || 0);
@@ -5486,7 +5498,7 @@ function handleMessage(msg) {
             if (msg.hasTuner !== undefined) updateHasTuner(!!msg.hasTuner); if (msg.hasBreakIn !== undefined) updateHasBreakIn(!!msg.hasBreakIn); if (msg.hasCompressor !== undefined || msg.hasCompLevel !== undefined) updateHasCompressor(msg); if (msg.hasAgc !== undefined) updateHasAgc(msg); if (msg.hasTxBandwidth !== undefined) updateHasTxBandwidth(!!msg.hasTxBandwidth);
             if (msg.txMeters !== undefined) setTxMeterCaps(msg.txMeters, msg.poCal);
                 if (msg.cwSpeedRange) applyCwSpeedRange(msg.cwSpeedRange);
-                if (msg.manufacturer !== undefined) cwKeyerType = (msg.manufacturer === 'Icom') ? 'icom' : 'ideal';
+                if (msg.manufacturer !== undefined) { cwKeyerType = (msg.manufacturer === 'Icom') ? 'icom' : 'ideal'; rigManufacturer = msg.manufacturer; }
             if (msg.hasMemoryMode !== undefined) hasMemoryMode = !!msg.hasMemoryMode;
             if (msg.memoriesLocal !== undefined) setMemoriesLocal(!!msg.memoriesLocal);
             if (msg.memGroups !== undefined) setupMemoryGroups(msg.memGroups, msg.memStart || 0);
@@ -5768,7 +5780,11 @@ function handleMessage(msg) {
             accessState.policy = msg.policy || null;
             updateAccessUi();
             break;
+        case 'civRawReply':
+            civRawReply(msg);
+            break;
         case 'denied':
+            if (msg.cmd === 'civRaw') civRawDeniedAll(msg.reason || ('needs ' + msg.need + ' access'));
             accessToast(msg.reason || ('needs ' + msg.need + ' access'), true);
             // The server took the key away, or never gave it: the PTT
             // button does not go on saying "TX LOCKED" for three minutes.
@@ -7662,6 +7678,11 @@ function renderFuncOverlay() {
     // permission no controller can be seen; the window is then reached from
     // the CW bar's PADDLE window (its MIDI... button).
     if (midi.devices.length) grid.appendChild(makeFuncBtn('MIDI', midi.enabled ? 'ON' : 'OFF', midi.enabled, openMidiModal));
+
+    // The radio's SET mode items through raw CI-V (setmenu.js): Icom only;
+    // on a shared station the server takes civRaw from admins alone.
+    if (rigManufacturer === 'Icom' && (!accessState.shared || accessState.can.admin))
+        grid.appendChild(makeFuncBtn('SET', 'MENU', false, openSetMenuModal));
 
     // RX audio / TX audio / jitter buffer: the AUDIO / TX overlay, which is
     // otherwise only reachable while audio is off.
@@ -11705,6 +11726,62 @@ function closePaddleModal() {
     document.getElementById('paddleOverlay').classList.remove('visible');
 }
 document.getElementById('cwPaddleBtn').addEventListener('click', openPaddleModal);
+
+// Raw CI-V for the SET menu window: civRaw over the WebSocket, answered by
+// civRawReply with the same id (REST_API.md, POST /api/v1/radio/civ).
+var civRawSeq = 0;
+var civRawPending = {};   // id -> {resolve, timer}
+function civRaw(hex) {
+    return new Promise(function (resolve) {
+        var id = ++civRawSeq;
+        var timer = setTimeout(function () {
+            delete civRawPending[id];
+            resolve({ reply: 'timeout', error: 'no answer from the server' });
+        }, 5000);
+        civRawPending[id] = { resolve: resolve, timer: timer };
+        if (send({ cmd: 'civRaw', id: id, hex: hex }) === false) {
+            clearTimeout(timer);
+            delete civRawPending[id];
+            resolve({ reply: 'error', error: 'refused here (access)' });
+        }
+    });
+}
+function civRawReply(msg) {
+    var p = civRawPending[msg.id];
+    if (!p) return;
+    clearTimeout(p.timer);
+    delete civRawPending[msg.id];
+    p.resolve(msg);
+}
+function civRawDeniedAll(reason) {
+    Object.keys(civRawPending).forEach(function (id) {
+        civRawReply({ id: Number(id), reply: 'error', error: reason });
+    });
+}
+
+var setMenu = new WfSetMenu({ civ: civRaw });
+var setMenuPanel = new WfSetMenuPanel(document.getElementById('setMenuPanel'), setMenu);
+var setMenuModel = null;   // the model whose table is loaded
+function openSetMenuModal() {
+    document.getElementById('setMenuOverlay').classList.add('visible');
+    var model = rigModelName || '';
+    if (model === setMenuModel) { setMenuPanel.render(); return; }
+    setMenuModel = model;
+    setMenu.setTable(null);
+    setMenuPanel.setMessage('Loading the ' + model + ' table...');
+    setMenuPanel.render();
+    fetch('setmenu/' + encodeURIComponent(model) + '.json', { cache: 'no-store' })
+        .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(function (t) { setMenuPanel.setMessage(''); setMenu.setTable(t); })
+        .catch(function () {
+            setMenuModel = null;
+            setMenuPanel.setMessage('No SET menu table for ' + (model || 'this radio') + ' yet.');
+            setMenuPanel.render();
+        });
+}
+function closeSetMenuModal() {
+    document.getElementById('setMenuOverlay').classList.remove('visible');
+}
 
 function openMidiModal() {
     document.getElementById('midiOverlay').classList.add('visible');

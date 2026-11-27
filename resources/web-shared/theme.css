@@ -329,6 +329,22 @@
 .midi-label { color: var(--mode-accent); font-weight: var(--fw-bold); font-size: var(--fs-xs); letter-spacing: 1px; }
 .midi-status { color: var(--text-dim); }
 .midi-status.ok { color: var(--state-ok); }
+
+/* -- Set menu window (setmenu.js WfSetMenuPanel), same shell and tint as MIDI */
+.setmenu-source { color: var(--text-dim); font-size: var(--fs-xs); }
+.setmenu-list { overflow-y: auto; flex: 1 1 auto; min-height: 80px; max-height: 65vh; border-top: var(--border-w) solid var(--mode-accent-dim); }
+.setmenu-group { color: var(--mode-accent); font-weight: var(--fw-bold); font-size: var(--fs-xs); letter-spacing: 1px; padding: var(--space-2) 0 2px; border-bottom: var(--border-w) solid var(--mode-accent-dim); }
+.setmenu-row { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(6em, 14em); align-items: center; gap: var(--space-1) var(--space-2); padding: 3px 0; border-bottom: var(--border-w) solid var(--border-col); }
+.setmenu-row.missing { opacity: 0.45; }
+.setmenu-name { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: baseline; min-width: 0; }
+.setmenu-item { color: var(--text-dim); font-size: var(--fs-xs); }
+.setmenu-ctl { display: flex; align-items: center; gap: var(--space-1); }
+.setmenu-ctl select.wf-field, .setmenu-ctl input.wf-field { font-size: var(--fs-sm); padding: 2px 4px; }
+.setmenu-ctl input.wf-field { width: 6em; }
+.setmenu-state { font-size: var(--fs-xs); color: var(--text-dim); }
+.setmenu-state.ok { color: var(--state-ok); }
+.setmenu-state.err { color: var(--state-error); }
+.setmenu-state.dim { color: var(--text-dim); }
 .midi-unsupported { color: var(--state-warn); line-height: 1.4; }
 .midi-panel select.wf-field { font-size: var(--fs-sm); padding: 2px 4px; }
 .midi-map { overflow-y: auto; flex: 1 1 auto; min-height: 80px; max-height: 40vh; border-top: var(--border-w) solid var(--mode-accent-dim); }

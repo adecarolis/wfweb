@@ -1,0 +1,31 @@
+{
+  "model": "IC-7300",
+  "source": "seed table: items confirmed on a radio; to be completed from the IC-7300 CI-V command table (full manual) and the firmware supplement",
+  "groups": [
+    {
+      "path": "SET > Function",
+      "items": [
+        {
+          "item": "0029",
+          "name": "Time-Out Timer (CI-V)",
+          "type": "enum",
+          "options": [["00", "OFF"], ["01", "3 min"], ["02", "5 min"], ["03", "10 min"], ["04", "20 min"], ["05", "30 min"]],
+          "source": "IC-7300 manual (codes); read 01 on a radio, 2026-11-27"
+        }
+      ]
+    },
+    {
+      "path": "SET > Connectors",
+      "items": [
+        {
+          "item": "0061",
+          "name": "ACC/USB AF SQL",
+          "type": "enum",
+          "options": [["00", "OFF (OPEN)"], ["01", "ON"]],
+          "source": "read, written and read back on a radio, 2026-11-27",
+          "note": "rigs/IC-7300.rig names 1A 05 0061 'CI-V Output (ANT)': that label is wrong"
+        }
+      ]
+    }
+  ]
+}

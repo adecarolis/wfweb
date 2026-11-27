@@ -1382,6 +1382,7 @@ void webServer::serveStaticFile(QTcpSocket *socket, const QString &path, const Q
     else if (path.endsWith(".js")) contentType = "application/javascript; charset=utf-8";
     else if (path.endsWith(".mjs")) contentType = "application/javascript; charset=utf-8";
     else if (path.endsWith(".map")) contentType = "application/json; charset=utf-8";
+    else if (path.endsWith(".json")) contentType = "application/json; charset=utf-8";
     else if (path.endsWith(".css")) contentType = "text/css; charset=utf-8";
     else if (path.endsWith(".png")) contentType = "image/png";
     else if (path.endsWith(".svg")) contentType = "image/svg+xml";
