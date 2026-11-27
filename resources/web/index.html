@@ -5783,8 +5783,16 @@ function handleMessage(msg) {
         case 'civRawReply':
             civRawReply(msg);
             break;
+        case 'setMenuProgress':
+        case 'setMenuResult':
+            setMenuRunMessage(msg);
+            break;
         case 'denied':
             if (msg.cmd === 'civRaw') civRawDeniedAll(msg.reason || ('needs ' + msg.need + ' access'));
+            if (msg.cmd === 'setMenuBackup' || msg.cmd === 'setMenuRestore')
+                Object.keys(setMenuRuns).forEach(function (id) {
+                    setMenuRunMessage({ type: 'setMenuResult', id: Number(id), error: msg.reason || ('needs ' + msg.need + ' access') });
+                });
             accessToast(msg.reason || ('needs ' + msg.need + ' access'), true);
             // The server took the key away, or never gave it: the PTT
             // button does not go on saying "TX LOCKED" for three minutes.
@@ -11759,8 +11767,35 @@ function civRawDeniedAll(reason) {
     });
 }
 
+// SET menu backup / restore run on the server (setMenuBackup /
+// setMenuRestore, REST_API.md): one request, progress messages, a result.
+var setMenuRunSeq = 0;
+var setMenuRuns = {};   // id -> {resolve, onProgress}
+function setMenuServerRun(cmd, onProgress) {
+    return new Promise(function (resolve) {
+        var id = ++setMenuRunSeq;
+        cmd.id = id;
+        setMenuRuns[id] = { resolve: resolve, onProgress: onProgress };
+        if (send(cmd) === false) {
+            delete setMenuRuns[id];
+            resolve({ error: 'refused here (access)' });
+        }
+    });
+}
+function setMenuRunMessage(msg) {
+    var r = setMenuRuns[msg.id];
+    if (!r) return;
+    if (msg.type === 'setMenuProgress') { if (r.onProgress) r.onProgress(msg.done, msg.total); return; }
+    delete setMenuRuns[msg.id];
+    r.resolve(msg);
+}
 var setMenu = new WfSetMenu({ civ: civRaw });
-var setMenuPanel = new WfSetMenuPanel(document.getElementById('setMenuPanel'), setMenu);
+var setMenuPanel = new WfSetMenuPanel(document.getElementById('setMenuPanel'), setMenu, {
+    backup: function (onProgress) { return setMenuServerRun({ cmd: 'setMenuBackup' }, onProgress); },
+    restore: function (backup, dryRun, onProgress) {
+        return setMenuServerRun({ cmd: 'setMenuRestore', backup: backup, dryRun: dryRun }, onProgress);
+    }
+});
 var setMenuModel = null;   // the model whose table is loaded
 function openSetMenuModal() {
     document.getElementById('setMenuOverlay').classList.add('visible');

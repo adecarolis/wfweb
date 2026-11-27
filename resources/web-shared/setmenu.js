@@ -359,6 +359,20 @@
             return r;
         });
     };
+    // Values read elsewhere (a backup, a restore): {item: dataHex}; items in
+    // notOnRadio are marked so.  Items not in the table are ignored.
+    WfSetMenu.prototype.applyValues = function (values, notOnRadio) {
+        var self = this;
+        Object.keys(values || {}).forEach(function (no) {
+            var item = self.find(no);
+            if (!item) return;
+            var d = WfSetMenuCodec.decode(item, values[no]);
+            if (d.ok) self._set(no, { status: 'ok', value: d.value, text: d.text });
+        });
+        (notOnRadio || []).forEach(function (no) {
+            if (self.find(no)) self._set(no, { status: 'missing', error: 'the radio refused the read (NG): not on this model or firmware' });
+        });
+    };
     WfSetMenu.prototype.readAll = function (onProgress) {
         var all = this.items().map(function (it) { return it.item; }), done = 0;
         return Promise.all(this.readMany(all).map(function (p) {
@@ -443,7 +457,12 @@
     // ------------------------------------------------------------------
     // Window body
     // ------------------------------------------------------------------
-    function WfSetMenuPanel(el, menu) {
+    // server (optional): {backup(onProgress) -> Promise<backup>,
+    //                     restore(backup, dryRun, onProgress) -> Promise<result>}
+    // (the server build's setMenuBackup / setMenuRestore); without it the
+    // window has no BACKUP / RESTORE.
+    function WfSetMenuPanel(el, menu, server) {
+        this.server = server || null;
         this.el = el;
         this.menu = menu;
         this.rows = {};
@@ -475,9 +494,35 @@
         this.rows = {};
 
         var bar = h('div', 'midi-row');
+        if (this.server && menu.table) {
+            var bk = h('button', 'wf-btn', 'BACKUP');
+            bk.type = 'button';
+            bk.title = 'Read every setting and save them to a file';
+            bk.onclick = function () { self._backup(); };
+            var rs = h('button', 'wf-btn', 'RESTORE\u2026');
+            rs.type = 'button';
+            rs.title = 'Load a backup file: shows what would change, then asks';
+            var file = h('input');
+            file.type = 'file';
+            file.accept = '.json,application/json';
+            file.style.display = 'none';
+            file.onchange = function () {
+                var f = file.files && file.files[0];
+                file.value = '';
+                if (f) self._restoreFile(f);
+            };
+            rs.onclick = function () { file.click(); };
+            bar.appendChild(bk);
+            bar.appendChild(rs);
+            bar.appendChild(file);
+            this.buttons = [bk, rs];
+        }
         this.status = h('span', 'midi-status', this.message);
         bar.appendChild(this.status);
         this.el.appendChild(bar);
+        this.review = h('div', 'setmenu-review');
+        this.review.style.display = 'none';
+        this.el.appendChild(this.review);
 
         if (!menu.table) {
             this.el.appendChild(h('div', 'midi-unsupported', this.message || 'No Set menu table for this radio.'));
@@ -565,6 +610,150 @@
         // Sections left open last time: read what they show, top to bottom.
         this.nodes.filter(function (rec) { return rec.el.open; }).reverse()
             .forEach(function (rec) { self._readSection(rec); });
+    };
+    WfSetMenuPanel.prototype._busy = function (on) {
+        (this.buttons || []).forEach(function (b) { b.disabled = on; });
+    };
+    WfSetMenuPanel.prototype._backup = function () {
+        var self = this, menu = this.menu;
+        this._busy(true);
+        this.setMessage('Backing up...');
+        this.server.backup(function (done, total) { self.setMessage('Backing up ' + done + '/' + total); })
+            .then(function (b) {
+                self._busy(false);
+                if (!b || b.error) { self.setMessage('Backup failed: ' + ((b && b.error) || 'no answer')); return; }
+                var values = {};
+                Object.keys(b.items || {}).forEach(function (no) { values[no] = b.items[no].data; });
+                menu.applyValues(values, b.notOnRadio);
+                var stamp = String(b.created || new Date().toISOString()).replace(/[-:]/g, '').replace(/\..*$/, '')
+                    .replace('T', '-').slice(0, 13);
+                var name = (b.model || 'radio') + '-set-' + stamp + '.json';
+                var copy = {};
+                Object.keys(b).forEach(function (k) { if (k !== 'type' && k !== 'id' && k !== 'restore') copy[k] = b[k]; });
+                var doc = self.el.ownerDocument;
+                var a = doc.createElement('a');
+                a.href = URL.createObjectURL(new Blob([JSON.stringify(copy, null, 1)], { type: 'application/json' }));
+                a.download = name;
+                doc.body.appendChild(a);
+                a.click();
+                setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+                var errs = Object.keys(b.errors || {}).length;
+                self.setMessage('Saved ' + name + ': ' + Object.keys(b.items || {}).length + ' settings' +
+                                ((b.notOnRadio || []).length ? ', ' + b.notOnRadio.length + ' not on this radio' : '') +
+                                (errs ? ', ' + errs + ' unread' : ''), errs ? '' : 'ok');
+            });
+    };
+    WfSetMenuPanel.prototype._restoreFile = function (f) {
+        var self = this;
+        var reader = new FileReader();
+        reader.onload = function () {
+            var backup;
+            try { backup = JSON.parse(reader.result); } catch (e) { self.setMessage(f.name + ' is not JSON'); return; }
+            if (!backup || backup.format !== 'wfweb-setmenu-backup') {
+                self.setMessage(f.name + ' is not a wfweb SET menu backup');
+                return;
+            }
+            self._busy(true);
+            self.setMessage('Comparing ' + f.name + ' with the radio...');
+            self.server.restore(backup, true, function (done, total) { self.setMessage('Comparing ' + done + '/' + total); })
+                .then(function (r) {
+                    self._busy(false);
+                    if (!r || r.error) { self.setMessage('Restore: ' + ((r && r.error) || 'no answer')); return; }
+                    self.setMessage('');
+                    self._showReview(f.name, backup, r);
+                });
+        };
+        reader.readAsText(f);
+    };
+    // The dry run's answer: what would change, and the APPLY that writes it.
+    WfSetMenuPanel.prototype._showReview = function (fileName, backup, r) {
+        var self = this, doc = this.el.ownerDocument, box = this.review;
+        function h(tag, cls, text) {
+            var e = doc.createElement(tag);
+            if (cls) e.className = cls;
+            if (text !== undefined) e.textContent = text;
+            return e;
+        }
+        box.innerHTML = '';
+        box.style.display = '';
+        var changes = r.changes || [];
+        var head = h('div', 'setmenu-review-head');
+        head.appendChild(h('span', 'setmenu-review-title', changes.length
+            ? changes.length + (changes.length === 1 ? ' setting differs' : ' settings differ') + ' from ' + fileName
+            : 'The radio already matches ' + fileName));
+        var facts = [];
+        if (backup.created) facts.push('saved ' + String(backup.created).replace('T', ' ').replace('Z', ' UTC'));
+        facts.push(r.unchanged + ' the same');
+        if ((r.skipped || []).length) facts.push(r.skipped.length + ' not restored');
+        if ((r.failed || []).length) facts.push(r.failed.length + ' refused');
+        head.appendChild(h('span', 'setmenu-item', facts.join(' \u00b7 ')));
+        box.appendChild(head);
+        var list = h('div', 'setmenu-review-list');
+        changes.forEach(function (c) {
+            var row = h('div', 'setmenu-review-row');
+            var name = h('div', 'setmenu-name');
+            name.appendChild(h('span', 'setmenu-label', c.name));
+            name.appendChild(h('span', 'setmenu-item', c.item + ' \u00b7 ' + (c.path || '')));
+            row.appendChild(name);
+            row.appendChild(h('span', 'setmenu-review-from', c.fromValue || self._shown(c.item, c.from)));
+            row.appendChild(h('span', 'setmenu-review-arrow', '\u2192'));
+            row.appendChild(h('span', 'setmenu-review-to', c.toValue || self._shown(c.item, c.to)));
+            list.appendChild(row);
+        });
+        (r.failed || []).forEach(function (c) {
+            var row = h('div', 'setmenu-review-row bad');
+            var name = h('div', 'setmenu-name');
+            name.appendChild(h('span', 'setmenu-label', c.name || c.item));
+            name.appendChild(h('span', 'setmenu-item', c.item));
+            row.appendChild(name);
+            row.appendChild(h('span', 'setmenu-review-why', c.reason));
+            list.appendChild(row);
+        });
+        if ((r.skipped || []).length) {
+            list.appendChild(h('div', 'setmenu-review-skipped', 'Not restored: ' + r.skipped.map(function (x) {
+                return (x.name || x.item) + ' (' + x.reason + ')';
+            }).join('; ')));
+        }
+        box.appendChild(list);
+        var actions = h('div', 'midi-row');
+        if (changes.length) {
+            var apply = h('button', 'wf-btn active', 'APPLY ' + changes.length + (changes.length === 1 ? ' CHANGE' : ' CHANGES'));
+            apply.type = 'button';
+            apply.onclick = function () { self._applyRestore(fileName, backup, apply); };
+            actions.appendChild(apply);
+        }
+        var cancel = h('button', 'wf-btn', changes.length ? 'CANCEL' : 'CLOSE');
+        cancel.type = 'button';
+        cancel.onclick = function () { box.style.display = 'none'; box.innerHTML = ''; };
+        actions.appendChild(cancel);
+        box.appendChild(actions);
+    };
+    // A raw value as the window would show it (a level as %, a TBW pair...).
+    WfSetMenuPanel.prototype._shown = function (itemNo, data) {
+        var item = this.menu.find(itemNo);
+        if (!item) return data;
+        var d = WfSetMenuCodec.decode(item, data);
+        return d.ok ? d.text : data;
+    };
+    WfSetMenuPanel.prototype._applyRestore = function (fileName, backup, apply) {
+        var self = this, menu = this.menu, box = this.review;
+        apply.disabled = true;
+        this._busy(true);
+        this.setMessage('Restoring...');
+        this.server.restore(backup, false, function (done, total) { self.setMessage('Restoring ' + done + '/' + total); })
+            .then(function (r) {
+                self._busy(false);
+                box.style.display = 'none';
+                box.innerHTML = '';
+                if (!r || r.error) { self.setMessage('Restore failed: ' + ((r && r.error) || 'no answer')); return; }
+                var values = {};
+                (r.written || []).forEach(function (c) { values[c.item] = c.to; });
+                menu.applyValues(values);
+                (r.failed || []).forEach(function (c) { if (menu.find(c.item)) menu.read(c.item); });
+                var nw = (r.written || []).length, nf = (r.failed || []).length;
+                self.setMessage('Restored ' + fileName + ': ' + nw + ' written' + (nf ? ', ' + nf + ' failed' : ''),
+                                nf ? '' : 'ok');
+            });
     };
     // Opening a section reads its own items (not its sub-sections'), one at
     // a time, ahead of anything still waiting: the section opened last is

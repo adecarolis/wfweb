@@ -378,6 +378,20 @@
 .setmenu-rd { visibility: hidden; padding: 1px 8px; font-size: var(--fs-xs); }
 .setmenu-row:hover .setmenu-rd, .setmenu-row:focus-within .setmenu-rd { visibility: visible; }
 @media (pointer: coarse) { .setmenu-rd { visibility: visible; } }
+/* Restore review: what the dry run found, above the tree, until APPLY / CANCEL. */
+.setmenu-review { border: var(--border-w) solid var(--mode-accent-dim); background: #0c1622; padding: var(--space-2) var(--space-3);
+                  display: flex; flex-direction: column; gap: var(--space-2); }
+.setmenu-review-head { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: baseline; }
+.setmenu-review-title { font-weight: 600; color: var(--text); }
+.setmenu-review-list { max-height: 34vh; overflow-y: auto; }
+.setmenu-review-row { display: grid; grid-template-columns: minmax(12em, 1fr) minmax(5em, auto) 1.5em minmax(5em, auto);
+                      align-items: baseline; gap: var(--space-2); padding: 3px 0; border-bottom: var(--border-w) solid #1c2a38; }
+.setmenu-review-row.bad { grid-template-columns: minmax(12em, 1fr) minmax(10em, 2fr); }
+.setmenu-review-from { color: var(--text-dim); text-align: right; }
+.setmenu-review-arrow { color: var(--mode-accent); text-align: center; }
+.setmenu-review-to { color: var(--text); font-weight: 600; }
+.setmenu-review-why { color: var(--state-error); font-size: var(--fs-sm); }
+.setmenu-review-skipped { color: var(--text-faint); font-size: var(--fs-sm); padding-top: var(--space-1); }
 .setmenu-state { font-size: var(--fs-sm); color: var(--text-dim); }
 .setmenu-state.ok { color: var(--state-ok); }
 .setmenu-state.err { color: var(--state-error); }
