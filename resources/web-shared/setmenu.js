@@ -415,8 +415,10 @@
             this.el.appendChild(h('div', 'midi-unsupported', this.message || 'No Set menu table for this radio.'));
             return;
         }
-        var head = h('div', 'setmenu-source', (menu.table.model || '') +
-                     (menu.table.source ? ' · ' + menu.table.source : ''));
+        // One line: the model and how many items; the table's source on hover.
+        var head = h('div', 'setmenu-source', (menu.table.model || '') + ' · ' + menu.items().length +
+                     ' items' + (menu.table.source ? ' · source ⓘ' : ''));
+        if (menu.table.source) head.title = menu.table.source;
         this.el.appendChild(head);
 
         var list = h('div', 'setmenu-list');
@@ -428,7 +430,7 @@
                 name.appendChild(h('span', '', it.name));
                 name.appendChild(h('span', 'setmenu-item', it.item));
                 if (it.firmware) name.appendChild(h('span', 'setmenu-item', 'fw ' + it.firmware));
-                if (it.note) name.title = it.note;
+                name.title = [it.note, it.source].filter(Boolean).join('\n');
                 row.appendChild(name);
                 var ctl = h('div', 'setmenu-ctl');
                 row.appendChild(ctl);
