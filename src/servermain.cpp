@@ -1460,7 +1460,7 @@ void servermain::setManufacturer(manufacturersType_t man)
             rigSettings->beginGroup("Rig");
             manufacturersType_t manuf = rigSettings->value("Manufacturer",manufIcom).value<manufacturersType_t>();
             if (manuf == man) {
-                uchar civ = rigSettings->value("CIVAddress",0).toInt();
+                quint16 civ = rigSettings->value("CIVAddress",0).toInt();
                 QString model = rigSettings->value("Model","").toString();
                 QString path = systemRigDir.absoluteFilePath(rig);
 
@@ -1497,7 +1497,7 @@ void servermain::setManufacturer(manufacturersType_t man)
 
             manufacturersType_t manuf = rigSettings->value("Manufacturer",manufIcom).value<manufacturersType_t>();
             if (manuf == man) {
-                uchar civ = rigSettings->value("CIVAddress",0).toInt();
+                quint16 civ = rigSettings->value("CIVAddress",0).toInt();
                 QString model = rigSettings->value("Model","").toString();
                 QString path = userRigDir.absoluteFilePath(rig);
 
