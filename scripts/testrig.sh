@@ -89,10 +89,13 @@ wait_for_web() {
     while (( $(date +%s) < deadline )); do
         # -k: skip TLS verify (self-signed). -o /dev/null -w %{http_code}: just care if it answers.
         local code
+        # A failed connect already prints 000 for %{http_code}: an `|| echo 000`
+        # here made it "000000", which passed the test below, so this returned
+        # at once and a bench test could reach the page before it listened.
         code=$(curl -sk -o /dev/null -w '%{http_code}' --connect-timeout 1 --max-time 2 \
-            "https://127.0.0.1:${port}/" 2>/dev/null || echo "000")
-        # Any non-000 code means the HTTP server is listening and replying.
-        if [[ "$code" != "000" ]]; then
+            "https://127.0.0.1:${port}/" 2>/dev/null) || true
+        # Any real status code means the HTTP server is listening and replying.
+        if [[ "$code" =~ ^[1-5][0-9][0-9]$ ]]; then
             return 0
         fi
         sleep 0.5
