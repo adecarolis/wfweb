@@ -329,6 +329,82 @@
 .midi-label { color: var(--mode-accent); font-weight: var(--fw-bold); font-size: var(--fs-xs); letter-spacing: 1px; }
 .midi-status { color: var(--text-dim); }
 .midi-status.ok { color: var(--state-ok); }
+
+/* -- Set menu window (setmenu.js WfSetMenuPanel) ----------------------------- *
+ * A tree like the radio's MENU: sections are <details>, closed until opened;   *
+ * readable sans text on neutral greys, the accent only for focus and headers.  */
+.mem-modal.setmenu-modal { width: min(96vw, 980px); max-height: 90vh; }
+.setmenu-panel { font-family: var(--font-ui); font-size: var(--fs-md); color: var(--text); }
+.setmenu-panel .midi-row { gap: var(--space-3); }
+.setmenu-search { flex: 1 1 16em; max-width: 24em; font-family: var(--font-ui); }
+.setmenu-source { color: var(--text-dim); font-size: var(--fs-sm); cursor: help; }
+.setmenu-tree { overflow-y: auto; flex: 1 1 auto; min-height: 80px; max-height: calc(90vh - 140px);
+                border-top: var(--border-w) solid var(--border-col); }
+.setmenu-node > summary { display: flex; align-items: center; gap: var(--space-2); cursor: pointer;
+                          list-style: none; padding: 7px var(--space-3); color: var(--text);
+                          border-bottom: var(--border-w) solid var(--border-col); user-select: none; }
+.setmenu-node > summary::-webkit-details-marker { display: none; }
+.setmenu-node > summary::before { content: '\25B8'; color: var(--mode-accent); width: 1em; flex: none;
+                                  transition: transform 0.12s; }
+.setmenu-node[open] > summary::before { transform: rotate(90deg); }
+.setmenu-node > summary:hover { background: rgba(255, 255, 255, 0.05); }
+.setmenu-node > summary:focus-visible { outline: 1px solid var(--mode-accent); outline-offset: -1px; }
+.setmenu-node.depth-0 > summary { background: var(--bg-raised); font-weight: var(--fw-bold); letter-spacing: 0.5px; }
+.setmenu-node.depth-0[open] > summary { color: var(--mode-accent); }
+.setmenu-node.depth-1 > summary { padding-left: 28px; font-weight: 600; }
+.setmenu-node.depth-2 > summary { padding-left: 46px; color: var(--text-dim); font-weight: 600; }
+.setmenu-progress { margin-left: auto; color: var(--mode-accent); font-size: var(--fs-sm); font-weight: normal; }
+.setmenu-count { margin-left: var(--space-3); min-width: 2.5em; text-align: right; color: var(--text-faint); font-size: var(--fs-sm); font-weight: normal; }
+.setmenu-node-body { background: rgba(255, 255, 255, 0.015); }
+
+.setmenu-row { display: grid; grid-template-columns: minmax(14em, 1fr) auto minmax(5em, 14em); align-items: center;
+               gap: var(--space-1) var(--space-3); padding: 5px var(--space-3) 5px 46px;
+               border-bottom: var(--border-w) solid #1c1c1c; }
+.setmenu-node.depth-1 .setmenu-row { padding-left: 64px; }
+.setmenu-node.depth-2 .setmenu-row { padding-left: 82px; }
+.setmenu-row:hover { background: rgba(255, 255, 255, 0.04); }
+.setmenu-row.missing { opacity: 0.45; }
+.setmenu-name { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: baseline; min-width: 0; }
+.setmenu-label { color: var(--text); }
+.setmenu-item { color: var(--text-faint); font-family: var(--font-mono); font-size: var(--fs-xs); }
+.setmenu-ctl { display: flex; align-items: center; gap: var(--space-2); }
+.setmenu-panel .setmenu-ctl .wf-field { font-family: var(--font-ui); font-size: var(--fs-md); color: var(--text);
+                                        background: #141414; border-color: #3a3a3a; padding: 3px 6px; }
+.setmenu-panel .setmenu-ctl .wf-field:focus { border-color: var(--mode-accent); }
+.setmenu-ctl select.wf-field { max-width: 22em; text-overflow: ellipsis; }
+.setmenu-ctl input.wf-field { width: 5.5em; }
+.setmenu-ctl .setmenu-item { font-family: var(--font-ui); font-size: var(--fs-sm); }
+/* READ again: on the row under the pointer or keyboard focus; always on touch. */
+.setmenu-rd { visibility: hidden; padding: 1px 8px; font-size: var(--fs-xs); }
+.setmenu-row:hover .setmenu-rd, .setmenu-row:focus-within .setmenu-rd { visibility: visible; }
+@media (pointer: coarse) { .setmenu-rd { visibility: visible; } }
+/* Restore review: what the dry run found, above the tree, until APPLY / CANCEL. */
+.setmenu-review { border: var(--border-w) solid var(--mode-accent-dim); background: #0c1622; padding: var(--space-2) var(--space-3);
+                  display: flex; flex-direction: column; gap: var(--space-2); }
+.setmenu-review-head { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: baseline; }
+.setmenu-review-title { font-weight: 600; color: var(--text); }
+.setmenu-review-list { max-height: 34vh; overflow-y: auto; }
+.setmenu-review-row { display: grid; grid-template-columns: minmax(12em, 1fr) minmax(5em, auto) 1.5em minmax(5em, auto);
+                      align-items: baseline; gap: var(--space-2); padding: 3px 0; border-bottom: var(--border-w) solid #1c2a38; }
+.setmenu-review-row.bad { grid-template-columns: minmax(12em, 1fr) minmax(10em, 2fr); }
+.setmenu-review-from { color: var(--text-dim); text-align: right; }
+.setmenu-review-arrow { color: var(--mode-accent); text-align: center; }
+.setmenu-review-to { color: var(--text); font-weight: 600; }
+.setmenu-review-why { color: var(--state-error); font-size: var(--fs-sm); }
+.setmenu-review-skipped { color: var(--text-faint); font-size: var(--fs-sm); padding-top: var(--space-1); }
+.setmenu-state { font-size: var(--fs-sm); color: var(--text-dim); }
+.setmenu-state.ok { color: var(--state-ok); }
+.setmenu-state.err { color: var(--state-error); }
+.setmenu-state.dim { color: var(--text-faint); }
+@media (max-width: 640px) {             /* phone: name above, control and state below */
+    .setmenu-row, .setmenu-node.depth-1 .setmenu-row, .setmenu-node.depth-2 .setmenu-row {
+        grid-template-columns: minmax(0, 1fr) auto; padding-left: 24px; }
+    .setmenu-name { grid-column: 1 / -1; }
+    .setmenu-ctl { min-width: 0; }
+    .setmenu-ctl select.wf-field { min-width: 0; max-width: calc(100% - 5em); }
+    .setmenu-node.depth-1 > summary { padding-left: 20px; }
+    .setmenu-node.depth-2 > summary { padding-left: 32px; }
+}
 .midi-unsupported { color: var(--state-warn); line-height: 1.4; }
 .midi-panel select.wf-field { font-size: var(--fs-sm); padding: 2px 4px; }
 .midi-map { overflow-y: auto; flex: 1 1 auto; min-height: 80px; max-height: 40vh; border-top: var(--border-w) solid var(--mode-accent-dim); }

@@ -842,6 +842,145 @@ curl -s -X POST http://localhost:8081/api/v1/radio/memories/5/recall | jq .
 
 ---
 
+### POST /api/v1/radio/civ
+
+Sends one raw CI-V command to an Icom radio and answers with the radio's
+reply. For what the named routes do not cover, chiefly the Set menu
+(`1A 05 xxxx`). Icom only (`400` for other rigs).
+
+**Body:** `{"hex": "<command>"}`, either the command body alone
+(`"1A 05 00 61"`) or a whole frame (`"FE FE 94 E0 1A 05 00 61 FD"`).
+Spaces, `:`, `,` and `-` between bytes are ignored. A whole frame must be
+addressed to the radio; its from-address is replaced.
+
+**Validation (`400`):** not hex, an odd number of digits, empty, longer than
+64 bytes of command, a frame not of the shape `FE FE <to> <from> ... FD` or
+addressed to another device, or an `FE` / `FD` inside the command (one frame
+per request).
+
+**Refused (`403`):** commands that transmit or switch the radio off, which
+would bypass TX inhibit, the compressor hold and the PTT bookkeeping:
+`1C 00` (PTT), `1C 01` (tuner / TUNE), `17` (CW), `18` (power). Use
+`/radio/ptt`, `/radio/tx`, `/radio/cw` and the power control for those.
+
+**How it travels:** the frame goes through the rig commander's own port
+writer (the path the rig server and the CI-V TCP port use; the serial port
+is never opened a second time), from controller address `E2`. The radio
+answers to `E2`, so the reply is matched to the request and does not enter
+wfweb's cache: a value changed this way shows on the page only after wfweb's
+next read of it. One request is on the wire at a time; others wait in line
+(up to 32, then `503`). No reply within 1 s is a timeout.
+
+**Response (`200`):**
+
+| Field | |
+|-------|-|
+| `request` | the frame sent, hex |
+| `frames` | the reply frame(s), hex |
+| `body` | the reply without `FE FE <to> <from>` and `FD` |
+| `reply` | `ok` (FB), `ng` (FA, the radio refused it) or `data` |
+| `data` | for `data`: the value after the echoed command, e.g. `00` |
+| `ms` | round trip |
+
+`504 {"request", "reply": "timeout", "error"}` when the radio does not
+answer; `503` when no rig is connected or the line is full.
+
+```bash
+# Read ACC/USB AF SQL (IC-7300, 1A 05 0061)
+curl -s -X POST http://localhost:8081/api/v1/radio/civ \
+  -H 'Content-Type: application/json' -d '{"hex": "1A 05 00 61"}' | jq .
+```
+```json
+{"request": "FE FE 94 E2 1A 05 00 61 FD",
+ "frames": ["FE FE E2 94 1A 05 00 61 00 FD"],
+ "body": "1A 05 00 61 00", "reply": "data", "data": "00", "ms": 18}
+```
+```bash
+# Set it to ON
+curl -s -X POST http://localhost:8081/api/v1/radio/civ \
+  -H 'Content-Type: application/json' -d '{"hex": "1A 05 00 61 01"}' | jq .reply
+"ok"
+```
+
+Set-menu item numbers differ between models and firmware versions: read an
+item, and check the answer, before writing it.
+
+**WebSocket:** `{"cmd": "civRaw", "id": <any>, "hex": "1A 05 00 61"}` is
+answered with `{"type": "civRawReply", "id": <same>, ...}` and the fields
+above; a refused request has `"reply": "error"`, `status` (the HTTP code
+above) and `error`.
+
+**Shared Station:** refused over REST like every radio write. On the
+WebSocket it is for admins holding the seat.
+
+---
+
+### GET /api/v1/radio/setmenu/backup
+
+Reads every item of the radio's SET menu table (the one the page's
+FUNC > SET window draws, `resources/web-shared/setmenu/<model>.json`; the
+IC-7300 has 216) through the raw CI-V route, one at a time, and answers
+with a backup. Icom rigs with a table only (`404` otherwise). It takes
+about 20 s on an IC-7300 over USB: give the client a long timeout. One
+backup or restore runs at a time (`409`).
+
+```bash
+curl -s --max-time 120 http://localhost:8081/api/v1/radio/setmenu/backup > ic7300-set.json
+```
+```json
+{"format": "wfweb-setmenu-backup", "version": 1, "model": "IC-7300",
+ "created": "2026-11-27T11:30:00Z", "wfweb": "0.9.6+dev.abc12345",
+ "items": {"0029": {"name": "Time-Out Timer (CI-V)", "data": "01", "value": "3 min"},
+           "0065": {"name": "USB MOD Level", "data": "0192"}, "...": {}},
+ "notOnRadio": ["0028"], "errors": {}}
+```
+
+`data` is what the radio sends after `1A 05 <item>`, as hex; `value` is its
+label where the item has one. `notOnRadio`: items the radio refuses (NG:
+not on this model, version or firmware). `errors`: items with no answer.
+
+### POST /api/v1/radio/setmenu/restore
+
+Body: a backup as above. With `?dryRun=1` nothing is written: the answer
+lists what would change. Without it, every item whose value differs is
+written with the same checks as the SET window: read first, set, read
+back and compared.
+
+- The backup must be of the same model (`400` otherwise).
+- Never written: read-only items (CI-V transceive and echo back, the USB
+  serial function, the USB SEND / keying lines, the CI-V USB port),
+  the clock (date, time) and REF Adjust (the radio's own calibration).
+- A value the item does not take (a code not in its list, a level out of
+  range, a raw value of another length) is refused before the radio.
+
+```bash
+curl -s -X POST 'http://localhost:8081/api/v1/radio/setmenu/restore?dryRun=1' \
+  -H 'Content-Type: application/json' --data @ic7300-set.json | jq .changes
+curl -s --max-time 120 -X POST http://localhost:8081/api/v1/radio/setmenu/restore \
+  -H 'Content-Type: application/json' --data @ic7300-set.json | jq .
+```
+```json
+{"dryRun": false, "model": "IC-7300", "unchanged": 207,
+ "written": [{"item": "0081", "name": "LCD Backlight", "path": "SET > Display", "from": "0028", "to": "0031"}],
+ "skipped": [{"item": "0094", "name": "Date", "reason": "not restored (the clock, or the radio's own calibration)"}],
+ "failed": []}
+```
+
+A dry run answers `changes` (same entries) in place of `written`; an entry
+carries `fromValue` / `toValue` labels where the item has them.
+
+**WebSocket:** `{"cmd": "setMenuBackup", "id": n}` and
+`{"cmd": "setMenuRestore", "id": n, "backup": {...}, "dryRun": true}` send
+`{"type": "setMenuProgress", "id", "done", "total"}` as they go and end with
+`{"type": "setMenuResult", "id", "restore": bool, ...}` (the fields above;
+`status` and `error` when refused).
+
+**Shared Station:** both routes are for admins (the backup too, being a read
+of every setting through raw CI-V); the restore, a write to the radio, is
+refused over REST. On the WebSocket: admins holding the seat.
+
+---
+
 ## CORS Preflight
 
 All endpoints respond to `OPTIONS` with CORS headers, enabling use from browser JavaScript on any origin:

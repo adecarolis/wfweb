@@ -28,6 +28,7 @@
 #include <functional>
 #include "logbook.h"
 #include "access.h"
+#include "setmenutable.h"
 
 #if (QT_VERSION < QT_VERSION_CHECK(6,0,0))
 #include <QAudioDeviceInfo>
@@ -123,6 +124,9 @@ signals:
                           quint8 opusComplexity, quint8 resampleQuality);
     void sendToTxConverter(audioPacket audio);
     void haveTxAudioData(audioPacket audio);
+    // Raw CI-V (POST /api/v1/radio/civ, WebSocket civRaw): a whole frame
+    // for rigCommander::dataFromServer, the rig server's passthrough.
+    void civRawOut(QByteArray frame);
     void setupFreeDV(int mode, quint32 radioSampleRate);
     void sendToFreeDVRx(audioPacket audio);
     void sendToFreeDVTx(audioPacket audio);
@@ -136,6 +140,9 @@ public slots:
     void init(quint16 httpPort, quint16 wsPort);
     void receiveRigCaps(rigCapabilities* caps);
     void receiveRxAudio(audioPacket audio);
+    // Every byte block from the rig (rigCommander::haveDataForServer):
+    // looked at only while a raw CI-V request waits for its reply.
+    void receiveRigRawData(QByteArray data);
     void setupAudio(quint8 codec, quint32 sampleRate);
     void setupUsbAudio(quint32 sampleRate, QString preferredInputName = QString(),
                        QString preferredOutputName = QString());
@@ -1058,6 +1065,63 @@ private slots:
                              int count);
 
 private:
+
+    // Raw CI-V passthrough (civraw.h).  One request on the wire at a time;
+    // the first frame from the radio to CivRaw::kCtrlAddr is its reply, and
+    // none within kCivRawTimeoutMs is a timeout.  Callers wait in the FIFO.
+    struct CivRawJob {
+        QByteArray body;                 // command + data, no framing
+        QByteArray frame;                // what goes to the rig
+        QPointer<QTcpSocket> rest;       // REST caller, or
+        QPointer<QWebSocket> ws;         // WebSocket caller
+        QJsonValue wsId;                 // the page's request id, echoed
+        std::function<void(const QByteArray &)> done;   // or the server's own (SET menu backup)
+        qint64 sentMs = 0;
+    };
+    static constexpr int kCivRawTimeoutMs = 1000;
+    static constexpr int kCivRawMaxQueued = 32;
+    QList<CivRawJob> civRawJobs_;        // front() is on the wire while civRawInFlight_
+    bool civRawInFlight_ = false;
+    QByteArray civRawBuf_;
+    QTimer *civRawTimer_ = nullptr;
+    // The radio's CI-V address as its own frames to wfweb carry it (the
+    // radio's menu can move it away from the model's default, modelID).
+    quint8 civRawSeenAddr_ = 0;
+    quint8 civRawRigAddr() const;
+    // Validates and queues; false with *status / *error filled when refused.
+    bool civRawSubmit(const QString &hex, CivRawJob job, int *status, QString *error);
+    void civRawPump();
+    void civRawFinish(const QByteArray &reply);   // empty = timeout
+    void handleCivRawRest(QTcpSocket *socket, const QString &method, const QByteArray &body);
+
+    // SET menu backup / restore (setmenutable.h): every item of the model's
+    // table read in turn through the raw CI-V queue; a restore writes only
+    // what differs, each read before, set, read back.  One run at a time.
+    struct SetMenuRun {
+        bool restore = false;
+        bool dryRun = false;
+        QPointer<QTcpSocket> rest;
+        QPointer<QWebSocket> ws;
+        QJsonValue wsId;
+        SetMenuDef::Table table;
+        QList<int> order;                // table positions to visit
+        int pos = 0;
+        QJsonObject wanted;              // restore: item -> data from the backup
+        QJsonObject items;               // backup: item -> {name, data, value}
+        QJsonArray notOnRadio, changes, written, skipped, failed;
+        QJsonObject errors;
+        int unchanged = 0;
+        qint64 lastProgressMs = 0;
+    };
+    std::unique_ptr<SetMenuRun> setMenuRun_;
+    // Starts a run; false with *status / *error when it cannot.
+    bool setMenuStart(std::unique_ptr<SetMenuRun> run, const QJsonObject &backup, int *status, QString *error);
+    void setMenuStep();
+    void setMenuFinish(const QString &abortError = QString());
+    void setMenuRead(const QString &itemNo, int tries,
+                     std::function<void(bool ok, bool missing, const QString &data, const QString &error)> cb);
+    void handleSetMenuRest(QTcpSocket *socket, const QString &method, const QString &path,
+                           const QUrlQuery &query, const QByteArray &body);
 
     // Memory channel scanning
     QMap<quint32, memoryType> memories;  // key = (group << 16) | channel

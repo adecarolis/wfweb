@@ -1,0 +1,4173 @@
+{
+ "model": "IC-7300",
+ "source": "IC-7300 Full Manual rev. 11 (IC-7300_ENG_FM_11), section 19 command table and data formats; items 0196-0216 also in the firmware Information sheets V1.30 / V1.40. Formats checked by reading the factory defaults on firmware 1.42.",
+ "groups": [
+  {
+   "path": "SET > Tone Control/TBW > RX",
+   "items": [
+    {
+     "item": "0001",
+     "name": "SSB RX HPF/LPF",
+     "type": "raw",
+     "format": "hpflpf",
+     "note": "two bytes: HPF (00 = through, 01-20 = 100-2000 Hz), LPF (05-24 = 500-2400 Hz, 25 = through) (p. 19-9); read-only here until the pair is edited as one",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0002",
+     "name": "SSB RX Bass",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "-5"
+      ],
+      [
+       "01",
+       "-4"
+      ],
+      [
+       "02",
+       "-3"
+      ],
+      [
+       "03",
+       "-2"
+      ],
+      [
+       "04",
+       "-1"
+      ],
+      [
+       "05",
+       "0"
+      ],
+      [
+       "06",
+       "+1"
+      ],
+      [
+       "07",
+       "+2"
+      ],
+      [
+       "08",
+       "+3"
+      ],
+      [
+       "09",
+       "+4"
+      ],
+      [
+       "10",
+       "+5"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0003",
+     "name": "SSB RX Treble",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "-5"
+      ],
+      [
+       "01",
+       "-4"
+      ],
+      [
+       "02",
+       "-3"
+      ],
+      [
+       "03",
+       "-2"
+      ],
+      [
+       "04",
+       "-1"
+      ],
+      [
+       "05",
+       "0"
+      ],
+      [
+       "06",
+       "+1"
+      ],
+      [
+       "07",
+       "+2"
+      ],
+      [
+       "08",
+       "+3"
+      ],
+      [
+       "09",
+       "+4"
+      ],
+      [
+       "10",
+       "+5"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0004",
+     "name": "AM RX HPF/LPF",
+     "type": "raw",
+     "format": "hpflpf",
+     "note": "two bytes: HPF (00 = through, 01-20 = 100-2000 Hz), LPF (05-24 = 500-2400 Hz, 25 = through) (p. 19-9); read-only here until the pair is edited as one",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0005",
+     "name": "AM RX Bass",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "-5"
+      ],
+      [
+       "01",
+       "-4"
+      ],
+      [
+       "02",
+       "-3"
+      ],
+      [
+       "03",
+       "-2"
+      ],
+      [
+       "04",
+       "-1"
+      ],
+      [
+       "05",
+       "0"
+      ],
+      [
+       "06",
+       "+1"
+      ],
+      [
+       "07",
+       "+2"
+      ],
+      [
+       "08",
+       "+3"
+      ],
+      [
+       "09",
+       "+4"
+      ],
+      [
+       "10",
+       "+5"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0006",
+     "name": "AM RX Treble",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "-5"
+      ],
+      [
+       "01",
+       "-4"
+      ],
+      [
+       "02",
+       "-3"
+      ],
+      [
+       "03",
+       "-2"
+      ],
+      [
+       "04",
+       "-1"
+      ],
+      [
+       "05",
+       "0"
+      ],
+      [
+       "06",
+       "+1"
+      ],
+      [
+       "07",
+       "+2"
+      ],
+      [
+       "08",
+       "+3"
+      ],
+      [
+       "09",
+       "+4"
+      ],
+      [
+       "10",
+       "+5"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0007",
+     "name": "FM RX HPF/LPF",
+     "type": "raw",
+     "format": "hpflpf",
+     "note": "two bytes: HPF (00 = through, 01-20 = 100-2000 Hz), LPF (05-24 = 500-2400 Hz, 25 = through) (p. 19-9); read-only here until the pair is edited as one",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0008",
+     "name": "FM RX Bass",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "-5"
+      ],
+      [
+       "01",
+       "-4"
+      ],
+      [
+       "02",
+       "-3"
+      ],
+      [
+       "03",
+       "-2"
+      ],
+      [
+       "04",
+       "-1"
+      ],
+      [
+       "05",
+       "0"
+      ],
+      [
+       "06",
+       "+1"
+      ],
+      [
+       "07",
+       "+2"
+      ],
+      [
+       "08",
+       "+3"
+      ],
+      [
+       "09",
+       "+4"
+      ],
+      [
+       "10",
+       "+5"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0009",
+     "name": "FM RX Treble",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "-5"
+      ],
+      [
+       "01",
+       "-4"
+      ],
+      [
+       "02",
+       "-3"
+      ],
+      [
+       "03",
+       "-2"
+      ],
+      [
+       "04",
+       "-1"
+      ],
+      [
+       "05",
+       "0"
+      ],
+      [
+       "06",
+       "+1"
+      ],
+      [
+       "07",
+       "+2"
+      ],
+      [
+       "08",
+       "+3"
+      ],
+      [
+       "09",
+       "+4"
+      ],
+      [
+       "10",
+       "+5"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0010",
+     "name": "CW RX HPF/LPF",
+     "type": "raw",
+     "format": "hpflpf",
+     "note": "two bytes: HPF (00 = through, 01-20 = 100-2000 Hz), LPF (05-24 = 500-2400 Hz, 25 = through) (p. 19-9); read-only here until the pair is edited as one",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0011",
+     "name": "RTTY RX HPF/LPF",
+     "type": "raw",
+     "format": "hpflpf",
+     "note": "two bytes: HPF (00 = through, 01-20 = 100-2000 Hz), LPF (05-24 = 500-2400 Hz, 25 = through) (p. 19-9); read-only here until the pair is edited as one",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    }
+   ]
+  },
+  {
+   "path": "SET > Tone Control/TBW > TX",
+   "items": [
+    {
+     "item": "0012",
+     "name": "SSB TX Bass",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "-5"
+      ],
+      [
+       "01",
+       "-4"
+      ],
+      [
+       "02",
+       "-3"
+      ],
+      [
+       "03",
+       "-2"
+      ],
+      [
+       "04",
+       "-1"
+      ],
+      [
+       "05",
+       "0"
+      ],
+      [
+       "06",
+       "+1"
+      ],
+      [
+       "07",
+       "+2"
+      ],
+      [
+       "08",
+       "+3"
+      ],
+      [
+       "09",
+       "+4"
+      ],
+      [
+       "10",
+       "+5"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0013",
+     "name": "SSB TX Treble",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "-5"
+      ],
+      [
+       "01",
+       "-4"
+      ],
+      [
+       "02",
+       "-3"
+      ],
+      [
+       "03",
+       "-2"
+      ],
+      [
+       "04",
+       "-1"
+      ],
+      [
+       "05",
+       "0"
+      ],
+      [
+       "06",
+       "+1"
+      ],
+      [
+       "07",
+       "+2"
+      ],
+      [
+       "08",
+       "+3"
+      ],
+      [
+       "09",
+       "+4"
+      ],
+      [
+       "10",
+       "+5"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0014",
+     "name": "SSB TBW (WIDE)",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "100 - 2500 Hz"
+      ],
+      [
+       "01",
+       "200 - 2500 Hz"
+      ],
+      [
+       "02",
+       "300 - 2500 Hz"
+      ],
+      [
+       "03",
+       "500 - 2500 Hz"
+      ],
+      [
+       "10",
+       "100 - 2700 Hz"
+      ],
+      [
+       "11",
+       "200 - 2700 Hz"
+      ],
+      [
+       "12",
+       "300 - 2700 Hz"
+      ],
+      [
+       "13",
+       "500 - 2700 Hz"
+      ],
+      [
+       "20",
+       "100 - 2800 Hz"
+      ],
+      [
+       "21",
+       "200 - 2800 Hz"
+      ],
+      [
+       "22",
+       "300 - 2800 Hz"
+      ],
+      [
+       "23",
+       "500 - 2800 Hz"
+      ],
+      [
+       "30",
+       "100 - 2900 Hz"
+      ],
+      [
+       "31",
+       "200 - 2900 Hz"
+      ],
+      [
+       "32",
+       "300 - 2900 Hz"
+      ],
+      [
+       "33",
+       "500 - 2900 Hz"
+      ]
+     ],
+     "note": "one byte: high digit = higher edge (2500/2700/2800/2900 Hz), low digit = lower edge (100/200/300/500 Hz) (p. 19-9); the defaults read 30 / 12 / 03 / 12 on firmware 1.42",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0015",
+     "name": "SSB TBW (MID)",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "100 - 2500 Hz"
+      ],
+      [
+       "01",
+       "200 - 2500 Hz"
+      ],
+      [
+       "02",
+       "300 - 2500 Hz"
+      ],
+      [
+       "03",
+       "500 - 2500 Hz"
+      ],
+      [
+       "10",
+       "100 - 2700 Hz"
+      ],
+      [
+       "11",
+       "200 - 2700 Hz"
+      ],
+      [
+       "12",
+       "300 - 2700 Hz"
+      ],
+      [
+       "13",
+       "500 - 2700 Hz"
+      ],
+      [
+       "20",
+       "100 - 2800 Hz"
+      ],
+      [
+       "21",
+       "200 - 2800 Hz"
+      ],
+      [
+       "22",
+       "300 - 2800 Hz"
+      ],
+      [
+       "23",
+       "500 - 2800 Hz"
+      ],
+      [
+       "30",
+       "100 - 2900 Hz"
+      ],
+      [
+       "31",
+       "200 - 2900 Hz"
+      ],
+      [
+       "32",
+       "300 - 2900 Hz"
+      ],
+      [
+       "33",
+       "500 - 2900 Hz"
+      ]
+     ],
+     "note": "one byte: high digit = higher edge (2500/2700/2800/2900 Hz), low digit = lower edge (100/200/300/500 Hz) (p. 19-9); the defaults read 30 / 12 / 03 / 12 on firmware 1.42",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0016",
+     "name": "SSB TBW (NAR)",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "100 - 2500 Hz"
+      ],
+      [
+       "01",
+       "200 - 2500 Hz"
+      ],
+      [
+       "02",
+       "300 - 2500 Hz"
+      ],
+      [
+       "03",
+       "500 - 2500 Hz"
+      ],
+      [
+       "10",
+       "100 - 2700 Hz"
+      ],
+      [
+       "11",
+       "200 - 2700 Hz"
+      ],
+      [
+       "12",
+       "300 - 2700 Hz"
+      ],
+      [
+       "13",
+       "500 - 2700 Hz"
+      ],
+      [
+       "20",
+       "100 - 2800 Hz"
+      ],
+      [
+       "21",
+       "200 - 2800 Hz"
+      ],
+      [
+       "22",
+       "300 - 2800 Hz"
+      ],
+      [
+       "23",
+       "500 - 2800 Hz"
+      ],
+      [
+       "30",
+       "100 - 2900 Hz"
+      ],
+      [
+       "31",
+       "200 - 2900 Hz"
+      ],
+      [
+       "32",
+       "300 - 2900 Hz"
+      ],
+      [
+       "33",
+       "500 - 2900 Hz"
+      ]
+     ],
+     "note": "one byte: high digit = higher edge (2500/2700/2800/2900 Hz), low digit = lower edge (100/200/300/500 Hz) (p. 19-9); the defaults read 30 / 12 / 03 / 12 on firmware 1.42",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0196",
+     "name": "SSB-D TBW",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "100 - 2500 Hz"
+      ],
+      [
+       "01",
+       "200 - 2500 Hz"
+      ],
+      [
+       "02",
+       "300 - 2500 Hz"
+      ],
+      [
+       "03",
+       "500 - 2500 Hz"
+      ],
+      [
+       "10",
+       "100 - 2700 Hz"
+      ],
+      [
+       "11",
+       "200 - 2700 Hz"
+      ],
+      [
+       "12",
+       "300 - 2700 Hz"
+      ],
+      [
+       "13",
+       "500 - 2700 Hz"
+      ],
+      [
+       "20",
+       "100 - 2800 Hz"
+      ],
+      [
+       "21",
+       "200 - 2800 Hz"
+      ],
+      [
+       "22",
+       "300 - 2800 Hz"
+      ],
+      [
+       "23",
+       "500 - 2800 Hz"
+      ],
+      [
+       "30",
+       "100 - 2900 Hz"
+      ],
+      [
+       "31",
+       "200 - 2900 Hz"
+      ],
+      [
+       "32",
+       "300 - 2900 Hz"
+      ],
+      [
+       "33",
+       "500 - 2900 Hz"
+      ]
+     ],
+     "firmware": "1.30+",
+     "note": "one byte: high digit = higher edge (2500/2700/2800/2900 Hz), low digit = lower edge (100/200/300/500 Hz) (p. 19-9); the defaults read 30 / 12 / 03 / 12 on firmware 1.42",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-7"
+    },
+    {
+     "item": "0017",
+     "name": "AM TX Bass",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "-5"
+      ],
+      [
+       "01",
+       "-4"
+      ],
+      [
+       "02",
+       "-3"
+      ],
+      [
+       "03",
+       "-2"
+      ],
+      [
+       "04",
+       "-1"
+      ],
+      [
+       "05",
+       "0"
+      ],
+      [
+       "06",
+       "+1"
+      ],
+      [
+       "07",
+       "+2"
+      ],
+      [
+       "08",
+       "+3"
+      ],
+      [
+       "09",
+       "+4"
+      ],
+      [
+       "10",
+       "+5"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0018",
+     "name": "AM TX Treble",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "-5"
+      ],
+      [
+       "01",
+       "-4"
+      ],
+      [
+       "02",
+       "-3"
+      ],
+      [
+       "03",
+       "-2"
+      ],
+      [
+       "04",
+       "-1"
+      ],
+      [
+       "05",
+       "0"
+      ],
+      [
+       "06",
+       "+1"
+      ],
+      [
+       "07",
+       "+2"
+      ],
+      [
+       "08",
+       "+3"
+      ],
+      [
+       "09",
+       "+4"
+      ],
+      [
+       "10",
+       "+5"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0019",
+     "name": "FM TX Bass",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "-5"
+      ],
+      [
+       "01",
+       "-4"
+      ],
+      [
+       "02",
+       "-3"
+      ],
+      [
+       "03",
+       "-2"
+      ],
+      [
+       "04",
+       "-1"
+      ],
+      [
+       "05",
+       "0"
+      ],
+      [
+       "06",
+       "+1"
+      ],
+      [
+       "07",
+       "+2"
+      ],
+      [
+       "08",
+       "+3"
+      ],
+      [
+       "09",
+       "+4"
+      ],
+      [
+       "10",
+       "+5"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0020",
+     "name": "FM TX Treble",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "-5"
+      ],
+      [
+       "01",
+       "-4"
+      ],
+      [
+       "02",
+       "-3"
+      ],
+      [
+       "03",
+       "-2"
+      ],
+      [
+       "04",
+       "-1"
+      ],
+      [
+       "05",
+       "0"
+      ],
+      [
+       "06",
+       "+1"
+      ],
+      [
+       "07",
+       "+2"
+      ],
+      [
+       "08",
+       "+3"
+      ],
+      [
+       "09",
+       "+4"
+      ],
+      [
+       "10",
+       "+5"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    }
+   ]
+  },
+  {
+   "path": "SET > Function",
+   "items": [
+    {
+     "item": "0021",
+     "name": "Beep Level",
+     "type": "level",
+     "digits": 4,
+     "min": 0,
+     "max": 255,
+     "percent": true,
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0022",
+     "name": "Beep Level Limit",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0023",
+     "name": "Beep (Confirmation)",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0024",
+     "name": "Band Edge Beep",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON (Default)"
+      ],
+      [
+       "02",
+       "ON (User)"
+      ],
+      [
+       "03",
+       "ON (User) & TX Limit"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0025",
+     "name": "RF/SQL Control",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "Auto"
+      ],
+      [
+       "01",
+       "SQL"
+      ],
+      [
+       "02",
+       "RF+SQL"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0193",
+     "name": "MF Band ATT",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-7"
+    },
+    {
+     "item": "0026",
+     "name": "TX Delay (HF)",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "10 ms"
+      ],
+      [
+       "02",
+       "15 ms"
+      ],
+      [
+       "03",
+       "20 ms"
+      ],
+      [
+       "04",
+       "25 ms"
+      ],
+      [
+       "05",
+       "30 ms"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0027",
+     "name": "TX Delay (50M)",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "10 ms"
+      ],
+      [
+       "02",
+       "15 ms"
+      ],
+      [
+       "03",
+       "20 ms"
+      ],
+      [
+       "04",
+       "25 ms"
+      ],
+      [
+       "05",
+       "30 ms"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0028",
+     "name": "TX Delay (70M)",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "10 ms"
+      ],
+      [
+       "02",
+       "15 ms"
+      ],
+      [
+       "03",
+       "20 ms"
+      ],
+      [
+       "04",
+       "25 ms"
+      ],
+      [
+       "05",
+       "30 ms"
+      ]
+     ],
+     "note": "70 MHz is on some versions only; an IC-7300 without the 70 MHz band (firmware 1.42) answers NG",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0029",
+     "name": "Time-Out Timer (CI-V)",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "3 min"
+      ],
+      [
+       "02",
+       "5 min"
+      ],
+      [
+       "03",
+       "10 min"
+      ],
+      [
+       "04",
+       "20 min"
+      ],
+      [
+       "05",
+       "30 min"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    }
+   ]
+  },
+  {
+   "path": "SET > Function > SPLIT",
+   "items": [
+    {
+     "item": "0030",
+     "name": "Quick SPLIT",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0031",
+     "name": "FM SPLIT Offset (HF)",
+     "type": "raw",
+     "format": "offset",
+     "note": "3 BCD bytes, least significant first, then 00 = + / 01 = - (p. 19-10)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0032",
+     "name": "FM SPLIT Offset (50M)",
+     "type": "raw",
+     "format": "offset",
+     "note": "3 BCD bytes, least significant first, then 00 = + / 01 = - (p. 19-10)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0033",
+     "name": "SPLIT LOCK",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    }
+   ]
+  },
+  {
+   "path": "SET > Function > Tuner",
+   "items": [
+    {
+     "item": "0034",
+     "name": "[TUNER] Switch",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "Manual"
+      ],
+      [
+       "01",
+       "Auto"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0035",
+     "name": "PTT Start",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    }
+   ]
+  },
+  {
+   "path": "SET > Function > RTTY",
+   "items": [
+    {
+     "item": "0036",
+     "name": "RTTY Mark Frequency",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "1275 Hz"
+      ],
+      [
+       "01",
+       "1615 Hz"
+      ],
+      [
+       "02",
+       "2125 Hz"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0037",
+     "name": "RTTY Shift Width",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "170 Hz"
+      ],
+      [
+       "01",
+       "200 Hz"
+      ],
+      [
+       "02",
+       "425 Hz"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0038",
+     "name": "RTTY Keying Polarity",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "Normal"
+      ],
+      [
+       "01",
+       "Reverse"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    }
+   ]
+  },
+  {
+   "path": "SET > Function > SPEECH",
+   "items": [
+    {
+     "item": "0039",
+     "name": "SPEECH Language",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "English"
+      ],
+      [
+       "01",
+       "Japanese"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0040",
+     "name": "SPEECH Speed",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "Slow"
+      ],
+      [
+       "01",
+       "Fast"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0041",
+     "name": "S-Level SPEECH",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0042",
+     "name": "MODE SPEECH",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0043",
+     "name": "SPEECH Level",
+     "type": "level",
+     "digits": 4,
+     "min": 0,
+     "max": 255,
+     "percent": true,
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0044",
+     "name": "[SPEECH/LOCK] Switch",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "SPEECH/LOCK (push: SPEECH, hold: LOCK)"
+      ],
+      [
+       "01",
+       "LOCK/SPEECH (push: LOCK, hold: SPEECH)"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    }
+   ]
+  },
+  {
+   "path": "SET > Function",
+   "items": [
+    {
+     "item": "0045",
+     "name": "Lock Function",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "MAIN DIAL"
+      ],
+      [
+       "01",
+       "PANEL"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0046",
+     "name": "Memo Pad Quantity",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "5"
+      ],
+      [
+       "01",
+       "10"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0047",
+     "name": "MAIN DIAL Auto TS",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "Low"
+      ],
+      [
+       "02",
+       "High"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0048",
+     "name": "MIC Up/Down Speed",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "Slow"
+      ],
+      [
+       "01",
+       "Fast"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0049",
+     "name": "Quick RIT/∂TX Clear",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0050",
+     "name": "[NOTCH] Switch (SSB)",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "Auto"
+      ],
+      [
+       "01",
+       "Manual"
+      ],
+      [
+       "02",
+       "Auto/Manual"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0051",
+     "name": "[NOTCH] Switch (AM)",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "Auto"
+      ],
+      [
+       "01",
+       "Manual"
+      ],
+      [
+       "02",
+       "Auto/Manual"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0052",
+     "name": "SSB/CW Synchronous Tuning",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0053",
+     "name": "CW Normal Side",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "LSB"
+      ],
+      [
+       "01",
+       "USB"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0054",
+     "name": "Screen Capture [POWER] SW",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0055",
+     "name": "Screen Capture File Type",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "PNG"
+      ],
+      [
+       "01",
+       "BMP"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0056",
+     "name": "Keyboard Type",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "Ten-key"
+      ],
+      [
+       "01",
+       "Full Keyboard"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0194",
+     "name": "Screen Full Keyboard Layout",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "English"
+      ],
+      [
+       "01",
+       "German"
+      ],
+      [
+       "02",
+       "French"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-7"
+    },
+    {
+     "item": "0057",
+     "name": "Calibration Marker",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0058",
+     "name": "REF Adjust",
+     "type": "level",
+     "digits": 4,
+     "min": 0,
+     "max": 255,
+     "percent": true,
+     "restore": false,
+     "note": "the reference oscillator: this radio's own calibration, so a restore leaves it alone",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    }
+   ]
+  },
+  {
+   "path": "SET > Function > Front Key Customize",
+   "items": [
+    {
+     "item": "0198",
+     "name": "[VOX/BK-IN]",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "VOX/BK-IN"
+      ],
+      [
+       "01",
+       "PRESET"
+      ],
+      [
+       "02",
+       "Voice/Keyer/RTTY Memory 1"
+      ],
+      [
+       "03",
+       "Voice/Keyer/RTTY Memory 2"
+      ],
+      [
+       "04",
+       "Voice/Keyer/RTTY Memory 3"
+      ],
+      [
+       "05",
+       "Voice/Keyer/RTTY Memory 4"
+      ]
+     ],
+     "firmware": "1.40+",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-12"
+    },
+    {
+     "item": "0199",
+     "name": "[AUTOTUNE]",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "AUTOTUNE"
+      ],
+      [
+       "01",
+       "PRESET"
+      ],
+      [
+       "02",
+       "Voice/Keyer/RTTY Memory 1"
+      ],
+      [
+       "03",
+       "Voice/Keyer/RTTY Memory 2"
+      ],
+      [
+       "04",
+       "Voice/Keyer/RTTY Memory 3"
+      ],
+      [
+       "05",
+       "Voice/Keyer/RTTY Memory 4"
+      ]
+     ],
+     "firmware": "1.40+",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-12"
+    },
+    {
+     "item": "0200",
+     "name": "[▲]",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "M-CH UP"
+      ],
+      [
+       "01",
+       "M-CH DOWN"
+      ],
+      [
+       "02",
+       "PRESET"
+      ],
+      [
+       "03",
+       "Voice/Keyer/RTTY Memory 1"
+      ],
+      [
+       "04",
+       "Voice/Keyer/RTTY Memory 2"
+      ],
+      [
+       "05",
+       "Voice/Keyer/RTTY Memory 3"
+      ],
+      [
+       "06",
+       "Voice/Keyer/RTTY Memory 4"
+      ]
+     ],
+     "firmware": "1.40+",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-12"
+    },
+    {
+     "item": "0201",
+     "name": "[▼]",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "M-CH UP"
+      ],
+      [
+       "01",
+       "M-CH DOWN"
+      ],
+      [
+       "02",
+       "PRESET"
+      ],
+      [
+       "03",
+       "Voice/Keyer/RTTY Memory 1"
+      ],
+      [
+       "04",
+       "Voice/Keyer/RTTY Memory 2"
+      ],
+      [
+       "05",
+       "Voice/Keyer/RTTY Memory 3"
+      ],
+      [
+       "06",
+       "Voice/Keyer/RTTY Memory 4"
+      ]
+     ],
+     "firmware": "1.40+",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-12"
+    }
+   ]
+  },
+  {
+   "path": "SET > Function > MIC Key Customize",
+   "items": [
+    {
+     "item": "0202",
+     "name": "[UP]",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "No function"
+      ],
+      [
+       "01",
+       "UP"
+      ],
+      [
+       "02",
+       "DOWN"
+      ],
+      [
+       "03",
+       "UP (VFO: kHz)"
+      ],
+      [
+       "04",
+       "DOWN (VFO: kHz)"
+      ],
+      [
+       "05",
+       "XFC"
+      ],
+      [
+       "06",
+       "VFO/MEMO"
+      ],
+      [
+       "07",
+       "BAND UP"
+      ],
+      [
+       "08",
+       "BAND DOWN"
+      ],
+      [
+       "09",
+       "SPEECH"
+      ],
+      [
+       "10",
+       "MODE"
+      ],
+      [
+       "11",
+       "Voice/Keyer/RTTY Memory 1"
+      ],
+      [
+       "12",
+       "Voice/Keyer/RTTY Memory 2"
+      ],
+      [
+       "13",
+       "Voice/Keyer/RTTY Memory 3"
+      ],
+      [
+       "14",
+       "Voice/Keyer/RTTY Memory 4"
+      ],
+      [
+       "15",
+       "TS"
+      ],
+      [
+       "16",
+       "MPAD"
+      ],
+      [
+       "17",
+       "SPLIT"
+      ],
+      [
+       "18",
+       "A/B"
+      ],
+      [
+       "19",
+       "TUNER"
+      ]
+     ],
+     "firmware": "1.40+",
+     "note": "codes from the V1.40 Information sheet (p. 9); the full manual rev. 11 p. 19-12 prints 09 as BAND DOWN and stops at 18",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-12"
+    },
+    {
+     "item": "0203",
+     "name": "[DN]",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "No function"
+      ],
+      [
+       "01",
+       "UP"
+      ],
+      [
+       "02",
+       "DOWN"
+      ],
+      [
+       "03",
+       "UP (VFO: kHz)"
+      ],
+      [
+       "04",
+       "DOWN (VFO: kHz)"
+      ],
+      [
+       "05",
+       "XFC"
+      ],
+      [
+       "06",
+       "VFO/MEMO"
+      ],
+      [
+       "07",
+       "BAND UP"
+      ],
+      [
+       "08",
+       "BAND DOWN"
+      ],
+      [
+       "09",
+       "SPEECH"
+      ],
+      [
+       "10",
+       "MODE"
+      ],
+      [
+       "11",
+       "Voice/Keyer/RTTY Memory 1"
+      ],
+      [
+       "12",
+       "Voice/Keyer/RTTY Memory 2"
+      ],
+      [
+       "13",
+       "Voice/Keyer/RTTY Memory 3"
+      ],
+      [
+       "14",
+       "Voice/Keyer/RTTY Memory 4"
+      ],
+      [
+       "15",
+       "TS"
+      ],
+      [
+       "16",
+       "MPAD"
+      ],
+      [
+       "17",
+       "SPLIT"
+      ],
+      [
+       "18",
+       "A/B"
+      ],
+      [
+       "19",
+       "TUNER"
+      ]
+     ],
+     "firmware": "1.40+",
+     "note": "codes from the V1.40 Information sheet (p. 9); the full manual rev. 11 p. 19-12 prints 09 as BAND DOWN and stops at 18",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-12"
+    }
+   ]
+  },
+  {
+   "path": "SET > Connectors",
+   "items": [
+    {
+     "item": "0059",
+     "name": "ACC/USB Output Select",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "AF"
+      ],
+      [
+       "01",
+       "IF"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0060",
+     "name": "ACC/USB AF Output Level",
+     "type": "level",
+     "digits": 4,
+     "min": 0,
+     "max": 255,
+     "percent": true,
+     "source": "IC-7300 Full Manual rev. 11, p. 19-4"
+    },
+    {
+     "item": "0061",
+     "name": "ACC/USB AF SQL",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF (OPEN)"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "note": "rigs/IC-7300.rig names 1A 05 0061 'CI-V Output (ANT)': that is 0073",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0062",
+     "name": "ACC/USB AF Beep/Speech... Output",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0063",
+     "name": "ACC/USB IF Output Level",
+     "type": "level",
+     "digits": 4,
+     "min": 0,
+     "max": 255,
+     "percent": true,
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0064",
+     "name": "ACC MOD Level",
+     "type": "level",
+     "digits": 4,
+     "min": 0,
+     "max": 255,
+     "percent": true,
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0065",
+     "name": "USB MOD Level",
+     "type": "level",
+     "digits": 4,
+     "min": 0,
+     "max": 255,
+     "percent": true,
+     "note": "wfweb's MIC slider sets this one on a USB-connected IC-7300",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0066",
+     "name": "DATA OFF MOD",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "MIC"
+      ],
+      [
+       "01",
+       "ACC"
+      ],
+      [
+       "02",
+       "MIC,ACC"
+      ],
+      [
+       "03",
+       "USB"
+      ],
+      [
+       "04",
+       "MIC,USB"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0067",
+     "name": "DATA MOD",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "MIC"
+      ],
+      [
+       "01",
+       "ACC"
+      ],
+      [
+       "02",
+       "MIC,ACC"
+      ],
+      [
+       "03",
+       "USB"
+      ],
+      [
+       "04",
+       "MIC,USB"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    }
+   ]
+  },
+  {
+   "path": "SET > Connectors > External Keypad",
+   "items": [
+    {
+     "item": "0068",
+     "name": "VOICE",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0069",
+     "name": "KEYER",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0070",
+     "name": "RTTY",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    }
+   ]
+  },
+  {
+   "path": "SET > Connectors > CI-V",
+   "items": [
+    {
+     "item": "0071",
+     "name": "CI-V Transceive",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "readonly": true,
+     "note": "changing it can cut wfweb's own CI-V link to the radio",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0072",
+     "name": "CI-V USB→REMOTE Transceive Address",
+     "type": "number",
+     "digits": 4,
+     "min": 0,
+     "max": 223,
+     "note": "the address in decimal BCD: 0000 = 00h to 0223 = DFh",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0073",
+     "name": "CI-V Output (for ANT)",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0074",
+     "name": "CI-V USB Port",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "Link to [REMOTE]"
+      ],
+      [
+       "01",
+       "Unlink from [REMOTE]"
+      ]
+     ],
+     "readonly": true,
+     "note": "read only over CI-V (p. 19-5)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0075",
+     "name": "CI-V USB Echo Back",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "ON"
+      ],
+      [
+       "01",
+       "OFF"
+      ]
+     ],
+     "readonly": true,
+     "note": "changing it can cut wfweb's own CI-V link to the radio",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    }
+   ]
+  },
+  {
+   "path": "SET > Connectors",
+   "items": [
+    {
+     "item": "0076",
+     "name": "USB Serial Function",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "CI-V"
+      ],
+      [
+       "01",
+       "RTTY Decode"
+      ]
+     ],
+     "readonly": true,
+     "note": "RTTY Decode takes the USB serial port away from CI-V: changing it can cut wfweb's own CI-V link to the radio",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0077",
+     "name": "RTTY Decode Baud Rate",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "4800"
+      ],
+      [
+       "01",
+       "9600"
+      ],
+      [
+       "02",
+       "19200"
+      ],
+      [
+       "03",
+       "38400"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    }
+   ]
+  },
+  {
+   "path": "SET > Connectors > USB SEND/Keying",
+   "items": [
+    {
+     "item": "0078",
+     "name": "USB SEND",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "DTR"
+      ],
+      [
+       "02",
+       "RTS"
+      ]
+     ],
+     "readonly": true,
+     "note": "a USB control line that keys the radio; wfweb's serial port drives DTR/RTS, so this is read-only here",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0079",
+     "name": "USB Keying (CW)",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "DTR"
+      ],
+      [
+       "02",
+       "RTS"
+      ]
+     ],
+     "readonly": true,
+     "note": "a USB control line that keys the radio; wfweb's serial port drives DTR/RTS, so this is read-only here",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0080",
+     "name": "USB Keying (RTTY)",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "DTR"
+      ],
+      [
+       "02",
+       "RTS"
+      ]
+     ],
+     "readonly": true,
+     "note": "a USB control line that keys the radio; wfweb's serial port drives DTR/RTS, so this is read-only here",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0197",
+     "name": "Inhibit Timer at USB Connection",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "firmware": "1.30+",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-7"
+    }
+   ]
+  },
+  {
+   "path": "SET > Display",
+   "items": [
+    {
+     "item": "0081",
+     "name": "LCD Backlight",
+     "type": "level",
+     "digits": 4,
+     "min": 0,
+     "max": 255,
+     "percent": true,
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0082",
+     "name": "Display Type",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "A"
+      ],
+      [
+       "01",
+       "B"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0083",
+     "name": "Display Font",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "Basic"
+      ],
+      [
+       "01",
+       "Round"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0084",
+     "name": "Meter Peak Hold",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0085",
+     "name": "Memory Name",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0086",
+     "name": "MN-Q Popup (MN OFF→ON)",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0087",
+     "name": "BW Popup (PBT)",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0088",
+     "name": "BW Popup (FIL)",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0089",
+     "name": "Screen Saver",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "15 min"
+      ],
+      [
+       "02",
+       "30 min"
+      ],
+      [
+       "03",
+       "60 min"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0090",
+     "name": "Opening Message",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0091",
+     "name": "My Call (opening message text)",
+     "type": "raw",
+     "format": "ascii",
+     "note": "up to 10 characters, ASCII (p. 19-10)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0092",
+     "name": "Power ON Check",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0093",
+     "name": "Display Language",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "English"
+      ],
+      [
+       "01",
+       "Japanese"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    }
+   ]
+  },
+  {
+   "path": "SET > Time Set",
+   "items": [
+    {
+     "item": "0094",
+     "name": "Date",
+     "type": "raw",
+     "format": "date",
+     "restore": false,
+     "note": "the clock: a restore leaves it alone",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0095",
+     "name": "Time",
+     "type": "raw",
+     "format": "time",
+     "restore": false,
+     "note": "the clock: a restore leaves it alone",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0096",
+     "name": "UTC Offset",
+     "type": "raw",
+     "format": "utcOffset",
+     "note": "offset 0000-1400 (hhmm), then 00 = + / 01 = - (p. 19-13)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    }
+   ]
+  },
+  {
+   "path": "SCOPE > SCOPE SET",
+   "items": [
+    {
+     "item": "0097",
+     "name": "Scope during TX (CENTER TYPE)",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0098",
+     "name": "Max Hold",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "10s Hold"
+      ],
+      [
+       "02",
+       "ON"
+      ]
+     ],
+     "note": "the command table says 00-02 but lists only OFF / ON; the codes follow the Set screen (OFF, 10s Hold, ON), and the default (10s Hold) reads 01 on firmware 1.42",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0099",
+     "name": "CENTER Type Display",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "Filter Center"
+      ],
+      [
+       "01",
+       "Carrier Point Center"
+      ],
+      [
+       "02",
+       "Carrier Point Center (Abs. Freq.)"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0100",
+     "name": "Marker Position (FIX Type/SCROLL Type)",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "Filter Center"
+      ],
+      [
+       "01",
+       "Carrier Point"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0101",
+     "name": "VBW",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "Narrow"
+      ],
+      [
+       "01",
+       "Wide"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0102",
+     "name": "Averaging",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "2"
+      ],
+      [
+       "02",
+       "3"
+      ],
+      [
+       "03",
+       "4"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0103",
+     "name": "Waveform Type",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "Fill"
+      ],
+      [
+       "01",
+       "Fill+Line"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0104",
+     "name": "Waveform Color (Current)",
+     "type": "raw",
+     "format": "rgb",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0105",
+     "name": "Waveform Color (Line)",
+     "type": "raw",
+     "format": "rgb",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0106",
+     "name": "Waveform Color (Max Hold)",
+     "type": "raw",
+     "format": "rgb",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0107",
+     "name": "Waterfall Display",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0108",
+     "name": "Waterfall Speed",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "Slow"
+      ],
+      [
+       "01",
+       "Mid"
+      ],
+      [
+       "02",
+       "Fast"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0109",
+     "name": "Waterfall Size (Expand Screen)",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "Small"
+      ],
+      [
+       "01",
+       "Mid"
+      ],
+      [
+       "02",
+       "Larger"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0110",
+     "name": "Waterfall Peak Color Level",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "Grid 1"
+      ],
+      [
+       "01",
+       "Grid 2"
+      ],
+      [
+       "02",
+       "Grid 3"
+      ],
+      [
+       "03",
+       "Grid 4"
+      ],
+      [
+       "04",
+       "Grid 5"
+      ],
+      [
+       "05",
+       "Grid 6"
+      ],
+      [
+       "06",
+       "Grid 7"
+      ],
+      [
+       "07",
+       "Grid 8"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0111",
+     "name": "Waterfall Marker Auto-hide",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    }
+   ]
+  },
+  {
+   "path": "SCOPE > SCOPE SET > Fixed Edges",
+   "items": [
+    {
+     "item": "0112",
+     "name": "0.03 - 1.60 MHz, Edge 1",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0113",
+     "name": "0.03 - 1.60 MHz, Edge 2",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0114",
+     "name": "0.03 - 1.60 MHz, Edge 3",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0204",
+     "name": "0.03 - 1.60 MHz, Edge 4",
+     "type": "raw",
+     "format": "edges",
+     "firmware": "1.40+",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-7"
+    },
+    {
+     "item": "0115",
+     "name": "1.60 - 2.00 MHz, Edge 1",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0116",
+     "name": "1.60 - 2.00 MHz, Edge 2",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0117",
+     "name": "1.60 - 2.00 MHz, Edge 3",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0205",
+     "name": "1.60 - 2.00 MHz, Edge 4",
+     "type": "raw",
+     "format": "edges",
+     "firmware": "1.40+",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-7"
+    },
+    {
+     "item": "0118",
+     "name": "2.00 - 6.00 MHz, Edge 1",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0119",
+     "name": "2.00 - 6.00 MHz, Edge 2",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0120",
+     "name": "2.00 - 6.00 MHz, Edge 3",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0206",
+     "name": "2.00 - 6.00 MHz, Edge 4",
+     "type": "raw",
+     "format": "edges",
+     "firmware": "1.40+",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-7"
+    },
+    {
+     "item": "0121",
+     "name": "6.00 - 8.00 MHz, Edge 1",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0122",
+     "name": "6.00 - 8.00 MHz, Edge 2",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0123",
+     "name": "6.00 - 8.00 MHz, Edge 3",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-5"
+    },
+    {
+     "item": "0207",
+     "name": "6.00 - 8.00 MHz, Edge 4",
+     "type": "raw",
+     "format": "edges",
+     "firmware": "1.40+",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-7"
+    },
+    {
+     "item": "0124",
+     "name": "8.00 - 11.00 MHz, Edge 1",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0125",
+     "name": "8.00 - 11.00 MHz, Edge 2",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0126",
+     "name": "8.00 - 11.00 MHz, Edge 3",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0208",
+     "name": "8.00 - 11.00 MHz, Edge 4",
+     "type": "raw",
+     "format": "edges",
+     "firmware": "1.40+",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-7"
+    },
+    {
+     "item": "0127",
+     "name": "11.00 - 15.00 MHz, Edge 1",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0128",
+     "name": "11.00 - 15.00 MHz, Edge 2",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0129",
+     "name": "11.00 - 15.00 MHz, Edge 3",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0209",
+     "name": "11.00 - 15.00 MHz, Edge 4",
+     "type": "raw",
+     "format": "edges",
+     "firmware": "1.40+",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-7"
+    },
+    {
+     "item": "0130",
+     "name": "15.00 - 20.00 MHz, Edge 1",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0131",
+     "name": "15.00 - 20.00 MHz, Edge 2",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0132",
+     "name": "15.00 - 20.00 MHz, Edge 3",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0210",
+     "name": "15.00 - 20.00 MHz, Edge 4",
+     "type": "raw",
+     "format": "edges",
+     "firmware": "1.40+",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-7"
+    },
+    {
+     "item": "0133",
+     "name": "20.00 - 22.00 MHz, Edge 1",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0134",
+     "name": "20.00 - 22.00 MHz, Edge 2",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0135",
+     "name": "20.00 - 22.00 MHz, Edge 3",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0211",
+     "name": "20.00 - 22.00 MHz, Edge 4",
+     "type": "raw",
+     "format": "edges",
+     "firmware": "1.40+",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-7"
+    },
+    {
+     "item": "0136",
+     "name": "22.00 - 26.00 MHz, Edge 1",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0137",
+     "name": "22.00 - 26.00 MHz, Edge 2",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0138",
+     "name": "22.00 - 26.00 MHz, Edge 3",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0212",
+     "name": "22.00 - 26.00 MHz, Edge 4",
+     "type": "raw",
+     "format": "edges",
+     "firmware": "1.40+",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-7"
+    },
+    {
+     "item": "0139",
+     "name": "26.00 - 30.00 MHz, Edge 1",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0140",
+     "name": "26.00 - 30.00 MHz, Edge 2",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0141",
+     "name": "26.00 - 30.00 MHz, Edge 3",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0213",
+     "name": "26.00 - 30.00 MHz, Edge 4",
+     "type": "raw",
+     "format": "edges",
+     "firmware": "1.40+",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-7"
+    },
+    {
+     "item": "0142",
+     "name": "30.00 - 45.00 MHz, Edge 1",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0143",
+     "name": "30.00 - 45.00 MHz, Edge 2",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0144",
+     "name": "30.00 - 45.00 MHz, Edge 3",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0214",
+     "name": "30.00 - 45.00 MHz, Edge 4",
+     "type": "raw",
+     "format": "edges",
+     "firmware": "1.40+",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-7"
+    },
+    {
+     "item": "0145",
+     "name": "45.00 - 60.00 MHz, Edge 1",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0146",
+     "name": "45.00 - 60.00 MHz, Edge 2",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0147",
+     "name": "45.00 - 60.00 MHz, Edge 3",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0215",
+     "name": "45.00 - 60.00 MHz, Edge 4",
+     "type": "raw",
+     "format": "edges",
+     "firmware": "1.40+",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-7"
+    },
+    {
+     "item": "0148",
+     "name": "60.00 - 74.80 MHz, Edge 1",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0149",
+     "name": "60.00 - 74.80 MHz, Edge 2",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0150",
+     "name": "60.00 - 74.80 MHz, Edge 3",
+     "type": "raw",
+     "format": "edges",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0216",
+     "name": "60.00 - 74.80 MHz, Edge 4",
+     "type": "raw",
+     "format": "edges",
+     "firmware": "1.40+",
+     "note": "lower and higher edge, 3 BCD bytes each, least significant first (p. 19-9)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-7"
+    }
+   ]
+  },
+  {
+   "path": "AUDIO > AUDIO SCOPE SET",
+   "items": [
+    {
+     "item": "0151",
+     "name": "FFT Scope Waveform Type",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "Fill"
+      ],
+      [
+       "01",
+       "Fill+Line"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0152",
+     "name": "FFT Scope Waveform Color",
+     "type": "raw",
+     "format": "rgb",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0153",
+     "name": "FFT Scope Waterfall Display",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0154",
+     "name": "Oscilloscope Waveform Color",
+     "type": "raw",
+     "format": "rgb",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    }
+   ]
+  },
+  {
+   "path": "KEYER > EDIT/SET > 001 SET",
+   "items": [
+    {
+     "item": "0155",
+     "name": "Number Style",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "Normal"
+      ],
+      [
+       "01",
+       "190→ANO"
+      ],
+      [
+       "02",
+       "190→ANT"
+      ],
+      [
+       "03",
+       "90→NO"
+      ],
+      [
+       "04",
+       "90→NT"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0156",
+     "name": "Count Up Trigger",
+     "type": "enum",
+     "options": [
+      [
+       "01",
+       "M1"
+      ],
+      [
+       "02",
+       "M2"
+      ],
+      [
+       "03",
+       "M3"
+      ],
+      [
+       "04",
+       "M4"
+      ],
+      [
+       "05",
+       "M5"
+      ],
+      [
+       "06",
+       "M6"
+      ],
+      [
+       "07",
+       "M7"
+      ],
+      [
+       "08",
+       "M8"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0157",
+     "name": "Present Number",
+     "type": "number",
+     "digits": 4,
+     "min": 1,
+     "max": 9999,
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    }
+   ]
+  },
+  {
+   "path": "KEYER > EDIT/SET > CW-KEY SET",
+   "items": [
+    {
+     "item": "0158",
+     "name": "Side Tone Level",
+     "type": "level",
+     "digits": 4,
+     "min": 0,
+     "max": 255,
+     "percent": true,
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0159",
+     "name": "Side Tone Level Limit",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0160",
+     "name": "Keyer Repeat Time",
+     "type": "number",
+     "digits": 2,
+     "min": 1,
+     "max": 60,
+     "unit": "s",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0161",
+     "name": "Dot/Dash Ratio",
+     "type": "number",
+     "digits": 2,
+     "min": 28,
+     "max": 45,
+     "scale": 0.1,
+     "decimals": 1,
+     "unit": "(1:1:x)",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0162",
+     "name": "Rise Time",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "2 ms"
+      ],
+      [
+       "01",
+       "4 ms"
+      ],
+      [
+       "02",
+       "6 ms"
+      ],
+      [
+       "03",
+       "8 ms"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0163",
+     "name": "Paddle Polarity",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "Normal"
+      ],
+      [
+       "01",
+       "Reverse"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0164",
+     "name": "Key Type",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "Straight"
+      ],
+      [
+       "01",
+       "Bug"
+      ],
+      [
+       "02",
+       "Paddle"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0165",
+     "name": "MIC Up/Down Keyer",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    }
+   ]
+  },
+  {
+   "path": "DECODE > RTTY DECODE SET",
+   "items": [
+    {
+     "item": "0166",
+     "name": "FFT Scope Averaging",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "2"
+      ],
+      [
+       "02",
+       "3"
+      ],
+      [
+       "03",
+       "4"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0167",
+     "name": "FFT Scope Waveform Color",
+     "type": "raw",
+     "format": "rgb",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0168",
+     "name": "Decode USOS",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0169",
+     "name": "Decode New Line Code",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "CR, LF, CR+LF"
+      ],
+      [
+       "01",
+       "CR+LF"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0170",
+     "name": "TX USOS",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0171",
+     "name": "Font Color (Receive)",
+     "type": "raw",
+     "format": "rgb",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0172",
+     "name": "Font Color (Transmit)",
+     "type": "raw",
+     "format": "rgb",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    }
+   ]
+  },
+  {
+   "path": "DECODE > Log Set",
+   "items": [
+    {
+     "item": "0173",
+     "name": "Decode Log",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0174",
+     "name": "File Type",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "Text"
+      ],
+      [
+       "01",
+       "HTML"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0175",
+     "name": "Time Stamp",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0176",
+     "name": "Time Stamp (Time)",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "Local"
+      ],
+      [
+       "01",
+       "UTC"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0177",
+     "name": "Time Stamp (Frequency)",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    }
+   ]
+  },
+  {
+   "path": "SCAN > SET",
+   "items": [
+    {
+     "item": "0178",
+     "name": "SCAN Speed",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "Low"
+      ],
+      [
+       "01",
+       "High"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0179",
+     "name": "SCAN Resume",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    }
+   ]
+  },
+  {
+   "path": "VOICE > TX SET",
+   "items": [
+    {
+     "item": "0180",
+     "name": "Auto Monitor",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0181",
+     "name": "Repeat Time",
+     "type": "number",
+     "digits": 2,
+     "min": 1,
+     "max": 15,
+     "unit": "s",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0195",
+     "name": "TX Level",
+     "type": "level",
+     "digits": 4,
+     "min": 0,
+     "max": 255,
+     "percent": true,
+     "source": "IC-7300 Full Manual rev. 11, p. 19-7"
+    }
+   ]
+  },
+  {
+   "path": "RECORD > RECORDER SET",
+   "items": [
+    {
+     "item": "0182",
+     "name": "REC Mode",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "TX&RX"
+      ],
+      [
+       "01",
+       "RX Only"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0183",
+     "name": "TX REC Audio",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "Direct (microphone audio)"
+      ],
+      [
+       "01",
+       "Monitor (TX monitor audio)"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0184",
+     "name": "RX REC Condition",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "Always"
+      ],
+      [
+       "01",
+       "Squelch Auto"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0185",
+     "name": "File Split",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0186",
+     "name": "PTT Auto REC",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "ON"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0187",
+     "name": "PRE-REC for PTT Auto REC",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "5 s"
+      ],
+      [
+       "02",
+       "10 s"
+      ],
+      [
+       "03",
+       "15 s"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    }
+   ]
+  },
+  {
+   "path": "RECORD > Player Set",
+   "items": [
+    {
+     "item": "0188",
+     "name": "Skip Time",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "3 s"
+      ],
+      [
+       "01",
+       "5 s"
+      ],
+      [
+       "02",
+       "10 s"
+      ],
+      [
+       "03",
+       "30 s"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    }
+   ]
+  },
+  {
+   "path": "MULTI > NB",
+   "items": [
+    {
+     "item": "0189",
+     "name": "DEPTH",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "1"
+      ],
+      [
+       "01",
+       "2"
+      ],
+      [
+       "02",
+       "3"
+      ],
+      [
+       "03",
+       "4"
+      ],
+      [
+       "04",
+       "5"
+      ],
+      [
+       "05",
+       "6"
+      ],
+      [
+       "06",
+       "7"
+      ],
+      [
+       "07",
+       "8"
+      ],
+      [
+       "08",
+       "9"
+      ],
+      [
+       "09",
+       "10"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0190",
+     "name": "WIDTH",
+     "type": "level",
+     "digits": 4,
+     "min": 0,
+     "max": 255,
+     "range": [
+      1,
+      100
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    }
+   ]
+  },
+  {
+   "path": "MULTI > VOX",
+   "items": [
+    {
+     "item": "0191",
+     "name": "DELAY",
+     "type": "number",
+     "digits": 2,
+     "min": 0,
+     "max": 20,
+     "scale": 0.1,
+     "decimals": 1,
+     "unit": "s",
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    },
+    {
+     "item": "0192",
+     "name": "VOICE DELAY",
+     "type": "enum",
+     "options": [
+      [
+       "00",
+       "OFF"
+      ],
+      [
+       "01",
+       "Short"
+      ],
+      [
+       "02",
+       "Mid."
+      ],
+      [
+       "03",
+       "Long"
+      ]
+     ],
+     "source": "IC-7300 Full Manual rev. 11, p. 19-6"
+    }
+   ]
+  }
+ ]
+}

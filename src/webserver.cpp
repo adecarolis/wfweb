@@ -7,6 +7,7 @@
 #include "wfweb_version.h"
 #include "buildinfo.h"
 #include "wsjtxmessage.h"
+#include "civraw.h"
 #include <cmath>
 
 static quint64 jsonHz(const QJsonValue &v);   // a Hz field from JSON, bounded; defined above handleCommand
@@ -1381,6 +1382,7 @@ void webServer::serveStaticFile(QTcpSocket *socket, const QString &path, const Q
     else if (path.endsWith(".js")) contentType = "application/javascript; charset=utf-8";
     else if (path.endsWith(".mjs")) contentType = "application/javascript; charset=utf-8";
     else if (path.endsWith(".map")) contentType = "application/json; charset=utf-8";
+    else if (path.endsWith(".json")) contentType = "application/json; charset=utf-8";
     else if (path.endsWith(".css")) contentType = "text/css; charset=utf-8";
     else if (path.endsWith(".png")) contentType = "image/png";
     else if (path.endsWith(".svg")) contentType = "image/svg+xml";
@@ -1505,6 +1507,7 @@ void webServer::sendRestResponse(QTcpSocket *socket, int statusCode, const QJson
     case 429: statusText = "Too Many Requests"; break;
     case 500: statusText = "Internal Server Error"; break;
     case 503: statusText = "Service Unavailable"; break;
+    case 504: statusText = "Gateway Timeout"; break;
     default:  statusText = statusCode >= 500 ? "Error" : statusCode >= 400 ? "Error" : "OK"; break;
     }
 
@@ -1532,6 +1535,450 @@ void webServer::sendRestResponse(QTcpSocket *socket, int statusCode, const QJson
     socket->disconnectFromHost();
 }
 
+// ---------------------------------------------------------------------------
+// Raw CI-V passthrough (POST /api/v1/radio/civ, WebSocket civRaw)
+// ---------------------------------------------------------------------------
+// The frame goes to rigCommander::dataFromServer (connected in servermain),
+// the same writer the rig server and the CI-V TCP port use, so the serial
+// port or the LAN CI-V stream is never opened twice.  The reply comes back on
+// haveDataForServer; it is addressed to CivRaw::kCtrlAddr, so it is ours and
+// icomCommander leaves it alone.
+
+quint8 webServer::civRawRigAddr() const
+{
+    if (civRawSeenAddr_)
+        return civRawSeenAddr_;
+    return rigCaps ? static_cast<quint8>(rigCaps->modelID & 0xff) : 0;
+}
+
+static QJsonObject civRawResult(const QByteArray &sentFrame, const QByteArray &sentBody,
+                                const QByteArray &reply, qint64 ms)
+{
+    QJsonObject o;
+    o["request"] = CivRaw::toHex(sentFrame);
+    if (reply.isEmpty()) {
+        o["reply"] = "timeout";
+        o["error"] = QStringLiteral("no reply from the radio within %1 ms").arg(ms);
+        return o;
+    }
+    const QByteArray body = reply.mid(4, reply.size() - 5);
+    o["frames"] = QJsonArray{CivRaw::toHex(reply)};
+    o["body"] = CivRaw::toHex(body);
+    if (body == QByteArray("\xFB", 1)) {
+        o["reply"] = "ok";
+    } else if (body == QByteArray("\xFA", 1)) {
+        o["reply"] = "ng";
+    } else {
+        o["reply"] = "data";
+        // A read is answered with the command it asked and the value.
+        o["data"] = CivRaw::toHex(body.startsWith(sentBody) ? body.mid(sentBody.size()) : body);
+    }
+    o["ms"] = ms;
+    return o;
+}
+
+bool webServer::civRawSubmit(const QString &hex, CivRawJob job, int *status, QString *error)
+{
+    if (!queue || !rigCaps) {
+        *status = 503; *error = QStringLiteral("Rig not connected");
+        return false;
+    }
+    if (rigCaps->manufacturer != manufIcom) {
+        *status = 400; *error = QStringLiteral("raw CI-V is for Icom rigs only");
+        return false;
+    }
+    const quint8 addr = civRawRigAddr();
+    if (!addr) {
+        *status = 503; *error = QStringLiteral("the radio's CI-V address is not known yet");
+        return false;
+    }
+    QByteArray body;
+    if (!CivRaw::parse(hex, addr, &body, error)) {
+        *status = 400;
+        return false;
+    }
+    const QString refused = CivRaw::refusedReason(body);
+    if (!refused.isEmpty()) {
+        *status = 403; *error = refused;
+        return false;
+    }
+    if (civRawJobs_.size() >= kCivRawMaxQueued) {
+        *status = 503; *error = QStringLiteral("too many raw CI-V requests waiting");
+        return false;
+    }
+    if (!civRawTimer_) {
+        civRawTimer_ = new QTimer(this);
+        civRawTimer_->setSingleShot(true);
+        connect(civRawTimer_, &QTimer::timeout, this, [this]() { civRawFinish(QByteArray()); });
+    }
+    job.body = body;
+    job.frame = CivRaw::frame(addr, body);
+    civRawJobs_.append(job);
+    civRawPump();
+    return true;
+}
+
+void webServer::civRawPump()
+{
+    while (!civRawInFlight_ && !civRawJobs_.isEmpty()) {
+        CivRawJob &j = civRawJobs_.first();
+        if (!j.rest && !j.ws && !j.done) {
+            // The caller is gone: what it asked is not sent.
+            civRawJobs_.removeFirst();
+            continue;
+        }
+        // The server's own reads (a SET menu backup: hundreds) log quietly.
+        if (j.done) qDebug() << "Web: raw CI-V" << CivRaw::toHex(j.frame);
+        else qInfo() << "Web: raw CI-V" << CivRaw::toHex(j.frame);
+        civRawBuf_.clear();
+        civRawInFlight_ = true;
+        j.sentMs = QDateTime::currentMSecsSinceEpoch();
+        civRawTimer_->start(kCivRawTimeoutMs);
+        emit civRawOut(j.frame);
+    }
+}
+
+void webServer::receiveRigRawData(QByteArray data)
+{
+    // Learn the radio's address from its frames to wfweb (E0 / E1) or to all
+    // (00).  One header per block, whatever is in flight.
+    if (data.size() >= 4 && static_cast<quint8>(data.at(0)) == 0xFE
+        && static_cast<quint8>(data.at(1)) == 0xFE) {
+        const quint8 to = static_cast<quint8>(data.at(2));
+        const quint8 from = static_cast<quint8>(data.at(3));
+        if ((to == 0xE0 || to == 0xE1 || to == 0x00) && from != 0xE0 && from != 0xE1
+            && from != CivRaw::kCtrlAddr && from != 0xFE)
+            civRawSeenAddr_ = from;
+    }
+    if (!civRawInFlight_)
+        return;
+    civRawBuf_.append(data);
+    if (civRawBuf_.size() > 16384)   // spectrum lines; a reply is short
+        civRawBuf_ = civRawBuf_.right(4096);
+    const quint8 addr = civRawRigAddr();
+    for (const QByteArray &f : CivRaw::takeFrames(&civRawBuf_)) {
+        if (CivRaw::isReply(f, addr)) {
+            if (!CivRaw::answers(f, civRawJobs_.first().body)) {
+                qDebug() << "Web: raw CI-V late reply ignored" << CivRaw::toHex(f);
+                continue;
+            }
+            civRawFinish(f);
+            return;
+        }
+    }
+}
+
+void webServer::civRawFinish(const QByteArray &reply)
+{
+    if (!civRawInFlight_ || civRawJobs_.isEmpty())
+        return;
+    civRawTimer_->stop();
+    civRawInFlight_ = false;
+    civRawBuf_.clear();
+    const CivRawJob job = civRawJobs_.takeFirst();
+    const qint64 ms = reply.isEmpty() ? kCivRawTimeoutMs
+                                      : QDateTime::currentMSecsSinceEpoch() - job.sentMs;
+    if (job.done) {
+        qDebug() << "Web: raw CI-V" << (reply.isEmpty() ? QStringLiteral("timeout") : CivRaw::toHex(reply));
+        job.done(reply);
+        civRawPump();
+        return;
+    }
+    const QJsonObject result = civRawResult(job.frame, job.body, reply, ms);
+    if (reply.isEmpty())
+        qInfo() << "Web: raw CI-V timeout for" << CivRaw::toHex(job.frame);
+    else
+        qInfo() << "Web: raw CI-V reply" << CivRaw::toHex(reply) << "in" << ms << "ms";
+    if (job.rest) {
+        sendRestResponse(job.rest, reply.isEmpty() ? 504 : 200, result);
+    } else if (job.ws) {
+        QJsonObject o = result;
+        o["type"] = "civRawReply";
+        o["id"] = job.wsId;
+        sendJsonTo(job.ws, o);
+    }
+    civRawPump();
+}
+
+void webServer::handleCivRawRest(QTcpSocket *socket, const QString &method, const QByteArray &body)
+{
+    if (method != "POST") {
+        sendRestResponse(socket, 405, QJsonObject{{"error", "Method not allowed"}});
+        return;
+    }
+    QJsonParseError perr;
+    const QJsonDocument doc = QJsonDocument::fromJson(body, &perr);
+    if (perr.error != QJsonParseError::NoError || !doc.isObject() || !doc.object().value("hex").isString()) {
+        sendRestResponse(socket, 400, QJsonObject{{"error", "body must be {\"hex\": \"<CI-V command>\"}"}});
+        return;
+    }
+    CivRawJob job;
+    job.rest = socket;
+    int status = 0;
+    QString error;
+    if (!civRawSubmit(doc.object().value("hex").toString(), job, &status, &error))
+        sendRestResponse(socket, status, QJsonObject{{"error", error}});
+    // else: answered from civRawFinish when the radio replies or the wait ends
+}
+
+// ---------------------------------------------------------------------------
+// SET menu backup / restore (GET /api/v1/radio/setmenu/backup, POST
+// /api/v1/radio/setmenu/restore, WebSocket setMenuBackup / setMenuRestore)
+// ---------------------------------------------------------------------------
+// The items are the model's table, the one the page's SET window draws
+// (:/web/setmenu/<model>.json).  Everything goes through the raw CI-V queue,
+// one item at a time, interleaved fairly with the page's own requests.
+
+static QString setMenuSpaced(const QString &hex)
+{
+    QString out;
+    for (int i = 0; i < hex.size(); i += 2) {
+        if (i) out += QLatin1Char(' ');
+        out += hex.mid(i, 2);
+    }
+    return out;
+}
+
+// Read one item: ok with its data (hex, no spaces), missing (NG: not on this
+// radio or firmware), or an error.  A read that gets no answer is asked
+// again, four times at most: over USB about one reply in fifty is lost
+// below the web layer (IC-7300, 2026-11-27).
+void webServer::setMenuRead(const QString &itemNo, int tries,
+                            std::function<void(bool, bool, const QString &, const QString &)> cb)
+{
+    const QString hex = QStringLiteral("1A 05 ") + setMenuSpaced(itemNo);
+    CivRawJob job;
+    job.done = [this, itemNo, tries, cb](const QByteArray &reply) {
+        if (reply.isEmpty()) {
+            // Asked again after a growing pause: replies are lost in short
+            // bursts, which three immediate tries can all fall into.
+            static const int kRetryMs[] = {100, 250, 500, 1000};
+            if (tries < 4)
+                QTimer::singleShot(kRetryMs[tries], this, [this, itemNo, tries, cb]() { setMenuRead(itemNo, tries + 1, cb); });
+            else
+                cb(false, false, QString(), QStringLiteral("no reply from the radio"));
+            return;
+        }
+        const QByteArray body = reply.mid(4, reply.size() - 5);
+        if (body == QByteArray("\xFA", 1)) { cb(false, true, QString(), QStringLiteral("not on this radio (NG)")); return; }
+        const QByteArray prefix = QByteArray::fromHex(("1A05" + itemNo).toLatin1());
+        if (!body.startsWith(prefix) || body.size() == prefix.size()) {
+            cb(false, false, QString(), QStringLiteral("unexpected reply ") + CivRaw::toHex(body));
+            return;
+        }
+        cb(true, false, QString::fromLatin1(body.mid(prefix.size()).toHex()).toUpper(), QString());
+    };
+    int status = 0;
+    QString error;
+    if (!civRawSubmit(hex, job, &status, &error)) {
+        if (status == 503 && error.contains(QLatin1String("waiting")))   // the line is full: in a moment
+            QTimer::singleShot(200, this, [this, itemNo, tries, cb]() { setMenuRead(itemNo, tries, cb); });
+        else
+            cb(false, false, QString(), error);
+    }
+}
+
+bool webServer::setMenuStart(std::unique_ptr<SetMenuRun> run, const QJsonObject &backup, int *status, QString *error)
+{
+    if (setMenuRun_) { *status = 409; *error = QStringLiteral("a SET menu backup or restore is already running"); return false; }
+    if (!queue || !rigCaps) { *status = 503; *error = QStringLiteral("Rig not connected"); return false; }
+    if (rigCaps->manufacturer != manufIcom) { *status = 400; *error = QStringLiteral("the SET menu is for Icom rigs only"); return false; }
+    const QString model = rigCaps->modelName;
+    QFile f(QStringLiteral(":/web/setmenu/") + model + QStringLiteral(".json"));
+    if (!f.open(QIODevice::ReadOnly)) { *status = 404; *error = QStringLiteral("no SET menu table for ") + model; return false; }
+    QString perr;
+    if (!SetMenuDef::parse(f.readAll(), &run->table, &perr)) { *status = 500; *error = perr; return false; }
+
+    if (!run->restore) {
+        for (int i = 0; i < run->table.items.size(); ++i) run->order << i;
+    } else {
+        if (backup.value(QStringLiteral("format")).toString() != QLatin1String("wfweb-setmenu-backup")) {
+            *status = 400; *error = QStringLiteral("not a wfweb SET menu backup"); return false;
+        }
+        const QString from = backup.value(QStringLiteral("model")).toString();
+        if (from != model) {
+            *status = 400; *error = QStringLiteral("the backup is of %1, the radio is %2").arg(from, model); return false;
+        }
+        const QJsonObject items = backup.value(QStringLiteral("items")).toObject();
+        if (items.isEmpty()) { *status = 400; *error = QStringLiteral("the backup holds no items"); return false; }
+        for (auto it = items.begin(); it != items.end(); ++it) {
+            const QString data = it.value().isObject() ? it.value().toObject().value(QStringLiteral("data")).toString()
+                                                        : it.value().toString();
+            if (!run->table.find(it.key())) {
+                run->skipped.append(QJsonObject{{"item", it.key()}, {"reason", QStringLiteral("not in the %1 table").arg(model)}});
+                continue;
+            }
+            run->wanted.insert(it.key(), data.toUpper().remove(QLatin1Char(' ')));
+        }
+        for (int i = 0; i < run->table.items.size(); ++i)
+            if (run->wanted.contains(run->table.items.at(i).no)) run->order << i;
+    }
+    qInfo() << "Web: SET menu" << (run->restore ? (run->dryRun ? "restore (dry run)" : "restore") : "backup")
+            << "of" << model << "-" << run->order.size() << "items";
+    setMenuRun_ = std::move(run);
+    QTimer::singleShot(0, this, [this]() { setMenuStep(); });
+    return true;
+}
+
+void webServer::setMenuStep()
+{
+    SetMenuRun *run = setMenuRun_.get();
+    if (!run) return;
+    if (!run->rest && !run->ws) { setMenuFinish(QStringLiteral("the caller has gone")); return; }
+    if (run->ws) {
+        const qint64 now = QDateTime::currentMSecsSinceEpoch();
+        if (now - run->lastProgressMs > 150 || run->pos == run->order.size()) {
+            run->lastProgressMs = now;
+            sendJsonTo(run->ws, QJsonObject{{"type", "setMenuProgress"}, {"id", run->wsId},
+                                            {"done", run->pos}, {"total", run->order.size()}});
+        }
+    }
+    if (run->pos >= run->order.size()) { setMenuFinish(); return; }
+    const SetMenuDef::Item item = run->table.items.at(run->order.at(run->pos));
+    auto next = [this, run]() {
+        if (setMenuRun_.get() != run) return;
+        run->pos++;
+        QTimer::singleShot(0, this, [this]() { setMenuStep(); });
+    };
+
+    if (!run->restore) {
+        setMenuRead(item.no, 0, [this, run, item, next](bool ok, bool missing, const QString &data, const QString &err) {
+            if (setMenuRun_.get() != run) return;
+            if (ok) {
+                QJsonObject o{{"name", item.name}, {"data", data}};
+                const QString lbl = SetMenuDef::label(item, data);
+                if (!lbl.isEmpty()) o["value"] = lbl;
+                run->items.insert(item.no, o);
+            } else if (missing) {
+                run->notOnRadio.append(item.no);
+            } else {
+                run->errors.insert(item.no, err);
+            }
+            next();
+        });
+        return;
+    }
+
+    // Restore: never what is shown but not written here, nor the clock or a
+    // calibration; a value the item does not take never reaches the radio.
+    auto skip = [run, item, next](const QString &why) {
+        run->skipped.append(QJsonObject{{"item", item.no}, {"name", item.name}, {"reason", why}});
+        next();
+    };
+    auto fail = [run, item, next](const QString &why) {
+        run->failed.append(QJsonObject{{"item", item.no}, {"name", item.name}, {"reason", why}});
+        next();
+    };
+    if (item.readonly) { skip(QStringLiteral("read-only here")); return; }
+    if (!item.restore) { skip(QStringLiteral("not restored (the clock, or the radio's own calibration)")); return; }
+    const QString target = run->wanted.value(item.no).toString();
+    const QString bad = SetMenuDef::validate(item, target);
+    if (!bad.isEmpty()) { fail(QStringLiteral("backup value refused: ") + bad); return; }
+
+    setMenuRead(item.no, 0, [this, run, item, target, next, skip, fail](bool ok, bool missing, const QString &current, const QString &err) {
+        if (setMenuRun_.get() != run) return;
+        if (missing) { skip(QStringLiteral("not on this radio")); return; }
+        if (!ok) { fail(QStringLiteral("read before writing failed: ") + err); return; }
+        const QString bad = SetMenuDef::validate(item, target, current);
+        if (!bad.isEmpty()) { fail(QStringLiteral("backup value refused: ") + bad); return; }
+        if (current == target) { run->unchanged++; next(); return; }
+        QJsonObject change{{"item", item.no}, {"name", item.name}, {"path", item.path}, {"from", current}, {"to", target}};
+        const QString fromLbl = SetMenuDef::label(item, current), toLbl = SetMenuDef::label(item, target);
+        if (!fromLbl.isEmpty()) change["fromValue"] = fromLbl;
+        if (!toLbl.isEmpty()) change["toValue"] = toLbl;
+        if (run->dryRun) { run->changes.append(change); next(); return; }
+
+        // Set, then read back: the read decides, whatever the set's answer.
+        CivRawJob job;
+        job.done = [this, run, item, target, change, next, fail](const QByteArray &reply) {
+            if (setMenuRun_.get() != run) return;
+            const QByteArray body = reply.mid(4, reply.size() - 5);
+            if (body == QByteArray("\xFA", 1)) { fail(QStringLiteral("the radio refused the value (NG)")); return; }
+            setMenuRead(item.no, 0, [this, run, target, change, next, fail, reply](bool ok, bool, const QString &now, const QString &err) {
+                if (setMenuRun_.get() != run) return;
+                if (!ok) { fail(QStringLiteral("written, but the read back failed: ") + err); return; }
+                if (now != target) {
+                    fail(reply.isEmpty() ? QStringLiteral("no answer to the set, and the radio still reads ") + now
+                                         : QStringLiteral("read back ") + now + QStringLiteral(", expected ") + target);
+                    return;
+                }
+                run->written.append(change);
+                next();
+            });
+        };
+        int status = 0;
+        QString error;
+        if (!civRawSubmit(SetMenuDef::setHex(item, target), job, &status, &error))
+            fail(error);
+    });
+}
+
+void webServer::setMenuFinish(const QString &abortError)
+{
+    std::unique_ptr<SetMenuRun> run = std::move(setMenuRun_);
+    if (!run) return;
+    QJsonObject result;
+    if (!abortError.isEmpty()) {
+        qInfo() << "Web: SET menu run stopped:" << abortError;
+        result["error"] = abortError;
+    } else if (!run->restore) {
+        result = QJsonObject{
+            {"format", "wfweb-setmenu-backup"}, {"version", 1},
+            {"model", run->table.model},
+            {"created", QDateTime::currentDateTimeUtc().toString(Qt::ISODate)},
+            {"wfweb", wfwebVersion()},
+            {"items", run->items}, {"notOnRadio", run->notOnRadio}, {"errors", run->errors}};
+        qInfo() << "Web: SET menu backup:" << run->items.size() << "items," << run->notOnRadio.size()
+                << "not on this radio," << run->errors.size() << "errors";
+    } else {
+        result = QJsonObject{{"dryRun", run->dryRun}, {"model", run->table.model},
+                             {"unchanged", run->unchanged}, {"skipped", run->skipped}, {"failed", run->failed}};
+        if (run->dryRun) result["changes"] = run->changes;
+        else result["written"] = run->written;
+        qInfo() << "Web: SET menu restore" << (run->dryRun ? "(dry run):" : ":")
+                << (run->dryRun ? run->changes.size() : run->written.size()) << (run->dryRun ? "to change," : "written,")
+                << run->unchanged << "unchanged," << run->skipped.size() << "skipped," << run->failed.size() << "failed";
+    }
+    if (run->rest) {
+        sendRestResponse(run->rest, abortError.isEmpty() ? 200 : 500, result);
+    } else if (run->ws) {
+        result["type"] = "setMenuResult";
+        result["id"] = run->wsId;
+        result["restore"] = run->restore;
+        sendJsonTo(run->ws, result);
+    }
+}
+
+void webServer::handleSetMenuRest(QTcpSocket *socket, const QString &method, const QString &path,
+                                  const QUrlQuery &query, const QByteArray &body)
+{
+    auto run = std::make_unique<SetMenuRun>();
+    run->rest = socket;
+    QJsonObject backup;
+    if (path == QLatin1String("/api/v1/radio/setmenu/backup")) {
+        if (method != QLatin1String("GET")) { sendRestResponse(socket, 405, QJsonObject{{"error", "Method not allowed"}}); return; }
+    } else if (path == QLatin1String("/api/v1/radio/setmenu/restore")) {
+        if (method != QLatin1String("POST")) { sendRestResponse(socket, 405, QJsonObject{{"error", "Method not allowed"}}); return; }
+        QJsonParseError perr;
+        const QJsonDocument doc = QJsonDocument::fromJson(body, &perr);
+        if (perr.error != QJsonParseError::NoError || !doc.isObject()) {
+            sendRestResponse(socket, 400, QJsonObject{{"error", "the body must be a backup (JSON object)"}});
+            return;
+        }
+        backup = doc.object();
+        run->restore = true;
+        const QString dry = query.queryItemValue(QStringLiteral("dryRun"));
+        run->dryRun = dry == QLatin1String("1") || dry == QLatin1String("true");
+    } else {
+        sendRestResponse(socket, 404, QJsonObject{{"error", "Not found"}});
+        return;
+    }
+    int status = 0;
+    QString error;
+    if (!setMenuStart(std::move(run), backup, &status, &error))
+        sendRestResponse(socket, status, QJsonObject{{"error", error}});
+}
+
 void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
                                    const QString &path, const QUrlQuery &query,
                                    const QByteArray &body)
@@ -1552,6 +1999,15 @@ void webServer::handleRestRequest(QTcpSocket *socket, const QString &method,
 
     if (p.startsWith("/api/v1/sstv/images")) {
         handleSstvRequest(socket, method, p, query, body);
+        return;
+    }
+
+    if (p == "/api/v1/radio/civ") {
+        handleCivRawRest(socket, method, body);
+        return;
+    }
+    if (p.startsWith("/api/v1/radio/setmenu/")) {
+        handleSetMenuRest(socket, method, p, query, body);
         return;
     }
 
@@ -3621,6 +4077,49 @@ void webServer::handleCommand(QWebSocket *client, const QJsonObject &cmd)
     }
     else if (type == "reconnectLan") {
         emit requestLanReconnect();
+    }
+    else if (type == "civRaw") {
+        // {cmd: "civRaw", id, hex} -> {type: "civRawReply", id, ...} (REST_API.md)
+        if (!client)
+            return;
+        // Admin-only under --shared (access.cpp); it acts on the radio, so
+        // it takes the seat as well, which admin commands otherwise do not.
+        if (sharedMode_ && seatEnabled_ && client != seat_.holder) {
+            denySeat(client, type);
+            return;
+        }
+        CivRawJob job;
+        job.ws = client;
+        job.wsId = cmd.value("id");
+        int status = 0;
+        QString error;
+        if (!civRawSubmit(cmd.value("hex").toString(), job, &status, &error)) {
+            QJsonObject o{{"type", "civRawReply"}, {"id", job.wsId},
+                          {"reply", "error"}, {"status", status}, {"error", error}};
+            sendJsonTo(client, o);
+        }
+    }
+    else if (type == "setMenuBackup" || type == "setMenuRestore") {
+        // {cmd: "setMenuBackup", id} / {cmd: "setMenuRestore", id, backup, dryRun}
+        // -> setMenuProgress {id, done, total} ... setMenuResult {id, ...} (REST_API.md)
+        if (!client)
+            return;
+        if (sharedMode_ && seatEnabled_ && client != seat_.holder) {
+            denySeat(client, type);
+            return;
+        }
+        auto run = std::make_unique<SetMenuRun>();
+        run->ws = client;
+        run->wsId = cmd.value("id");
+        run->restore = type == "setMenuRestore";
+        run->dryRun = cmd.value("dryRun").toBool(false);
+        const QJsonValue wsId = run->wsId;
+        int status = 0;
+        QString error;
+        if (!setMenuStart(std::move(run), cmd.value("backup").toObject(), &status, &error))
+            sendJsonTo(client, QJsonObject{{"type", "setMenuResult"}, {"id", wsId},
+                                           {"restore", type == "setMenuRestore"},
+                                           {"status", status}, {"error", error}});
     }
     else if (type == "getMemories") {
         if (!queue || !rigCaps) {

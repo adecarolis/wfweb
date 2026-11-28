@@ -377,7 +377,9 @@ SOURCES += \
     src/wsjtxmessage.cpp \
     src/logbook.cpp \
     src/memorystore.cpp \
-    src/access.cpp
+    src/access.cpp \
+    src/civraw.cpp \
+    src/setmenutable.cpp
 
 macx:SOURCES += src/tlsproxy.cpp
 
@@ -421,6 +423,8 @@ HEADERS  += \
     include/keyboard.h \
     include/consolestatus.h \
     include/access.h \
+    include/civraw.h \
+    include/setmenutable.h \
     include/wfwebtypes.h \
     include/pttyhandler.h \
     include/icomudpaudio.h \

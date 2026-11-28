@@ -355,6 +355,10 @@ void servermain::makeRig()
             if (web != Q_NULLPTR) {
                 connect(radio->rig, SIGNAL(haveAudioData(audioPacket)), web, SLOT(receiveRxAudio(audioPacket)));
                 connect(web, SIGNAL(haveTxAudioData(audioPacket)), radio->rig, SLOT(receiveWebTxAudio(audioPacket)));
+                // Raw CI-V (POST /api/v1/radio/civ): through the rig server's
+                // passthrough, the commander's own port writer.
+                connect(web, SIGNAL(civRawOut(QByteArray)), radio->rig, SLOT(dataFromServer(QByteArray)));
+                connect(radio->rig, SIGNAL(haveDataForServer(QByteArray)), web, SLOT(receiveRigRawData(QByteArray)));
             }
 
             if (radio->rigThread->isRunning()) {
