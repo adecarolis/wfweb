@@ -133,7 +133,10 @@ private:
     quint8 breakInMode = 1;         // 0x16 0x47: 0=off, 1=semi, 2=full
     quint8 agcMode = 2;             // 0x16 0x12: 1=FAST, 2=MID, 3=SLOW (IC-7300)
     quint16 cwPitchHz() const  { return 300 + (quint16)cwPitchEncoded * 600 / 255; }
-    quint16 keySpeedWpm() const{ return 6 + (quint16)((float)keySpeedEncoded / 6.071f); }
+    // 0..255 spans 6-48 WPM, rounded as icomCommander reads it (funcKeySpeed):
+    // a truncation keyed one WPM below what the page shows at half the
+    // levels, the default 115 (25 WPM) included.
+    quint16 keySpeedWpm() const{ return (quint16)qRound(keySpeedEncoded * 42 / 255.0 + 6); }
 
     // Periodic spectrum-frame emitter. Real IC-7300 pushes ~30 fps; we use a
     // 50 ms tick (20 fps) — enough to make the waterfall scroll smoothly while

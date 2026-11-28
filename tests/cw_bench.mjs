@@ -143,6 +143,14 @@ const ngCount = () => { try { return (fs.readFileSync(VR_LOG, 'utf8').match(/CW 
   await B.click('#cwDecoderToggle');
   await tapRx(B);
   await tapTone(A);
+  // WFWEB_BENCH_WPM=25: key at another speed than the page's default 20
+  // (the rig's 0..255 level rounds to WPM; at 25 a truncating virtual rig
+  // keyed 24 and drifted ~600 ms over ten words, 2026-11-27).
+  const wpm = parseInt(process.env.WFWEB_BENCH_WPM || '', 10);
+  if (wpm) {
+    await A.evaluate((w) => window.setCwSpeedValue(w), wpm);
+    console.log('keyer speed set to ' + wpm + ' WPM');
+  }
   await sleep(1500);
 
   // ---- 1. model vs the rig's keying over ten words --------------------------
