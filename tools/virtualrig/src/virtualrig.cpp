@@ -115,6 +115,15 @@ static const int kIcomDotTicks[43] = {
     157, 153, 151,
 };
 
+// One unit (dot) in samples at 48 kHz: 8 samples per 1/6 ms tick, so the
+// table is exact; 1200 / WPM outside the IC-7300's keyer range.
+int cwUnitSamples(quint16 wpm)
+{
+    if (wpm < 5) wpm = 5;
+    if (wpm > 60) wpm = 60;
+    return (wpm >= 6 && wpm <= 48) ? 8 * kIcomDotTicks[wpm - 6] : (48000 * 1200 / wpm) / 1000;
+}
+
 QByteArray synthesizeCw(const QByteArray& text, quint16 wpm, quint16 pitchHz,
                         bool& prevWasGap, QVector<int>* charEnds = nullptr)
 {
@@ -122,15 +131,10 @@ QByteArray synthesizeCw(const QByteArray& text, quint16 wpm, quint16 pitchHz,
     constexpr float kAmplitude = 12000.0f; // headroom under int16 max
     constexpr int kRampMs = 5;
 
-    if (wpm < 5) wpm = 5;
-    if (wpm > 60) wpm = 60;
     if (pitchHz < 200) pitchHz = 200;
     if (pitchHz > 2000) pitchHz = 2000;
 
-    // One unit (dot) in samples: 8 samples per 1/6 ms tick at 48 kHz, so
-    // the table is exact; 1200 / WPM outside the IC-7300's keyer range.
-    const int unitSamples = (wpm >= 6 && wpm <= 48) ? 8 * kIcomDotTicks[wpm - 6]
-                                                    : (kSampleRate * 1200 / wpm) / 1000;
+    const int unitSamples = cwUnitSamples(wpm);
     const int rampSamples = (kSampleRate * kRampMs) / 1000;
 
     QByteArray out;
@@ -547,14 +551,38 @@ void virtualRig::onCwSendRequested(const QByteArray& text, quint16 wpm, quint16 
     // reflect whether the produced audio ended on silence. So back-to-back
     // single-char frames (e.g. typing "H" then "E") get the 3-unit gap
     // they need not to slur into one symbol stream.
+    // A frame that finds the keyer empty after a letter: the IC-7300 waits
+    // out the rest of the three-dot character gap, except for one that
+    // arrives within about half a dot of the last element's end, which it
+    // starts at once, running the two letters together (measured off the
+    // radio with tests/cw_rig_capture.mjs --chr, 2026-11-28: letters typed
+    // around that moment came out as "K*BC", "K1*C"; later in the gap, a full
+    // gap).  This used to start every such frame at once, which merged
+    // letters the radio keeps apart.  The new audio goes out on the pump's
+    // next tick, after the zeros the last chunk was padded with, so the lead
+    // silence is reckoned from there: counted from the arrival instead, each
+    // such frame put up to 20 ms the page's model does not know into the
+    // gap, and the bench fell behind the model a letter at a time.
+    QByteArray lead;
+    if (cwTxBuffer.isEmpty() && !cwPrevWasGap) {
+        const double unitMs = cwUnitSamples(wpm) / 48.0;
+        const qint64 now = QDateTime::currentMSecsSinceEpoch();
+        const double since = double(now - cwToneEndMs);
+        const qint64 start = cwActive ? cwLastTickMs + 20 : now + 20;   // first tick of the new audio
+        const double gap = double(start - cwToneEndMs);
+        if (!(since >= 0 && since < 0.5 * unitMs) && gap < 3 * unitMs)
+            lead = QByteArray(int((3 * unitMs - gap) * 48) * int(sizeof(qint16)), '\0');
+        cwPrevWasGap = true;   // the gap is the idle time (+ lead), or none at all
+    }
     QVector<int> charEnds;
     QByteArray audio = synthesizeCw(text, wpm, pitchHz, cwPrevWasGap, &charEnds);
     if (audio.isEmpty()) return;
+    audio.prepend(lead);
     cwTxBuffer.append(audio);
     // Keyer buffer accounting: a character stays pending until its audio has
     // been pumped out (see drainCwTx), and the emulator NGs a frame that
     // would overflow the buffer.
-    for (int i = 0; i < charEnds.size(); ++i) cwCharEnds.append(cwQueuedBytes + charEnds.at(i));
+    for (int i = 0; i < charEnds.size(); ++i) cwCharEnds.append(cwQueuedBytes + lead.size() + charEnds.at(i));
     cwQueuedBytes += audio.size();
     if (civ) civ->keyerPending.store(cwCharEnds.size());
 
@@ -568,7 +596,7 @@ void virtualRig::onCwSendRequested(const QByteArray& text, quint16 wpm, quint16 
     }
     qDebug() << "virtualRig" << cfg.name << "CW queued:" << text
              << "wpm=" << wpm << "pitch=" << pitchHz
-             << "samples=" << (audio.size() / 2);
+             << "samples=" << (audio.size() / 2) << "lead=" << (lead.size() / 2);
 }
 
 void virtualRig::onCwAbortRequested()
@@ -592,12 +620,11 @@ void virtualRig::drainCwTx()
     static const int kBytesPerTick = 48 * 20 * 2;
 
     if (cwTxBuffer.isEmpty()) {
-        // Buffer drained — release PTT and stop the pump. Reset the
-        // inter-frame gap state so the *next* CW session starts fresh
-        // (no spurious leading 3-unit silence).
+        // Buffer drained — release PTT and stop the pump. The gap state
+        // stays: the next frame's leading gap is decided by how long ago the
+        // last element ended (cwToneEndMs, onCwSendRequested).
         if (cwActive) {
             cwActive = false;
-            cwPrevWasGap = true;
             if (civ) civ->setExternalPtt(false);
         }
         if (cwTxTimer && cwTxTimer->isActive()) cwTxTimer->stop();
@@ -609,6 +636,10 @@ void virtualRig::drainCwTx()
     chunk = cwTxBuffer.left(take);
     cwTxBuffer.remove(0, take);
     cwPlayedBytes += take;
+    // The last of the audio goes out with this chunk: note when its last
+    // element ends (a buffer ending on a space ends on silence, cwPrevWasGap).
+    cwLastTickMs = QDateTime::currentMSecsSinceEpoch();
+    if (cwTxBuffer.isEmpty()) cwToneEndMs = cwLastTickMs + take / 96;
     while (!cwCharEnds.isEmpty() && cwCharEnds.first() <= cwPlayedBytes) cwCharEnds.removeFirst();
     if (civ) civ->keyerPending.store(cwCharEnds.size());
     // Pad short tail to a full 20 ms chunk so downstream resamplers see a

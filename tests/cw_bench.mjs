@@ -26,6 +26,8 @@ const ROOT = path.resolve(here, '..');
 const URL_A = process.env.WFWEB_BENCH_A || 'https://127.0.0.1:9080/';
 const URL_B = process.env.WFWEB_BENCH_B || 'https://127.0.0.1:9090/';
 const VR_LOG = path.join(ROOT, '.testrig', 'virtualrig.log');
+// --paddle: section 7 alone, --chr: section 8 alone, both: the two.
+const ONLY = { paddle: process.argv.includes('--paddle'), chr: process.argv.includes('--chr') };
 
 function findBrowser() {
   const home = os.homedir();
@@ -152,6 +154,11 @@ const ngCount = () => { try { return (fs.readFileSync(VR_LOG, 'utf8').match(/CW 
     console.log('keyer speed set to ' + wpm + ' WPM');
   }
   await sleep(1500);
+  if (ONLY.paddle || ONLY.chr) {
+    if (ONLY.paddle) await paddleOnAir(A, B);
+    if (ONLY.chr) await chrOnAir(A, B);
+    return finish(browser, errors);
+  }
 
   // ---- 1. model vs the rig's keying over ten words --------------------------
   const text = 'CQ CQ CQ DE W1AAA W1AAA W1AAA PSE K';
@@ -234,9 +241,155 @@ const ngCount = () => { try { return (fs.readFileSync(VR_LOG, 'utf8').match(/CW 
   const tone6 = await A.evaluate(() => window.__tone);
   check(tone6.some(p => p.t < tStop && p.v > 0.02) && tone6.filter(p => p.t > tStop + 60).every(p => p.v <= 0.005), 'STOP silences the sidetone within 60 ms');
 
+  await paddleOnAir(A, B);
+  await chrOnAir(A, B);
+  await finish(browser, errors);
+})().catch(e => { console.error(e); process.exit(2); });
+
+async function finish(browser, errors) {
   console.log('page errors: ' + JSON.stringify(errors));
   check(errors.length === 0, 'no page errors');
   await browser.close();
   console.log(fails ? 'FAILED ' + fails : 'ALL PASS');
   process.exit(fails ? 1 : 0);
-})().catch(e => { console.error(e); process.exit(2); });
+}
+
+// ---- 7. paddle / straight key: what B hears reads as what A paddled --------
+// cw-paddle.js decodes the fist and hands the text to the rig's keyer.  Handed
+// over a character at a time, the rig ran dry between letters whenever a
+// letter took it less time than the next one took the hand, and the idle
+// time went out as a word gap ("C Q DE K 1ABC K", 2026-11-28); a letter
+// arriving as the buffer drained went out with no gap at all.  B's received
+// audio is read by its gaps at the rig's dot, as an ear would: under two
+// dots the same character, under five the next, else a new word.
+function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 2 ** 32); }
+// Contacts {t, role, closed} (ms from the start) spelling text: an iambic
+// paddle at the keyer's dot with three / seven dot gaps, or a straight key at
+// its own dot with every length off by up to +/- jitter.
+function contactTimeline(text, dot, straight, jitter, seed) {
+  const r = rng(seed), j = () => straight ? 1 + (r() * 2 - 1) * jitter : 1;
+  const ev = []; let t = 200, first = true;
+  for (const ch of text) {
+    if (ch === ' ') { t += 4 * dot * j(); continue; }
+    if (!first) t += 3 * dot * j();
+    const p = MORSE[ch];
+    for (let k = 0; k < p.length; k++) {
+      if (k) t += dot * j();
+      const len = (p[k] === '.' ? 1 : 3) * dot * j();
+      const role = straight ? 'straight' : (p[k] === '.' ? 'left' : 'right');
+      if (straight) { ev.push({ t, role, closed: true }); ev.push({ t: t + len, role, closed: false }); }
+      else { ev.push({ t: k ? t - 0.5 * dot : t, role, closed: true }); ev.push({ t: t + 0.5 * len, role, closed: false }); }
+      t += len;
+    }
+    first = false;
+  }
+  return ev;
+}
+const MORSE = {
+  A: '.-', B: '-...', C: '-.-.', D: '-..', E: '.', F: '..-.', G: '--.', H: '....', I: '..', J: '.---', K: '-.-', L: '.-..', M: '--',
+  N: '-.', O: '---', P: '.--.', Q: '--.-', R: '.-.', S: '...', T: '-', U: '..-', V: '...-', W: '.--', X: '-..-', Y: '-.--', Z: '--..',
+  0: '-----', 1: '.----', 2: '..---', 3: '...--', 4: '....-', 5: '.....', 6: '-....', 7: '--...', 8: '---..', 9: '----.',
+};
+const FROM_MORSE = Object.fromEntries(Object.entries(MORSE).map(([c, p]) => [p, c]));
+function readBursts(raw, dot) {
+  // A hole under half a dot is no element gap (the bench's audio path drops
+  // a 20 ms frame now and then, which split a dash in two).
+  const b = [];
+  for (const x of raw) { if (b.length && x.on - b[b.length - 1].off < 0.5 * dot) b[b.length - 1].off = x.off; else b.push({ ...x }); }
+  let out = '', pat = '';
+  for (let i = 0; i < b.length; i++) {
+    if (i) {
+      const g = (b[i].on - b[i - 1].off) / dot;
+      if (g >= 2) { out += FROM_MORSE[pat] || '*'; pat = ''; if (g >= 5) out += ' '; }
+    }
+    pat += (b[i].off - b[i].on) / dot < 2 ? '.' : '-';
+  }
+  return out + (pat ? FROM_MORSE[pat] || '*' : '');
+}
+async function paddleOnAir(A, B) {
+  await A.click('#cwStopBtn');
+  await A.evaluate(() => window.setCwSpeedValue(20));
+  await sleep(800);
+  const cases = [
+    { text: 'CQ DE K1ABC K', straight: false, wpm: 20 },
+    { text: 'TEST DE W1AW 73 TU', straight: false, wpm: 20 },
+    { text: 'CQ DE K1ABC K', straight: true, wpm: 15, seed: 1 },
+    { text: 'TEST DE W1AW 73 TU', straight: true, wpm: 25, seed: 2 },
+  ];
+  for (const c of cases) {
+    const dot = await A.evaluate(() => window.cwKeyer.dot());
+    const ev = contactTimeline(c.text, c.straight ? 1200 / c.wpm : dot, c.straight, 0.15, c.seed || 1);
+    await A.evaluate(() => { window.cwPaddle.straight.dotMs = 0; });   // a new fist: the estimate starts from the rig's dot
+    await B.evaluate(() => { window.__rx = []; });
+    const copied = () => B.evaluate(() => document.getElementById('cwDecoderTextInner').textContent.replace(/\s+/g, ' '));
+    const copy0 = await copied();
+    await A.evaluate((ev) => new Promise((res) => {
+      for (const e of ev) setTimeout(() => window.paddleContact(e.role, e.closed), e.t);
+      setTimeout(res, ev[ev.length - 1].t + 50);
+    }), ev);
+    await sleep(10 * 1200 / Math.min(c.wpm, 20));    // the last word space is decided
+    const end = await A.evaluate(() => window.cwKeyer.base + window.cwKeyer.nextTime);
+    await sleep(Math.max(0, end - Date.now()) + 2500);
+    const rb = rxBursts(await B.evaluate(() => window.__rx), 0.02).filter(b => b.off - b.on > 0.3 * dot);
+    const air = readBursts(rb, dot);
+    const copy = (await copied()).slice(copy0.length).trim();   // the decoder keeps its own history
+    const decoded = await A.evaluate(() => window.cwKeyer.characters.map(ch => ch.char).join('').trim());
+    const how = c.straight ? `straight key at ${c.wpm} WPM (+/-15 %)` : `paddle at ${c.wpm} WPM`;
+    console.log(`  A decoded "${decoded}", B's decoder copied "${copy}"`);
+    // A's decode runs on page timers, and a headless page stalls one now and
+    // then by more than a dot ("NST" for TEST, the gap timer late): one word
+    // may go.  The decoder's timing is cw_paddle_sim.mjs's, on a clean clock;
+    // what this section is about is the next check.
+    const want = c.text.split(' ');
+    check(decoded.split(' ').filter((w, i) => w === want[i]).length >= want.length - 1, `${how}: A decodes "${c.text}" ("${decoded}")`);
+    check(air === decoded, `${how}, rig at 20: B hears "${air}", what A decoded`);
+    if (air !== decoded) console.log('  bursts on / gap in dots: ' + rb.map((b, i) => (i ? ((b.on - rb[i - 1].off) / dot).toFixed(1) + ' ' : '') + '[' + ((b.off - b.on) / dot).toFixed(1) + ']').join(' '));
+    await A.click('#cwStopBtn');
+    await sleep(500);
+  }
+}
+
+// ---- 8. CHR typing just behind the keyer: no letters run together --------
+// A letter that reaches the rig after the last element of the one before it
+// but inside the three-dot character gap finds the keyer empty, and the rig
+// starts it at once: the two letters run together (the IC-7300 did, "K*BC",
+// 2026-11-28).  The page types here as the CHR box does (sendCWText per
+// key), each key from half a dot before to 2.9 dots after the page's model
+// says the letter before it ended, a space half a dot later and the letter
+// after it four dots on.  WFWEB_BENCH_NO_GAP_HOLD=1 takes the keyer's gap
+// hold out, to see the fault.
+async function chrOnAir(A, B) {
+  await A.click('#cwStopBtn');
+  if (process.env.WFWEB_BENCH_NO_GAP_HOLD) await A.evaluate(() => { window.cwKeyer._gapHold = function () { return 0; }; });
+  for (const wpm of [20, 30]) {
+    await A.evaluate((w) => window.setCwSpeedValue(w), wpm);
+    await sleep(800);
+    const dot = await A.evaluate(() => window.cwKeyer.dot());
+    const text = 'CQ DE K1ABC K1ABC K';
+    await B.evaluate(() => { window.__rx = []; });
+    await A.evaluate(async ({ text, xs }) => {
+      const k = window.cwKeyer, sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+      let n = 0, lastEnd = 0;
+      for (let i = 0; i < text.length; i++) {
+        window.sendCWText(text[i]);
+        if (i + 1 >= text.length) break;
+        const d = k.dot();
+        if (text[i] !== ' ') {
+          const j = k.characters.length - 1, c = k.characters[j], prev = j ? k.characters[j - 1].char : null;
+          lastEnd = k.base + c.startTime + window.cwTokenDuration(c.char, prev, d) - 3 * d;   // its last element ends
+        }
+        const x = xs[n++ % xs.length] + (text[i] === ' ' ? 4 : 0) + (text[i + 1] === ' ' ? 0.5 : 0);
+        await sleep(Math.max(0, lastEnd + x * d - Date.now()));
+      }
+    }, { text, xs: [-0.5, -0.2, 0, 0.2, 0.5, 1, 2, 2.9] });
+    const end = await A.evaluate(() => window.cwKeyer.base + window.cwKeyer.nextTime);
+    await sleep(Math.max(0, end - Date.now()) + 2500);
+    const rb = rxBursts(await B.evaluate(() => window.__rx), 0.02).filter(b => b.off - b.on > 0.3 * dot);
+    const air = readBursts(rb, dot);
+    check(air === text, `CHR at ${wpm} WPM, each key just after the letter before it ends: B hears "${air}"`);
+    if (air !== text) console.log('  bursts on / gap in dots: ' + rb.map((b, i) => (i ? ((b.on - rb[i - 1].off) / dot).toFixed(1) + ' ' : '') + '[' + ((b.off - b.on) / dot).toFixed(1) + ']').join(' '));
+    await A.click('#cwStopBtn');
+    await sleep(500);
+  }
+  await A.evaluate(() => window.setCwSpeedValue(20));
+}

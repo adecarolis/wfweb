@@ -63,3 +63,52 @@ export function makeRig(clock) {
   rig.stop = () => { rig.stops++; rig.frames.push({ t: clock.now(), text: null }); };
   return rig;
 }
+
+// ---- the rig's keyer on the air ---------------------------------------------
+// What the rig keys for the frames it was handed ([{t, text}], text null =
+// cut), modelled on the virtual rig (tools/virtualrig synthesizeCw /
+// drainCwTx, onCwSendRequested), as measured off the IC-7300
+// (tests/cw_rig_capture.mjs --paddle / --chr, 2026-11-28): a frame that
+// arrives while it is keying is queued behind a three-dot character gap
+// (seven for a space); one that arrives once its last element has ended
+// waits out the rest of the character gap, except within half a dot of
+// that end, where it starts at once and runs into the letter before.
+// readAir reads the elements back by their gaps at the rig's dot, as the
+// other station's ear does: under two dots the same character, under five
+// the next character, else a new word.
+export function rigOnAir(frames, dot, CW_MORSE) {
+  const els = []; let free = -Infinity, gapDue = false;
+  for (const f of frames) {
+    if (f.text === null) { free = -Infinity; gapDue = false; continue; }
+    let t = f.t;
+    if (t < free) t = free;
+    else if (gapDue) {                                  // ran dry after a letter
+      if (t - free >= 0.5 * dot && t - free < 3 * dot) t = free + 3 * dot;
+      gapDue = false;
+    }
+    for (const ch of f.text.replace(/\^([A-Z]{2})/g, '<$1>').match(/<[A-Z]{2}>|./g)) {
+      if (ch === ' ') { t += (gapDue ? 3 : 0) * dot + 4 * dot; gapDue = false; continue; }
+      if (gapDue) t += 3 * dot;
+      const p = CW_MORSE[ch];
+      for (let k = 0; k < p.length; k++) {
+        if (k) t += dot;
+        const len = (p[k] === '.' ? 1 : 3) * dot;
+        els.push({ k: p[k], on: t, off: t + len }); t += len;
+      }
+      gapDue = true;
+    }
+    free = t;
+  }
+  return els;
+}
+export function readAir(els, dot, cwFromPattern) {
+  let out = '', pat = '';
+  for (let i = 0; i < els.length; i++) {
+    if (i) {
+      const g = (els[i].on - els[i - 1].off) / dot;
+      if (g >= 2) { out += cwFromPattern(pat) || '*'; pat = ''; if (g >= 5) out += ' '; }
+    }
+    pat += els[i].k;
+  }
+  return out + (pat ? cwFromPattern(pat) || '*' : '');
+}

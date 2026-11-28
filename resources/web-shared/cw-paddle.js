@@ -4,9 +4,18 @@
 // the radio directly.  Instead the paddle is a keyboard: a browser iambic
 // keyer (or the operator's straight key) is heard at once through the CW
 // bar's sidetone (WfCwSidetone, cw-keyer.js), its elements are decoded into
-// characters, and each finished character goes to WfCwKeyer.sendText() --
-// the same path as typing in CHR mode -- so the radio's own keyer sends it
-// with clean timing, one character behind the fist by design.
+// characters, and each finished word goes to WfCwKeyer.sendText() -- the
+// same path as typed text -- so the radio's own keyer sends it with clean
+// timing, one word behind the fist by design.
+// A word, not a character: handed over a character at a time, the rig keyed
+// each letter at its own speed and then ran dry waiting for the next one, so
+// the gap on the air was the hand's gap plus the difference in the two
+// letters' lengths (K then 1: eight dots more, "K1ABC" went out as "K 1ABC"
+// with the paddle at the rig's own speed), and a letter arriving just as the
+// keyer ran dry went out with no character gap at all (civtop, 2026-11-27;
+// the two-rig bench and the IC-7300 itself, tests/cw_rig_capture.mjs
+// --paddle, 2026-11-28).  The rig never runs dry inside a word now;
+// the wait for the word space (five dots) is the price.
 // The radio's own sidetone, coming back in the RX audio, is that late echo,
 // so the RX audio is cut while the paddle sends (WfCwRxMute).
 //
@@ -234,13 +243,14 @@
     };
 
     // ------------------------------------------------------------------
-    // RX mute while the paddle sends.  The radio keys a paddle character only
-    // once it is decoded, so its own sidetone (back in the RX audio over USB)
-    // trails the fist by a character -- an echo of the sending.  The RX audio
-    // is cut on the first element and stays cut until the radio has keyed
+    // RX mute while the paddle sends.  The radio keys a paddle word only once
+    // it is decoded, so its own sidetone (back in the RX audio over USB)
+    // trails the fist by a word -- an echo of the sending.  The RX audio is
+    // cut on the first element and stays cut until the radio has keyed
     // everything decoded so far and that audio has come back through the RX
     // path (rxDelay: transport + jitter buffer).  The check is re-run until
-    // then, since a character decoded later moves the radio's end out.
+    // then, since a word handed over later (at its word space, which is
+    // decided by lastOff + wordGap) moves the radio's end out.
     // ------------------------------------------------------------------
     function WfCwRxMute(opts) {
         timers(opts, this);
@@ -283,12 +293,24 @@
 
     // ------------------------------------------------------------------
     // What a page builds: paddle + straight key, each with its decoder,
-    // feeding one onChar(ch).
+    // feeding one opts.onText(text) a word at a time: the word and its space
+    // once the word space is decided, or wordChars characters of a run that
+    // has none yet (a long run without a space is never held back for good).
     // ------------------------------------------------------------------
     // opts.onRxMute(muted), with opts.rigEnd and opts.rxDelay, cuts the RX
     // audio while the paddle sends (WfCwRxMute).
     function WfCwPaddle(opts) {
         var self = this;
+        var onText = opts.onText || function () {};
+        this.wordChars = opts.wordChars || 10;
+        this._word = [];        // decoded, not yet handed over
+        function onChar(ch) {
+            self._word.push(ch);
+            if (ch !== ' ' && self._word.length < self.wordChars) return;
+            var text = self._word.join('');
+            self._word = [];
+            onText(text);
+        }
         var t = { now: opts.now, setTimeout: opts.setTimeout, clearTimeout: opts.clearTimeout };
         function mk(o) { for (var k in t) if (t[k]) o[k] = t[k]; return o; }
         this.rxMute = opts.onRxMute ? new WfCwRxMute(mk({
@@ -303,7 +325,7 @@
             }
         }));
         this.keyerDecoder = new WfCwElementDecoder(mk({
-            dot: opts.dot, onChar: opts.onChar, onUnknown: opts.onUnknown
+            dot: opts.dot, onChar: onChar, onUnknown: opts.onUnknown
         }));
         this.straight = new WfStraightKey(mk({
             dot: opts.dot, sidetone: opts.sidetone,
@@ -312,7 +334,7 @@
             onElement: function (kind, on, off) { self.straightDecoder.element(kind, on, off); }
         }));
         this.straightDecoder = new WfCwElementDecoder(mk({
-            dot: function () { return self.straight.dot(); }, onChar: opts.onChar, onUnknown: opts.onUnknown
+            dot: function () { return self.straight.dot(); }, onChar: onChar, onUnknown: opts.onUnknown
         }));
     }
 
@@ -321,8 +343,10 @@
     WfCwPaddle.prototype.setMode = function (mode) { this.keyer.mode = mode === 'A' ? 'A' : 'B'; };
     WfCwPaddle.prototype.setSwap = function (on) { this.keyer.swap = !!on; };
 
-    // Escape / STOP: drop the half-keyed character and silence the tone.
+    // Escape / STOP: drop the half-keyed character and the word not yet
+    // handed over, and silence the tone.
     WfCwPaddle.prototype.stop = function () {
+        this._word = [];
         this.keyer.stop();
         this.straight.stop();
         this.keyerDecoder.reset();

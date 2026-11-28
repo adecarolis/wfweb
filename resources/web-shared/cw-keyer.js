@@ -450,10 +450,33 @@
         var self = this;
         if (this._queueTimer !== null) { this._clearTimeout(this._queueTimer); this._queueTimer = null; }
         while (this._queue.length) {
-            var wait = this._queue[0].at - this._now();
+            var now = this._now();
+            var wait = Math.max(this._queue[0].at, this._gapHold(this._queue[0].first, now)) - now;
             if (wait > 0) { this._queueTimer = this._setTimeout(function () { self._queueTimer = null; self._pump(); }, wait); return; }
             this._send(this._queue.shift().text);
         }
+    };
+
+    // The rig's keyer does not wait out the gap after its last element: a
+    // letter that reaches it once that element has ended starts at once, so
+    // one handed over inside the three-dot character gap ran into the letter
+    // before it ("K1" keyed as one character on the IC-7300, typed in CHR
+    // just behind the keyer, 2026-11-28), and one inside a word space
+    // shortened it.  The model counts those gaps with the unit before, so it
+    // took the keyer for busy.  A frame due from shortly before that last
+    // element ends until the model's start of its own first unit waits for
+    // that start; the margin (a dot, at least 60 ms) covers the varying time
+    // a frame takes to reach the rig.  Before that window the rig is still
+    // keying and appends its own gap; after it the model has caught up.
+    WfCwKeyer.prototype._gapHold = function (first, now) {
+        var j = first - 1;
+        while (j >= 0 && this.characters[j].char === ' ') j--;
+        if (j < 0) return 0;
+        var dot = this.dot();
+        var c = this.characters[j];
+        var lastOff = this.base + c.startTime + cwTokenDuration(c.char, null, dot) - 3 * dot;
+        var start = this.base + this.characters[first].startTime;
+        return (now >= lastOff - Math.max(dot, 60) && now < start) ? start : 0;
     };
 
     // Elements ([{on, off}] in wall-clock ms) of the units from startIndex on.

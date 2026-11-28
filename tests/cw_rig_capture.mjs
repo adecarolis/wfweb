@@ -10,6 +10,20 @@
 //
 // Run by hand, never by pytest:
 //     node tests/cw_rig_capture.mjs [--speeds 12,20,30] [--out file.json]
+//     node tests/cw_rig_capture.mjs --paddle
+//     node tests/cw_rig_capture.mjs --chr
+// --paddle drives the paddle / straight key (cw-paddle.js) instead of typed
+// text, with the rig at 20 WPM, and reads what the radio keyed by its gaps,
+// each over twice: a letter at a time as decoded (wordChars = 1, the
+// handover before 2026-11-28) and a word at a time (the fix).  On the
+// IC-7300 (2026-11-28) the first garbled all three overs ("C Q DE K 1* C K",
+// "TEST DE W 1AW 73 TU") and the second keyed them exactly.  A noisy band
+// at the pitch hides the sidetone from the probe dit: turn RF GAIN down for
+// the run.
+// --chr types "CQ DE K1ABC K" at 20 and 30 WPM as the CHR box does, each
+// key 0.3 to 2.9 dots after the page's model says the letter before it
+// ended (inside the character gap), with the keyer's gap hold off (as before
+// 2026-11-28) and on.
 //
 // NO RF: the radio's BK-IN must be OFF (front panel), so the keyer only
 // produces the sidetone.  The tool reads Break-In (CI-V 16 47) on the raw
@@ -125,8 +139,10 @@ async function breakInViaRigctl() {
 // ------------------------------------------------------------------ server --
 let server = null;
 async function startServer() {
-  const lsof = spawnSync('lsof', [DEV], { encoding: 'utf8' });
-  if (lsof.stdout.trim()) die(DEV + ' is in use:\n' + lsof.stdout);
+  let busy = spawnSync('lsof', [DEV], { encoding: 'utf8' });
+  if (busy.error) busy = spawnSync('fuser', ['-v', DEV], { encoding: 'utf8' });   // no lsof on this box
+  if (busy.error) die('neither lsof nor fuser: cannot tell whether ' + DEV + ' is in use');
+  if ((busy.stdout || '').trim()) die(DEV + ' is in use:\n' + busy.stdout + (busy.stderr || ''));
   server = spawn(path.join(ROOT, 'wfweb'), ['-l', LOG, '--rigctld-port', String(RIGCTL_PORT)], { cwd: ROOT, stdio: ['pipe', 'ignore', 'ignore'] });
   for (let i = 0; i < 60; i++) {
     await sleep(500);
@@ -330,6 +346,133 @@ function analyze(cap, model) {
     results.runs.push(r);
     console.log(`${label.padEnd(6)} ${String(wpm).padStart(2)} WPM (rig says ${rigWpm}): dot ${fmt(r.dot, 1)} ms (model ${fmt(r.modelDot, 1)}) = ${fmt(r.rigWpmEff, 2)} WPM eff, dash ${fmt(r.dashDots, 2)} dots, gaps ${fmt(r.gapIntraDots, 2)} / ${fmt(r.gapCharDots, 2)} / ${fmt(r.gapWordDots, 2)} dots, elements ${r.rigBursts}/${r.modelElements}${r.spurious ? ' (' + r.spurious + ' spurious)' : ''}, lag0 ${fmt(r.lag0)} ms, drift ${fmt(r.drift)} ms over ${fmt(r.modelSpan / 1000, 1)} s, rate ${fmt(r.rate, 4)}`);
     return r;
+  }
+
+  if (argv.includes('--paddle')) { await paddleRuns(); await finish(0); }
+  if (argv.includes('--chr')) { await chrRuns(); await finish(0); }
+
+  // CHR typing just behind the keyer (the bench's section 8).
+  async function chrRuns() {
+    const MORSE = await page.evaluate(() => window.CW_MORSE);
+    const FROM = {}; for (const [c, p] of Object.entries(MORSE)) if (c.length === 1 && c !== ' ' && !(p in FROM)) FROM[p] = c;
+    const text = opt('--text', 'CQ DE K1ABC K');
+    const xs = opt('--xs', '0.3,1,1.7,2.4,2.9').split(',').map(Number);
+    results.chr = [];
+    for (const wpm of [20, 30]) for (const hold of [false, true]) {
+      if ((await rigctl('u SBKIN')) !== '0') { console.error('Break-In changed mid-run'); await finish(2); }
+      await page.evaluate(({ w, hold }) => {
+        window.cwKeyer.stop(); window.cwSpeed = w; window.send({ cmd: 'setCWSpeed', wpm: w });
+        if (!window.__gapHold) window.__gapHold = window.cwKeyer._gapHold;
+        window.cwKeyer._gapHold = hold ? window.__gapHold : function () { return 0; };
+      }, { w: wpm, hold });
+      await sleep(1200);
+      const dot = await page.evaluate(() => window.cwKeyer.dot());
+      await page.evaluate(() => window.__capReset());
+      await sleep(300);
+      await page.evaluate(async ({ text, xs }) => {
+        const k = window.cwKeyer, sl = (ms) => new Promise((r) => setTimeout(r, ms));
+        let n = 0, lastEnd = 0;
+        for (let i = 0; i < text.length; i++) {
+          window.sendCWText(text[i]);
+          if (i + 1 >= text.length) break;
+          const d = k.dot();
+          if (text[i] !== ' ') {
+            const j = k.characters.length - 1, c = k.characters[j], prev = j ? k.characters[j - 1].char : null;
+            lastEnd = k.base + c.startTime + window.cwTokenDuration(c.char, prev, d) - 3 * d;
+          }
+          const x = xs[n++ % xs.length] + (text[i] === ' ' ? 4 : 0) + (text[i + 1] === ' ' ? 0.5 : 0);
+          await sl(Math.max(0, lastEnd + x * d - Date.now()));
+        }
+      }, { text, xs });
+      const end = await page.evaluate(() => window.cwKeyer.base + window.cwKeyer.nextTime);
+      await sleep(Math.max(0, end - Date.now()) + 2500);
+      if (await page.evaluate(() => window.__txSeen || window.isTransmitting)) { console.error('RADIO REPORTS TX. Stopping.'); await finish(4); }
+      const air = readGaps(bursts(await page.evaluate(() => window.__capGet())).list, dot, FROM);
+      const how = `CHR ${wpm} WPM, gap hold ${hold ? 'on ' : 'off'}`;
+      console.log(`${how}  radio keyed "${air.text}"  ${air.text === text ? 'OK' : 'GARBLED'}`);
+      console.log('   gaps between letters (dots): ' + air.gaps.join(' '));
+      results.chr.push({ wpm, hold, air: air.text, gaps: air.gaps, dot });
+    }
+    await page.evaluate(() => { if (window.__gapHold) window.cwKeyer._gapHold = window.__gapHold; });
+  }
+  // Bursts read by their gaps at the rig's dot: under two dots the same
+  // character, under five the next, else a new word (holes under half a dot
+  // are bridged); also the gaps between characters, in dots.
+  function readGaps(list, dot, FROM) {
+    const b = [];
+    for (const x of list) { if (b.length && x.on - b[b.length - 1].off < 0.5 * dot) b[b.length - 1].off = x.off; else b.push({ ...x }); }
+    let out = '', pat = ''; const gaps = [];
+    for (let i = 0; i < b.length; i++) {
+      if (i) {
+        const g = (b[i].on - b[i - 1].off) / dot;
+        if (g >= 2) { gaps.push(+g.toFixed(1)); out += FROM[pat] || '*'; pat = ''; if (g >= 5) out += ' '; }
+        else if (g > 1.5) gaps.push('(' + g.toFixed(1) + ')');
+      }
+      pat += (b[i].off - b[i].on) / dot < 2 ? '.' : '-';
+    }
+    return { text: out + (pat ? FROM[pat] || '*' : ''), gaps };
+  }
+
+  // Paddle / straight-key overs (the bench's section 7 timelines) and what
+  // the radio keys for them, read by the gaps of its sidetone at its dot.
+  async function paddleRuns() {
+    const MORSE = await page.evaluate(() => window.CW_MORSE);
+    const FROM = {}; for (const [c, p] of Object.entries(MORSE)) if (c.length === 1 && c !== ' ' && !(p in FROM)) FROM[p] = c;
+    const rng = (seed) => { let x = seed >>> 0; return () => ((x = (x * 1664525 + 1013904223) >>> 0) / 2 ** 32); };
+    function timeline(text, dot, straight, jitter, seed) {
+      const r = rng(seed), j = () => straight ? 1 + (r() * 2 - 1) * jitter : 1;
+      const ev = []; let t = 200, first = true;
+      for (const ch of text) {
+        if (ch === ' ') { t += 4 * dot * j(); continue; }
+        if (!first) t += 3 * dot * j();
+        const p = MORSE[ch];
+        for (let k = 0; k < p.length; k++) {
+          if (k) t += dot * j();
+          const len = (p[k] === '.' ? 1 : 3) * dot * j();
+          const role = straight ? 'straight' : (p[k] === '.' ? 'left' : 'right');
+          if (straight) { ev.push({ t, role, closed: true }); ev.push({ t: t + len, role, closed: false }); }
+          else { ev.push({ t: k ? t - 0.5 * dot : t, role, closed: true }); ev.push({ t: t + 0.5 * len, role, closed: false }); }
+          t += len;
+        }
+        first = false;
+      }
+      return ev;
+    }
+    const cases = [
+      { text: 'CQ DE K1ABC K', straight: false, wpm: 20 },
+      { text: 'TEST DE W1AW 73 TU', straight: false, wpm: 20 },
+      { text: 'CQ DE K1ABC K', straight: true, wpm: 15, seed: 1 },
+    ];
+    await page.evaluate(() => { window.cwSpeed = 20; window.send({ cmd: 'setCWSpeed', wpm: 20 }); });
+    await sleep(1000);
+    results.paddle = [];
+    const only = opt('--case', null);   // e.g. --case 2:1 = the third over, a letter at a time
+    for (const [ci, c] of cases.entries()) for (const wordChars of [1, 10]) {
+      if (only && only !== ci + ':' + wordChars) continue;
+      if ((await rigctl('u SBKIN')) !== '0') { console.error('Break-In changed mid-run'); await finish(2); }
+      await page.evaluate((w) => { window.cwKeyer.stop(); window.cwPaddle.stop(); window.cwPaddle.wordChars = w; window.cwPaddle.straight.dotMs = 0; }, wordChars);
+      const dot = await page.evaluate(() => window.cwKeyer.dot());
+      const ev = timeline(c.text, c.straight ? 1200 / c.wpm : dot, c.straight, 0.15, c.seed || 1);
+      await sleep(500);
+      await page.evaluate(() => window.__capReset());
+      await sleep(300);
+      await page.evaluate((ev) => new Promise((res) => {
+        for (const e of ev) setTimeout(() => window.paddleContact(e.role, e.closed), e.t);
+        setTimeout(res, ev[ev.length - 1].t + 50);
+      }), ev);
+      await sleep(10 * 1200 / Math.min(c.wpm, 20));
+      const end = await page.evaluate(() => window.cwKeyer.base + window.cwKeyer.nextTime);
+      await sleep(Math.max(0, end - Date.now()) + 2500);
+      if (await page.evaluate(() => window.__txSeen || window.isTransmitting)) { console.error('RADIO REPORTS TX. Stopping.'); await finish(4); }
+      const decoded = await page.evaluate(() => window.cwKeyer.characters.map(ch => ch.char).join('').trim());
+      const b = bursts(await page.evaluate(() => window.__capGet()));
+      const air = readGaps(b.list, dot, FROM);
+      const how = (c.straight ? `straight key ${c.wpm} WPM` : `paddle ${c.wpm} WPM`) + (wordChars === 1 ? ', letter at a time' : ', word at a time');
+      console.log(`${how.padEnd(38)} decoded "${decoded}"  radio keyed "${air.text}"  ${air.text === decoded ? 'OK' : 'GARBLED'}`);
+      console.log('   gaps between letters (dots): ' + air.gaps.join(' '));
+      results.paddle.push({ ...c, wordChars, decoded, air: air.text, gaps: air.gaps, dot, bursts: b.list });
+    }
+    await page.evaluate(() => { window.cwPaddle.wordChars = 10; });
   }
 
   for (const wpm of SPEEDS) await run(wpm, PARIS, 'PARIS');

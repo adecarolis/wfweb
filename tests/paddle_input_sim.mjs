@@ -151,7 +151,7 @@ function makeKb(opts = {}) {
   const tone = new WfCwSidetone({ enabled: true, createContext: () => fakeContext(clock), pitch: () => 600, gain: () => 0.2, ...T });
   const keyer = new WfCwKeyer({ wpm: () => 20, send: rig.send, stopRig: rig.stop, sidetone: tone, ...T });
   let text = '';
-  const paddle = new WfCwPaddle({ dot: () => keyer.dot(), sidetone: tone, ...T, onChar: (ch) => { text += ch; keyer.sendText(ch, { tone: false }); } });
+  const paddle = new WfCwPaddle({ dot: () => keyer.dot(), sidetone: tone, ...T, onText: (t) => { text += t; keyer.sendText(t, { tone: false }); } });
   const settings = new WfPaddleSettings({ storage: memStorage() });
   settings.set('keyboard', true);
   const tgt = fakeTarget();   // contacts go straight to the keyer: the page's paddleContact minus its CW gate
