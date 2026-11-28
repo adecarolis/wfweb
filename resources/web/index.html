@@ -11538,15 +11538,15 @@ function cwStopRig() { cwKeyer.cut(); }
 // A controller's knob and buttons call the same functions as the page's own
 // controls; the MIDI window (FUNC > MIDI) holds the map. The paddle is text
 // entry: its keyer is heard at once through the CW bar's TONE, each decoded
-// character goes to the rig's keyer through cwKeyer like a typed one (one
-// character behind the fist), with no second tone for it. Timing lives in
+// word goes to the rig's keyer through cwKeyer like typed text (one word
+// behind the fist), with no second tone for it. Timing lives in
 // cw-paddle.js, coalescing of knob ticks in WfMidiTuner.
 // ------------------------------------------------------------
 var cwPaddle = new WfCwPaddle({
     dot: function() { return cwKeyer.dot(); },
     sidetone: cwSidetone,
-    onChar: function(ch) { cwKeyer.sendText(ch, { tone: false }); },
-    // The radio's own sidetone comes back a character late (it keys only
+    onText: function(text) { cwKeyer.sendText(text, { tone: false }); },
+    // The radio's own sidetone comes back a word late (it keys only
     // decoded text): cut the RX audio from the first element until that
     // echo has played out -- the radio's keying, the jitter buffer, margin.
     onRxMute: setRxPaddleMute,

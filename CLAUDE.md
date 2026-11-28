@@ -1696,6 +1696,18 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
   dry. `icomCommander` and `civ/icom.js` still split a longer frame at 30
   bytes as a backstop. Characters the keyer cannot send (not in `CW_MORSE`)
   are dropped before they reach the model or the radio.
+- **A letter must not reach an idle keyer around the end of the letter
+  before it.** The model counts the 3-dot character gap (and a word space)
+  with the unit before, so it took the keyer for busy there and sent at
+  once; the IC-7300 starts a letter that arrives within about half a dot of
+  the last element's end without any gap ("K*BC", "K1*C" for K1ABC typed in
+  CHR just behind the keyer, `tests/cw_rig_capture.mjs --chr`, 2026-11-28;
+  later in the gap it keeps the full gap itself). `_gapHold` in `_pump`
+  holds a frame due from shortly before that end (a dot, at least 60 ms)
+  until the model's start of its own first unit; the radio then copied
+  every word. The server's queue sends one item a tick (25 ms on a USB
+  IC-7300, 70 ms on the LAN bench), so a frame's trip to the rig varies by
+  up to a tick: the hold cannot be sharper than that.
 - Stop paths: `cwKeyer.stop()` (STOP, close: nothing keyed, nothing shown),
   `cwKeyer.cut()` (Escape, Backspace in CHR mode: cut the rig and the tone,
   drop what is pending, rewind the model clock to now so the next text starts
@@ -1741,8 +1753,17 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
   against the virtual rig's **actual keyed audio** (a bench that compares the
   tone with the page's own model cannot see a model error). The virtual rig
   emulates a 30-byte keyer buffer (`civEmulator::keyerPending`) and NGs an
-  overflowing frame, so type-ahead bugs fail there. Run both after any change
-  to the module (`pytest tests/test_cw_keyer.py`).
+  overflowing frame, so type-ahead bugs fail there; and it keys a frame that
+  finds its buffer empty as the IC-7300 does (`onCwSendRequested`,
+  `cwToneEndMs`): within half a dot of the last element's end at once (the
+  letters run together), later in the gap after the rest of the 3-dot gap,
+  reckoned from the pump's next 20 ms tick (counted from the arrival, the
+  pump's padding put time the model does not know into every such gap and
+  the bench drifted behind the page). It used to start every such frame at
+  once, merging letters the radio keeps apart. Sections 7 (`--paddle`) and 8
+  (`--chr`, `WFWEB_BENCH_NO_GAP_HOLD=1` to see the fault) of `cw_bench.mjs`
+  read B's bursts by their gaps. Run both after any change to the module
+  (`pytest tests/test_cw_keyer.py`).
 
 ### MIDI controller and paddle (`midi.js`, `cw-paddle.js`)
 - Browser-only, both builds, no server command of its own: the controller
@@ -1780,13 +1801,25 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
   2-dot gap, word after 5; a pattern that is no character is sent as its
   longest known head, one extra element dropped (`......` -> 5) and more
   decoded as further characters (`..-.--` -> F M), so a slip never leaves
-  a hole) and
-  each character goes to `cwKeyer.sendText(ch, {tone: false})` — the CHR-mode path — so the rig's
-  keyer sends it, one character behind the fist. `tone: false` marks the
-  units `noTone` so the text path never tones them a second time. Paddle input
-  is ignored outside CW / CW-R; the first contact opens the CW bar.
+  a hole) and the text goes to `cwKeyer.sendText(text, {tone: false})` (the
+  `onText` option of `WfCwPaddle`) **a word at a time**: the word and its
+  space once the word space is decided, or ten characters of a run without
+  one, so the rig's keyer sends it one word behind the fist. **Never hand it
+  over a character at a time**: the rig keyed each letter at its own speed
+  and ran dry waiting for the next, so the air carried the hand's gap plus
+  the difference in the two letters' lengths (K then 1: eight dots more) and
+  B copied "C Q DE K 1ABC K", "TEV" for TEST, with the paddle at the rig's
+  own speed; a letter arriving as the keyer ran dry went out with no gap at
+  all (found in civtop 2026-11-27, reproduced on the two-rig bench and on
+  the IC-7300 2026-11-28: `tests/cw_rig_capture.mjs --paddle`, BK-IN OFF,
+  keyed "C Q DE K 1* C K" and "TEST DE W 1AW 73 TU" the old way and every
+  over exactly a word at a time; the real keyer runs letters together after
+  running dry too). `stop()` drops the word not yet handed over. `tone: false`
+  marks the units `noTone` so the text path never tones them a second time.
+  Paddle input is ignored outside CW / CW-R; the first contact opens the CW
+  bar.
   The radio's own sidetone (in the RX audio over USB) therefore trails the
-  fist by a character (~0.9 s at 20 WPM on the bench): `WfCwRxMute` cuts the
+  fist by a word: `WfCwRxMute` cuts the
   RX playback gain (`setRxPaddleMute`, `rxPlaybackGain()`) on the first
   element and restores it once the radio's keying (`cwKeyer` model end) plus
   the jitter buffer and 300 ms have passed, so only the browser tone is heard. Timing
@@ -1809,8 +1842,11 @@ queue->add(priorityImmediate, queueItem(funcMemoryContents, QVariant::fromValue<
   contact, MIDI or keyboard, goes through the page's `paddleContact()`, which
   lights the window's CHECK lamps in any mode and keys only in CW / CW-R.
 - Tests: `tests/cw_paddle_sim.mjs` (decode at several speeds, A vs B squeeze,
-  swap, jittery straight key, sidetone on the paddle, rig text one character
-  behind), `tests/midi_sim.mjs` (encodings, presets, learn, hot-plug,
+  swap, jittery straight key, sidetone on the paddle, rig text a word at a
+  time, and what a modelled rig keyer then puts on the air read back by its
+  gaps), section 7 of `tests/cw_bench.mjs` (`--paddle` alone: paddle and
+  straight key at 15 / 20 / 25 WPM against the rig at 20, B's received
+  bursts read by their gaps must equal what A decoded), `tests/midi_sim.mjs` (encodings, presets, learn, hot-plug,
   tuner), `tests/paddle_input_sim.mjs` (keyboard adapter, settings, a CQ on
   the Ctrl keys), `tests/midi_browser.mjs` (Standalone on `?virtual=1` with a
   fake `requestMIDIAccess` and real key events; never a real radio).

@@ -5,12 +5,14 @@
 // open) must decode to the text they spell, in iambic mode A and B, swapped
 // or not, at several speeds; a jittery straight key must decode too, from a
 // dot estimate set for another speed.  The browser sidetone must follow the
-// paddle, and each decoded character must reach the rig through the text
-// path without being toned a second time.  Exit code 1 on a failed check.
+// paddle, and the decoded text must reach the rig through the text path a
+// word at a time, without being toned a second time; what the rig then keys
+// (modelled like the virtual rig's keyer) must read as what was paddled.
+// Exit code 1 on a failed check.
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Clock, fakeContext, bursts, wall, makeRig } from './cw_sim_harness.mjs';
+import { Clock, fakeContext, bursts, wall, makeRig, rigOnAir, readAir } from './cw_sim_harness.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const W = {};
@@ -32,7 +34,7 @@ function makeStation(clock, opts = {}) {
   const st = { rig, tone, keyer, text: '', elements: [], unknown: [], mute: [] };
   st.paddle = new WfCwPaddle({
     dot: () => keyer.dot(), sidetone: tone, mode: opts.mode, swap: opts.swap, ...timers(clock),
-    onChar: (ch) => { st.text += ch; keyer.sendText(ch, { tone: false }); },
+    onText: (t) => { st.text += t; keyer.sendText(t, { tone: false }); },
     onUnknown: (p, ch) => st.unknown.push([p, ch]),
     onRxMute: (m) => st.mute.push({ t: clock.now(), m }),
     rigEnd: () => keyer.characters.length ? keyer.base + keyer.nextTime : 0,
@@ -152,7 +154,7 @@ for (const [mode, want] of [['A', 'E'], ['B', 'A']]) {
   check(all >= 1, 'oscillator started by the paddle');
 }
 
-// ---- 7. decoded characters reach the rig, one character behind -------------
+// ---- 7. decoded text reaches the rig, one word behind ----------------------
 {
   const clock = new Clock(), st = makeStation(clock, { wpm: 20 });
   const d = st.keyer.dot();
@@ -161,8 +163,8 @@ for (const [mode, want] of [['A', 'E'], ['B', 'A']]) {
   clock.run(tl.end + 20000);
   const sent = st.rig.frames.filter(f => f.text !== null);
   check(sent.map(f => f.text).join('') === 'CQ CQ DE W1AW K ', 'the rig gets the decoded text (' + JSON.stringify(sent.map(f => f.text).join('')) + ')');
-  const cEnd = st.elements[3].off;   // C = -.-. : fourth element
-  check(close(sent[0].t, cEnd + 2 * d, 1), `first character handed to the rig two dots after its last element (${(sent[0].t - cEnd).toFixed(1)} ms)`);
+  const qEnd = st.elements[7].off;   // C -.-. Q --.- : eighth element
+  check(sent[0].text === 'CQ ' && close(sent[0].t, qEnd + 5 * d, 1), `first word handed to the rig whole at its word space, five dots after its last element (${JSON.stringify(sent[0].text)} after ${((sent[0].t - qEnd) / d).toFixed(2)} dots)`);
   check(st.rig.stops === 0, 'the rig keyer is never cut');
 }
 
@@ -308,6 +310,62 @@ for (const opWpm of [12, 25]) {
   c2.run(t1); s2.paddle.straightKey(true); c2.run(t1 + 4); s2.paddle.straightKey(false);   // bounce
   c2.run(t1 + 3000);
   check(s2.mute.map(x => x.m).join() === 'true,false', 'a contact bounce does not leave the RX muted');
+}
+
+// ---- 13. what the rig keys on the air reads as what was paddled ------------
+// The rig's keyer as the virtual rig emulates it (tools/virtualrig
+// synthesizeCw / drainCwTx): a frame that arrives while it is keying is
+// queued behind a three-dot character gap (seven for a space); one that
+// arrives once it has run dry starts at once, with no gap of its own.  Its
+// elements are read back by their gaps at the rig's dot, as the other
+// station's ear does: under two dots the same character, under five the
+// next character, else a new word.  Handed over a character at a time, the
+// rig ran dry between letters whenever a letter took it less time than the
+// next one took the hand (K then 1: 8 dots more), so "K1ABC" went out as
+// "K 1ABC" even with the paddle at the rig's own speed.  rigOnAir / readAir
+// are in cw_sim_harness.mjs.
+for (const text of ['CQ DE K1ABC K', 'TEST DE W1AW 73 TU']) {
+  const clock = new Clock(), st = makeStation(clock, { wpm: 20 });
+  const d = st.keyer.dot();
+  const tl = paddleTimeline(text, d, clock.now() + 100);
+  play(clock, tl.ev, (e) => st.paddle.paddle(e.side, e.closed));
+  clock.run(tl.end + 20000);
+  const air = readAir(rigOnAir(st.rig.frames, d, CW_MORSE), d, cwFromPattern);
+  check(air === text, `paddle at the rig's speed: the rig keys "${text}" (on the air: "${air}")`);
+}
+for (const opWpm of [15, 25]) {
+  for (const seed of [1, 2, 3]) {
+    const clock = new Clock(), st = makeStation(clock, { wpm: 20 });
+    const d = st.keyer.dot();
+    const text = 'CQ DE K1ABC K';
+    const tl = keyTimeline(text, 1200 / opWpm, clock.now() + 100, 0.15, seed);
+    play(clock, tl.ev, (e) => st.paddle.straightKey(e.closed));
+    clock.run(tl.end + 20000);
+    const air = readAir(rigOnAir(st.rig.frames, d, CW_MORSE), d, cwFromPattern);
+    check(st.text === text + ' ' && air === text, `straight key at ${opWpm} WPM, rig at 20, seed ${seed}: the rig keys "${text}" (on the air: "${air}")`);
+  }
+}
+{
+  // a run of letters with no word space goes in tens, so the rig is never
+  // more than ten behind
+  const clock = new Clock(), st = makeStation(clock, { wpm: 20 });
+  const d = st.keyer.dot();
+  const tl = paddleTimeline('CQ ABCDEFGHIJKL', d, clock.now() + 100);
+  play(clock, tl.ev, (e) => st.paddle.paddle(e.side, e.closed));
+  clock.run(tl.end + 20000);
+  const sent = st.rig.frames.filter(f => f.text !== null);
+  check(sent.map(f => f.text).join('|') === 'CQ |ABCDEFGHIJ|KL ', 'a run of letters with no space goes to the rig in tens (' + JSON.stringify(sent.map(f => f.text)) + ')');
+}
+{
+  // stop() drops a word not yet handed over
+  const clock = new Clock(), st = makeStation(clock, { wpm: 20 });
+  const d = st.keyer.dot();
+  const tl = paddleTimeline('CQ', d, clock.now() + 100);
+  play(clock, tl.ev, (e) => st.paddle.paddle(e.side, e.closed));
+  clock.run(tl.end + 3 * d);   // Q decided, the word space not yet
+  st.paddle.stop();
+  clock.run(tl.end + 5000);
+  check(st.rig.frames.length === 0, 'stop() before the word space: the word is not sent');
 }
 
 console.log(failures ? 'FAILED ' + failures : 'ALL PASS');

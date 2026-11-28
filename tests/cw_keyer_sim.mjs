@@ -7,7 +7,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Clock, fakeContext, bursts, wall, makeRig } from './cw_sim_harness.mjs';
+import { Clock, fakeContext, bursts, wall, makeRig, rigOnAir, readAir } from './cw_sim_harness.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const src = fs.readFileSync(path.join(here, '../resources/web-shared/cw-keyer.js'), 'utf8');
@@ -218,6 +218,47 @@ for (const wpm of [20, 6, 48]) {
   const third = tone.ctx;
   tone.setEnabled(false);
   check(tone.ctx === null && third.state === 'closed', 'TONE off releases the context (off / on rebuilds it)');
+}
+
+// ---- 10. CHR typing just behind the keyer: no letters run together --------
+// A letter that reaches the rig after the last element of the one before it
+// but inside the three-dot character gap finds the keyer empty, and the rig
+// starts it at once: the two letters run together ("1*" off the IC-7300,
+// 2026-11-28).  The model counts that gap with the letter before, so it took
+// the keyer for busy and sent the letter at once.  The typist here follows
+// the sidetone: each key 0.3 to 2.9 dots after the letter before it ends on
+// the air, a space a little later and the letter after it four dots on.
+{
+  const fromPattern = {};
+  for (const [c, p] of Object.entries(CW_MORSE)) if (c !== ' ' && !(p in fromPattern)) fromPattern[p] = c;
+  const cwFromPattern = (p) => fromPattern[p] || null;
+  for (const wpm of [20, 30]) {
+    const clock = new Clock(), rig = makeRig(clock), k = makeKeyer(clock, rig, { wpm, keyer: 'icom' });
+    const d = k.dot();
+    const text = 'CQ DE K1ABC K';
+    const xs = [0.3, 1, 1.7, 2.4, 2.9];
+    let n = 0;
+    for (let i = 0; i < text.length; i++) {
+      k.sendText(text[i]);
+      // wait until the rig has this one, then for its last element on the air
+      for (let w = 0; w < 5000 && rig.frames.filter(f => f.text !== null).length <= i; w++) clock.advance(1);
+      if (i + 1 >= text.length) break;
+      const els = rigOnAir(rig.frames, d, CW_MORSE);
+      const lastOff = els.length ? els[els.length - 1].off : clock.now();
+      const x = xs[n++ % xs.length] + (text[i] === ' ' ? 4 : 0) + (text[i + 1] === ' ' ? 0.5 : 0);
+      clock.run(Math.max(clock.now(), lastOff + x * d));
+    }
+    clock.advance(10000);
+    const air = readAir(rigOnAir(rig.frames, d, CW_MORSE), d, cwFromPattern);
+    check(air === text, `CHR at ${wpm} WPM, each key just after the letter before it ends: the rig keys "${text}" (on the air: "${air}")`);
+  }
+  // A key typed while the rig is still keying the letter before goes out at once.
+  const clock = new Clock(), rig = makeRig(clock), k = makeKeyer(clock, rig, { wpm: 20, keyer: 'icom' });
+  const d = k.dot();
+  k.sendText('Q');
+  clock.advance(5 * d);                     // mid-Q
+  k.sendText('R');
+  check(rig.frames.length === 2 && rig.frames[1].t === clock.now(), 'a key typed while the rig is keying goes to it at once');
 }
 
 console.log(failures ? 'FAILED ' + failures : 'ALL PASS');

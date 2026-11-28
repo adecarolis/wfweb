@@ -109,9 +109,14 @@ private:
     qint64 cwQueuedBytes = 0;
     qint64 cwPlayedBytes = 0;
     // Carries the "previous symbol was a gap" state across back-to-back 0x17
-    // frames so single-char inputs ("H","E") don't slur into one mash. Reset
-    // to true (i.e. no leading gap needed) every time the pump fully drains.
+    // frames so single-char inputs ("H","E") don't slur into one mash. Left
+    // as it is when the pump drains: a frame that arrives inside the
+    // character gap after the last element is handled by cwToneEndMs.
     bool cwPrevWasGap = true;
+    // Wall-clock ms at which the last element of the pumped audio ends, once
+    // the buffer holds nothing after it (see onCwSendRequested).
+    qint64 cwToneEndMs = 0;
+    qint64 cwLastTickMs = 0;   // when the pump last sent a chunk
 };
 
 #endif
