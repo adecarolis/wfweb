@@ -985,9 +985,34 @@ void yaesuCommander::parseData(QByteArray data)
             break;
         }
         case funcDate:
-        case funcTime:
-            qInfo(logRig()) << "Received" << funcString[func] << d;
+        {
+            // DT0: YYYYMMDD. Kept like the Icom date reply, so rigctld's
+            // get_clock can answer from the cache.
+            bool okY=false, okM=false, okD=false;
+            datekind dk;
+            dk.year = d.mid(0,4).toUShort(&okY);
+            dk.month = quint8(d.mid(4,2).toUShort(&okM));
+            dk.day = quint8(d.mid(6,2).toUShort(&okD));
+            if (d.size() >= 8 && okY && okM && okD)
+                value.setValue(dk);
+            else
+                qInfo(logRig()) << "Received" << funcString[func] << "not a date:" << d;
             break;
+        }
+        case funcTime:
+        {
+            // DT1: HHMMSS (the seconds are dropped, as on the Icoms).
+            bool okH=false, okM=false;
+            timekind tk;
+            tk.hours = quint8(d.mid(0,2).toUShort(&okH));
+            tk.minutes = quint8(d.mid(2,2).toUShort(&okM));
+            tk.isMinus = false;
+            if (d.size() >= 4 && okH && okM)
+                value.setValue(tk);
+            else
+                qInfo(logRig()) << "Received" << funcString[func] << "not a time:" << d;
+            break;
+        }
         case funcToneFreq:
         case funcTSQLFreq:
         {
